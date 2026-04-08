@@ -1,19 +1,19 @@
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -Iinclude
+CXX = g++
+CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude
 SDL_FLAGS = $(shell pkg-config --cflags --libs sdl2 SDL2_image)
 
-SRC = $(wildcard src/*.c)
-OBJ = $(SRC:.c=.o)
+SRC = $(wildcard src/*.cpp)
+OBJ = $(SRC:.cpp=.o)
 
 TARGET = game
 
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(OBJ) -o $(TARGET) $(SDL_FLAGS) -lm
+	$(CXX) $(OBJ) -o $(TARGET) $(SDL_FLAGS) -lm
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run: game
 	./game

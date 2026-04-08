@@ -2,7 +2,6 @@
 #define INPUT_H
 
 #include <SDL2/SDL.h>
-#include <stdbool.h>
 
 typedef enum {
     KEY_UP,

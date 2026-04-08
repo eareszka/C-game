@@ -2,7 +2,6 @@
 #define BATTLE_H
 
 #include <SDL2/SDL.h>
-#include <stdbool.h>
 #include "input.h"
 #include "entity.h"
 

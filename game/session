@@ -13,11 +13,13 @@ if &shortmess =~ 'A'
 else
   set shortmess=aoO
 endif
-badd +0 src/input.c
-badd +0 src/main.c
+badd +1 src/input.c
+badd +1 src/main.c
+badd +0 src/main.cpp
+badd +0 src/overworld.cpp
 argglobal
 %argdel
-edit src/main.c
+edit src/main.cpp
 let s:save_splitbelow = &splitbelow
 let s:save_splitright = &splitright
 set splitbelow splitright
@@ -37,13 +39,13 @@ set winminheight=0
 set winheight=1
 set winminwidth=0
 set winwidth=1
-exe 'vert 1resize ' . ((&columns * 30 + 94) / 188)
-exe 'vert 2resize ' . ((&columns * 78 + 94) / 188)
-exe 'vert 3resize ' . ((&columns * 78 + 94) / 188)
+exe 'vert 1resize ' . ((&columns * 30 + 104) / 209)
+exe 'vert 2resize ' . ((&columns * 89 + 104) / 209)
+exe 'vert 3resize ' . ((&columns * 88 + 104) / 209)
 argglobal
 enew
 file NvimTree_1
-balt src/input.c
+balt src/main.c
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -54,7 +56,7 @@ setlocal fdn=20
 setlocal nofen
 wincmd w
 argglobal
-balt src/input.c
+balt src/main.c
 setlocal fdm=manual
 setlocal fde=0
 setlocal fmr={{{,}}}
@@ -65,17 +67,17 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 1 - ((0 * winheight(0) + 27) / 54)
+let s:l = 81 - ((48 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 1
+keepjumps 81
 normal! 0
 wincmd w
 argglobal
-if bufexists(fnamemodify("src/input.c", ":p")) | buffer src/input.c | else | edit src/input.c | endif
+if bufexists(fnamemodify("src/overworld.cpp", ":p")) | buffer src/overworld.cpp | else | edit src/overworld.cpp | endif
 if &buftype ==# 'terminal'
-  silent file src/input.c
+  silent file src/overworld.cpp
 endif
 balt src/input.c
 setlocal fdm=manual
@@ -88,17 +90,17 @@ setlocal fdn=20
 setlocal fen
 silent! normal! zE
 let &fdl = &fdl
-let s:l = 2 - ((1 * winheight(0) + 27) / 54)
+let s:l = 122 - ((48 * winheight(0) + 24) / 49)
 if s:l < 1 | let s:l = 1 | endif
 keepjumps exe s:l
 normal! zt
-keepjumps 2
+keepjumps 122
 normal! 0
 wincmd w
-3wincmd w
-exe 'vert 1resize ' . ((&columns * 30 + 94) / 188)
-exe 'vert 2resize ' . ((&columns * 78 + 94) / 188)
-exe 'vert 3resize ' . ((&columns * 78 + 94) / 188)
+2wincmd w
+exe 'vert 1resize ' . ((&columns * 30 + 104) / 209)
+exe 'vert 2resize ' . ((&columns * 89 + 104) / 209)
+exe 'vert 3resize ' . ((&columns * 88 + 104) / 209)
 tabnext 1
 if exists('s:wipebuf') && len(win_findbuf(s:wipebuf)) == 0 && getbufvar(s:wipebuf, '&buftype') isnot# 'terminal'
   silent exe 'bwipe ' . s:wipebuf

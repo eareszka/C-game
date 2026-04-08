@@ -3,7 +3,6 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <stdbool.h>
 
 typedef struct Tileset {
     SDL_Texture* texture;
@@ -20,5 +19,8 @@ void tileset_unload(Tileset* ts);
 
 void tileset_draw_tile(const Tileset* ts, SDL_Renderer* renderer,
                        int tile_id, int screen_x, int screen_y);
+
+void tileset_draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
+                             int screen_x, int screen_y);
 
 #endif

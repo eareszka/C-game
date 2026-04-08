@@ -32,7 +32,7 @@ typedef struct ResourceNodeList
 
 void resource_nodes_init(ResourceNodeList* list);
 void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, float y);
-void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* atlas);
+void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren);
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range);
 
 #endif

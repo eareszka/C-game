@@ -2,8 +2,6 @@
 #define TILEMAP_H
 
 #include <SDL2/SDL.h>
-#include <stdbool.h>
-#include "tileset.h"
 #include "camera.h"
 
 #define MAP_WIDTH  100
@@ -15,17 +13,23 @@ enum TileId {
     TILE_PATH   = 1,
     TILE_TREE   = 2,
     TILE_WATER  = 3,
-    TILE_CLIFF  = 4
+    TILE_CLIFF  = 4,
+    TILE_ROCK   = 5,
+    TILE_RIVER  = 6,
+    TILE_HUB    = 7
 };
 
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
 } Tilemap;
 
-void tilemap_build_starting_area(Tilemap* map);
+void tilemap_build_starting_area(Tilemap* map, unsigned int seed);
 
-void tilemap_draw(const Tilemap* map, const Tileset* ts,
-                  const Camera* cam, SDL_Renderer* renderer);
+void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer);
+
+void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
+                  int screen_w, int screen_h,
+                  float player_x, float player_y);
 
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
 
