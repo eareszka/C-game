@@ -84,15 +84,17 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
 
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren)
 {
+    float z = cam->zoom;
     for (int i = 0; i < list->count; i++)
     {
         const ResourceNode* n = &list->nodes[i];
         if (!n->alive) continue;
 
-        int screen_x = (int)(n->x - cam->x);
-        int screen_y = (int)(n->y - cam->y);
+        int screen_x = (int)((n->x - cam->x) * z);
+        int screen_y = (int)((n->y - cam->y) * z);
 
-        draw_resource_ascii(ren, screen_x, screen_y, n->width, n->height, n->type);
+        draw_resource_ascii(ren, screen_x, screen_y,
+                            (int)(n->width * z), (int)(n->height * z), n->type);
     }
 }
 

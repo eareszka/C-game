@@ -4,8 +4,8 @@
 #include <SDL2/SDL.h>
 #include "camera.h"
 
-#define MAP_WIDTH  100
-#define MAP_HEIGHT 80
+#define MAP_WIDTH  3000
+#define MAP_HEIGHT 3000
 #define TILE_SIZE  32
 
 enum TileId {
@@ -32,5 +32,10 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   float player_x, float player_y);
 
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
+
+// Convert a minimap screen click (mx, my) to world pixel coords.
+// Returns true if the click was inside the minimap area.
+bool minimap_click_to_world(int screen_w, int screen_h, int mx, int my,
+                             float* out_world_x, float* out_world_y);
 
 #endif

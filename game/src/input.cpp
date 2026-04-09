@@ -10,6 +10,8 @@ void input_init(Input* in) {
 
 void input_begin_frame(Input* in) {
     in->quit = false;
+    in->mouse_left_pressed = false;
+    in->mouse_wheel = 0;
 
     for (int i = 0; i < SDL_NUM_SCANCODES; i++) {
         switch (in->keys[i]) {
@@ -49,6 +51,22 @@ void input_handle_event(Input* in, const SDL_Event* e) {
             in->keys[key] = KEY_RELEASED;
             break;
         }
+
+        case SDL_MOUSEMOTION:
+            in->mouse_x = e->motion.x;
+            in->mouse_y = e->motion.y;
+            break;
+
+        case SDL_MOUSEBUTTONDOWN:
+            in->mouse_x = e->button.x;
+            in->mouse_y = e->button.y;
+            if (e->button.button == SDL_BUTTON_LEFT)
+                in->mouse_left_pressed = true;
+            break;
+
+        case SDL_MOUSEWHEEL:
+            in->mouse_wheel += e->wheel.y;
+            break;
     }
 }
 

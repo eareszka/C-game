@@ -56,14 +56,14 @@ int main(int argc, char *argv[])
 
     Overworld ow;
 
-    float start_x = 300.0f;
-    float start_y = 150.0f;
+    float start_x = (MAP_WIDTH  / 2) * TILE_SIZE;
+    float start_y = (MAP_HEIGHT / 2) * TILE_SIZE;
     float player_spd = 150.0f;
     overworld_init(&ow, start_x, start_y, player_spd, 32, 48);
 
-    Tilemap map;
+    Tilemap* map = new Tilemap();
     unsigned int map_seed = (unsigned int)SDL_GetTicks();
-    tilemap_build_starting_area(&map, map_seed);
+    tilemap_build_starting_area(map, map_seed);
 
     //initializes resources
     ResourceNodeList resources;
@@ -76,9 +76,15 @@ int main(int argc, char *argv[])
 
     Input in = {0};
 
+    // Zoom levels where TILE_SIZE(32) * zoom is always a whole number of pixels
+    static const float zoom_levels[] = { 0.25f, 0.5f, 0.75f, 1.0f, 1.5f, 2.0f, 3.0f };
+    static const int   zoom_count    = (int)(sizeof(zoom_levels) / sizeof(zoom_levels[0]));
+    int zoom_idx = 3; // default: 1.0x
+
     Camera cam = {0};
     cam.screen_w = 640;
     cam.screen_h = 480;
+    cam.zoom = zoom_levels[zoom_idx];
 
     bool running = true;
 
@@ -116,6 +122,15 @@ int main(int argc, char *argv[])
             state = STATE_BATTLE;
         }
 
+        // Mouse wheel steps through pixel-perfect zoom levels
+        // scroll up (+y) = zoom in = higher index; scroll down = zoom out = lower index
+        if (in.mouse_wheel != 0) {
+            zoom_idx += in.mouse_wheel;
+            if (zoom_idx < 0)           zoom_idx = 0;
+            if (zoom_idx >= zoom_count) zoom_idx = zoom_count - 1;
+            cam.zoom = zoom_levels[zoom_idx];
+        }
+
         switch (state) {
             case STATE_TITLE:
                 SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
@@ -134,11 +149,19 @@ int main(int argc, char *argv[])
                 
 
                 //draw order
-                tilemap_draw(&map, &cam, plat.renderer); //tiles
+                tilemap_draw(map, &cam, plat.renderer); //tiles
                 resource_nodes_draw(&resources, &cam, plat.renderer); //resources
                 overworld_draw(&ow, &cam, plat.renderer, player_sprite); //player
-                if (input_down(&in, SDL_SCANCODE_TAB))
-                    minimap_draw(&map, plat.renderer, 640, 480, ow.x, ow.y);
+                if (input_down(&in, SDL_SCANCODE_TAB)) {
+                    minimap_draw(map, plat.renderer, 640, 480, ow.x, ow.y);
+                    if (in.mouse_left_pressed) {
+                        float wx, wy;
+                        if (minimap_click_to_world(640, 480, in.mouse_x, in.mouse_y, &wx, &wy)) {
+                            ow.x = wx;
+                            ow.y = wy;
+                        }
+                    }
+                }
                 break;
             }
 
@@ -154,6 +177,8 @@ int main(int argc, char *argv[])
 
         SDL_RenderPresent(plat.renderer);
     }
+
+    delete map;
 
     //cleanups textures
     SDL_DestroyTexture(player_sprite);

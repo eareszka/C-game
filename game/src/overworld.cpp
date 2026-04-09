@@ -84,8 +84,9 @@ void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList
 }
 
 void overworld_draw(const Overworld* ow, const Camera* cam, SDL_Renderer* ren, SDL_Texture* player_sprite) {
-    int screen_x = (int)(ow->x - cam->x);
-    int screen_y = (int)(ow->y - cam->y);
+    float z = cam->zoom;
+    int screen_x = (int)((ow->x - cam->x) * z);
+    int screen_y = (int)((ow->y - cam->y) * z);
 
     int frame_index = 0;
 
@@ -114,8 +115,8 @@ void overworld_draw(const Overworld* ow, const Camera* cam, SDL_Renderer* ren, S
     SDL_Rect dst = {
         screen_x,
         screen_y,
-        ow->width,
-        ow->height
+        (int)(ow->width  * z),
+        (int)(ow->height * z)
     };
 
     SDL_RenderCopy(ren, player_sprite, &src, &dst);
