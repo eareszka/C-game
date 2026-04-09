@@ -1,6 +1,7 @@
 #include "tilemap.h"
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 
 // ---------------------------------------------------------------------------
 // Embedded 8x8 bitmap glyphs — one byte per row, MSB = leftmost pixel
@@ -24,13 +25,21 @@ static const TileStyle tile_styles[] = {
     {120, 100,  60,  180, 155,  90, glyph_path   }, // TILE_PATH
     {  0,  40,   0,    0, 140,   0, glyph_tree   }, // TILE_TREE
     { 30,  90, 200,   80, 160, 255, glyph_water  }, // TILE_WATER  (blue ocean)
-    { 50,  50,  50,  160, 160, 160, glyph_cliff  }, // TILE_CLIFF
+    { 50,  50,  50,  160, 160, 160, glyph_cliff  }, // TILE_CLIFF   elev 1
     { 75,  65,  55,  155, 135, 115, glyph_rock   }, // TILE_ROCK
     { 30,  90, 200,   80, 160, 255, glyph_water  }, // TILE_RIVER  (blue, same as ocean)
     { 30,  90, 200,   80, 160, 255, glyph_water  }, // TILE_HUB    (blue, same as ocean)
+    { 75,  72,  68,  180, 178, 174, glyph_cliff  }, // TILE_CLIFF_2 elev 2
+    {100,  95,  88,  195, 192, 186, glyph_cliff  }, // TILE_CLIFF_3 elev 3
+    {125, 118, 108,  210, 206, 198, glyph_cliff  }, // TILE_CLIFF_4 elev 4
+    {155, 145, 132,  225, 220, 212, glyph_cliff  }, // TILE_CLIFF_5 elev 5
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
+
+// Shared between phase1 and phase2 — computed once after rivers are placed.
+static bool  cliff_blocked[MAP_HEIGHT][MAP_WIDTH];
+static float s_cliff_dir_x, s_cliff_dir_y, s_cliff_dir_len;
 
 // ---------------------------------------------------------------------------
 
@@ -224,14 +233,82 @@ static void generate_delta_river(Tilemap* map, int sx, int sy,
     }
 }
 
-void tilemap_build_starting_area(Tilemap* map, unsigned int seed) {
-    // --- Base layer: all grass ---
-    for (int y = 0; y < MAP_HEIGHT; y++)
-        for (int x = 0; x < MAP_WIDTH; x++)
-            map->tiles[y][x] = TILE_GRASS;
+// Tiles within this radius of center are generated in phase1.
+// Outside is handled by phase2 on a background thread.
+#define PHASE_RADIUS 500
 
-    // --- Fixed ocean on the left (constant seed 999 — never changes) ---
-    // Precompute raw coast positions then smooth with 0.92 EMA (matches river smoothing)
+static void place_cliffs(Tilemap* map, unsigned int seed,
+                         int cx, int cy, int hw,
+                         int min_r2, int max_r2)
+{
+    const int CLIFF_GRID      = 64;
+    const int CLIFF_THRESHOLD = 30000;
+    // Derive bounding box from max radius so we don't walk all 9M tiles.
+    int max_r = (int)sqrtf((float)max_r2) + 1;
+    int y_lo = (cy - max_r > 1)           ? cy - max_r : 1;
+    int y_hi = (cy + max_r < MAP_HEIGHT-1) ? cy + max_r : MAP_HEIGHT - 1;
+    int x_lo = (cx - max_r > 1)           ? cx - max_r : 1;
+    int x_hi = (cx + max_r < MAP_WIDTH-1)  ? cx + max_r : MAP_WIDTH  - 1;
+    for (int py = y_lo; py < y_hi; py++) {
+        for (int px = x_lo; px < x_hi; px++) {
+            int ddx = px - cx, ddy = py - cy;
+            int r2  = ddx*ddx + ddy*ddy;
+            if (r2 < min_r2 || r2 >= max_r2) continue;
+            if (map->tiles[py][px] != TILE_GRASS) continue;
+            if (cliff_blocked[py][px]) continue;
+            if (r2 <= hw*hw) continue;
+
+            int gx = px / CLIFF_GRID,  gy = py / CLIFF_GRID;
+            float fx = (float)(px % CLIFF_GRID) / CLIFF_GRID;
+            float fy = (float)(py % CLIFF_GRID) / CLIFF_GRID;
+
+            int n00 = tile_noise(gx,   gy,   (int)seed ^ 0xC11F);
+            int n10 = tile_noise(gx+1, gy,   (int)seed ^ 0xC11F);
+            int n01 = tile_noise(gx,   gy+1, (int)seed ^ 0xC11F);
+            int n11 = tile_noise(gx+1, gy+1, (int)seed ^ 0xC11F);
+
+            float top  = n00 + fx * (n10 - n00);
+            float bot  = n01 + fx * (n11 - n01);
+            int smooth = (int)(top + fy * (bot - top));
+
+            float proj = ((float)px * s_cliff_dir_x + ((float)py - MAP_HEIGHT) * s_cliff_dir_y) / s_cliff_dir_len;
+            if (proj < 0.0f) proj = 0.0f;
+            if (proj > 1.0f) proj = 1.0f;
+            smooth += (int)(proj * 20000);
+
+            if      (smooth >= CLIFF_THRESHOLD + 16000) map->tiles[py][px] = TILE_CLIFF_5;
+            else if (smooth >= CLIFF_THRESHOLD + 12000) map->tiles[py][px] = TILE_CLIFF_4;
+            else if (smooth >= CLIFF_THRESHOLD +  8000) map->tiles[py][px] = TILE_CLIFF_3;
+            else if (smooth >= CLIFF_THRESHOLD +  4000) map->tiles[py][px] = TILE_CLIFF_2;
+            else if (smooth >= CLIFF_THRESHOLD)         map->tiles[py][px] = TILE_CLIFF;
+        }
+    }
+}
+
+void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
+    const int cx = MAP_WIDTH  / 2;
+    const int cy = MAP_HEIGHT / 2;
+    const int hw = 90;
+
+    // Grass fill (TILE_GRASS==0)
+    memset(map->tiles, 0, sizeof(map->tiles));
+
+    // Hub ring only — everything else is generated in phase2
+    int ring_inner = hw - 12, ring_outer = hw + 12;
+    for (int dy = -(hw+15); dy <= (hw+15); dy++)
+        for (int dx = -(hw+15); dx <= (hw+15); dx++) {
+            int d2 = dx*dx + dy*dy;
+            if (d2 >= ring_inner*ring_inner && d2 <= ring_outer*ring_outer)
+                map->tiles[cy + dy][cx + dx] = TILE_HUB;
+        }
+}
+
+void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
+    const int cx = MAP_WIDTH  / 2;
+    const int cy = MAP_HEIGHT / 2;
+    const int hw = 90;
+
+    // --- Ocean ---
     {
         static int coast_x[MAP_HEIGHT];
         for (int y = 0; y < MAP_HEIGHT; y++)
@@ -241,86 +318,45 @@ void tilemap_build_starting_area(Tilemap* map, unsigned int seed) {
             sc = sc * 0.97f + (float)coast_x[y] * 0.03f;
             coast_x[y] = (int)sc;
         }
-        for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int y = 0; y < MAP_HEIGHT; y++)
             for (int x = 0; x <= coast_x[y]; x++)
                 map->tiles[y][x] = TILE_WATER;
-        }
     }
 
-    // --- Tree clusters via noise ---
-    for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-        for (int x = 1; x < MAP_WIDTH - 1; x++) {
-            if (map->tiles[y][x] != TILE_GRASS) continue;
-            int n = tile_noise(x, y, (int)seed ^ 7);
-            if (n > 26000)
-                map->tiles[y][x] = TILE_TREE;
-        }
-    }
-
-    // --- Scatter rocks (seed-driven) ---
-    scatter(map, TILE_ROCK, 72000, seed ^ 0xDEAD1);
-
-    // --- Rivers from center ---
-    int cx = MAP_WIDTH  / 2;
-    int cy = MAP_HEIGHT / 2;
-    int hw      = 90;
-    int guard_r = hw - 1;
-    int brush_r = 6;
-
+    // --- Rivers ---
     const float PI = 3.14159265f;
-    const float DEG = PI / 180.0f;
-
-    // Rivers radiate like spokes — evenly spaced base angles + small per-river
-    // perturbation + a random global rotation offset per seed. This produces the
-    // starburst pattern from the reference while still varying each run.
+    int guard_r = hw - 1, brush_r = 6;
     unsigned int cnt_seed = seed * 1664525u + 1013904223u;
-    int num_rivers = 5 + (int)((cnt_seed >> 16) % 6); // 5..10
-
-    // Global rotation offset: whole pattern rotates randomly each seed
+    int num_rivers = 5 + (int)((cnt_seed >> 16) % 6);
     cnt_seed = cnt_seed * 1664525u + 1013904223u;
     float global_offset = (cnt_seed >> 16) / (float)0x10000 * 2.0f * PI;
-
     float spoke_step = 2.0f * PI / num_rivers;
 
-    // Find which spoke is closest to west (PI) — that one always reaches the ocean
-    int west_idx = 0;
-    float best_west = 999.0f;
+    int west_idx = 0; float best_west = 999.0f;
     for (int i = 0; i < num_rivers; i++) {
         float base = global_offset + i * spoke_step;
         float d = fabsf(fmodf(fabsf(base - PI), 2.0f * PI));
         if (d > PI) d = 2.0f * PI - d;
         if (d < best_west) { best_west = d; west_idx = i; }
     }
-
     for (int i = 0; i < num_rivers; i++) {
         float base = global_offset + i * spoke_step;
-
-        // Per-river perturbation: up to ±(spoke_step * 0.35) so spokes stay distinct
         unsigned int ps = (seed ^ (unsigned int)(0x3333*(i+1))) * 1664525u + 1013904223u;
         float perturb = ((int)(ps >> 16) % 1000 - 500) / 500.0f * spoke_step * 0.35f;
         float angle = base + perturb;
-
-        // Normalize to [-PI, PI]
         while (angle >  PI) angle -= 2.0f * PI;
         while (angle < -PI) angle += 2.0f * PI;
-
         float dx = cosf(angle), dy = sinf(angle);
-        int sx = cx + (int)(dx * hw);
-        int sy = cy + (int)(dy * hw);
-
-        // Per-river jitter: 30..50 (scaled 10x)
+        int sx = cx + (int)(dx * hw), sy = cy + (int)(dy * hw);
         unsigned int js = (seed ^ (unsigned int)(0x7777*(i+1))) * 1664525u + 1013904223u;
         int jitter_range = (3 + (int)((js >> 16) % 3)) * 6;
-
         if (i == west_idx) {
-            // West river: single trunk then delta fan into the ocean
             generate_delta_river(map, sx, sy, dx, dy,
                                  seed ^ (unsigned int)(i * 0x1111),
                                  cx, cy, guard_r, brush_r, jitter_range);
         } else {
             int max_steps;
             if (fabsf(dx) >= fabsf(dy) && dx > 0.0f) {
-                // East-going: stop between halfway and ¾ to the east edge
                 int half    = (MAP_WIDTH - sx) / 2;
                 int three_q = (MAP_WIDTH - sx) * 3 / 4;
                 unsigned int ls = (seed ^ (unsigned int)(0x9999*(i+1))) * 1664525u + 1013904223u;
@@ -334,20 +370,70 @@ void tilemap_build_starting_area(Tilemap* map, unsigned int seed) {
         }
     }
 
-    // --- Hub ring: circular outline, thickness 24 tiles (scaled 6x) ---
-    int ring_inner = hw - 12;
-    int ring_outer = hw + 12;
-    for (int dy = -(hw+15); dy <= (hw+15); dy++) {
-        for (int dx = -(hw+15); dx <= (hw+15); dx++) {
-            int d2 = dx*dx + dy*dy;
-            if (d2 >= ring_inner*ring_inner && d2 <= ring_outer*ring_outer)
-                map->tiles[cy + dy][cx + dx] = TILE_HUB;
+    // --- Trees ---
+    for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+        for (int x = 1; x < MAP_WIDTH - 1; x++) {
+            if (map->tiles[y][x] != TILE_GRASS) continue;
+            int ddx = x - cx, ddy = y - cy;
+            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+            int n = tile_noise(x, y, (int)seed ^ 7);
+            if (n > 30000) map->tiles[y][x] = TILE_TREE;
         }
     }
+
+    // --- Rocks ---
+    {
+        unsigned int s = seed ^ 0xDEAD1;
+        for (int i = 0; i < 72000; i++) {
+            s = s * 1664525u + 1013904223u;
+            int x = 1 + (int)((s >> 16) % (MAP_WIDTH  - 2));
+            s = s * 1664525u + 1013904223u;
+            int y = 1 + (int)((s >> 16) % (MAP_HEIGHT - 2));
+            int ddx = x - cx, ddy = y - cy;
+            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+            if (map->tiles[y][x] == TILE_GRASS) map->tiles[y][x] = TILE_ROCK;
+        }
+    }
+
+    // --- Cliff gradient direction ---
+    {
+        unsigned int gs = seed ^ 0xB00B5EED;
+        gs = gs * 1664525u + 1013904223u;
+        int perim = MAP_WIDTH / 2 + MAP_HEIGHT;
+        int pick  = (int)((gs >> 16) % perim);
+        float peak_x = (pick < MAP_WIDTH / 2) ? (float)(MAP_WIDTH / 2 + pick) : (float)MAP_WIDTH;
+        float peak_y = (pick < MAP_WIDTH / 2) ? 0.0f : (float)(pick - MAP_WIDTH / 2);
+        map->cliff_peak_x = peak_x;
+        map->cliff_peak_y = peak_y;
+        float dir_x = peak_x, dir_y = peak_y - MAP_HEIGHT;
+        s_cliff_dir_len = sqrtf(dir_x*dir_x + dir_y*dir_y);
+        s_cliff_dir_x = dir_x / s_cliff_dir_len;
+        s_cliff_dir_y = dir_y / s_cliff_dir_len;
+    }
+
+    // --- Cliff blocked prepass ---
+    const int CLIFF_CLEAR = 20;
+    memset(cliff_blocked, 0, sizeof(cliff_blocked));
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            int t = map->tiles[y][x];
+            if (t != TILE_RIVER && t != TILE_WATER) continue;
+            int y0 = y - CLIFF_CLEAR > 0         ? y - CLIFF_CLEAR : 0;
+            int y1 = y + CLIFF_CLEAR < MAP_HEIGHT ? y + CLIFF_CLEAR : MAP_HEIGHT - 1;
+            int x0 = x - CLIFF_CLEAR > 0         ? x - CLIFF_CLEAR : 0;
+            int x1 = x + CLIFF_CLEAR < MAP_WIDTH  ? x + CLIFF_CLEAR : MAP_WIDTH  - 1;
+            for (int by = y0; by <= y1; by++)
+                for (int bx = x0; bx <= x1; bx++)
+                    cliff_blocked[by][bx] = true;
+        }
+    }
+
+    // --- Cliffs ---
+    place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
-                             int screen_x, int screen_y, int draw_size) {
+    int screen_x, int screen_y, int draw_size) {
     if (tile_id < 0 || tile_id >= NUM_TILE_STYLES) return;
 
     const TileStyle* s = &tile_styles[tile_id];
@@ -424,17 +510,21 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
 
     // Priority order for block sampling: higher = wins over lower tiles in block.
     // TREE and ROCK have priority 0 so they render as grass (not drawn separately).
-    static const int tile_priority[] = { 0, 0, 0, 2, 0, 0, 2, 2 };
-    //                                 GRASS PATH TREE WATER CLIFF ROCK RIVER HUB
+    static const int tile_priority[] = { 0, 0, 0, 2, 1, 0, 2, 2, 1, 1, 1, 1 };
+    //                                 GRASS PATH TREE WATER CLIFF ROCK RIVER HUB C2 C3 C4 C5
     static const SDL_Color tile_colors[] = {
-        { 60, 160,  60, 255}, // GRASS  (also used for TREE, ROCK, CLIFF, PATH)
+        { 60, 160,  60, 255}, // GRASS
         { 60, 160,  60, 255}, // PATH   → grass
         { 60, 160,  60, 255}, // TREE   → grass
         { 30,  90, 200, 255}, // WATER
-        { 60, 160,  60, 255}, // CLIFF  → grass
+        {100,  95,  88, 255}, // CLIFF   elev 1
         { 60, 160,  60, 255}, // ROCK   → grass
-        { 30,  90, 200, 255}, // RIVER  (blue, same as ocean)
-        { 30,  90, 200, 255}, // HUB    (blue, same as ocean)
+        { 30,  90, 200, 255}, // RIVER
+        { 30,  90, 200, 255}, // HUB
+        {120, 113, 104, 255}, // CLIFF_2 elev 2
+        {140, 132, 120, 255}, // CLIFF_3 elev 3
+        {160, 150, 136, 255}, // CLIFF_4 elev 4
+        {180, 168, 152, 255}, // CLIFF_5 elev 5
     };
     static const int NUM_MM_COLORS = (int)(sizeof(tile_colors) / sizeof(tile_colors[0]));
 
@@ -467,6 +557,13 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_Rect dot = { px - 1, py - 1, 3, 3 };
     SDL_RenderFillRect(renderer, &dot);
+
+    // red 5×5 dot for cliff gradient peak (debug)
+    int peakdot_x = ox + (int)(map->cliff_peak_x) / step;
+    int peakdot_y = oy + (int)(map->cliff_peak_y) / step;
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    SDL_Rect peak_dot = { peakdot_x - 2, peakdot_y - 2, 5, 5 };
+    SDL_RenderFillRect(renderer, &peak_dot);
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 }

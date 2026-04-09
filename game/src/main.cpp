@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <thread>
 #include <SDL2/SDL_image.h>
 
 #include "game_state.h"
@@ -63,7 +64,8 @@ int main(int argc, char *argv[])
 
     Tilemap* map = new Tilemap();
     unsigned int map_seed = (unsigned int)SDL_GetTicks();
-    tilemap_build_starting_area(map, map_seed);
+    tilemap_build_overworld_phase1(map, map_seed);
+    std::thread gen_thread(tilemap_build_overworld_phase2, map, map_seed);
 
     //initializes resources
     ResourceNodeList resources;
@@ -152,6 +154,40 @@ int main(int argc, char *argv[])
                 tilemap_draw(map, &cam, plat.renderer); //tiles
                 resource_nodes_draw(&resources, &cam, plat.renderer); //resources
                 overworld_draw(&ow, &cam, plat.renderer, player_sprite); //player
+
+                // --- 8-bit zoom slider (top-center) ---
+                {
+                    const int SL_W  = 140;
+                    const int SL_X  = (640 - SL_W) / 2;
+                    const int SL_Y  = 8;
+                    const int TRK_H = 4;
+
+                    // Track groove
+                    SDL_SetRenderDrawColor(plat.renderer, 60, 60, 60, 255);
+                    SDL_Rect track = { SL_X, SL_Y + 5, SL_W, TRK_H };
+                    SDL_RenderFillRect(plat.renderer, &track);
+
+                    // Filled portion (left of handle) in dim blue
+                    int hx = SL_X + zoom_idx * SL_W / (zoom_count - 1);
+                    SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                    SDL_Rect fill = { SL_X, SL_Y + 5, hx - SL_X, TRK_H };
+                    SDL_RenderFillRect(plat.renderer, &fill);
+
+                    // Tick mark per zoom level
+                    for (int i = 0; i < zoom_count; i++) {
+                        int tx = SL_X + i * SL_W / (zoom_count - 1);
+                        SDL_SetRenderDrawColor(plat.renderer, 140, 140, 140, 255);
+                        SDL_Rect tick = { tx - 1, SL_Y + 3, 2, TRK_H + 4 };
+                        SDL_RenderFillRect(plat.renderer, &tick);
+                    }
+
+                    // Handle knob (bright yellow, 8-bit chunky pixel)
+                    SDL_SetRenderDrawColor(plat.renderer, 255, 220, 0, 255);
+                    SDL_Rect knob = { hx - 4, SL_Y, 8, TRK_H + 14 };
+                    SDL_RenderFillRect(plat.renderer, &knob);
+
+                }
+
                 if (input_down(&in, SDL_SCANCODE_TAB)) {
                     minimap_draw(map, plat.renderer, 640, 480, ow.x, ow.y);
                     if (in.mouse_left_pressed) {
@@ -178,6 +214,7 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(plat.renderer);
     }
 
+    gen_thread.join();
     delete map;
 
     //cleanups textures

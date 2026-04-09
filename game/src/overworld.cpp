@@ -25,6 +25,7 @@ void overworld_init(Overworld* ow, float x, float y, float speed, int width, int
 void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList* resources) {
     float dx = 0.0f;
     float dy = 0.0f;
+    float anim_speed = 0.15f;
 
     ow->is_moving = 0;
     
@@ -53,7 +54,16 @@ void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList
         ow->facing = DIR_DOWN;
         ow->is_moving = 1;
     }
-
+    if (input_down(in, SDL_SCANCODE_LSHIFT))
+    {
+        ow->speed = 300.0f;
+        anim_speed = .10;
+    }
+    else
+    {
+        ow->speed = 150.0f;
+        anim_speed = .20;
+    }
     if (dx != 0.0f || dy != 0.0f) {
         float len = sqrtf(dx * dx + dy * dy);
         dx /= len;
@@ -67,7 +77,7 @@ void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList
     if (ow->is_moving) {
         ow->anim_timer += dt;
 
-        if (ow->anim_timer >= 0.15f) {
+        if (ow->anim_timer >= anim_speed) {
             ow->anim_timer = 0.0f;
 
             ow->anim_step = (ow->anim_step + 1) % 4;
