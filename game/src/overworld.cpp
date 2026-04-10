@@ -15,43 +15,71 @@ void overworld_init(Overworld* ow, float x, float y, float speed, int width, int
     ow->width = width;
     ow->height = height;
 
-    ow->facing = DIR_DOWN;
+    ow->facing = 0; // idle down
+    ow->facing_locked = 0;
     ow->anim_step = 0;
     ow->anim_timer = 0.0f;
     ow->is_moving = 0;
 }
 
 
-void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList* resources) {
+void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList* resources, Tilemap* map) {
     float dx = 0.0f;
     float dy = 0.0f;
     float anim_speed = 0.15f;
 
     ow->is_moving = 0;
-    
+
+    if ((input_pressed(in, SDL_SCANCODE_SPACE))
+     || (input_pressed(in, SDL_SCANCODE_Z))
+     || (input_pressed(in, SDL_SCANCODE_RETURN)))
+    {
+        float hx = ow->x + ow->width  * 0.5f;
+        float hy = ow->y + ow->height - 8.0f;
+        float rx, ry;
+        int rn_hit  = resource_nodes_try_hit(resources, hx, hy, 40, &rx, &ry);
+        int map_hit = !rn_hit && tilemap_try_hit(map, hx, hy, 40, &rx, &ry);
+        if (rn_hit || map_hit) {
+            float ddx = rx - hx;
+            float ddy = ry - hy;
+            if (ddx * ddx >= ddy * ddy)
+                ow->facing = ddx >= 0.0f ? 8 : 6;  // right : left
+            else
+                ow->facing = ddy >= 0.0f ? 0 : 3;  // down : up
+            ow->facing_locked = 1;
+        }
+    }
+
+    // A newly pressed movement key unlocks facing
+    if (input_pressed(in, SDL_SCANCODE_LEFT)  || input_pressed(in, SDL_SCANCODE_A) ||
+        input_pressed(in, SDL_SCANCODE_RIGHT) || input_pressed(in, SDL_SCANCODE_D) ||
+        input_pressed(in, SDL_SCANCODE_UP)    || input_pressed(in, SDL_SCANCODE_W) ||
+        input_pressed(in, SDL_SCANCODE_DOWN)  || input_pressed(in, SDL_SCANCODE_S))
+        ow->facing_locked = 0;
+
     //handles movement
-    if ((input_down(in, SDL_SCANCODE_LEFT))||(input_down(in, SDL_SCANCODE_A))) 
+    if ((input_down(in, SDL_SCANCODE_LEFT))||(input_down(in, SDL_SCANCODE_A)))
     {
         dx -= 1.0f;
-        ow->facing = DIR_LEFT;
+        if (!ow->facing_locked) ow->facing = 6;
         ow->is_moving = 1;
     }
-    if ((input_down(in, SDL_SCANCODE_RIGHT))||(input_down(in, SDL_SCANCODE_D))) 
+    if ((input_down(in, SDL_SCANCODE_RIGHT))||(input_down(in, SDL_SCANCODE_D)))
     {
         dx += 1.0f;
-        ow->facing = DIR_RIGHT;
+        if (!ow->facing_locked) ow->facing = 8;
         ow->is_moving = 1;
     }
-    if ((input_down(in, SDL_SCANCODE_UP))||(input_down(in, SDL_SCANCODE_W))) 
+    if ((input_down(in, SDL_SCANCODE_UP))||(input_down(in, SDL_SCANCODE_W)))
     {
         dy -= 1.0f;
-        ow->facing = DIR_UP;
+        if (!ow->facing_locked) ow->facing = 3;
         ow->is_moving = 1;
     }
-    if ((input_down(in, SDL_SCANCODE_DOWN))||(input_down(in, SDL_SCANCODE_S))) 
+    if ((input_down(in, SDL_SCANCODE_DOWN))||(input_down(in, SDL_SCANCODE_S)))
     {
         dy += 1.0f;
-        ow->facing = DIR_DOWN;
+        if (!ow->facing_locked) ow->facing = 0;
         ow->is_moving = 1;
     }
     if (input_down(in, SDL_SCANCODE_LSHIFT))
@@ -86,11 +114,6 @@ void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList
         ow->anim_step = 0;
         ow->anim_timer = 0.0f;
     }
-
-    if ((input_down(in, SDL_SCANCODE_SPACE))||(input_down(in, SDL_SCANCODE_Z))||(input_down(in, SDL_SCANCODE_RETURN))) 
-    {
-        resource_nodes_try_hit(resources, ow->x, ow->y, 40);
-    }
 }
 
 void overworld_draw(const Overworld* ow, const Camera* cam, SDL_Renderer* ren, SDL_Texture* player_sprite) {
@@ -98,22 +121,15 @@ void overworld_draw(const Overworld* ow, const Camera* cam, SDL_Renderer* ren, S
     int screen_x = (int)((ow->x - cam->x) * z);
     int screen_y = (int)((ow->y - cam->y) * z);
 
-    int frame_index = 0;
-
-    switch (ow->facing) {
-        case DIR_DOWN:
-            frame_index = ow->is_moving ? down_cycle[ow->anim_step] : 0;
-            break;
-        case DIR_UP:
-            frame_index = ow->is_moving ? up_cycle[ow->anim_step] : 3;
-            break;
-        case DIR_LEFT:
-            frame_index = ow->is_moving ? left_cycle[ow->anim_step % 2] : 6;
-            break;
-        case DIR_RIGHT:
-            frame_index = ow->is_moving ? right_cycle[ow->anim_step % 2] : 8;
-            break;
-    }
+    int frame_index;
+    if (ow->facing >= 8)
+        frame_index = ow->is_moving ? right_cycle[ow->anim_step % 2] : ow->facing;
+    else if (ow->facing >= 6)
+        frame_index = ow->is_moving ? left_cycle[ow->anim_step % 2] : ow->facing;
+    else if (ow->facing >= 3)
+        frame_index = ow->is_moving ? up_cycle[ow->anim_step] : ow->facing;
+    else
+        frame_index = ow->is_moving ? down_cycle[ow->anim_step] : ow->facing;
 
     SDL_Rect src = {
         frame_index * 16,

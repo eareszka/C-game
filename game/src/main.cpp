@@ -71,8 +71,6 @@ int main(int argc, char *argv[])
     ResourceNodeList resources;
     resource_nodes_init(&resources);
 
-    resource_nodes_add(&resources, RESOURCE_TREE, 160, 160);
-    resource_nodes_add(&resources, RESOURCE_ROCK, 256, 128);
     resource_nodes_add(&resources, RESOURCE_FLOWER, 320, 224);
 
 
@@ -95,6 +93,7 @@ int main(int argc, char *argv[])
     {
         double dt_d = time_delta_seconds();
         float dt = (float)dt_d;
+        tilemap_update(dt);
 
         input_begin_frame(&in);
 
@@ -140,7 +139,7 @@ int main(int argc, char *argv[])
                 break;
 
             case STATE_OVERWORLD: {
-                overworld_update(&ow, &in, dt, &resources);
+                overworld_update(&ow, &in, dt, &resources, map);
 
                 float player_cx = ow.x + ow.width * 0.5f;
                 float player_cy = ow.y + ow.height * 0.5f;

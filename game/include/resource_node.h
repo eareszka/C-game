@@ -6,11 +6,12 @@
 
 #define MAX_RESOURCE_NODES 128
 
-typedef enum ResourceType 
+typedef enum ResourceType
 {
     RESOURCE_TREE,
     RESOURCE_ROCK,
-    RESOURCE_FLOWER
+    RESOURCE_FLOWER,
+    RESOURCE_GOLD
 } ResourceType;
 
 typedef struct ResourceNode 
@@ -33,7 +34,7 @@ typedef struct ResourceNodeList
 void resource_nodes_init(ResourceNodeList* list);
 void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, float y);
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren);
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range);
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry);
 
 #endif
 

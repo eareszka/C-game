@@ -27,6 +27,7 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
         case RESOURCE_TREE:   n->hp = 3; break;
         case RESOURCE_ROCK:   n->hp = 4; break;
         case RESOURCE_FLOWER: n->hp = 1; break;
+        case RESOURCE_GOLD:   n->hp = 5; break;
     }
 }
 
@@ -39,6 +40,7 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
         case RESOURCE_TREE:   SDL_SetRenderDrawColor(ren,   0,  80,   0, 255); break;
         case RESOURCE_ROCK:   SDL_SetRenderDrawColor(ren,  90,  80,  70, 255); break;
         case RESOURCE_FLOWER: SDL_SetRenderDrawColor(ren, 100,   0, 120, 255); break;
+        case RESOURCE_GOLD:   SDL_SetRenderDrawColor(ren,  60,  55,  50, 255); break;
     }
     SDL_Rect bg = { screen_x, screen_y, w, h };
     SDL_RenderFillRect(ren, &bg);
@@ -48,8 +50,20 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
     int cy = screen_y + h / 2;
     int t  = h / 8; // thickness
 
-    SDL_SetRenderDrawColor(ren, 200, 200, 200, 255);
+    SDL_SetRenderDrawColor(ren, type == RESOURCE_GOLD ? 255 : 200,
+                               type == RESOURCE_GOLD ? 210 : 200,
+                               type == RESOURCE_GOLD ?  40 : 200, 255);
     switch (type) {
+        case RESOURCE_GOLD: {
+            // diamond shape
+            SDL_Rect top = { cx - w/4, cy - h/2 + t, w/2, h/4 };
+            SDL_Rect mid = { cx - w/3, cy - h/4,     w*2/3, h/2 };
+            SDL_Rect bot = { cx - w/4, cy + h/4 - t, w/2, h/4 };
+            SDL_RenderFillRect(ren, &top);
+            SDL_RenderFillRect(ren, &mid);
+            SDL_RenderFillRect(ren, &bot);
+            break;
+        }
         case RESOURCE_TREE: {
             // vertical bar
             SDL_Rect v = { cx - t, screen_y + t, t * 2, h - t * 2 };
@@ -98,20 +112,24 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
     }
 }
 
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range) 
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry)
 {
-    for (int i = 0; i < list->count; i++) 
+    for (int i = 0; i < list->count; i++)
     {
         ResourceNode* n = &list->nodes[i];
         if (!n->alive) continue;
 
-        int dx = (int)(n->x - player_x);
-        int dy = (int)(n->y - player_y);
+        float cx = n->x + n->width  * 0.5f;
+        float cy = n->y + n->height * 0.5f;
+        int dx = (int)(cx - player_x);
+        int dy = (int)(cy - player_y);
 
         if (abs_int(dx) <= range && abs_int(dy) <= range) {
+            if (out_rx) *out_rx = cx;
+            if (out_ry) *out_ry = cy;
             n->hp--;
 
-            if (n->hp <= 0) 
+            if (n->hp <= 0)
             {
                 n->alive = 0;
                 return 1; // destroyed

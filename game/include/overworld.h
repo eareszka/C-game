@@ -5,13 +5,7 @@
 #include "input.h"
 #include "camera.h"
 #include "resource_node.h"
-
-typedef enum Direction {
-    DIR_DOWN = 0,
-    DIR_UP = 1,
-    DIR_LEFT = 2,
-    DIR_RIGHT = 3
-} Direction;
+#include "tilemap.h"
 
 typedef struct Overworld {
     float x, y;
@@ -19,14 +13,15 @@ typedef struct Overworld {
     int width;
     int height;
 
-    Direction facing;
+    int facing;            // idle sprite frame index: 0=down, 3=up, 6=left, 8=right
+    int facing_locked;     // true after a hit, until player presses a new direction
     int anim_step;         // 0, 1, 2 within the row
     float anim_timer;
     int is_moving;
 } Overworld;
 
 void overworld_init(Overworld* ow, float x, float y, float speed, int width, int height);
-void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList* resources);
+void overworld_update(Overworld* ow, const Input* in, float dt, ResourceNodeList* resources, Tilemap* map);
 void overworld_draw(const Overworld* ow, const Camera* cam, SDL_Renderer* ren, SDL_Texture* player_sprite);
 
 #endif

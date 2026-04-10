@@ -25,11 +25,31 @@ enum TileId {
     TILE_CLIFF_EDGE_2 = 13, // south face: drop from elev 2 → 1
     TILE_CLIFF_EDGE_3 = 14, // south face: drop from elev 3 → 2
     TILE_CLIFF_EDGE_4 = 15, // south face: drop from elev 4 → 3
-    TILE_CLIFF_EDGE_5 = 16  // south face: drop from elev 5 → 4
+    TILE_CLIFF_EDGE_5 = 16, // south face: drop from elev 5 → 4
+    TILE_SAND         = 17, // desert biome ground
+    TILE_SNOW         = 18, // snow biome (map edges)
+    TILE_WASTELAND    = 19, // wasteland biome (map edges)
+    TILE_LAVA         = 20, // lava pools/streams inside wasteland
+    TILE_MEADOW       = 21, // open plains biome (sparse trees)
+    TILE_POND         = 22, // small water features inside meadows
+    TILE_GOLD_ORE     = 23, // gold ore vein — spawns at high elevation / in caves
+    // Snow-biome cliff variants (body only — edges stay brown)
+    TILE_CLIFF_SNOW_1 = 24,
+    TILE_CLIFF_SNOW_2 = 25,
+    TILE_CLIFF_SNOW_3 = 26,
+    TILE_CLIFF_SNOW_4 = 27,
+    TILE_CLIFF_SNOW_5 = 28,
+    // Wasteland-biome cliff variants (body only — edges stay brown)
+    TILE_CLIFF_WASTE_1 = 29,
+    TILE_CLIFF_WASTE_2 = 30,
+    TILE_CLIFF_WASTE_3 = 31,
+    TILE_CLIFF_WASTE_4 = 32,
+    TILE_CLIFF_WASTE_5 = 33
 };
 
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
+    int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
 } Tilemap;
 
@@ -39,7 +59,13 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed);
 // Phase 2: detail outside PHASE_RADIUS (run on a background thread)
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed);
 
+void tilemap_update(float dt); // advance hit-jitter timers
 void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer);
+
+// Hit a tree or rock tile near (px, py) within `range` pixels.
+// Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.
+// Destroys the tile(s) on depletion. Returns 1 if destroyed, 2 if hit, 0 if miss.
+int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry);
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,
