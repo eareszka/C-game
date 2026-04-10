@@ -11,8 +11,9 @@ static const uint8_t glyph_grass[8]  = {0x00,0x00,0x00,0x00,0x18,0x18,0x00,0x00}
 static const uint8_t glyph_path[8]   = {0x00,0x00,0x00,0x18,0x18,0x08,0x10,0x00}; // ','
 static const uint8_t glyph_tree[8]   = {0xFE,0xFE,0x18,0x18,0x18,0x18,0x18,0x18}; // 'T'
 static const uint8_t glyph_water[8]  = {0x62,0x94,0x08,0x62,0x94,0x08,0x62,0x94}; // '~'
-static const uint8_t glyph_cliff[8]  = {0x24,0x7E,0x24,0x24,0x7E,0x24,0x00,0x00}; // '#'
-static const uint8_t glyph_rock[8]   = {0x3C,0x42,0x81,0x81,0x81,0x42,0x3C,0x00}; // 'o'
+static const uint8_t glyph_cliff[8]      = {0x24,0x7E,0x24,0x24,0x7E,0x24,0x00,0x00}; // '#'
+static const uint8_t glyph_rock[8]       = {0x3C,0x42,0x81,0x81,0x81,0x42,0x3C,0x00}; // 'o'
+static const uint8_t glyph_cliff_edge[8] = {0xFF,0x00,0xFF,0x00,0xFF,0x00,0xFF,0xFF}; // horizontal strata
 
 struct TileStyle {
     uint8_t bg_r, bg_g, bg_b;
@@ -32,7 +33,12 @@ static const TileStyle tile_styles[] = {
     { 75,  72,  68,  180, 178, 174, glyph_cliff  }, // TILE_CLIFF_2 elev 2
     {100,  95,  88,  195, 192, 186, glyph_cliff  }, // TILE_CLIFF_3 elev 3
     {125, 118, 108,  210, 206, 198, glyph_cliff  }, // TILE_CLIFF_4 elev 4
-    {155, 145, 132,  225, 220, 212, glyph_cliff  }, // TILE_CLIFF_5 elev 5
+    {155, 145, 132,  225, 220, 212, glyph_cliff      }, // TILE_CLIFF_5   elev 5
+    {100,  65,  25,  140,  90,  40, glyph_cliff_edge }, // TILE_CLIFF_EDGE_1
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_edge }, // TILE_CLIFF_EDGE_2
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_edge }, // TILE_CLIFF_EDGE_3
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_edge }, // TILE_CLIFF_EDGE_4
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_edge }, // TILE_CLIFF_EDGE_5
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -370,31 +376,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
-    // --- Trees ---
-    for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-        for (int x = 1; x < MAP_WIDTH - 1; x++) {
-            if (map->tiles[y][x] != TILE_GRASS) continue;
-            int ddx = x - cx, ddy = y - cy;
-            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-            int n = tile_noise(x, y, (int)seed ^ 7);
-            if (n > 30000) map->tiles[y][x] = TILE_TREE;
-        }
-    }
-
-    // --- Rocks ---
-    {
-        unsigned int s = seed ^ 0xDEAD1;
-        for (int i = 0; i < 72000; i++) {
-            s = s * 1664525u + 1013904223u;
-            int x = 1 + (int)((s >> 16) % (MAP_WIDTH  - 2));
-            s = s * 1664525u + 1013904223u;
-            int y = 1 + (int)((s >> 16) % (MAP_HEIGHT - 2));
-            int ddx = x - cx, ddy = y - cy;
-            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-            if (map->tiles[y][x] == TILE_GRASS) map->tiles[y][x] = TILE_ROCK;
-        }
-    }
-
     // --- Cliff gradient direction ---
     {
         unsigned int gs = seed ^ 0xB00B5EED;
@@ -430,6 +411,74 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     // --- Cliffs ---
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
+
+    // --- Cliff edge pass (bottom-to-top so each drop level gets its own edge) ---
+    // For each tile, if the tile directly south is at lower elevation, place a
+    // south-facing edge tile there showing the dirt face of the cliff.
+    auto cliff_elev = [](int t) -> int {
+        switch (t) {
+            case TILE_CLIFF:   return 1;
+            case TILE_CLIFF_2: return 2;
+            case TILE_CLIFF_3: return 3;
+            case TILE_CLIFF_4: return 4;
+            case TILE_CLIFF_5: return 5;
+            default:           return 0;
+        }
+    };
+    static const int edge_tile[] = {
+        0,                  // unused (no drop from elev 0)
+        TILE_CLIFF_EDGE_1,  // drop from elev 1
+        TILE_CLIFF_EDGE_2,  // drop from elev 2
+        TILE_CLIFF_EDGE_3,  // drop from elev 3
+        TILE_CLIFF_EDGE_4,  // drop from elev 4
+        TILE_CLIFF_EDGE_5,  // drop from elev 5
+    };
+    for (int y = MAP_HEIGHT - 2; y >= 0; y--) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            int elev_here  = cliff_elev(map->tiles[y][x]);
+            int elev_below = cliff_elev(map->tiles[y+1][x]);
+            if (elev_here <= elev_below) continue;
+            // Only require connectivity at cliff→grass drops to suppress stray specks.
+            // Between elevation layers the lower layer is always wide, so no check needed.
+            if (elev_below == 0) {
+                bool connected = (x > 0            && cliff_elev(map->tiles[y][x-1]) >= elev_here)
+                              || (x < MAP_WIDTH - 1 && cliff_elev(map->tiles[y][x+1]) >= elev_here)
+                              || (y > 0             && cliff_elev(map->tiles[y-1][x]) >= elev_here);
+                if (!connected) continue;
+            }
+            for (int d = 1; d <= elev_here; d++) {
+                int ey = y + d;
+                if (ey >= MAP_HEIGHT) break;
+                if (cliff_elev(map->tiles[ey][x]) >= elev_here) break;
+                map->tiles[ey][x] = edge_tile[elev_here];
+            }
+        }
+    }
+
+    // --- Trees (after cliffs so tree tiles don't break up cliff blobs) ---
+    for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+        for (int x = 1; x < MAP_WIDTH - 1; x++) {
+            if (map->tiles[y][x] != TILE_GRASS) continue;
+            int ddx = x - cx, ddy = y - cy;
+            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+            int n = tile_noise(x, y, (int)seed ^ 7);
+            if (n > 30000) map->tiles[y][x] = TILE_TREE;
+        }
+    }
+
+    // --- Rocks (after cliffs for same reason) ---
+    {
+        unsigned int s = seed ^ 0xDEAD1;
+        for (int i = 0; i < 72000; i++) {
+            s = s * 1664525u + 1013904223u;
+            int x = 1 + (int)((s >> 16) % (MAP_WIDTH  - 2));
+            s = s * 1664525u + 1013904223u;
+            int y = 1 + (int)((s >> 16) % (MAP_HEIGHT - 2));
+            int ddx = x - cx, ddy = y - cy;
+            if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+            if (map->tiles[y][x] == TILE_GRASS) map->tiles[y][x] = TILE_ROCK;
+        }
+    }
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
@@ -510,8 +559,8 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
 
     // Priority order for block sampling: higher = wins over lower tiles in block.
     // TREE and ROCK have priority 0 so they render as grass (not drawn separately).
-    static const int tile_priority[] = { 0, 0, 0, 2, 1, 0, 2, 2, 1, 1, 1, 1 };
-    //                                 GRASS PATH TREE WATER CLIFF ROCK RIVER HUB C2 C3 C4 C5
+    static const int tile_priority[] = { 0, 0, 0, 2, 1, 0, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0 };
+    //                               GRASS PATH TREE WATER CLIFF ROCK RIVER HUB C2 C3 C4 C5 E1 E2 E3 E4 E5
     static const SDL_Color tile_colors[] = {
         { 60, 160,  60, 255}, // GRASS
         { 60, 160,  60, 255}, // PATH   → grass
@@ -525,6 +574,11 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         {140, 132, 120, 255}, // CLIFF_3 elev 3
         {160, 150, 136, 255}, // CLIFF_4 elev 4
         {180, 168, 152, 255}, // CLIFF_5 elev 5
+        { 60, 160,  60, 255}, // CLIFF_EDGE_1 → hidden (grass)
+        { 60, 160,  60, 255}, // CLIFF_EDGE_2 → hidden
+        { 60, 160,  60, 255}, // CLIFF_EDGE_3 → hidden
+        { 60, 160,  60, 255}, // CLIFF_EDGE_4 → hidden
+        { 60, 160,  60, 255}, // CLIFF_EDGE_5 → hidden
     };
     static const int NUM_MM_COLORS = (int)(sizeof(tile_colors) / sizeof(tile_colors[0]));
 

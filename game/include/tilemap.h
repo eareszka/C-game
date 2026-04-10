@@ -17,10 +17,15 @@ enum TileId {
     TILE_ROCK    = 5,
     TILE_RIVER   = 6,
     TILE_HUB     = 7,
-    TILE_CLIFF_2 = 8,  // elevation 2
-    TILE_CLIFF_3 = 9,  // elevation 3
-    TILE_CLIFF_4 = 10, // elevation 4
-    TILE_CLIFF_5 = 11  // elevation 5 (highest)
+    TILE_CLIFF_2      = 8,  // elevation 2
+    TILE_CLIFF_3      = 9,  // elevation 3
+    TILE_CLIFF_4      = 10, // elevation 4
+    TILE_CLIFF_5      = 11, // elevation 5 (highest)
+    TILE_CLIFF_EDGE_1 = 12, // south face: drop from elev 1 → 0
+    TILE_CLIFF_EDGE_2 = 13, // south face: drop from elev 2 → 1
+    TILE_CLIFF_EDGE_3 = 14, // south face: drop from elev 3 → 2
+    TILE_CLIFF_EDGE_4 = 15, // south face: drop from elev 4 → 3
+    TILE_CLIFF_EDGE_5 = 16  // south face: drop from elev 5 → 4
 };
 
 typedef struct Tilemap {
