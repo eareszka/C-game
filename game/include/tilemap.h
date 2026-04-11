@@ -44,13 +44,77 @@ enum TileId {
     TILE_CLIFF_WASTE_2 = 30,
     TILE_CLIFF_WASTE_3 = 31,
     TILE_CLIFF_WASTE_4 = 32,
-    TILE_CLIFF_WASTE_5 = 33
+    TILE_CLIFF_WASTE_5 = 33,
+    // East/west side-face tiles (one per elevation layer, same brown gradient as edges)
+    TILE_CLIFF_SIDE_1 = 34,
+    TILE_CLIFF_SIDE_2 = 35,
+    TILE_CLIFF_SIDE_3 = 36,
+    TILE_CLIFF_SIDE_4 = 37,
+    TILE_CLIFF_SIDE_5 = 38,
+    // SW outer corner (where south face meets west/east side face at bottom-left)
+    TILE_CLIFF_CORNER_SW_1 = 39,
+    TILE_CLIFF_CORNER_SW_2 = 40,
+    TILE_CLIFF_CORNER_SW_3 = 41,
+    TILE_CLIFF_CORNER_SW_4 = 42,
+    TILE_CLIFF_CORNER_SW_5 = 43,
+    // SE outer corner (where south face meets east/west side face at bottom-right)
+    TILE_CLIFF_CORNER_SE_1 = 44,
+    TILE_CLIFF_CORNER_SE_2 = 45,
+    TILE_CLIFF_CORNER_SE_3 = 46,
+    TILE_CLIFF_CORNER_SE_4 = 47,
+    TILE_CLIFF_CORNER_SE_5 = 48,
+    // NW inner corner (concave: where north back-face meets west side-face)
+    TILE_CLIFF_CORNER_NW_1 = 49,
+    TILE_CLIFF_CORNER_NW_2 = 50,
+    TILE_CLIFF_CORNER_NW_3 = 51,
+    TILE_CLIFF_CORNER_NW_4 = 52,
+    TILE_CLIFF_CORNER_NW_5 = 53,
+    // NE inner corner (concave: where north back-face meets east side-face)
+    TILE_CLIFF_CORNER_NE_1 = 54,
+    TILE_CLIFF_CORNER_NE_2 = 55,
+    TILE_CLIFF_CORNER_NE_3 = 56,
+    TILE_CLIFF_CORNER_NE_4 = 57,
+    TILE_CLIFF_CORNER_NE_5 = 58,
+    // Dungeon entrance (4x4 tile stamp, solid dark archway)
+    TILE_DUNGEON = 59,
+    // Blueprint placeholder — marks unconfigured cells inside a town footprint
+    TILE_BLUEPRINT = 60,
+    // Village placeholder — orange/black checkerboard until sprites are added
+    TILE_VILLAGE_PLACEHOLDER = 61,
+    // Castle placeholder — black/white checkerboard until sprites are added
+    TILE_CASTLE_PLACEHOLDER = 62
 };
+
+typedef struct {
+    int x, y;   // top-left tile coordinate of the entrance stamp
+    int size;   // 0 = small (1x1 tile), 1 = large (2x2 tiles)
+} DungeonEntrance;
+
+typedef struct {
+    int x, y;    // top-left tile coordinate where the town was stamped
+    int index;   // which of the hand-crafted towns this is
+} TownPlacement;
+
+typedef struct {
+    int x, y;    // top-left tile coordinate where the village was stamped
+    int variant; // which of the village blueprint variants was used
+} VillagePlacement;
+
+typedef struct {
+    int x, y;
+    int type; // 0=ocean, 1=mountain, 2=lava, 3=dungeon (placed via dungeon diving)
+} CastlePlacement;
 
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
     int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
+    DungeonEntrance dungeon_entrances[300];
+    int num_dungeon_entrances;
+    TownPlacement    towns[3];         // filled during phase2
+    VillagePlacement villages[15];     // filled during phase2
+    int num_villages;
+    CastlePlacement  castles[4];       // [0-2] placed in phase2; [3] placed via dungeon diving
 } Tilemap;
 
 void tilemap_build_starting_area(Tilemap* map, unsigned int seed);
@@ -61,6 +125,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed);
 
 void tilemap_update(float dt); // advance hit-jitter timers
 void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer);
+
+// Pre-render all tile types into small textures so tilemap_draw uses one RenderCopy
+// per tile instead of ~65 RenderFillRect calls. Call once after creating the renderer.
+void tilemap_init_tile_cache(SDL_Renderer* renderer);
+void tilemap_free_tile_cache(void);
 
 // Hit a tree or rock tile near (px, py) within `range` pixels.
 // Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.

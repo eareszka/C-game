@@ -25,11 +25,9 @@ bool platform_init(Platform* p, const char* title, int width, int height) {
         return false;
     }
 
-    p->renderer = SDL_CreateRenderer(
-        p->window,
-        -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
-    );
+    // No PRESENTVSYNC — WSL2's virtualised vsync signal is imprecise and causes
+    // uneven frame delivery. We implement a manual frame cap in the game loop instead.
+    p->renderer = SDL_CreateRenderer(p->window, -1, SDL_RENDERER_ACCELERATED);
 
     if (!p->renderer) {
         printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
@@ -37,6 +35,12 @@ bool platform_init(Platform* p, const char* title, int width, int height) {
         p->window = NULL;
         SDL_Quit();
         return false;
+    }
+
+    SDL_RendererInfo info;
+    if (SDL_GetRendererInfo(p->renderer, &info) == 0) {
+        printf("Renderer: %s (%s)\n", info.name,
+               (info.flags & SDL_RENDERER_ACCELERATED) ? "hardware" : "SOFTWARE — expect fill-rate limits at large window sizes");
     }
 
     return true;

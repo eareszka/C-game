@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     //SDL_SetWindowFullscreen(plat.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_RenderSetLogicalSize(plat.renderer, 640, 480);
+    SDL_RenderSetIntegerScale(plat.renderer, SDL_TRUE);
 
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) 
     {
@@ -33,9 +34,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    tilemap_init_tile_cache(plat.renderer);
+
     SDL_Texture* player_sprite = IMG_LoadTexture(plat.renderer, "assets/Sprite-0001.png");
     if (!player_sprite) {
         printf("Failed to load sprite: %s\n", IMG_GetError());
+        tilemap_free_tile_cache();
         IMG_Quit();
         platform_shutdown(&plat);
         return 1;
@@ -88,10 +92,15 @@ int main(int argc, char *argv[])
 
     bool running = true;
 
+    // Manual 60 fps frame cap — more consistent than SDL_RENDERER_PRESENTVSYNC on WSL2
+    const Uint64 PERF_FREQ      = SDL_GetPerformanceFrequency();
+    const Uint64 FRAME_TICKS    = PERF_FREQ / 60;
+    Uint64       frame_deadline = SDL_GetPerformanceCounter() + FRAME_TICKS;
 
-    while (running) 
+    while (running)
     {
         double dt_d = time_delta_seconds();
+        if (dt_d > 0.05) dt_d = 0.05; // cap at 50 ms — prevents big jumps on stalled frames
         float dt = (float)dt_d;
         tilemap_update(dt);
 
@@ -210,7 +219,19 @@ int main(int argc, char *argv[])
                 break;
         }
 
+        draw_fps(plat.renderer, dt);
         SDL_RenderPresent(plat.renderer);
+
+        // Precise frame cap: sleep most of the wait, spin the last ~1 ms
+        {
+            Uint64 now = SDL_GetPerformanceCounter();
+            if (now < frame_deadline) {
+                Uint32 sleep_ms = (Uint32)((frame_deadline - now) * 1000 / PERF_FREQ);
+                if (sleep_ms > 1) SDL_Delay(sleep_ms - 1);
+                while (SDL_GetPerformanceCounter() < frame_deadline) {}
+            }
+            frame_deadline += FRAME_TICKS; // next frame target (self-correcting)
+        }
     }
 
     gen_thread.join();
@@ -220,6 +241,7 @@ int main(int argc, char *argv[])
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
 
+    tilemap_free_tile_cache();
     IMG_Quit();
     platform_shutdown(&plat);
 

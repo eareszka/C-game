@@ -1,10 +1,14 @@
 #include "tilemap.h"
+#include "towns.h"
+#include "castles.h"
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include <pthread.h>
 
 // ---------------------------------------------------------------------------
 // Embedded 8x8 bitmap glyphs — one byte per row, MSB = leftmost pixel
@@ -27,6 +31,21 @@ static const uint8_t glyph_lava[8]       = {0x10,0x38,0x7C,0xFE,0x7C,0x38,0x10,0
 static const uint8_t glyph_meadow[8]     = {0x00,0x28,0x10,0x28,0x00,0x10,0x00,0x00}; // scattered flowers
 static const uint8_t glyph_pond[8]       = {0x62,0x94,0x08,0x62,0x94,0x08,0x62,0x94}; // wavy water
 static const uint8_t glyph_gold_ore[8]  = {0x08,0x1C,0x3E,0x7F,0x3E,0x1C,0x08,0x00}; // diamond gem
+// Cliff face — side and corner glyphs share the same brown palette as cliff_edge.
+// Side: vertical stripes (transposed strata), solid bottom row.
+// SW corner: left half = vertical stripes, right half = horizontal stripes.
+// SE corner: right half = vertical stripes, left half = horizontal stripes.
+// NW inner corner (concave): upper-right = back face (horiz stripes), lower-left = side face (vert stripes).
+// NE inner corner (concave): upper-left = back face (horiz stripes), lower-right = side face (vert stripes).
+static const uint8_t glyph_cliff_side[8]      = {0xAA,0xAA,0xAA,0xAA,0xAA,0xAA,0xAA,0xFF};
+static const uint8_t glyph_cliff_corner_sw[8] = {0xAF,0xA0,0xAF,0xA0,0xAF,0xA0,0xAF,0xFF};
+static const uint8_t glyph_cliff_corner_se[8] = {0xFA,0x0A,0xFA,0x0A,0xFA,0x0A,0xFA,0xFF};
+static const uint8_t glyph_cliff_corner_nw[8] = {0x00,0x0F,0x00,0x0F,0xAF,0xA0,0xAF,0xFF};
+static const uint8_t glyph_cliff_corner_ne[8] = {0x00,0xF0,0x00,0xF0,0xFA,0x0A,0xFA,0xFF};
+// Dungeon entrance: solid black rectangle (bg=black, glyph all-off so only bg shows)
+static const uint8_t glyph_dungeon[8]         = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+// Blueprint placeholder: bright magenta checkerboard — unmissable while designing
+static const uint8_t glyph_blueprint[8]       = {0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55};
 
 struct TileStyle {
     uint8_t bg_r, bg_g, bg_b;
@@ -71,6 +90,44 @@ static const TileStyle tile_styles[] = {
     { 68,  50,  36,  100,  76,  56, glyph_cliff }, // TILE_CLIFF_WASTE_3 (31)
     { 76,  56,  40,  110,  84,  62, glyph_cliff }, // TILE_CLIFF_WASTE_4 (32)
     { 85,  62,  44,  120,  92,  68, glyph_cliff }, // TILE_CLIFF_WASTE_5 (33)
+    // Side face — vertical strata, same brown gradient as the south-face edge tiles
+    {100,  65,  25,  140,  90,  40, glyph_cliff_side }, // TILE_CLIFF_SIDE_1 (34)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_side }, // TILE_CLIFF_SIDE_2 (35)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_side }, // TILE_CLIFF_SIDE_3 (36)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_side }, // TILE_CLIFF_SIDE_4 (37)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_side }, // TILE_CLIFF_SIDE_5 (38)
+    // SW outer corner
+    {100,  65,  25,  140,  90,  40, glyph_cliff_corner_sw }, // TILE_CLIFF_CORNER_SW_1 (39)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_corner_sw }, // TILE_CLIFF_CORNER_SW_2 (40)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_corner_sw }, // TILE_CLIFF_CORNER_SW_3 (41)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_corner_sw }, // TILE_CLIFF_CORNER_SW_4 (42)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_corner_sw }, // TILE_CLIFF_CORNER_SW_5 (43)
+    // SE outer corner
+    {100,  65,  25,  140,  90,  40, glyph_cliff_corner_se }, // TILE_CLIFF_CORNER_SE_1 (44)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_corner_se }, // TILE_CLIFF_CORNER_SE_2 (45)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_corner_se }, // TILE_CLIFF_CORNER_SE_3 (46)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_corner_se }, // TILE_CLIFF_CORNER_SE_4 (47)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_corner_se }, // TILE_CLIFF_CORNER_SE_5 (48)
+    // NW inner corner
+    {100,  65,  25,  140,  90,  40, glyph_cliff_corner_nw }, // TILE_CLIFF_CORNER_NW_1 (49)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_corner_nw }, // TILE_CLIFF_CORNER_NW_2 (50)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_corner_nw }, // TILE_CLIFF_CORNER_NW_3 (51)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_corner_nw }, // TILE_CLIFF_CORNER_NW_4 (52)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_corner_nw }, // TILE_CLIFF_CORNER_NW_5 (53)
+    // NE inner corner
+    {100,  65,  25,  140,  90,  40, glyph_cliff_corner_ne }, // TILE_CLIFF_CORNER_NE_1 (54)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_corner_ne }, // TILE_CLIFF_CORNER_NE_2 (55)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_corner_ne }, // TILE_CLIFF_CORNER_NE_3 (56)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_corner_ne }, // TILE_CLIFF_CORNER_NE_4 (57)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_corner_ne }, // TILE_CLIFF_CORNER_NE_5 (58)
+    // Dungeon entrance — solid black
+    {  0,   0,   0,   0,   0,   0, glyph_dungeon          }, // TILE_DUNGEON           (59)
+    // Blueprint placeholder — magenta checkerboard (towns)
+    { 80,   0,  80, 255,   0, 255, glyph_blueprint        }, // TILE_BLUEPRINT         (60)
+    // Village placeholder — orange/black checkerboard
+    {  0,   0,   0, 255, 140,   0, glyph_blueprint        }, // TILE_VILLAGE_PLACEHOLDER (61)
+    // Castle placeholder — black/white checkerboard
+    {  0,   0,   0, 255, 255, 255, glyph_blueprint        }, // TILE_CASTLE_PLACEHOLDER  (62)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -81,10 +138,21 @@ static float s_cliff_dir_x, s_cliff_dir_y, s_cliff_dir_len;
 static float s_cliff_ref_x, s_cliff_ref_y;
 
 // Hit / jitter state — defined here so tilemap_draw can access them
-static std::unordered_map<uint32_t, float> s_tile_jitter;
+// Value is the SDL performance-counter timestamp when the jitter started.
+// Using absolute start time (not a countdown) makes shake immune to dt spikes.
+static const float JITTER_DUR = 0.22f; // seconds
+static std::unordered_map<uint32_t, Uint64> s_tile_jitter;
 static inline uint32_t tile_key(int x, int y) {
     return (uint32_t)y * MAP_WIDTH + (uint32_t)x;
 }
+
+// Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
+// Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
+// Index matches TileId enum. Filled by tilemap_init_tile_cache().
+static const int TILE_CACHE_SIZE = 63; // TILE_CASTLE_PLACEHOLDER + 1
+static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
+static SDL_Texture* s_tall_tree_top_tex = nullptr;
+static SDL_Texture* s_tall_tree_bot_tex  = nullptr;
 
 // ---------------------------------------------------------------------------
 
@@ -400,14 +468,134 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     }
 }
 
+// Stamp a town blueprint onto the map at tile position (tx, ty).
+// The entire footprint is pre-filled with TILE_BLUEPRINT so undesigned cells are visible.
+// ' ' leaves the blueprint marker in place; 'T' goes into the overlay; everything else
+// writes the base tile and clears the overlay.
+static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
+    // Pre-fill footprint with the blueprint marker
+    for (int dy = 0; dy < TOWN_H; dy++) {
+        for (int dx = 0; dx < TOWN_W; dx++) {
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            map->tiles[wy][wx]   = TILE_BLUEPRINT;
+            map->overlay[wy][wx] = 0;
+        }
+    }
+    // Stamp the actual blueprint chars on top
+    const char** layout = all_towns[town_idx];
+    for (int dy = 0; dy < TOWN_H; dy++) {
+        const char* row = layout[dy];
+        if (!row) break; // nullptr sentinel — remaining rows stay as blueprint marker
+        int row_len = (int)strlen(row);
+        for (int dx = 0; dx < TOWN_W; dx++) {
+            char c = (dx < row_len) ? row[dx] : ' ';
+            if (c == ' ') continue; // keep TILE_BLUEPRINT marker
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            if (c == 'T') {
+                map->overlay[wy][wx] = TILE_TREE;
+                continue;
+            }
+            int tile = -1;
+            switch (c) {
+                case '.': tile = TILE_GRASS; break;
+                case ',': tile = TILE_PATH;  break;
+                case 'H': tile = TILE_HUB;   break;
+                case 'W': tile = TILE_WATER; break;
+            }
+            if (tile < 0) continue;
+            map->tiles[wy][wx]   = tile;
+            map->overlay[wy][wx] = 0;
+        }
+    }
+    map->towns[town_idx] = { tx, ty, town_idx };
+}
+
+static void stamp_village_blueprint(Tilemap* map, int variant, int tx, int ty) {
+    // Pre-fill footprint with the village placeholder (orange/black until sprites are added)
+    for (int dy = 0; dy < VILLAGE_H; dy++)
+        for (int dx = 0; dx < VILLAGE_W; dx++) {
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            map->tiles[wy][wx]   = TILE_VILLAGE_PLACEHOLDER;
+            map->overlay[wy][wx] = 0;
+        }
+    const char** layout = all_villages[variant];
+    for (int dy = 0; dy < VILLAGE_H; dy++) {
+        const char* row = layout[dy];
+        if (!row) break;
+        int row_len = (int)strlen(row);
+        for (int dx = 0; dx < VILLAGE_W; dx++) {
+            char c = (dx < row_len) ? row[dx] : ' ';
+            if (c == ' ') continue;
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            if (c == 'T') { map->overlay[wy][wx] = TILE_TREE; continue; }
+            int tile = -1;
+            switch (c) {
+                case '.': tile = TILE_GRASS; break;
+                case ',': tile = TILE_PATH;  break;
+                case 'H': tile = TILE_HUB;   break;
+                case 'W': tile = TILE_WATER; break;
+            }
+            if (tile < 0) continue;
+            map->tiles[wy][wx]   = tile;
+            map->overlay[wy][wx] = 0;
+        }
+    }
+    int vi = map->num_villages++;
+    map->villages[vi] = { tx, ty, variant };
+}
+
+static void stamp_castle_blueprint(Tilemap* map, int type, int tx, int ty) {
+    for (int dy = 0; dy < CASTLE_H; dy++)
+        for (int dx = 0; dx < CASTLE_W; dx++) {
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            map->tiles[wy][wx]   = TILE_CASTLE_PLACEHOLDER;
+            map->overlay[wy][wx] = 0;
+        }
+    const char** layout = castle_blueprints[type];
+    for (int dy = 0; dy < CASTLE_H; dy++) {
+        const char* row = layout[dy];
+        if (!row) break;
+        int row_len = (int)strlen(row);
+        for (int dx = 0; dx < CASTLE_W; dx++) {
+            char c = (dx < row_len) ? row[dx] : ' ';
+            if (c == ' ') continue;
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            if (c == 'T') { map->overlay[wy][wx] = TILE_TREE; continue; }
+            int tile = -1;
+            switch (c) {
+                case '.': tile = TILE_GRASS; break;
+                case ',': tile = TILE_PATH;  break;
+                case 'H': tile = TILE_HUB;   break;
+                case 'W': tile = TILE_WATER; break;
+            }
+            if (tile < 0) continue;
+            map->tiles[wy][wx]   = tile;
+            map->overlay[wy][wx] = 0;
+        }
+    }
+    map->castles[type] = { tx, ty, type };
+}
+
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
+    (void)seed;
     const int cx = MAP_WIDTH  / 2;
     const int cy = MAP_HEIGHT / 2;
     const int hw = 90;
 
+    // Sentinel: mark all castles as unplaced so the main thread sees -1 before phase 2 runs
+    for (int i = 0; i < 4; i++) map->castles[i] = { -1, -1, i };
+
     // Grass fill (TILE_GRASS==0)
     memset(map->tiles, 0, sizeof(map->tiles));
-    // Hub ring only — everything else is generated in phase2
+    memset(map->overlay, 0, sizeof(map->overlay));
+
+    // Hub ring — cleared by the starting town stamp below
     int ring_inner = hw - 12, ring_outer = hw + 12;
     for (int dy = -(hw+15); dy <= (hw+15); dy++)
         for (int dx = -(hw+15); dx <= (hw+15); dx++) {
@@ -415,9 +603,17 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
             if (d2 >= ring_inner*ring_inner && d2 <= ring_outer*ring_outer)
                 map->tiles[cy + dy][cx + dx] = TILE_HUB;
         }
+
+    // Town 0 — starting town, centred over the hub, same every seed.
+    // Must be ready before the game loop so the player has ground to stand on.
+    stamp_town_blueprint(map, 0, cx - TOWN_W / 2, cy - TOWN_H / 2);
 }
 
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
+    // Run at idle priority so this thread doesn't compete with the game loop
+    struct sched_param sp = {0};
+    pthread_setschedparam(pthread_self(), SCHED_IDLE, &sp);
+
     const int cx = MAP_WIDTH  / 2;
     const int cy = MAP_HEIGHT / 2;
     const int hw = 90;
@@ -804,12 +1000,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         static const int DY[4] = {0,0,1,-1};
 
         // label: -1 = unvisited biome, -2 = non-biome, >=0 = component id
-        static int label[MAP_HEIGHT][MAP_WIDTH];
-        static int bfs_q[MAP_HEIGHT * MAP_WIDTH];
+        std::vector<int> label(MAP_HEIGHT * MAP_WIDTH);
+        std::vector<int> bfs_q(MAP_HEIGHT * MAP_WIDTH);
+#define LABEL(y,x) label[(y)*MAP_WIDTH+(x)]
 
         for (int y = 0; y < MAP_HEIGHT; y++)
             for (int x = 0; x < MAP_WIDTH; x++)
-                label[y][x] = is_biome_tile(map->tiles[y][x]) ? -1 : -2;
+                LABEL(y,x) = is_biome_tile(map->tiles[y][x]) ? -1 : -2;
 
         struct Comp { int tile; int size; };
         std::vector<Comp> comps;
@@ -818,10 +1015,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         int next_id = 0;
         for (int y0 = 0; y0 < MAP_HEIGHT; y0++) {
             for (int x0 = 0; x0 < MAP_WIDTH; x0++) {
-                if (label[y0][x0] != -1) continue;
+                if (LABEL(y0,x0) != -1) continue;
                 int tile = map->tiles[y0][x0];
                 int qhead = 0, qtail = 0;
-                label[y0][x0] = next_id;
+                LABEL(y0,x0) = next_id;
                 bfs_q[qtail++] = y0 * MAP_WIDTH + x0;
                 while (qhead < qtail) {
                     int idx = bfs_q[qhead++];
@@ -829,9 +1026,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     for (int d = 0; d < 4; d++) {
                         int nx = qx + DX[d], ny = qy + DY[d];
                         if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
-                        if (label[ny][nx] != -1) continue;
+                        if (LABEL(ny,nx) != -1) continue;
                         if (map->tiles[ny][nx] != tile) continue;
-                        label[ny][nx] = next_id;
+                        LABEL(ny,nx) = next_id;
                         bfs_q[qtail++] = ny * MAP_WIDTH + nx;
                     }
                 }
@@ -846,12 +1043,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
-                int cid = label[y][x];
+                int cid = LABEL(y,x);
                 if (cid < 0 || comps[cid].size >= MIN_BIOME_AREA) continue;
                 for (int d = 0; d < 4; d++) {
                     int nx = x + DX[d], ny = y + DY[d];
                     if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
-                    if (label[ny][nx] == cid) continue;
+                    if (LABEL(ny,nx) == cid) continue;
                     int nt = map->tiles[ny][nx];
                     for (int b = 0; b < 5; b++)
                         if (nt == BIOME_TILES[b]) { nbr[cid][b]++; break; }
@@ -872,10 +1069,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // Apply replacements
         for (int y = 0; y < MAP_HEIGHT; y++)
             for (int x = 0; x < MAP_WIDTH; x++) {
-                int cid = label[y][x];
+                int cid = LABEL(y,x);
                 if (cid >= 0 && repl[cid] >= 0)
                     map->tiles[y][x] = repl[cid];
             }
+#undef LABEL
     }
 
     // --- Cliffs ---
@@ -922,6 +1120,114 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (ey >= MAP_HEIGHT) break;
                 if (cliff_elev(map->tiles[ey][x]) >= elev_here) break;
                 map->tiles[ey][x] = edge_tile[elev_here];
+            }
+        }
+    }
+
+    // --- Cliff side/corner pass ---
+    // East/west faces and outer (convex) corners.
+    // Run bottom-to-top so higher-elevation cliffs overwrite lower-elevation placements
+    // at shared positions, mirroring the south-face pass ordering.
+    {
+        static const int side_tile[] = {
+            0,
+            TILE_CLIFF_SIDE_1, TILE_CLIFF_SIDE_2, TILE_CLIFF_SIDE_3,
+            TILE_CLIFF_SIDE_4, TILE_CLIFF_SIDE_5,
+        };
+        static const int corner_sw[] = {
+            0,
+            TILE_CLIFF_CORNER_SW_1, TILE_CLIFF_CORNER_SW_2, TILE_CLIFF_CORNER_SW_3,
+            TILE_CLIFF_CORNER_SW_4, TILE_CLIFF_CORNER_SW_5,
+        };
+        static const int corner_se[] = {
+            0,
+            TILE_CLIFF_CORNER_SE_1, TILE_CLIFF_CORNER_SE_2, TILE_CLIFF_CORNER_SE_3,
+            TILE_CLIFF_CORNER_SE_4, TILE_CLIFF_CORNER_SE_5,
+        };
+
+        for (int y = MAP_HEIGHT - 2; y >= 0; y--) {
+            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+                int E = cliff_elev(map->tiles[y][x]);
+                if (E == 0) continue;
+
+                // West face: cliff at (x,y) drops to lower ground at (x-1,y).
+                // Side tiles go at (x-1, y+d) for d in [0,E), corner at (x-1, y+E).
+                if (cliff_elev(map->tiles[y][x-1]) < E) {
+                    bool full = true;
+                    for (int d = 0; d < E; d++) {
+                        int ey = y + d;
+                        if (ey >= MAP_HEIGHT)             { full = false; break; }
+                        if (cliff_elev(map->tiles[ey][x-1]) >= E) { full = false; break; }
+                        map->tiles[ey][x-1] = side_tile[E];
+                    }
+                    if (full) {
+                        int cy = y + E;
+                        if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x-1]) == 0)
+                            map->tiles[cy][x-1] = corner_sw[E];
+                    }
+                }
+
+                // East face: cliff at (x,y) drops to lower ground at (x+1,y).
+                if (cliff_elev(map->tiles[y][x+1]) < E) {
+                    bool full = true;
+                    for (int d = 0; d < E; d++) {
+                        int ey = y + d;
+                        if (ey >= MAP_HEIGHT)             { full = false; break; }
+                        if (cliff_elev(map->tiles[ey][x+1]) >= E) { full = false; break; }
+                        map->tiles[ey][x+1] = side_tile[E];
+                    }
+                    if (full) {
+                        int cy = y + E;
+                        if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x+1]) == 0)
+                            map->tiles[cy][x+1] = corner_se[E];
+                    }
+                }
+            }
+        }
+
+        // North/back face: one side tile at (x, y-1) per northward layer drop.
+        // Run top-to-bottom so higher-elevation cliffs overwrite lower ones.
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int E = cliff_elev(map->tiles[y][x]);
+                if (E == 0) continue;
+                if (cliff_elev(map->tiles[y-1][x]) >= E) continue;
+                map->tiles[y-1][x] = side_tile[E];
+            }
+        }
+
+        // Inner (concave) back corners: placed at (x-1, y-1) and (x+1, y-1) when a
+        // cliff drops both west/east AND north simultaneously.  These fill the gap
+        // where the north back-face meets the west or east side-face from the inside.
+        static const int corner_nw[] = {
+            0,
+            TILE_CLIFF_CORNER_NW_1, TILE_CLIFF_CORNER_NW_2, TILE_CLIFF_CORNER_NW_3,
+            TILE_CLIFF_CORNER_NW_4, TILE_CLIFF_CORNER_NW_5,
+        };
+        static const int corner_ne[] = {
+            0,
+            TILE_CLIFF_CORNER_NE_1, TILE_CLIFF_CORNER_NE_2, TILE_CLIFF_CORNER_NE_3,
+            TILE_CLIFF_CORNER_NE_4, TILE_CLIFF_CORNER_NE_5,
+        };
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+                int E = cliff_elev(map->tiles[y][x]);
+                if (E == 0) continue;
+
+                bool drops_west  = cliff_elev(map->tiles[y][x-1]) < E;
+                bool drops_east  = cliff_elev(map->tiles[y][x+1]) < E;
+                bool drops_north = cliff_elev(map->tiles[y-1][x]) < E;
+
+                if (drops_west && drops_north) {
+                    int px = x - 1, py = y - 1;
+                    if (cliff_elev(map->tiles[py][px]) < E)
+                        map->tiles[py][px] = corner_nw[E];
+                }
+                if (drops_east && drops_north) {
+                    int px = x + 1, py = y - 1;
+                    if (cliff_elev(map->tiles[py][px]) < E)
+                        map->tiles[py][px] = corner_ne[E];
+                }
             }
         }
     }
@@ -1144,6 +1450,390 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
     }
+
+    // Covers all cliff tile families: basic, edge, snow, wasteland, side, corners.
+    auto is_cliff = [](int bt) -> bool {
+        return (bt >= TILE_CLIFF        && bt <= TILE_CLIFF_5)           // 4-11
+            || (bt >= TILE_CLIFF_EDGE_1 && bt <= TILE_CLIFF_EDGE_5)     // 12-16
+            || (bt >= TILE_CLIFF_SNOW_1 && bt <= TILE_CLIFF_CORNER_NE_5); // 24-58
+    };
+    // Slope-only subset: edge faces, side faces, and corner transitions.
+    // These are the "side of a mountain" tiles — not flat ground.
+    auto is_cliff_slope = [](int bt) -> bool {
+        return (bt >= TILE_CLIFF_EDGE_1 && bt <= TILE_CLIFF_EDGE_5)     // 12-16: south drop
+            || (bt >= TILE_CLIFF_SIDE_1 && bt <= TILE_CLIFF_CORNER_NE_5); // 34-58: sides/corners
+    };
+
+    // --- Towns 1-3 ---
+    // Town 0 is already stamped in phase1 (player starts there).
+    // Town 1: placed on the coastline, position varies by seed.
+    // Town 2: random walkable location, far from towns 0 and 1.
+    {
+        auto footprint_ok = [&](int tx, int ty) -> bool {
+            for (int dy = 0; dy < TOWN_H; dy++)
+                for (int dx = 0; dx < TOWN_W; dx++) {
+                    int bt = map->tiles[ty+dy][tx+dx];
+                    if (bt == TILE_WATER || bt == TILE_RIVER) return false;
+                    if (is_cliff(bt)) return false;
+                }
+            return true;
+        };
+
+        // -- Town 1: on the coast --
+        // Helper: try all 4 footprint corners relative to a candidate tile and
+        // push any that pass footprint_ok + centre exclusion into `shore`.
+        auto try_shore_origins = [&](std::vector<std::pair<int,int>>& shore, int x, int y) {
+            const int ox[4] = { x, x - TOWN_W + 1, x,              x - TOWN_W + 1 };
+            const int oy[4] = { y, y,               y - TOWN_H + 1, y - TOWN_H + 1 };
+            for (int k = 0; k < 4; k++) {
+                int tx = ox[k], ty = oy[k];
+                if (tx < TOWN_W || ty < TOWN_H ||
+                    tx + TOWN_W > MAP_WIDTH  - TOWN_W ||
+                    ty + TOWN_H > MAP_HEIGHT - TOWN_H) continue;
+                int ddx = tx - cx, ddy = ty - cy;
+                if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
+                if (!footprint_ok(tx, ty)) continue;
+                shore.push_back({tx, ty});
+            }
+        };
+
+        {
+            std::vector<std::pair<int,int>> shore;
+            shore.reserve(4096);
+
+            // Pass 1: tiles immediately adjacent to water
+            for (int y = TOWN_H; y < MAP_HEIGHT - TOWN_H; y++) {
+                for (int x = TOWN_W; x < MAP_WIDTH - TOWN_W; x++) {
+                    int t = map->tiles[y][x];
+                    if (t != TILE_GRASS && t != TILE_SAND &&
+                        t != TILE_MEADOW && t != TILE_SNOW) continue;
+                    if (!(map->tiles[y-1][x] == TILE_WATER ||
+                          map->tiles[y+1][x] == TILE_WATER ||
+                          map->tiles[y][x-1] == TILE_WATER ||
+                          map->tiles[y][x+1] == TILE_WATER)) continue;
+                    try_shore_origins(shore, x, y);
+                }
+            }
+
+            // Pass 2 fallback: tiles within 30 tiles of water (catches seeds
+            // where cliffs back the beach and pass 1 finds nothing)
+            if (shore.empty()) {
+                for (int y = TOWN_H; y < MAP_HEIGHT - TOWN_H; y++) {
+                    for (int x = TOWN_W; x < MAP_WIDTH - TOWN_W; x++) {
+                        int t = map->tiles[y][x];
+                        if (t != TILE_GRASS && t != TILE_SAND &&
+                            t != TILE_MEADOW && t != TILE_SNOW) continue;
+                        bool near_water = false;
+                        for (int r = 1; r <= 30 && !near_water; r++) {
+                            if (y-r >= 0           && map->tiles[y-r][x] == TILE_WATER) near_water = true;
+                            if (y+r < MAP_HEIGHT   && map->tiles[y+r][x] == TILE_WATER) near_water = true;
+                            if (x-r >= 0           && map->tiles[y][x-r] == TILE_WATER) near_water = true;
+                            if (x+r < MAP_WIDTH    && map->tiles[y][x+r] == TILE_WATER) near_water = true;
+                        }
+                        if (!near_water) continue;
+                        try_shore_origins(shore, x, y);
+                    }
+                }
+            }
+
+            if (!shore.empty()) {
+                unsigned int ts = seed ^ 0xC0A57001u;
+                ts = ts * 1664525u + 1013904223u;
+                int idx = (int)((ts >> 16) % (unsigned)shore.size());
+                stamp_town_blueprint(map, 1, shore[idx].first, shore[idx].second);
+            } else {
+                map->towns[1] = { -1, -1, 1 };
+            }
+        }
+
+        // -- Town 2: random walkable location, far from towns 0 and 1 --
+        {
+            const int MIN_TOWN_DIST = 600;
+            unsigned int ts = seed ^ 0xF4EE7002u;
+            bool placed = false;
+            for (int attempt = 0; attempt < 50000 && !placed; attempt++) {
+                ts = ts * 1664525u + 1013904223u;
+                int tx = TOWN_W + (int)((ts >> 16) % (unsigned)(MAP_WIDTH  - 2*TOWN_W));
+                ts = ts * 1664525u + 1013904223u;
+                int ty = TOWN_H + (int)((ts >> 16) % (unsigned)(MAP_HEIGHT - 2*TOWN_H));
+                int ddx = tx - cx, ddy = ty - cy;
+                if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
+                if (!footprint_ok(tx, ty)) continue;
+                bool far_enough = true;
+                for (int i = 0; i < 2 && far_enough; i++) {
+                    if (map->towns[i].x < 0) continue;
+                    int ddx2 = map->towns[i].x - tx;
+                    int ddy2 = map->towns[i].y - ty;
+                    if (ddx2*ddx2 + ddy2*ddy2 < MIN_TOWN_DIST*MIN_TOWN_DIST)
+                        far_enough = false;
+                }
+                if (!far_enough) continue;
+                stamp_town_blueprint(map, 2, tx, ty);
+                placed = true;
+            }
+            if (!placed) map->towns[2] = { -1, -1, 2 };
+        }
+    }
+
+    // --- Villages ---
+    // 10-15 small settlements scattered across the map.
+    // Dungeons are allowed inside village footprints (no tile pre-fill, so
+    // underlying terrain stays and door_ok accepts it normally).
+    {
+        const int TARGET_VILLAGES   = 12;
+        const int MIN_VILLAGE_DIST  = 150; // village-to-village (TL corner distance)
+        const int MIN_TOWN_VIL_DIST = 300; // village-to-town
+        const int MARGIN = 450; // ocean band is up to ~420 tiles wide; keep villages inland
+
+        auto village_footprint_ok = [&](int tx, int ty) -> bool {
+            for (int dy = 0; dy < VILLAGE_H; dy++)
+                for (int dx = 0; dx < VILLAGE_W; dx++) {
+                    int bt = map->tiles[ty+dy][tx+dx];
+                    if (bt == TILE_WATER || bt == TILE_RIVER) return false;
+                    if (is_cliff(bt)) return false;
+                }
+            return true;
+        };
+
+        map->num_villages = 0;
+        unsigned int vs = seed ^ 0xA71B4C03u;
+
+        for (int attempt = 0; map->num_villages < TARGET_VILLAGES && attempt < 200000; attempt++) {
+            vs = vs * 1664525u + 1013904223u;
+            int tx = MARGIN + (int)((vs >> 16) % (unsigned)(MAP_WIDTH  - 2*MARGIN));
+            vs = vs * 1664525u + 1013904223u;
+            int ty = MARGIN + (int)((vs >> 16) % (unsigned)(MAP_HEIGHT - 2*MARGIN));
+
+            // Stay outside the center hub area
+            int ddx = tx - cx, ddy = ty - cy;
+            if (ddx*ddx + ddy*ddy <= (hw+VILLAGE_H)*(hw+VILLAGE_H)) continue;
+
+            if (!village_footprint_ok(tx, ty)) continue;
+
+            // Far from all towns
+            bool ok = true;
+            for (int i = 0; i < 3 && ok; i++) {
+                if (map->towns[i].x < 0) continue;
+                int dx2 = map->towns[i].x - tx, dy2 = map->towns[i].y - ty;
+                if (dx2*dx2 + dy2*dy2 < MIN_TOWN_VIL_DIST*MIN_TOWN_VIL_DIST) ok = false;
+            }
+            if (!ok) continue;
+
+            // Far from all existing villages
+            for (int i = 0; i < map->num_villages && ok; i++) {
+                int dx2 = map->villages[i].x - tx, dy2 = map->villages[i].y - ty;
+                if (dx2*dx2 + dy2*dy2 < MIN_VILLAGE_DIST*MIN_VILLAGE_DIST) ok = false;
+            }
+            if (!ok) continue;
+
+            vs = vs * 1664525u + 1013904223u;
+            int variant = (int)((vs >> 16) % NUM_VILLAGE_VARIANTS);
+            stamp_village_blueprint(map, variant, tx, ty);
+        }
+    }
+
+    // --- Castles ---
+    // castle[3] (dungeon) is left at {-1,-1,3} — placed externally via dungeon diving.
+    {
+        // -- Castle 0: ocean — all-water footprint inside the ocean band --
+        {
+            const int BAND = 520; // ocean is ~300-420 tiles wide; 520 gives safe margin
+            bool placed = false;
+            unsigned int cs = seed ^ 0xCA5710E1u;
+            for (int attempt = 0; attempt < 200000 && !placed; attempt++) {
+                cs = cs * 1664525u + 1013904223u; int r1 = (int)((cs >> 16) % (unsigned)MAP_WIDTH);
+                cs = cs * 1664525u + 1013904223u; int r2 = (int)((cs >> 16) % (unsigned)MAP_HEIGHT);
+                int tx, ty;
+                if      (ocean_side == 0) { tx = r1 % (BAND - CASTLE_W);                              ty = r2 % (MAP_HEIGHT - CASTLE_H); }
+                else if (ocean_side == 1) { tx = MAP_WIDTH  - BAND + r1 % (BAND - CASTLE_W);          ty = r2 % (MAP_HEIGHT - CASTLE_H); }
+                else if (ocean_side == 2) { tx = r1 % (MAP_WIDTH - CASTLE_W);                         ty = r2 % (BAND - CASTLE_H); }
+                else                      { tx = r1 % (MAP_WIDTH - CASTLE_W); ty = MAP_HEIGHT - BAND + r2 % (BAND - CASTLE_H); }
+                if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
+                bool all_water = true;
+                for (int dy = 0; dy < CASTLE_H && all_water; dy++)
+                    for (int dx = 0; dx < CASTLE_W && all_water; dx++)
+                        if (map->tiles[ty+dy][tx+dx] != TILE_WATER) all_water = false;
+                if (!all_water) continue;
+                stamp_castle_blueprint(map, 0, tx, ty);
+                placed = true;
+            }
+        }
+
+        // -- Castle 1: mountain — nearest elevation-5 footprint to cliff peak --
+        // Collects all elevation-5 tiles, sorts by distance from cliff_peak,
+        // then walks the sorted list — O(N log N) on just the elev-5 tiles rather
+        // than O((W+H)^2) ring expansion over the whole map.
+        {
+            float px = map->cliff_peak_x / TILE_SIZE;
+            float py = map->cliff_peak_y / TILE_SIZE;
+
+            std::vector<std::pair<float,std::pair<int,int>>> elev5_tiles;
+            for (int y = 0; y < MAP_HEIGHT; y++) {
+                for (int x = 0; x < MAP_WIDTH; x++) {
+                    int t = map->tiles[y][x];
+                    if (t != TILE_CLIFF_5 && t != TILE_CLIFF_SNOW_5 && t != TILE_CLIFF_WASTE_5) continue;
+                    float dx = x - px, dy2 = y - py;
+                    elev5_tiles.push_back({ dx*dx + dy2*dy2, {x, y} });
+                }
+            }
+            std::sort(elev5_tiles.begin(), elev5_tiles.end());
+
+            for (auto& entry : elev5_tiles) {
+                int tx = entry.second.first  - CASTLE_W / 2;
+                int ty = entry.second.second - CASTLE_H / 2;
+                if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
+                bool water_free = true;
+                int elev5_count = 0;
+                for (int cdy = 0; cdy < CASTLE_H && water_free; cdy++)
+                    for (int cdx = 0; cdx < CASTLE_W; cdx++) {
+                        int bt = map->tiles[ty+cdy][tx+cdx];
+                        if (bt == TILE_WATER || bt == TILE_RIVER) { water_free = false; break; }
+                        if (bt == TILE_CLIFF_5 || bt == TILE_CLIFF_SNOW_5 || bt == TILE_CLIFF_WASTE_5) elev5_count++;
+                    }
+                if (!water_free || elev5_count * 2 < CASTLE_W * CASTLE_H) continue;
+                stamp_castle_blueprint(map, 1, tx, ty);
+                break;
+            }
+        }
+
+        // -- Castle 2: lava/wasteland --
+        // Pass 0 (strict): entire footprint must be wasteland/lava.
+        // Pass 1 (relaxed): fallback for seeds where wasteland is all uneven —
+        //   accepts >= 75% wasteland/lava with no water.
+        {
+            std::vector<std::pair<int,int>> lava_tiles;
+            for (int y = 0; y < MAP_HEIGHT; y++)
+                for (int x = 0; x < MAP_WIDTH; x++)
+                    if (map->tiles[y][x] == TILE_LAVA)
+                        lava_tiles.push_back({x, y});
+            bool placed = false;
+            if (!lava_tiles.empty()) {
+                for (int pass = 0; pass < 2 && !placed; pass++) {
+                    unsigned int ls = seed ^ 0xA55A001Bu;
+                    ls = ls * 1664525u + 1013904223u;
+                    int start = (int)((ls >> 16) % (unsigned)lava_tiles.size());
+                    for (int i = 0; i < (int)lava_tiles.size() && !placed; i++) {
+                        int idx = (start + i) % (int)lava_tiles.size();
+                        int tx = lava_tiles[idx].first  - CASTLE_W / 2;
+                        int ty = lava_tiles[idx].second - CASTLE_H / 2;
+                        if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
+                        int waste_count = 0; bool valid = true;
+                        for (int dy = 0; dy < CASTLE_H && valid; dy++)
+                            for (int dx = 0; dx < CASTLE_W && valid; dx++) {
+                                int bt = map->tiles[ty+dy][tx+dx];
+                                if (bt == TILE_WATER || bt == TILE_RIVER) { valid = false; break; }
+                                if (is_cliff_slope(bt))                    { valid = false; break; }
+                                if (bt == TILE_WASTELAND || bt == TILE_LAVA) waste_count++;
+                                else if (pass == 0) { valid = false; break; }
+                            }
+                        if (!valid) continue;
+                        if (pass == 1 && waste_count * 4 < CASTLE_W * CASTLE_H * 3) continue;
+                        stamp_castle_blueprint(map, 2, tx, ty);
+                        placed = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Dungeon entrances ---
+    // 300 entrances spread across the map.  Each is randomly either:
+    //   small (size=0): 1×1 tile stamp
+    //   large (size=1): 2×2 tile stamp
+    // Size is stored on the entrance and will drive what structure spawns later.
+    // Grid-cell shuffle + MIN_DIST keeps all entrances well separated.
+    {
+        const int TARGET   = 300;
+        const int MIN_DIST = 130; // minimum tile distance between any two top-left corners
+        const int CELL     = 150; // one entrance attempted per CELL×CELL region
+        const int MARGIN   = 6;   // clearance from map edges
+
+        const int GW = (MAP_WIDTH  + CELL - 1) / CELL;
+        const int GH = (MAP_HEIGHT + CELL - 1) / CELL;
+
+        map->num_dungeon_entrances = 0;
+        unsigned int es = seed ^ 0xD06E0015u;
+
+        // Fisher-Yates shuffle of cell indices so placement isn't grid-aligned
+        std::vector<int> cells;
+        cells.reserve(GW * GH);
+        for (int i = 0; i < GW * GH; i++) cells.push_back(i);
+        for (int i = (int)cells.size() - 1; i > 0; i--) {
+            es = es * 1664525u + 1013904223u;
+            int j = (int)((es >> 16) % (unsigned)(i + 1));
+            std::swap(cells[i], cells[j]);
+        }
+
+        // Returns true if a sz×sz stamp at (ex,ey) is valid ground, outside hub, far from others.
+        auto door_ok = [&](int ex, int ey, int sz) -> bool {
+            if (ex < MARGIN || ey < MARGIN ||
+                ex + sz + MARGIN > MAP_WIDTH ||
+                ey + sz + MARGIN > MAP_HEIGHT)
+                return false;
+            for (int dy = 0; dy < sz; dy++) {
+                for (int dx = 0; dx < sz; dx++) {
+                    int tx = ex + dx, ty = ey + dy;
+                    int ddx = tx - cx, ddy = ty - cy;
+                    if (ddx*ddx + ddy*ddy <= hw*hw) return false;
+                    int base = map->tiles[ty][tx];
+                    if (base == TILE_VILLAGE_PLACEHOLDER) {
+                        // Villages allow dungeon entrances
+                    } else if (base == TILE_BLUEPRINT || base == TILE_CASTLE_PLACEHOLDER) {
+                        return false; // towns and castles don't
+                    } else {
+                        if (base != TILE_GRASS     && base != TILE_MEADOW &&
+                            base != TILE_SAND      && base != TILE_SNOW   &&
+                            base != TILE_WASTELAND) return false;
+                        if (map->overlay[ty][tx] != 0) return false;
+                    }
+                }
+            }
+            for (int i = 0; i < map->num_dungeon_entrances; i++) {
+                int ddx = map->dungeon_entrances[i].x - ex;
+                int ddy = map->dungeon_entrances[i].y - ey;
+                if (ddx*ddx + ddy*ddy < MIN_DIST * MIN_DIST) return false;
+            }
+            // Reject positions inside any town footprint
+            for (int i = 0; i < 3; i++) {
+                if (map->towns[i].x < 0) continue;
+                int tw = map->towns[i].x, th = map->towns[i].y;
+                if (ex + sz > tw && ex < tw + TOWN_W &&
+                    ey + sz > th && ey < th + TOWN_H) return false;
+            }
+            // Reject positions inside any castle footprint
+            for (int i = 0; i < 4; i++) {
+                if (map->castles[i].x < 0) continue;
+                int cax = map->castles[i].x, cay = map->castles[i].y;
+                if (ex + sz > cax && ex < cax + CASTLE_W &&
+                    ey + sz > cay && ey < cay + CASTLE_H) return false;
+            }
+            return true;
+        };
+
+        for (int ci : cells) {
+            if (map->num_dungeon_entrances >= TARGET) break;
+            int cellx = (ci % GW) * CELL;
+            int celly = (ci / GW) * CELL;
+            for (int attempt = 0; attempt < 12; attempt++) {
+                es = es * 1664525u + 1013904223u;
+                int ex = cellx + (int)((es >> 16) % (unsigned)CELL);
+                es = es * 1664525u + 1013904223u;
+                int ey = celly + (int)((es >> 16) % (unsigned)CELL);
+                // ~50% small (1×1), ~50% large (2×2)
+                es = es * 1664525u + 1013904223u;
+                int sz = ((es >> 16) & 1) ? 2 : 1;
+                if (!door_ok(ex, ey, sz)) continue;
+                for (int dy = 0; dy < sz; dy++)
+                    for (int dx = 0; dx < sz; dx++) {
+                        map->tiles[ey + dy][ex + dx] = TILE_DUNGEON;
+                        map->overlay[ey + dy][ex + dx] = 0;
+                    }
+                // size field: 0=small(1×1), 1=large(2×2)
+                map->dungeon_entrances[map->num_dungeon_entrances++] = {ex, ey, sz - 1};
+                break;
+            }
+        }
+    }
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
@@ -1195,6 +1885,76 @@ static void draw_glyph_only(SDL_Renderer* renderer, const uint8_t* glyph,
     }
 }
 
+// Paint one tile type into an SDL_Surface using the same bg+glyph logic as draw_tile_ascii.
+// Works on any SDL2 backend — no render-to-texture needed.
+static SDL_Surface* make_tile_surf(const TileStyle* s) {
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(
+        0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!surf) return nullptr;
+    SDL_FillRect(surf, NULL, SDL_MapRGB(surf->format, s->bg_r, s->bg_g, s->bg_b));
+    const int scale = TILE_SIZE / 8;
+    for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+            if (s->glyph[row] & (0x80u >> col)) {
+                SDL_Rect px = { col * scale, row * scale, scale, scale };
+                SDL_FillRect(surf, &px, SDL_MapRGB(surf->format, s->fg_r, s->fg_g, s->fg_b));
+            }
+        }
+    }
+    return surf;
+}
+
+static SDL_Surface* make_glyph_surf(uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
+                                    uint8_t fg_r, uint8_t fg_g, uint8_t fg_b,
+                                    const uint8_t* glyph) {
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(
+        0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!surf) return nullptr;
+    SDL_FillRect(surf, NULL, SDL_MapRGB(surf->format, bg_r, bg_g, bg_b));
+    const int scale = TILE_SIZE / 8;
+    for (int row = 0; row < 8; row++) {
+        for (int col = 0; col < 8; col++) {
+            if (glyph[row] & (0x80u >> col)) {
+                SDL_Rect px = { col * scale, row * scale, scale, scale };
+                SDL_FillRect(surf, &px, SDL_MapRGB(surf->format, fg_r, fg_g, fg_b));
+            }
+        }
+    }
+    return surf;
+}
+
+void tilemap_init_tile_cache(SDL_Renderer* renderer) {
+    for (int i = 0; i < TILE_CACHE_SIZE && i < NUM_TILE_STYLES; i++) {
+        SDL_Surface* surf = make_tile_surf(&tile_styles[i]);
+        if (!surf) continue;
+        s_tile_tex[i] = SDL_CreateTextureFromSurface(renderer, surf);
+        SDL_FreeSurface(surf);
+    }
+    SDL_Surface* top_surf = make_glyph_surf(0, 40, 0, 0, 140, 0, glyph_tall_tree_top);
+    SDL_Surface* bot_surf = make_glyph_surf(0, 40, 0, 0, 140, 0, glyph_tall_tree_bot);
+    if (top_surf) { s_tall_tree_top_tex = SDL_CreateTextureFromSurface(renderer, top_surf); SDL_FreeSurface(top_surf); }
+    if (bot_surf) { s_tall_tree_bot_tex  = SDL_CreateTextureFromSurface(renderer, bot_surf); SDL_FreeSurface(bot_surf); }
+}
+
+void tilemap_free_tile_cache(void) {
+    for (int i = 0; i < TILE_CACHE_SIZE; i++) {
+        if (s_tile_tex[i]) { SDL_DestroyTexture(s_tile_tex[i]); s_tile_tex[i] = nullptr; }
+    }
+    if (s_tall_tree_top_tex) { SDL_DestroyTexture(s_tall_tree_top_tex); s_tall_tree_top_tex = nullptr; }
+    if (s_tall_tree_bot_tex)  { SDL_DestroyTexture(s_tall_tree_bot_tex);  s_tall_tree_bot_tex  = nullptr; }
+}
+
+// Helper: copy a cached tile texture to the screen, falling back to immediate draw.
+static void blit_tile(SDL_Renderer* renderer, int tile_id,
+                      int screen_x, int screen_y, int draw_size) {
+    if (tile_id >= 0 && tile_id < TILE_CACHE_SIZE && s_tile_tex[tile_id]) {
+        SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
+        SDL_RenderCopy(renderer, s_tile_tex[tile_id], NULL, &dst);
+    } else {
+        draw_tile_ascii(renderer, tile_id, screen_x, screen_y, draw_size);
+    }
+}
+
 void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer) {
     float z = cam->zoom;
     int draw_size = (int)(TILE_SIZE * z);
@@ -1218,7 +1978,7 @@ void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer)
             int screen_x = (int)((x * TILE_SIZE - cam->x) * z);
             int screen_y = (int)((y * TILE_SIZE - cam->y) * z);
             // Draw base tile
-            draw_tile_ascii(renderer, map->tiles[y][x], screen_x, screen_y, draw_size);
+            blit_tile(renderer, map->tiles[y][x], screen_x, screen_y, draw_size);
 
             // Draw overlay (trees, rocks, gold ore) on top
             int ov = map->overlay[y][x];
@@ -1230,37 +1990,58 @@ void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer)
                 int jox = 0;
                 {
                     auto jit = s_tile_jitter.find(tile_key(x, y));
-                    if (jit != s_tile_jitter.end())
-                        jox = (int)(sinf(jit->second * 80.0f) * 4.0f * z);
+                    if (jit != s_tile_jitter.end()) {
+                        float elapsed = (float)((double)(SDL_GetPerformanceCounter() - jit->second)
+                                                / SDL_GetPerformanceFrequency());
+                        jox = (int)(sinf(elapsed * 80.0f) * 4.0f * z);
+                    }
                 }
                 int dx = screen_x + jox;
 
-                // Background always
-                SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
-                SDL_Rect bg = { dx, screen_y, draw_size, draw_size };
-                SDL_RenderFillRect(renderer, &bg);
-
                 if (tree_above) {
-                    // Bottom of tall pair: draw trunk here, canopy into tile above
-                    draw_glyph_only(renderer, glyph_tall_tree_bot, 0, 140, 0,
-                                    dx, screen_y, draw_size);
-                    draw_glyph_only(renderer, glyph_tall_tree_top, 0, 140, 0,
-                                    dx, screen_y - draw_size, draw_size);
+                    // Bottom of tall pair: trunk here, canopy drawn into tile above
+                    SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
+                    SDL_Rect dst_top = { dx, screen_y - draw_size, draw_size, draw_size };
+                    if (s_tall_tree_bot_tex) {
+                        SDL_RenderCopy(renderer, s_tall_tree_bot_tex, NULL, &dst_bot);
+                    } else {
+                        SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
+                        SDL_RenderFillRect(renderer, &dst_bot);
+                        draw_glyph_only(renderer, glyph_tall_tree_bot, 0, 140, 0, dx, screen_y, draw_size);
+                    }
+                    if (s_tall_tree_top_tex) {
+                        SDL_RenderCopy(renderer, s_tall_tree_top_tex, NULL, &dst_top);
+                    } else {
+                        draw_glyph_only(renderer, glyph_tall_tree_top, 0, 140, 0, dx, screen_y - draw_size, draw_size);
+                    }
                 } else if (!tree_below) {
-                    // Single tree
-                    draw_glyph_only(renderer, glyph_tree, 0, 140, 0,
-                                    dx, screen_y, draw_size);
+                    // Single tree — s_tile_tex[TILE_TREE] has the same bg+glyph
+                    SDL_Rect dst = { dx, screen_y, draw_size, draw_size };
+                    if (s_tile_tex[TILE_TREE]) {
+                        SDL_RenderCopy(renderer, s_tile_tex[TILE_TREE], NULL, &dst);
+                    } else {
+                        SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
+                        SDL_RenderFillRect(renderer, &dst);
+                        draw_glyph_only(renderer, glyph_tree, 0, 140, 0, dx, screen_y, draw_size);
+                    }
+                } else {
+                    // Top of tall pair: bg only (glyph is drawn when processing the tile below)
+                    SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
+                    SDL_Rect bg = { dx, screen_y, draw_size, draw_size };
+                    SDL_RenderFillRect(renderer, &bg);
                 }
-                // Top of tall pair (!tree_above && tree_below): bg only, glyph drawn from bottom
             } else if (ov != 0) {
                 // Rocks, gold ore — draw over base with optional jitter
                 int draw_x = screen_x;
                 if (ov == TILE_ROCK) {
                     auto jit = s_tile_jitter.find(tile_key(x, y));
-                    if (jit != s_tile_jitter.end())
-                        draw_x += (int)(sinf(jit->second * 80.0f) * 4.0f * z);
+                    if (jit != s_tile_jitter.end()) {
+                        float elapsed = (float)((double)(SDL_GetPerformanceCounter() - jit->second)
+                                                / SDL_GetPerformanceFrequency());
+                        draw_x += (int)(sinf(elapsed * 80.0f) * 4.0f * z);
+                    }
                 }
-                draw_tile_ascii(renderer, ov, draw_x, screen_y, draw_size);
+                blit_tile(renderer, ov, draw_x, screen_y, draw_size);
             }
         }
     }
@@ -1293,6 +2074,15 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         0,                                                                         // 23: GOLD_ORE → hidden
         1, 1, 1, 1, 1,                                                            // 24-28: snow cliffs
         1, 1, 1, 1, 1,                                                            // 29-33: wasteland cliffs
+        0, 0, 0, 0, 0,                                                            // 34-38: side tiles → hidden
+        0, 0, 0, 0, 0,                                                            // 39-43: SW corners → hidden
+        0, 0, 0, 0, 0,                                                            // 44-48: SE corners → hidden
+        0, 0, 0, 0, 0,                                                            // 49-53: NW inner corners → hidden
+        0, 0, 0, 0, 0,                                                            // 54-58: NE inner corners → hidden
+        2,                                                                         // 59: DUNGEON → always show
+        2,                                                                         // 60: BLUEPRINT → always show
+        2,                                                                         // 61: VILLAGE_PLACEHOLDER → always show
+        2,                                                                         // 62: CASTLE_PLACEHOLDER → always show
     };
     static const SDL_Color tile_colors[] = {
         { 30,  90,  30, 255}, // GRASS  (dark green = dense forest)
@@ -1329,6 +2119,35 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         { 68,  50,  36, 255}, // CLIFF_WASTE_3 (31)
         { 76,  56,  40, 255}, // CLIFF_WASTE_4 (32)
         { 85,  62,  44, 255}, // CLIFF_WASTE_5 (33)
+        { 60, 160,  60, 255}, // CLIFF_SIDE_1    (34) → hidden
+        { 60, 160,  60, 255}, // CLIFF_SIDE_2    (35) → hidden
+        { 60, 160,  60, 255}, // CLIFF_SIDE_3    (36) → hidden
+        { 60, 160,  60, 255}, // CLIFF_SIDE_4    (37) → hidden
+        { 60, 160,  60, 255}, // CLIFF_SIDE_5    (38) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SW_1 (39) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SW_2 (40) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SW_3 (41) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SW_4 (42) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SW_5 (43) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SE_1 (44) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SE_2 (45) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SE_3 (46) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SE_4 (47) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_SE_5 (48) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NW_1 (49) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NW_2 (50) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NW_3 (51) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NW_4 (52) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NW_5 (53) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NE_1 (54) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NE_2 (55) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NE_3 (56) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NE_4 (57) → hidden
+        { 60, 160,  60, 255}, // CLIFF_CORNER_NE_5 (58) → hidden
+        {  5,   0,  15, 255}, // DUNGEON              (59) → dark purple dot
+        {255,   0, 255, 255}, // BLUEPRINT            (60) → bright magenta
+        {255, 140,   0, 255}, // VILLAGE_PLACEHOLDER  (61) → orange
+        {255, 255, 255, 255}, // CASTLE_PLACEHOLDER   (62) → white
     };
     static const int NUM_MM_COLORS = (int)(sizeof(tile_colors) / sizeof(tile_colors[0]));
 
@@ -1353,6 +2172,26 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
             SDL_Rect r = { ox + x / step, oy + y / step, 1, 1 };
             SDL_RenderFillRect(renderer, &r);
         }
+    }
+
+    // villages — 3×3 orange dot centered on footprint
+    for (int i = 0; i < map->num_villages; i++) {
+        if (map->villages[i].x < 0) continue;
+        int vx = ox + (map->villages[i].x + VILLAGE_W / 2) / step;
+        int vy = oy + (map->villages[i].y + VILLAGE_H / 2) / step;
+        SDL_SetRenderDrawColor(renderer, 255, 140, 0, 255);
+        SDL_Rect vdot = { vx - 1, vy - 1, 3, 3 };
+        SDL_RenderFillRect(renderer, &vdot);
+    }
+
+    // castles — 4×4 white dot centered on footprint
+    for (int i = 0; i < 4; i++) {
+        if (map->castles[i].x < 0) continue;
+        int cax = ox + (map->castles[i].x + CASTLE_W / 2) / step;
+        int cay = oy + (map->castles[i].y + CASTLE_H / 2) / step;
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_Rect cdot = { cax - 2, cay - 2, 4, 4 };
+        SDL_RenderFillRect(renderer, &cdot);
     }
 
     // white 3×3 dot for player position
@@ -1472,18 +2311,20 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, 
     }
 
     s_tile_hp[key] = hp;
-    // Trigger jitter on both tiles of a tall pair
-    const float JITTER_DUR = 0.22f;
-    s_tile_jitter[key] = JITTER_DUR;
+    // Trigger jitter on both tiles of a tall pair — store start timestamp
+    Uint64 now = SDL_GetPerformanceCounter();
+    s_tile_jitter[key] = now;
     if (is_tall && key_ty > 0)
-        s_tile_jitter[tile_key(key_tx, key_ty - 1)] = JITTER_DUR;
+        s_tile_jitter[tile_key(key_tx, key_ty - 1)] = now;
     return 2; // hit but not destroyed
 }
 
-void tilemap_update(float dt) {
+void tilemap_update(float /*dt*/) {
+    Uint64 now  = SDL_GetPerformanceCounter();
+    double freq = (double)SDL_GetPerformanceFrequency();
     for (auto it = s_tile_jitter.begin(); it != s_tile_jitter.end(); ) {
-        it->second -= dt;
-        if (it->second <= 0.0f) it = s_tile_jitter.erase(it);
+        float elapsed = (float)((double)(now - it->second) / freq);
+        if (elapsed >= JITTER_DUR) it = s_tile_jitter.erase(it);
         else ++it;
     }
 }
