@@ -26,6 +26,14 @@ typedef struct {
 typedef struct {
     Stats stats;
     int level;
+
+    // Visual/animation state — shared across all game states
+    int   width, height;    // sprite size in pixels (32x48)
+    int   facing;           // idle frame: 0=down 3=up 6=left 8=right
+    int   facing_locked;    // true after a hit/action until next direction key
+    int   anim_step;
+    float anim_timer;
+    int   is_moving;
 } Player;
 
 typedef struct {

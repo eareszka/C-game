@@ -82,12 +82,37 @@ enum TileId {
     // Village placeholder — orange/black checkerboard until sprites are added
     TILE_VILLAGE_PLACEHOLDER = 61,
     // Castle placeholder — black/white checkerboard until sprites are added
-    TILE_CASTLE_PLACEHOLDER = 62
+    TILE_CASTLE_PLACEHOLDER = 62,
+    // Dungeon entrance variants — one per archetype, replaces generic TILE_DUNGEON
+    TILE_DUNGEON_CAVE         = 63,
+    TILE_DUNGEON_RUINS        = 64,
+    TILE_DUNGEON_GRAVEYARD_SM = 65,
+    TILE_DUNGEON_GRAVEYARD_LG = 66,
+    TILE_DUNGEON_OASIS        = 67,
+    TILE_DUNGEON_PYRAMID      = 68,
+    TILE_DUNGEON_STONEHENGE   = 69,
+    TILE_DUNGEON_LARGE_TREE   = 70,
 };
 
+typedef enum {
+    DUNGEON_ENT_CAVE         = 0,
+    DUNGEON_ENT_RUINS        = 1,
+    DUNGEON_ENT_GRAVEYARD_SM = 2,
+    DUNGEON_ENT_GRAVEYARD_LG = 3,
+    DUNGEON_ENT_OASIS        = 4,
+    DUNGEON_ENT_PYRAMID      = 5,
+    DUNGEON_ENT_STONEHENGE   = 6,
+    DUNGEON_ENT_LARGE_TREE   = 7,
+} DungeonEntranceType;
+
 typedef struct {
-    int x, y;   // top-left tile coordinate of the entrance stamp
-    int size;   // 0 = small (1x1 tile), 1 = large (2x2 tiles)
+    int x, y;                  // top-left tile coordinate of the entrance stamp
+    int size;                  // 0 = small (1×1 tile), 1 = large (2×2 tiles)
+    DungeonEntranceType type;  // entrance archetype — drives interior layout + skin
+    int cliff_level;           // 0 = flat, 1–5 = elevation tier at placement
+    float difficulty;          // 0.0–1.0: straight average of dist_norm and elev_norm
+    int gravestones_spawned;   // GRAVEYARD_SM only: 0 until resource nodes are spawned
+    int partner_idx;           // index into dungeon_entrances[] of connected partner, or -1
 } DungeonEntrance;
 
 typedef struct {
@@ -117,6 +142,9 @@ typedef struct Tilemap {
     CastlePlacement  castles[4];       // [0-2] placed in phase2; [3] placed via dungeon diving
 } Tilemap;
 
+// Forward declare to avoid circular include — resource_node.h includes no tilemap types.
+struct ResourceNodeList;
+
 void tilemap_build_starting_area(Tilemap* map, unsigned int seed);
 // Phase 1: core map + detail within PHASE_RADIUS of center (call before game loop)
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed);
@@ -141,6 +169,18 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   float player_x, float player_y);
 
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
+
+// GRAVEYARD_SM entrances hide their entrance tile under gravestones.
+// Call this from the main thread (not the gen thread) when the player gets close.
+// Scatters 5–10 RESOURCE_GRAVESTONE nodes; one hides the entrance tile.
+// seed should be derived from the world seed + entrance position.
+// GRAVEYARD_SM: hidden entrance under one of 5–10 randomly scattered gravestones.
+void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
+                                   int entrance_idx, unsigned int seed);
+
+// GRAVEYARD_LG: 10–20 organized gravestones around the visible mausoleum entrance.
+void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
+                                      int entrance_idx, unsigned int seed);
 
 // Convert a minimap screen click (mx, my) to world pixel coords.
 // Returns true if the click was inside the minimap area.

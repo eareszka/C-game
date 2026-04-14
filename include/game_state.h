@@ -5,6 +5,7 @@ typedef enum GameState {
     STATE_TITLE = 0,
     STATE_OVERWORLD = 1,
     STATE_BATTLE = 2,
+    STATE_DUNGEON = 3,
 } GameState;
 
 #endif

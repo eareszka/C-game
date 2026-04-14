@@ -11,7 +11,7 @@ void resource_nodes_init(ResourceNodeList* list)
     list->count = 0;
 }
 
-void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, float y) 
+void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, float y)
 {
     if (list->count >= MAX_RESOURCE_NODES) return;
 
@@ -22,13 +22,31 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
     n->width = 32;
     n->height = 32;
     n->alive = 1;
+    n->hides_entrance = 0;
+    n->reveal_tile_id = 0;
+    n->reveal_tx = -1;
+    n->reveal_ty = -1;
 
     switch (type) {
-        case RESOURCE_TREE:   n->hp = 3; break;
-        case RESOURCE_ROCK:   n->hp = 4; break;
-        case RESOURCE_FLOWER: n->hp = 1; break;
-        case RESOURCE_GOLD:   n->hp = 5; break;
+        case RESOURCE_TREE:        n->hp = 3; break;
+        case RESOURCE_ROCK:        n->hp = 4; break;
+        case RESOURCE_FLOWER:      n->hp = 1; break;
+        case RESOURCE_GOLD:        n->hp = 5; break;
+        case RESOURCE_GRAVESTONE:  n->hp = 2; break;
     }
+}
+
+void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
+                                   int hides_entrance, int reveal_tile_id,
+                                   int reveal_tx, int reveal_ty)
+{
+    if (list->count >= MAX_RESOURCE_NODES) return;
+    resource_nodes_add(list, RESOURCE_GRAVESTONE, x, y);
+    ResourceNode* n = &list->nodes[list->count - 1];
+    n->hides_entrance  = hides_entrance;
+    n->reveal_tile_id  = reveal_tile_id;
+    n->reveal_tx       = hides_entrance ? reveal_tx : -1;
+    n->reveal_ty       = hides_entrance ? reveal_ty : -1;
 }
 
 // ASCII placeholder colors for resource nodes
@@ -37,10 +55,11 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
                                 int w, int h, ResourceType type) {
     // Background color
     switch (type) {
-        case RESOURCE_TREE:   SDL_SetRenderDrawColor(ren,   0,  80,   0, 255); break;
-        case RESOURCE_ROCK:   SDL_SetRenderDrawColor(ren,  90,  80,  70, 255); break;
-        case RESOURCE_FLOWER: SDL_SetRenderDrawColor(ren, 100,   0, 120, 255); break;
-        case RESOURCE_GOLD:   SDL_SetRenderDrawColor(ren,  60,  55,  50, 255); break;
+        case RESOURCE_TREE:       SDL_SetRenderDrawColor(ren,   0,  80,   0, 255); break;
+        case RESOURCE_ROCK:       SDL_SetRenderDrawColor(ren,  90,  80,  70, 255); break;
+        case RESOURCE_FLOWER:     SDL_SetRenderDrawColor(ren, 100,   0, 120, 255); break;
+        case RESOURCE_GOLD:       SDL_SetRenderDrawColor(ren,  60,  55,  50, 255); break;
+        case RESOURCE_GRAVESTONE: SDL_SetRenderDrawColor(ren,  55,  55,  60, 255); break;
     }
     SDL_Rect bg = { screen_x, screen_y, w, h };
     SDL_RenderFillRect(ren, &bg);
@@ -77,6 +96,23 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
             // circle approximation: filled center square
             SDL_Rect c = { cx - w/4, cy - h/4, w/2, h/2 };
             SDL_RenderFillRect(ren, &c);
+            break;
+        }
+        case RESOURCE_GRAVESTONE: {
+            // Tombstone: rounded top slab + cross
+            SDL_SetRenderDrawColor(ren, 160, 160, 168, 255);
+            // slab body
+            SDL_Rect slab = { screen_x + w/5, screen_y + h/4, w*3/5, h*2/3 };
+            SDL_RenderFillRect(ren, &slab);
+            // rounded top (small rect above slab)
+            SDL_Rect top = { screen_x + w/4, screen_y + h/8, w/2, h/4 + t };
+            SDL_RenderFillRect(ren, &top);
+            // cross engraved (darker)
+            SDL_SetRenderDrawColor(ren, 80, 80, 88, 255);
+            SDL_Rect cv = { cx - t, screen_y + h/3, t*2, h/3 };
+            SDL_Rect ch = { screen_x + w/3, screen_y + h*5/12, w/3, t*2 };
+            SDL_RenderFillRect(ren, &cv);
+            SDL_RenderFillRect(ren, &ch);
             break;
         }
         case RESOURCE_FLOWER: {

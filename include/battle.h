@@ -5,84 +5,95 @@
 #include "input.h"
 #include "entity.h"
 
-// ── Phase state machine ───────────────────────────────────────────────────────
+// ── Weapon types ──────────────────────────────────────────────────────────────
 
-typedef enum {
-    BATTLE_PHASE_START_ROUND,   // sort/advance turn order
-    BATTLE_PHASE_PLAYER_MENU,   // player picking an action
-    BATTLE_PHASE_PLAYER_TARGET, // player picking which enemy
-    BATTLE_PHASE_ENEMY_THINK,   // AI picks action
-    BATTLE_PHASE_RESOLVE,       // apply damage / effects, write log
-    BATTLE_PHASE_CHECK_END,     // did someone win?
+enum WeaponType {
+    WEAPON_DAGGER,
+    WEAPON_LONGSWORD,
+    WEAPON_SPEAR,
+    WEAPON_AXE,
+};
+
+struct ProjectileProfile {
+    float speed;      // pixels per second
+    float damage;     // damage per hit
+    float fire_rate;  // volleys per second
+    int   count;      // bullets per volley
+    float spread;     // total arc in degrees (0 = single straight shot)
+    float radius;     // visual + hitbox radius in pixels
+};
+
+ProjectileProfile weapon_profile(WeaponType type);
+
+// ── Arena ─────────────────────────────────────────────────────────────────────
+
+static const int ARENA_W  = 640;
+static const int ARENA_H  = 480;
+static const int ENEMY_X  = 320;  // fixed enemy position
+static const int ENEMY_Y  = 160;
+static const int ENEMY_R  = 24;   // enemy hitbox radius
+static const int PLAYER_R = 12;   // player hitbox radius — adjust to taste
+
+// ── Bullet pools ──────────────────────────────────────────────────────────────
+
+#define MAX_PLAYER_BULLETS 64
+#define MAX_ENEMY_BULLETS  256
+
+struct Bullet {
+    float x, y;
+    float vx, vy;
+    float radius;
+    float damage;
+    bool  active;
+};
+
+// ── Phases ────────────────────────────────────────────────────────────────────
+
+enum BattlePhase {
+    BATTLE_PHASE_FIGHTING,
     BATTLE_PHASE_VICTORY,
     BATTLE_PHASE_DEFEAT,
-} BattlePhase;
+};
 
-// ── Actions ───────────────────────────────────────────────────────────────────
+// ── Internal state ────────────────────────────────────────────────────────────
 
-typedef enum {
-    ACTION_ATTACK,
-    ACTION_MAGIC,
-    ACTION_DEFEND,
-    ACTION_RUN,
-} BattleAction;
+struct BattlePlayer {
+    float x, y;
+    float hp, max_hp;
+    float iframes;      // invincibility seconds remaining after a hit
+    float fire_timer;   // countdown to next volley
+    ProjectileProfile weapon;
 
-// ── Combatant ─────────────────────────────────────────────────────────────────
+    // sprite animation — mirrors overworld state
+    int   facing;        // 0=down 3=up 6=left 8=right
+    int   facing_locked; // set when firing, cleared on movement key press
+    int   anim_step;
+    float anim_timer;
+    int   is_moving;
+};
 
-typedef struct {
-    const char* name;
-    Stats*      stats;      // points into Player.stats or Enemy.stats
-    bool        is_player;
-    bool        defending;  // set by ACTION_DEFEND, cleared each round
-    bool        dead;
-} Combatant;
+struct BattleEnemy {
+    float hp, max_hp;
+    float fire_timer;   // countdown to next volley
+    int   spd, iq, luck;
+};
 
-// ── Message log ───────────────────────────────────────────────────────────────
+// ── Main struct ───────────────────────────────────────────────────────────────
 
-#define BATTLE_LOG_LINES 2
-#define BATTLE_LOG_LEN   80
-
-typedef struct {
-    char lines[BATTLE_LOG_LINES][BATTLE_LOG_LEN];
-} BattleLog;
-
-// ── Main Battle struct ────────────────────────────────────────────────────────
-
-#define BATTLE_MAX_ENEMIES 6
-
-typedef struct {
+struct Battle {
     BattlePhase  phase;
+    BattlePlayer bp;
+    BattleEnemy  be;
+    Player*      player;  // written back on exit
 
-    // combatants
-    Player*      player;
-    Combatant    player_combatant;
-
-    Enemy        enemies[BATTLE_MAX_ENEMIES];
-    Combatant    enemy_combatants[BATTLE_MAX_ENEMIES];
-    int          enemy_count;
-
-    // turn order — player + enemies sorted by spd descending
-    Combatant*   turn_order[BATTLE_MAX_ENEMIES + 1];
-    int          turn_count;
-    int          turn_index;   // whose turn it is right now
-
-    // player menu
-    int          menu_cursor;    // 0=Attack 1=Magic 2=Defend 3=Run
-    int          target_cursor;  // which enemy is targeted
-    BattleAction pending_action;
-
-    // brief pause after resolving so the player can read the log
-    float        resolve_timer;
-
-    BattleLog    log;
-} Battle;
+    Bullet player_bullets[MAX_PLAYER_BULLETS];
+    Bullet enemy_bullets[MAX_ENEMY_BULLETS];
+};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
-// Call when entering battle. player must stay valid for the battle's duration.
-void battle_start(Battle* b, Player* player, Enemy* enemies, int enemy_count);
-
+void battle_start(Battle* b, Player* player, const Enemy* enemy, WeaponType weapon);
 void battle_update(Battle* b, const Input* in, float dt);
-void battle_draw(const Battle* b, SDL_Renderer* ren);
+void battle_draw(const Battle* b, SDL_Renderer* ren, SDL_Texture* player_sprite);
 
 #endif

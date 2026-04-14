@@ -1,7 +1,9 @@
 #include "tilemap.h"
+#include "resource_node.h"
 #include "towns.h"
 #include "castles.h"
 #include <stdint.h>
+#include <climits>
 #include <math.h>
 #include <string.h>
 #include <algorithm>
@@ -46,6 +48,15 @@ static const uint8_t glyph_cliff_corner_ne[8] = {0x00,0xF0,0x00,0xF0,0xFA,0x0A,0
 static const uint8_t glyph_dungeon[8]         = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
 // Blueprint placeholder: bright magenta checkerboard — unmissable while designing
 static const uint8_t glyph_blueprint[8]       = {0xAA,0x55,0xAA,0x55,0xAA,0x55,0xAA,0x55};
+// Dungeon entrance archetypes
+static const uint8_t glyph_dungeon_cave[8]    = {0x3C,0x7E,0xFF,0xFF,0xFF,0xFF,0x00,0x00}; // rocky arch, open below
+static const uint8_t glyph_dungeon_ruins[8]   = {0xDB,0xFF,0xDB,0x00,0xDB,0xFF,0xDB,0x00}; // broken pillars
+static const uint8_t glyph_dungeon_grave[8]   = {0x18,0x18,0xFF,0xFF,0x18,0x18,0x00,0x3C}; // cross + mound
+static const uint8_t glyph_dungeon_oasis[8]   = {0x3C,0x42,0x99,0xBD,0xBD,0x99,0x42,0x3C}; // ring w/ interior
+static const uint8_t glyph_dungeon_pyramid[8] = {0x18,0x18,0x3C,0x3C,0x7E,0xFF,0xFF,0x00}; // layered triangle
+static const uint8_t glyph_dungeon_henge[8]   = {0x42,0xA5,0x81,0x00,0x00,0x81,0xA5,0x42}; // stones in ring
+static const uint8_t glyph_dungeon_tree[8]    = {0x18,0x3C,0x7E,0xFF,0xFF,0x7E,0x3C,0x18}; // wide canopy+trunk
+static const uint8_t glyph_dungeon_tree_trunk[8] = {0x7E,0x81,0x81,0x81,0x81,0x81,0x7E,0x00}; // tree trunk silhouette
 
 struct TileStyle {
     uint8_t bg_r, bg_g, bg_b;
@@ -53,7 +64,8 @@ struct TileStyle {
     const uint8_t* glyph;
 };
 
-static const TileStyle tile_styles[] = {
+static const TileStyle tile_styles[] = 
+{
     { 34,  85,  34,  100, 200, 100, glyph_grass  }, // TILE_GRASS
     {120, 100,  60,  180, 155,  90, glyph_path   }, // TILE_PATH
     {  0,  40,   0,    0, 140,   0, glyph_tree   }, // TILE_TREE
@@ -128,6 +140,16 @@ static const TileStyle tile_styles[] = {
     {  0,   0,   0, 255, 140,   0, glyph_blueprint        }, // TILE_VILLAGE_PLACEHOLDER (61)
     // Castle placeholder — black/white checkerboard
     {  0,   0,   0, 255, 255, 255, glyph_blueprint        }, // TILE_CASTLE_PLACEHOLDER  (62)
+    // Dungeon entrance archetypes — all render as solid black squares (same as
+    // TILE_DUNGEON) so they stand out clearly on the minimap.
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_CAVE         (63)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_RUINS        (64)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_GRAVEYARD_SM (65)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_GRAVEYARD_LG (66)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_OASIS        (67)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_PYRAMID      (68)
+    {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_STONEHENGE   (69)
+    { 40,  20,   5, 200, 120,  50, glyph_dungeon_tree_trunk }, // TILE_DUNGEON_LARGE_TREE   (70)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -149,7 +171,7 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 63; // TILE_CASTLE_PLACEHOLDER + 1
+static const int TILE_CACHE_SIZE = 71; // TILE_DUNGEON_LARGE_TREE + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_tall_tree_top_tex = nullptr;
 static SDL_Texture* s_tall_tree_bot_tex  = nullptr;
@@ -607,6 +629,288 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Town 0 — starting town, centred over the hub, same every seed.
     // Must be ready before the game loop so the player has ground to stand on.
     stamp_town_blueprint(map, 0, cx - TOWN_W / 2, cy - TOWN_H / 2);
+}
+
+// ---------------------------------------------------------------------------
+// Dungeon entrance helpers — used by the placement pass in phase2.
+// ---------------------------------------------------------------------------
+
+// Returns 0 for non-cliff tiles; 1–5 for cliff top tiles (all biome variants).
+static int cliff_level_of(int tile_id) {
+    switch (tile_id) {
+        case TILE_CLIFF:       case TILE_CLIFF_SNOW_1: case TILE_CLIFF_WASTE_1: return 1;
+        case TILE_CLIFF_2:     case TILE_CLIFF_SNOW_2: case TILE_CLIFF_WASTE_2: return 2;
+        case TILE_CLIFF_3:     case TILE_CLIFF_SNOW_3: case TILE_CLIFF_WASTE_3: return 3;
+        case TILE_CLIFF_4:     case TILE_CLIFF_SNOW_4: case TILE_CLIFF_WASTE_4: return 4;
+        case TILE_CLIFF_5:     case TILE_CLIFF_SNOW_5: case TILE_CLIFF_WASTE_5: return 5;
+        default: return 0;
+    }
+}
+
+// Returns the biome TileId at (tx, ty).
+// TILE_SNOW=snow, TILE_WASTELAND=wasteland, TILE_SAND=desert,
+// TILE_TREE=forest (grass base but tree-heavy), TILE_GRASS=flat (default).
+// For brown cliff tops the surrounding 8-tile radius is sampled to infer biome.
+static int biome_of(const Tilemap* map, int tx, int ty) {
+    int base = map->tiles[ty][tx];
+
+    // Biome-specific cliff variants resolve immediately
+    if (base >= TILE_CLIFF_SNOW_1  && base <= TILE_CLIFF_SNOW_5)  return TILE_SNOW;
+    if (base >= TILE_CLIFF_WASTE_1 && base <= TILE_CLIFF_WASTE_5) return TILE_WASTELAND;
+
+    // Flat biome tiles resolve immediately
+    if (base == TILE_SNOW)                           return TILE_SNOW;
+    if (base == TILE_WASTELAND || base == TILE_LAVA) return TILE_WASTELAND;
+    if (base == TILE_SAND)                           return TILE_SAND;
+
+    // For grass/meadow/brown-cliff: scan neighbors to distinguish forest vs flat
+    // and (for brown cliffs) find the dominant surrounding biome.
+    int snow_cnt = 0, waste_cnt = 0, sand_cnt = 0, flat_cnt = 0, tree_ovl_cnt = 0;
+    const int R = 8;
+    for (int dy = -R; dy <= R; dy++) {
+        for (int dx = -R; dx <= R; dx++) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = tx + dx, ny = ty + dy;
+            if (nx < 0 || ny < 0 || nx >= MAP_WIDTH || ny >= MAP_HEIGHT) continue;
+            int t = map->tiles[ny][nx];
+            if (t == TILE_SNOW || (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5))  snow_cnt++;
+            else if (t == TILE_WASTELAND || t == TILE_LAVA ||
+                     (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5))               waste_cnt++;
+            else if (t == TILE_SAND)                                                      sand_cnt++;
+            else if (t == TILE_GRASS || t == TILE_MEADOW || t == TILE_PATH) {
+                flat_cnt++;
+                if (map->overlay[ny][nx] == TILE_TREE) tree_ovl_cnt++;
+            }
+        }
+    }
+
+    // For brown cliff tops, let the dominant surrounding biome win
+    bool is_brown_cliff = (base == TILE_CLIFF  || base == TILE_CLIFF_2 ||
+                           base == TILE_CLIFF_3 || base == TILE_CLIFF_4 ||
+                           base == TILE_CLIFF_5);
+    if (is_brown_cliff) {
+        if (snow_cnt  > waste_cnt && snow_cnt  > sand_cnt && snow_cnt  > flat_cnt) return TILE_SNOW;
+        if (waste_cnt > sand_cnt  && waste_cnt > flat_cnt)                          return TILE_WASTELAND;
+        if (sand_cnt  > flat_cnt)                                                   return TILE_SAND;
+        // fall through to forest vs flat check
+    }
+
+    // Forest if ≥40% of flat neighbors carry a tree overlay
+    if (flat_cnt > 0 && tree_ovl_cnt * 10 >= flat_cnt * 4) return TILE_TREE;
+
+    return TILE_GRASS; // default flat
+}
+
+// Picks an entrance type for the given biome + mountain flag.
+// Also sets out_size (0=small, 1=large) — fixed for most types, random for Cave/Ruins.
+// rng_seed is passed by value; advances internally without disturbing the caller's RNG.
+static DungeonEntranceType pick_entrance_type(int biome, bool is_mountain,
+                                               unsigned int rng_seed, int& out_size) {
+    DungeonEntranceType pool[8];
+    int pool_sz = 0;
+    auto add = [&](DungeonEntranceType t) { pool[pool_sz++] = t; };
+
+    switch (biome) {
+        case TILE_SNOW:
+            add(DUNGEON_ENT_RUINS);
+            add(DUNGEON_ENT_GRAVEYARD_LG);
+            break;
+        case TILE_WASTELAND:
+            add(DUNGEON_ENT_RUINS);
+            add(DUNGEON_ENT_CAVE);
+            break;
+        case TILE_SAND:
+            if (!is_mountain) add(DUNGEON_ENT_OASIS);   // oasis removed on mountain
+            add(DUNGEON_ENT_PYRAMID);
+            break;
+        case TILE_TREE: { // forest: 50% large tree, 25% small graveyard, 25% large graveyard
+            int roll = (int)((rng_seed >> 16) & 3); // 0-3
+            if (!is_mountain && (roll == 0 || roll == 1)) {
+                out_size = 0; return DUNGEON_ENT_LARGE_TREE;
+            } else if (roll == 2) {
+                out_size = 0; return DUNGEON_ENT_GRAVEYARD_SM;
+            } else {
+                out_size = 1; return DUNGEON_ENT_GRAVEYARD_LG;
+            }
+        }
+        default: // flat (grass/meadow)
+            add(DUNGEON_ENT_GRAVEYARD_SM);
+            add(DUNGEON_ENT_GRAVEYARD_LG);
+            // Stonehenge is rare: ~1-in-8 flat dungeons add it to the pool
+            rng_seed = rng_seed * 1664525u + 1013904223u;
+            if ((rng_seed >> 16) % 8 == 0) add(DUNGEON_ENT_STONEHENGE);
+            break;
+    }
+
+    // Mountain modifier: add Cave if not already present
+    if (is_mountain) {
+        bool has_cave = false;
+        for (int i = 0; i < pool_sz; i++)
+            if (pool[i] == DUNGEON_ENT_CAVE) { has_cave = true; break; }
+        if (!has_cave) add(DUNGEON_ENT_CAVE);
+    }
+
+    if (pool_sz == 0) add(DUNGEON_ENT_CAVE); // should never happen
+
+    rng_seed = rng_seed * 1664525u + 1013904223u;
+    DungeonEntranceType type = pool[(rng_seed >> 16) % (unsigned)pool_sz];
+
+    // Derive size — fixed for most types, random for Cave and Ruins
+    switch (type) {
+        case DUNGEON_ENT_GRAVEYARD_SM: out_size = 0; break;
+        case DUNGEON_ENT_OASIS:        out_size = 0; break;
+        case DUNGEON_ENT_GRAVEYARD_LG: out_size = 1; break;
+        case DUNGEON_ENT_PYRAMID:      out_size = 1; break;
+        case DUNGEON_ENT_STONEHENGE:   out_size = 1; break;
+        case DUNGEON_ENT_LARGE_TREE:   out_size = 0; break;
+        default: // CAVE and RUINS vary
+            rng_seed = rng_seed * 1664525u + 1013904223u;
+            out_size = (int)((rng_seed >> 16) & 1);
+            break;
+    }
+
+    return type;
+}
+
+// Stamps decorative tiles/overlays around a placed dungeon entrance.
+// Uses existing tile primitives as a "temp" visual so each type is readable on the overworld:
+//   graveyard → rock tombstones,  stonehenge → rock ring,  pyramid → sand clearing,
+//   oasis → pond neighbors,       large tree → tree overlays,  ruins → scattered debris.
+// cave has no surround — it sits embedded in a clifftop.
+static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int ex, int ey, int sz) {
+    // Only paint on flat biome tiles — skip water, cliffs, structures, other entrances.
+    auto safe_base = [&](int tx, int ty, int tile_id) {
+        if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
+        if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        int base = map->tiles[ty][tx];
+        if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
+            base != TILE_SAND  && base != TILE_SNOW   && base != TILE_WASTELAND) return;
+        map->tiles[ty][tx]   = tile_id;
+        map->overlay[ty][tx] = 0;
+    };
+    auto safe_ovl = [&](int tx, int ty, int ovl_id) {
+        if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
+        if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        int base = map->tiles[ty][tx];
+        if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
+            base != TILE_SAND  && base != TILE_SNOW   && base != TILE_WASTELAND) return;
+        map->overlay[ty][tx] = ovl_id;
+    };
+
+    switch (type) {
+        case DUNGEON_ENT_GRAVEYARD_SM:
+            // Small path clearing — gravestones are spawned as resource nodes later.
+            // Stamp a 5×5 patch of path tiles so the clearing is visible before spawn.
+            //for (int dy = -2; dy <= 2; dy++)
+                //for (int dx = -2; dx <= 2; dx++)
+                    //safe_base(ex+dx, ey+dy, TILE_PATH);
+            break;
+
+        case DUNGEON_ENT_GRAVEYARD_LG: {
+            // Placeholder parallelogram fence — 1:1 diagonal (north wall shifted
+            // right by H tiles vs south wall).  To be replaced with proper art later.
+            //
+            //   N: (L+H, T) ────[gate]──────── (R+H, T)
+            //        \                             \
+            //   S: (L, B) ──────────────────── (R, B)   (fully closed)
+            //
+            // Centre the north fence on the mausoleum (ex, ex+1) so the entrance
+            // sits in the middle of the top row rather than the far-left corner.
+            // South fence is 18 tiles wide; H=14 gives the 1:1 diagonal shear.
+            //   north fence  lx_at(T) = ex-8 .. ex+9  (mausoleum centred)
+            //   south fence  lx_at(B) = ex-22 .. ex-5
+            const int L = ex - 22, R = ex - 5;  // south fence extents
+            const int T = ey - 1,  B = ey + 13; // north/south row (H = 14)
+
+            auto lx_at = [&](int ty) { return L + (B - ty); };
+            auto rx_at = [&](int ty) { return R + (B - ty); };
+
+            // Interior PATH fill
+            for (int ty = T + 1; ty < B; ty++)
+                for (int tx = lx_at(ty) + 1; tx < rx_at(ty); tx++)
+                    safe_base(tx, ty, TILE_PATH);
+
+            // North fence — 2-tile gate centred on the mausoleum entrance
+                int nl = lx_at(T), nr = rx_at(T);
+                //int gate_l = (nl + nr) / 2;
+                for (int tx = nl; tx <= nr; tx++) 
+                {
+                    safe_ovl(tx, T, TILE_ROCK);
+                }
+
+            // South fence — 2-tile gate centred on the south fence
+            {
+                int sl = lx_at(B), sr = rx_at(B);
+                int gate_l = (sl + sr) / 2;
+                for (int tx = sl; tx <= sr; tx++) {
+                    bool is_gate = (tx == gate_l || tx == gate_l + 1);
+                    if (!is_gate) safe_ovl(tx, B, TILE_ROCK);
+                }
+            }
+
+            // Left and right diagonal fence walls
+            for (int ty = T; ty <= B; ty++) {
+                safe_ovl(lx_at(ty), ty, TILE_ROCK);
+                safe_ovl(rx_at(ty), ty, TILE_ROCK);
+            }
+            break;
+        }
+
+        case DUNGEON_ENT_STONEHENGE: {
+            // 8 standing stones in a ring at radius 3 around the 2×2 center
+            int ccx = ex + sz/2, ccy = ey + sz/2;
+            const int ox[8] = { 0, 2, 3, 2, 0,-2,-3,-2};
+            const int oy[8] = {-3,-2, 0, 2, 3, 2, 0,-2};
+            for (int i = 0; i < 8; i++)
+                safe_ovl(ccx + ox[i], ccy + oy[i], TILE_ROCK);
+            break;
+        }
+
+        case DUNGEON_ENT_PYRAMID:
+            // Desert clearing — 3-tile border of sand around the 2×2 entrance
+            for (int dy = -3; dy < sz+3; dy++)
+                for (int dx = -3; dx < sz+3; dx++)
+                    safe_base(ex+dx, ey+dy, TILE_ROCK);
+            break;
+
+        case DUNGEON_ENT_OASIS:
+            // Pond tiles at four cardinal neighbors of the 1×1 entrance
+            safe_base(ex,   ey-1, TILE_POND);
+            safe_base(ex,   ey+1, TILE_POND);
+            safe_base(ex-1, ey,   TILE_POND);
+            safe_base(ex+1, ey,   TILE_POND);
+            break;
+
+        case DUNGEON_ENT_LARGE_TREE:
+            // Same as other dungeons — no special surround, just the entrance tile
+            break;
+
+        case DUNGEON_ENT_RUINS:
+            // Scattered rock debris around the entrance
+            safe_ovl(ex-2,    ey,      TILE_ROCK);
+            safe_ovl(ex+sz+1, ey+sz-1, TILE_ROCK);
+            safe_ovl(ex,      ey-2,    TILE_ROCK);
+            safe_ovl(ex+sz-1, ey+sz+1, TILE_ROCK);
+            break;
+
+        default: // CAVE — no surround, already embedded in clifftop terrain
+            break;
+    }
+}
+
+// Maps entrance type to the tile ID stamped on the overworld.
+static int entrance_tile_id(DungeonEntranceType type) {
+    switch (type) {
+        case DUNGEON_ENT_CAVE:         return TILE_DUNGEON_CAVE;
+        case DUNGEON_ENT_RUINS:        return TILE_DUNGEON_RUINS;
+        case DUNGEON_ENT_GRAVEYARD_SM: return TILE_DUNGEON_GRAVEYARD_SM;
+        case DUNGEON_ENT_GRAVEYARD_LG: return TILE_DUNGEON_GRAVEYARD_LG;
+        case DUNGEON_ENT_OASIS:        return TILE_DUNGEON_OASIS;
+        case DUNGEON_ENT_PYRAMID:      return TILE_DUNGEON_PYRAMID;
+        case DUNGEON_ENT_STONEHENGE:   return TILE_DUNGEON_STONEHENGE;
+        case DUNGEON_ENT_LARGE_TREE:   return TILE_DUNGEON_LARGE_TREE;
+        default:                       return TILE_DUNGEON;
+    }
 }
 
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
@@ -1682,15 +1986,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int tx = entry.second.first  - CASTLE_W / 2;
                 int ty = entry.second.second - CASTLE_H / 2;
                 if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
-                bool water_free = true;
-                int elev5_count = 0;
-                for (int cdy = 0; cdy < CASTLE_H && water_free; cdy++)
-                    for (int cdx = 0; cdx < CASTLE_W; cdx++) {
+                bool all_flat_elev5 = true;
+                for (int cdy = 0; cdy < CASTLE_H && all_flat_elev5; cdy++)
+                    for (int cdx = 0; cdx < CASTLE_W && all_flat_elev5; cdx++) {
                         int bt = map->tiles[ty+cdy][tx+cdx];
-                        if (bt == TILE_WATER || bt == TILE_RIVER) { water_free = false; break; }
-                        if (bt == TILE_CLIFF_5 || bt == TILE_CLIFF_SNOW_5 || bt == TILE_CLIFF_WASTE_5) elev5_count++;
+                        if (bt != TILE_CLIFF_5 && bt != TILE_CLIFF_SNOW_5 && bt != TILE_CLIFF_WASTE_5)
+                            all_flat_elev5 = false;
                     }
-                if (!water_free || elev5_count * 2 < CASTLE_W * CASTLE_H) continue;
+                if (!all_flat_elev5) continue;
                 stamp_castle_blueprint(map, 1, tx, ty);
                 break;
             }
@@ -1737,10 +2040,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Dungeon entrances ---
-    // 300 entrances spread across the map.  Each is randomly either:
-    //   small (size=0): 1×1 tile stamp
-    //   large (size=1): 2×2 tile stamp
-    // Size is stored on the entrance and will drive what structure spawns later.
+    // Each entrance derives its type (and therefore interior architecture) from the
+    // biome at its placement position.  Mountain elevation (cliff ≥ 3) acts as a
+    // modifier: adds Cave to the pool, removes Oasis and Large Tree.
+    // Difficulty is the straight average of distance-from-center (0–1) and
+    // elevation (0–1), computed once at world gen and stored on the entrance.
     // Grid-cell shuffle + MIN_DIST keeps all entrances well separated.
     {
         const int TARGET   = 300;
@@ -1781,7 +2085,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     } else if (base == TILE_BLUEPRINT || base == TILE_CASTLE_PLACEHOLDER) {
                         return false; // towns and castles don't
                     } else {
-                        if (base != TILE_GRASS     && base != TILE_MEADOW &&
+                        // Allow flat biome tiles and cliff tops at level ≥ 3 (mountain)
+                        bool cliff_top = (cliff_level_of(base) >= 3);
+                        if (!cliff_top &&
+                            base != TILE_GRASS     && base != TILE_MEADOW &&
                             base != TILE_SAND      && base != TILE_SNOW   &&
                             base != TILE_WASTELAND) return false;
                         if (map->overlay[ty][tx] != 0) return false;
@@ -1819,19 +2126,100 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int ex = cellx + (int)((es >> 16) % (unsigned)CELL);
                 es = es * 1664525u + 1013904223u;
                 int ey = celly + (int)((es >> 16) % (unsigned)CELL);
-                // ~50% small (1×1), ~50% large (2×2)
+                // Determine biome and cliff level at this position
+                int base_tile = map->tiles[ey][ex];
+                int cliff_lvl = cliff_level_of(base_tile);
+                bool is_mtn   = (cliff_lvl >= 3);
+                int biome     = biome_of(map, ex, ey);
+
+                // Pick entrance type — also determines size for fixed-size archetypes
+                int ent_size;
                 es = es * 1664525u + 1013904223u;
-                int sz = ((es >> 16) & 1) ? 2 : 1;
+                DungeonEntranceType ent_type = pick_entrance_type(biome, is_mtn, es, ent_size);
+                int sz = ent_size + 1; // 1 = small, 2 = large
+
                 if (!door_ok(ex, ey, sz)) continue;
-                for (int dy = 0; dy < sz; dy++)
-                    for (int dx = 0; dx < sz; dx++) {
-                        map->tiles[ey + dy][ex + dx] = TILE_DUNGEON;
-                        map->overlay[ey + dy][ex + dx] = 0;
-                    }
-                // size field: 0=small(1×1), 1=large(2×2)
-                map->dungeon_entrances[map->num_dungeon_entrances++] = {ex, ey, sz - 1};
+
+                // Difficulty: straight average of distance-from-center and elevation
+                float fdx      = (float)(ex - MAP_WIDTH  / 2);
+                float fdy      = (float)(ey - MAP_HEIGHT / 2);
+                float dist     = sqrtf(fdx*fdx + fdy*fdy);
+                float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
+                                       (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
+                float difficulty = ((dist / max_dist) + (float)cliff_lvl / 5.0f) * 0.5f;
+
+                // GRAVEYARD_SM: entrance tile stays hidden under the biome tile.
+                // It is revealed when the player destroys the hidden gravestone resource node.
+                // All other types stamp their dungeon tile immediately.
+                if (ent_type != DUNGEON_ENT_GRAVEYARD_SM) {
+                    int tile_id = entrance_tile_id(ent_type);
+                    for (int r = 0; r < sz; r++)
+                        for (int c = 0; c < sz; c++) {
+                            map->tiles[ey + r][ex + c]   = tile_id;
+                            map->overlay[ey + r][ex + c] = 0;
+                        }
+                }
+                stamp_dungeon_surround(map, ent_type, ex, ey, sz);
+                map->dungeon_entrances[map->num_dungeon_entrances++] = {
+                    ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1
+                };
                 break;
             }
+        }
+    }
+
+    // ── Link ~25% of dungeons to their closest compatible neighbour ───────
+    {
+        int n = map->num_dungeon_entrances;
+        // partner_idx already initialised to -1 above.
+
+        // Shuffled processing order — deterministic from seed.
+        uint32_t lrng = seed ^ 0xC0FFEE42u;
+        auto lnext = [&]() -> uint32_t {
+            lrng = lrng * 1664525u + 1013904223u;
+            return (lrng >> 16) & 0x7FFF;
+        };
+
+        std::vector<int> order(n);
+        for (int i = 0; i < n; i++) order[i] = i;
+        for (int i = n - 1; i > 0; i--) {
+            int j = (int)(lnext() % (unsigned)(i + 1));
+            std::swap(order[i], order[j]);
+        }
+
+        for (int oi = 0; oi < n; oi++) {
+            int i = order[oi];
+            DungeonEntrance* ei = &map->dungeon_entrances[i];
+            if (ei->partner_idx != -1) continue;  // already paired
+
+            // Find closest unlinked compatible neighbour.
+            int best_j = -1, best_d2 = INT_MAX;
+            for (int j = 0; j < n; j++) {
+                if (j == i) continue;
+                DungeonEntrance* ej = &map->dungeon_entrances[j];
+                if (ej->partner_idx != -1) continue;
+                // Compatible: same type, or SM↔LG graveyard.
+                bool compat = (ei->type == ej->type);
+                if (!compat) {
+                    bool ai = (ei->type == DUNGEON_ENT_GRAVEYARD_SM ||
+                               ei->type == DUNGEON_ENT_GRAVEYARD_LG);
+                    bool aj = (ej->type == DUNGEON_ENT_GRAVEYARD_SM ||
+                               ej->type == DUNGEON_ENT_GRAVEYARD_LG);
+                    compat = ai && aj;
+                }
+                if (!compat) continue;
+                int dx = ei->x - ej->x, dy = ei->y - ej->y;
+                int d2 = dx*dx + dy*dy;
+                if (d2 < best_d2) { best_d2 = d2; best_j = j; }
+            }
+
+            if (best_j < 0) continue;
+
+            // Accept with 25% probability so ~25% of all dungeons end up linked.
+            if (lnext() % 4 != 0) continue;
+
+            ei->partner_idx = best_j;
+            map->dungeon_entrances[best_j].partner_idx = i;
         }
     }
 }
@@ -2045,6 +2433,7 @@ void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer)
             }
         }
     }
+
 }
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
@@ -2194,6 +2583,16 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         SDL_RenderFillRect(renderer, &cdot);
     }
 
+    // dungeons — 3×3 red dot centered on entrance
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance* e = &map->dungeon_entrances[i];
+        int dx = ox + (e->x + 1) / step;
+        int dy = oy + (e->y + 1) / step;
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_Rect ddot = { dx - 1, dy - 1, 3, 3 };
+        SDL_RenderFillRect(renderer, &ddot);
+    }
+
     // white 3×3 dot for player position
     int px = ox + (int)(player_x / TILE_SIZE) / step;
     int py = oy + (int)(player_y / TILE_SIZE) / step;
@@ -2202,11 +2601,11 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
     SDL_RenderFillRect(renderer, &dot);
 
     // red 5×5 dot for cliff gradient peak (debug)
-    int peakdot_x = ox + (int)(map->cliff_peak_x) / step;
-    int peakdot_y = oy + (int)(map->cliff_peak_y) / step;
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-    SDL_Rect peak_dot = { peakdot_x - 2, peakdot_y - 2, 5, 5 };
-    SDL_RenderFillRect(renderer, &peak_dot);
+    //int peakdot_x = ox + (int)(map->cliff_peak_x) / step;
+    //int peakdot_y = oy + (int)(map->cliff_peak_y) / step;
+    //SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    //SDL_Rect peak_dot = { peakdot_x - 2, peakdot_y - 2, 5, 5 };
+    //SDL_RenderFillRect(renderer, &peak_dot);
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 }
@@ -2339,8 +2738,121 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_SNOW:
         case TILE_WASTELAND:
         case TILE_MEADOW:
+        // Town/village/castle footprints — part of the overworld, fully walkable
+        case TILE_BLUEPRINT:
+        case TILE_VILLAGE_PLACEHOLDER:
+        case TILE_CASTLE_PLACEHOLDER:
+        // Dungeon entrance tiles — player must be able to walk onto them
+        case TILE_DUNGEON:
+        case TILE_DUNGEON_CAVE:
+        case TILE_DUNGEON_RUINS:
+        case TILE_DUNGEON_GRAVEYARD_SM:
+        case TILE_DUNGEON_GRAVEYARD_LG:
+        case TILE_DUNGEON_OASIS:
+        case TILE_DUNGEON_PYRAMID:
+        case TILE_DUNGEON_STONEHENGE:
+        case TILE_DUNGEON_LARGE_TREE:
             return true;
         default:
             return false;
+    }
+}
+
+void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
+                                   int entrance_idx, unsigned int seed) {
+    DungeonEntrance* e = &map->dungeon_entrances[entrance_idx];
+    if (e->type != DUNGEON_ENT_GRAVEYARD_SM || e->gravestones_spawned) return;
+    e->gravestones_spawned = 1;
+
+    // Per-entrance RNG so every graveyard has a unique layout
+    unsigned int rng = seed
+        ^ ((unsigned int)e->x * 73856093u)
+        ^ ((unsigned int)e->y * 19349663u);
+
+    // Count: 5–10 gravestones
+    rng = rng * 1664525u + 1013904223u;
+    int count = 5 + (int)((rng >> 16) % 6);
+
+    // The hidden entrance gravestone sits directly on the entrance tile.
+    // Pixel position: top-left of the tile.
+    resource_nodes_add_gravestone(resources,
+        (float)(e->x * TILE_SIZE), (float)(e->y * TILE_SIZE),
+        1, TILE_DUNGEON_GRAVEYARD_SM, e->x, e->y);
+
+    // Scatter the remaining gravestones in a ~3-tile radius around the entrance.
+    int placed = 1;
+    const int RADIUS = 3;
+    for (int attempt = 0; attempt < 80 && placed < count; attempt++) {
+        rng = rng * 1664525u + 1013904223u;
+        int dx = (int)((rng >> 16) % (unsigned)(RADIUS * 2 + 1)) - RADIUS;
+        rng = rng * 1664525u + 1013904223u;
+        int dy = (int)((rng >> 16) % (unsigned)(RADIUS * 2 + 1)) - RADIUS;
+        if (dx == 0 && dy == 0) continue; // entrance position is already taken
+
+        int tx = e->x + dx, ty = e->y + dy;
+        if (!tilemap_is_walkable(map, tx, ty)) continue;
+
+        // Reject if another gravestone is already at this tile
+        float wx = (float)(tx * TILE_SIZE), wy = (float)(ty * TILE_SIZE);
+        bool conflict = false;
+        for (int i = 0; i < resources->count; i++) {
+            const ResourceNode* n = &resources->nodes[i];
+            if (n->type != RESOURCE_GRAVESTONE) continue;
+            if (fabsf(n->x - wx) < (float)TILE_SIZE * 0.5f &&
+                fabsf(n->y - wy) < (float)TILE_SIZE * 0.5f) {
+                conflict = true;
+                break;
+            }
+        }
+        if (conflict) continue;
+
+        resource_nodes_add_gravestone(resources, wx, wy, 0, 0, -1, -1);
+        placed++;
+    }
+}
+
+void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
+                                      int entrance_idx, unsigned int seed) {
+    DungeonEntrance* e = &map->dungeon_entrances[entrance_idx];
+    if (e->type != DUNGEON_ENT_GRAVEYARD_LG || e->gravestones_spawned) return;
+    e->gravestones_spawned = 1;
+
+    unsigned int rng = seed
+        ^ ((unsigned int)e->x * 73856093u)
+        ^ ((unsigned int)e->y * 19349663u);
+
+    // 36 candidate slots in 6 rows × 6 cols.
+    // Each row shifts 2 tiles left per 2-tile step south, tracking the
+    // parallelogram walls.  Columns are centred on the mausoleum (ex+0.5).
+    static const int slots[36][2] = {
+        { -8, 2}, {-6, 2}, {-4, 2}, {-2, 2}, { 0, 2}, { 2, 2},
+        {-10, 4}, {-8, 4}, {-6, 4}, {-4, 4}, {-2, 4}, { 0, 4},
+        {-12, 6}, {-10, 6}, {-8, 6}, {-6, 6}, {-4, 6}, {-2, 6},
+        {-14, 8}, {-12, 8}, {-10, 8}, {-8, 8}, {-6, 8}, {-4, 8},
+        {-16,10}, {-14,10}, {-12,10}, {-10,10}, {-8,10}, {-6,10},
+        {-18,12}, {-16,12}, {-14,12}, {-12,12}, {-10,12}, {-8,12},
+    };
+
+    // Count: 18–28
+    rng = rng * 1664525u + 1013904223u;
+    int count = 18 + (int)((rng >> 16) % 11);
+
+    // Fisher-Yates shuffle of slot indices so the selection is random
+    int order[36];
+    for (int i = 0; i < 36; i++) order[i] = i;
+    for (int i = 35; i > 0; i--) {
+        rng = rng * 1664525u + 1013904223u;
+        int j = (int)((rng >> 16) % (unsigned)(i + 1));
+        int tmp = order[i]; order[i] = order[j]; order[j] = tmp;
+    }
+
+    for (int i = 0; i < count; i++) {
+        int dx = slots[order[i]][0];
+        int dy = slots[order[i]][1];
+        int tx = e->x + dx, ty = e->y + dy;
+        if (!tilemap_is_walkable(map, tx, ty)) continue;
+        resource_nodes_add_gravestone(resources,
+            (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE),
+            0, 0, -1, -1);
     }
 }
