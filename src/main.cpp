@@ -91,6 +91,18 @@ int main(int argc, char *argv[])
 
     bool running = true;
 
+    // ── Debug menu ───────────────────────────────────────────────────────────
+    static const char* DBG_TYPE_NAMES[] = {
+        "CAVE", "RUINS", "GRAVEYARD", "GRAVEYARD LG",
+        "OASIS", "PYRAMID", "STONEHENGE", "LARGE TREE"
+    };
+    static const int DBG_TYPE_COUNT = 8;
+
+    bool dbg_open   = false;
+    int  dbg_sel    = 0;   // 0=type, 1=enter, 2=regen, 3=noclip
+    int  dbg_type   = 0;
+    bool dbg_noclip = false;
+
     DungeonMap    dmap    = {};
     DungeonPlayer dplayer = {};
 
@@ -127,7 +139,68 @@ int main(int argc, char *argv[])
                 (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
         }
 
-        if (input_pressed(&in, SDL_SCANCODE_B) && state != STATE_BATTLE) {
+        // ── Debug menu toggle / navigation ───────────────────────────────────
+        if (input_pressed(&in, SDL_SCANCODE_F2)) {
+            dbg_open = !dbg_open;
+            dbg_sel  = 0;
+        }
+        if (dbg_open) {
+            if (input_pressed(&in, SDL_SCANCODE_UP))
+                dbg_sel = (dbg_sel + 3) % 4;
+            if (input_pressed(&in, SDL_SCANCODE_DOWN))
+                dbg_sel = (dbg_sel + 1) % 4;
+
+            if (dbg_sel == 0) {
+                if (input_pressed(&in, SDL_SCANCODE_LEFT))
+                    dbg_type = (dbg_type + DBG_TYPE_COUNT - 1) % DBG_TYPE_COUNT;
+                if (input_pressed(&in, SDL_SCANCODE_RIGHT))
+                    dbg_type = (dbg_type + 1) % DBG_TYPE_COUNT;
+            }
+
+            bool dbg_confirm = input_pressed(&in, SDL_SCANCODE_RETURN) ||
+                               input_pressed(&in, SDL_SCANCODE_Z);
+
+            if (dbg_sel == 1 && dbg_confirm) {
+                // Teleport to the nearest overworld entrance of the selected type
+                for (int ei = 0; ei < map->num_dungeon_entrances; ei++) {
+                    const DungeonEntrance* e = &map->dungeon_entrances[ei];
+                    if ((int)e->type == dbg_type) {
+                        ow.x = (float)(e->x * TILE_SIZE);
+                        ow.y = (float)(e->y * TILE_SIZE);
+                        state = STATE_OVERWORLD;
+                        break;
+                    }
+                }
+                dbg_open = false;
+            }
+
+            if (dbg_sel == 2 && dbg_confirm) {
+                // Regenerate the entire overworld with a new seed
+                gen_thread.join();
+                map_seed = (unsigned int)SDL_GetTicks();
+                delete map;
+                map = new Tilemap();
+                tilemap_build_overworld_phase1(map, map_seed);
+                gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
+                resource_nodes_init(&resources);
+                ow.x = (MAP_WIDTH  / 2.0f) * TILE_SIZE;
+                ow.y = (MAP_HEIGHT / 2.0f) * TILE_SIZE;
+                state    = STATE_OVERWORLD;
+                dbg_open = false;
+            }
+
+            if (dbg_sel == 3 && dbg_confirm)
+                dbg_noclip = !dbg_noclip;
+
+            if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                dbg_open = false;
+        }
+
+        // Blank input fed to game logic while menu is open so the player stands still.
+        Input in_blank = {0};
+        const Input* game_in = dbg_open ? &in_blank : &in;
+
+        if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && state != STATE_BATTLE) {
             // Placeholder encounter — replace with encounter data from overworld
             Enemy enc = {0};
             enc.stats.max_hp    = 60; enc.stats.hp    = 60;
@@ -178,7 +251,7 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                overworld_update(&ow, &player, &in, dt, &resources, map);
+                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip);
 
                 float player_cx = ow.x + player.width * 0.5f;
                 float player_cy = ow.y + player.height * 0.5f;
@@ -259,9 +332,9 @@ int main(int argc, char *argv[])
                     SDL_Rect diff_fill = {0, 476, (int)(640 * ow.dungeon_difficulty), 4};
                     SDL_RenderFillRect(plat.renderer, &diff_fill);
 
-                    if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(&in, SDL_SCANCODE_Z)      ||
-                        input_pressed(&in, SDL_SCANCODE_SPACE)) {
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
                         int etx = (int)((ow.x + player.width  * 0.5f) / TILE_SIZE);
                         int ety = (int)((ow.y + player.height - 8.0f) / TILE_SIZE);
 
@@ -357,16 +430,16 @@ int main(int argc, char *argv[])
             }
 
             case STATE_BATTLE:
-                battle_update(&battle, &in, dt);
+                battle_update(&battle, game_in, dt);
                 battle_draw(&battle, plat.renderer, player_sprite);
                 if (battle.phase == BATTLE_PHASE_VICTORY || battle.phase == BATTLE_PHASE_DEFEAT) {
-                    if (input_pressed(&in, SDL_SCANCODE_RETURN) || input_pressed(&in, SDL_SCANCODE_Z))
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) || input_pressed(game_in, SDL_SCANCODE_Z))
                         state = STATE_OVERWORLD;
                 }
                 break;
 
             case STATE_DUNGEON: {
-                dungeon_player_update(&dplayer, &player, &in, dt, &dmap);
+                dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, dbg_noclip);
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
                 float dpcy = dplayer.y + player.height * 0.5f;
@@ -388,9 +461,9 @@ int main(int argc, char *argv[])
                     draw_text(plat.renderer, lbl,
                               (640 - text_width(lbl, 2)) / 2, 463, 2, 255, 255, 255);
 
-                    if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(&in, SDL_SCANCODE_Z)      ||
-                        input_pressed(&in, SDL_SCANCODE_SPACE)) {
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
                         ow.x = (float)(dng_entry_portal_x * TILE_SIZE);
                         ow.y = (float)(dng_entry_portal_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
@@ -403,19 +476,78 @@ int main(int argc, char *argv[])
                     SDL_Rect bar = {0, 460, 640, 20};
                     SDL_RenderFillRect(plat.renderer, &bar);
 
-                    if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(&in, SDL_SCANCODE_Z)      ||
-                        input_pressed(&in, SDL_SCANCODE_SPACE)) {
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
                         ow.x = (float)(dng_exit_portal_x * TILE_SIZE);
                         ow.y = (float)(dng_exit_portal_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
                     }
                 }
 
-                if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
                     state = STATE_OVERWORLD;
                 break;
             }
+        }
+
+        // ── Debug menu overlay ───────────────────────────────────────────────
+        if (dbg_open) {
+            const int MX = 120, MY = 130, MW = 400, MH = 180;
+            const int LH = 22;  // line height
+
+            // Dark background box
+            SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 230);
+            SDL_Rect bg = { MX, MY, MW, MH };
+            SDL_RenderFillRect(plat.renderer, &bg);
+            SDL_SetRenderDrawColor(plat.renderer, 80, 120, 200, 255);
+            SDL_RenderDrawRect(plat.renderer, &bg);
+
+            // Title
+            draw_text(plat.renderer, "DEBUG MENU", MX + 10, MY + 8, 2, 255, 220, 60);
+
+            // Helper lambda: draw one menu row
+            auto draw_row = [&](int row, const char* label, bool selected) {
+                int ry = MY + 36 + row * LH;
+                Uint8 r = selected ? 255 : 180;
+                Uint8 g = selected ? 255 : 180;
+                Uint8 b = selected ? 80  : 180;
+                if (selected)
+                    draw_text(plat.renderer, ">", MX + 8, ry, 2, r, g, b);
+                draw_text(plat.renderer, label, MX + 24, ry, 2, r, g, b);
+            };
+
+            // Row 0: dungeon type selector
+            {
+                char buf[64];
+                const char* dn = DBG_TYPE_NAMES[dbg_type];
+                // build "< NAME >" string
+                int blen = 0;
+                buf[blen++] = '<'; buf[blen++] = ' ';
+                for (int k = 0; dn[k]; k++) buf[blen++] = dn[k];
+                buf[blen++] = ' '; buf[blen++] = '>'; buf[blen] = '\0';
+                // prefix with "DUNGEON: "
+                char full[80];
+                int fi = 0;
+                const char* pre = "DUNGEON: ";
+                for (int k = 0; pre[k]; k++) full[fi++] = pre[k];
+                for (int k = 0; buf[k]; k++) full[fi++] = buf[k];
+                full[fi] = '\0';
+                draw_row(0, full, dbg_sel == 0);
+            }
+
+            draw_row(1, "ENTER DUNGEON", dbg_sel == 1);
+            draw_row(2, "REGEN MAP",     dbg_sel == 2);
+
+            // Row 3: noclip toggle
+            {
+                const char* nc = dbg_noclip ? "NOCLIP: ON " : "NOCLIP: OFF";
+                draw_row(3, nc, dbg_sel == 3);
+            }
+
+            // Hint at bottom
+            draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",
+                      MX + 6, MY + MH - 16, 1, 100, 100, 120);
         }
 
         draw_fps(plat.renderer, dt);

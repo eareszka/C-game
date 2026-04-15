@@ -47,6 +47,8 @@ void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
                                    int reveal_tx, int reveal_ty);
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren);
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry);
+// TileSolidFn-compatible: returns true if (px,py) is inside any alive tree or rock node.
+bool resource_node_solid(const void* list, float px, float py);
 
 #endif
 

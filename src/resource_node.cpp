@@ -148,6 +148,17 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
     }
 }
 
+bool resource_node_solid(const void* vlist, float px, float py) {
+    const ResourceNodeList* list = static_cast<const ResourceNodeList*>(vlist);
+    for (int i = 0; i < list->count; i++) {
+        const ResourceNode* n = &list->nodes[i];
+        if (!n->alive) continue;
+        if (px >= n->x && px < n->x + n->width &&
+            py >= n->y && py < n->y + n->height) return true;
+    }
+    return false;
+}
+
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry)
 {
     for (int i = 0; i < list->count; i++)

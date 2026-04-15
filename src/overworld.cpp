@@ -1,6 +1,14 @@
 #include "overworld.h"
 #include "resource_node.h"
+#include "collision.h"
 #include <math.h>
+
+struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; };
+static bool ow_solid(const void* ctx, float px, float py) {
+    const OWCollCtx* c = static_cast<const OWCollCtx*>(ctx);
+    return tilemap_pixel_solid(c->map, px, py)
+        || resource_node_solid(c->res, px, py);
+}
 
 static const int down_cycle[4]  = {1, 0, 2, 0};
 static const int up_cycle[4]    = {4, 3, 5, 3};
@@ -23,20 +31,15 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
 }
 
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
-                      ResourceNodeList* resources, Tilemap* map)
+                      ResourceNodeList* resources, Tilemap* map, bool noclip)
 {
-    float dx = 0.0f;
-    float dy = 0.0f;
-    float anim_speed = 0.15f;
-
-    player->is_moving = 0;
-
-    if ((input_pressed(in, SDL_SCANCODE_SPACE))
-     || (input_pressed(in, SDL_SCANCODE_Z))
-     || (input_pressed(in, SDL_SCANCODE_RETURN)))
+    // Action key — hit nearby resource or map tile
+    if (input_pressed(in, SDL_SCANCODE_SPACE)
+     || input_pressed(in, SDL_SCANCODE_Z)
+     || input_pressed(in, SDL_SCANCODE_RETURN))
     {
-        float hx = ow->x + player->width  * 0.5f;
-        float hy = ow->y + player->height - 8.0f;
+        float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
+        float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
         float rx, ry;
         int rn_hit  = resource_nodes_try_hit(resources, hx, hy, 40, &rx, &ry);
         int map_hit = !rn_hit && tilemap_try_hit(map, hx, hy, 40, &rx, &ry);
@@ -63,38 +66,29 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         }
     }
 
-    if (input_pressed(in, SDL_SCANCODE_LEFT)  || input_pressed(in, SDL_SCANCODE_A) ||
-        input_pressed(in, SDL_SCANCODE_RIGHT) || input_pressed(in, SDL_SCANCODE_D) ||
-        input_pressed(in, SDL_SCANCODE_UP)    || input_pressed(in, SDL_SCANCODE_W) ||
-        input_pressed(in, SDL_SCANCODE_DOWN)  || input_pressed(in, SDL_SCANCODE_S))
-        player->facing_locked = 0;
+    float dx, dy;
+    player_read_input(player, in, &dx, &dy);
 
-    if (input_down(in, SDL_SCANCODE_LEFT)  || input_down(in, SDL_SCANCODE_A))
-        { dx -= 1.0f; if (!player->facing_locked) player->facing = 6; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_RIGHT) || input_down(in, SDL_SCANCODE_D))
-        { dx += 1.0f; if (!player->facing_locked) player->facing = 8; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_UP)    || input_down(in, SDL_SCANCODE_W))
-        { dy -= 1.0f; if (!player->facing_locked) player->facing = 3; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_DOWN)  || input_down(in, SDL_SCANCODE_S))
-        { dy += 1.0f; if (!player->facing_locked) player->facing = 0; player->is_moving = 1; }
-
+    float anim_speed;
     if (input_down(in, SDL_SCANCODE_LSHIFT))
         { ow->speed = 300.0f; anim_speed = 0.10f; }
     else
         { ow->speed = 150.0f; anim_speed = 0.20f; }
 
     if (dx != 0.0f || dy != 0.0f) {
-        float len = sqrtf(dx * dx + dy * dy);
-        dx /= len;
-        dy /= len;
-        ow->x += dx * ow->speed * dt;
-        ow->y += dy * ow->speed * dt;
+        OWCollCtx ctx = { map, resources };
+        float nx = ow->x + dx * ow->speed * dt;
+        float ny = ow->y + dy * ow->speed * dt;
+        float px = ow->x, py = ow->y;
+        if (noclip || can_occupy(&ctx, nx, ow->y, ow_solid)) ow->x = nx;
+        if (noclip || can_occupy(&ctx, ow->x, ny, ow_solid)) ow->y = ny;
+        if (ow->x == px && ow->y == py) player->is_moving = 0;
     }
 
     // Dungeon entrance detection
     {
-        float feet_x = ow->x + player->width  * 0.5f;
-        float feet_y = ow->y + player->height - 8.0f;
+        float feet_x = ow->x + (HB_X1 + HB_X2) * 0.5f;
+        float feet_y = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
         int tx = (int)(feet_x / TILE_SIZE);
         int ty = (int)(feet_y / TILE_SIZE);
         ow->at_dungeon_entrance = 0;
@@ -115,17 +109,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         }
     }
 
-    // Animation
-    if (player->is_moving) {
-        player->anim_timer += dt;
-        if (player->anim_timer >= anim_speed) {
-            player->anim_timer = 0.0f;
-            player->anim_step  = (player->anim_step + 1) % 4;
-        }
-    } else {
-        player->anim_step  = 0;
-        player->anim_timer = 0.0f;
-    }
+    player_animate(player, dt, anim_speed);
 }
 
 void player_draw(const Player* player, float world_x, float world_y,
@@ -148,4 +132,14 @@ void player_draw(const Player* player, float world_x, float world_y,
     SDL_Rect src = { frame * 16, 0, 16, 24 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
+
+    // Debug: draw hitbox
+    SDL_Rect hb = {
+        sx + (int)(HB_X1 * z),
+        sy + (int)(HB_Y1 * z),
+        (int)((HB_X2 - HB_X1) * z),
+        (int)((HB_Y2 - HB_Y1) * z)
+    };
+    SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
+    SDL_RenderDrawRect(ren, &hb);
 }

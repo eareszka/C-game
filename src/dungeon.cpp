@@ -1,4 +1,5 @@
 #include "dungeon.h"
+#include "collision.h"
 #include <string.h>
 #include <math.h>
 
@@ -18,8 +19,8 @@ static const DngPalette PALETTES[8] = {
     {{ 20, 75, 65,255},{ 38,115, 95,255},{200,175, 40,255},{ 30,190,170,255}},
     // PYRAMID
     {{115, 95, 42,255},{155,132, 68,255},{200,175, 40,255},{220,190, 50,255}},
-    // STONEHENGE
-    {{ 52, 52, 62,255},{ 82, 82, 95,255},{200,175, 40,255},{ 80,110,200,255}},
+    // STONEHENGE  — warm orange walls, near-black walkable corridors
+    {{210,112, 20,255},{ 10,  5,  2,255},{200,175, 40,255},{ 80,110,200,255}},
     // LARGE_TREE
     {{ 20, 55, 18,255},{ 33, 85, 28,255},{200,175, 40,255},{ 55,200, 50,255}},
 };
@@ -127,6 +128,16 @@ static void carve_rect(DungeonMap* dmap, int x, int y, int w, int h, uint8_t til
         }
 }
 
+// Oblique-projection parallelogram: row r shifts left by r tiles going down.
+static void carve_parallelogram(DungeonMap* dmap, int x, int y, int w, int h, uint8_t tile) {
+    for (int r = 0; r < h; r++)
+        for (int c = 0; c < w; c++) {
+            int tx = x - r + c, ty = y + r;
+            if (tx >= 0 && tx < DMAP_W && ty >= 0 && ty < DMAP_H)
+                dmap->tiles[ty][tx] = tile;
+        }
+}
+
 // L-shaped corridor: horizontal leg at y1, vertical leg at x2.
 static void carve_corridor(DungeonMap* dmap, int x1, int y1, int x2, int y2) {
     if (x1 > x2) { int t; t=x1;x1=x2;x2=t; t=y1;y1=y2;y2=t; }
@@ -134,6 +145,19 @@ static void carve_corridor(DungeonMap* dmap, int x1, int y1, int x2, int y2) {
     int miny = y1 < y2 ? y1 : y2;
     int maxy = y1 > y2 ? y1 : y2;
     carve_rect(dmap, x2, miny, CORR_W, maxy - miny + CORR_W, DNG_FLOOR);
+}
+
+// Oblique L-shaped corridor for stonehenge-style dungeons:
+// horizontal leg is a flat rectangle, vertical leg is a parallelogram
+// (each row going down shifts left by 1 — matching oblique projection).
+static void carve_oblique_corridor(DungeonMap* dmap, int x1, int y1, int x2, int y2) {
+    if (x1 > x2) { int t; t=x1;x1=x2;x2=t; t=y1;y1=y2;y2=t; }
+    // Horizontal leg — flat
+    carve_rect(dmap, x1, y1, x2 - x1 + CORR_W, CORR_W, DNG_FLOOR);
+    // Vertical leg — oblique parallelogram
+    int miny = y1 < y2 ? y1 : y2;
+    int maxy = y1 > y2 ? y1 : y2;
+    carve_parallelogram(dmap, x2, miny, CORR_W, maxy - miny + CORR_W, DNG_FLOOR);
 }
 
 // ── Room-carving generator (river-style for caves and giant trees) ────────
@@ -587,60 +611,106 @@ static void decorate_graveyard_lg(DungeonMap* dmap, uint32_t* rng) {
     }
 }
 
-// ── PYRAMID: hand-crafted linear nested-chamber layout ───────────────────
+// ── PYRAMID: procgen nested-chamber layout (south-to-north spine) ────────
 static void carve_pyramid_layout(DungeonMap* dmap, uint32_t* rng) {
-    (void)rng;
-    int cx = DMAP_W / 2;   // 40
+    // Spine x-coordinate — slight per-seed shift so the pyramid is never
+    // perfectly centred the same way twice.
+    int cx = DMAP_W / 2 + (int)(rng_next(rng) % 9) - 4;   // 36..44
 
-    // ── Passages and chambers, south → north ─────────────────────────────
+    // Layer sizes — varied per seed, bounded so everything fits in DMAP
+    int vest_h    = 7  + (int)(rng_next(rng) % 4);   // 7..10
+    int vest_w    = 22 + (int)(rng_next(rng) % 12);  // 22..33
+    int gallery_h = 9  + (int)(rng_next(rng) % 6);   // 9..14
+    int ant_h     = 7  + (int)(rng_next(rng) % 4);   // 7..10
+    int ant_w     = 16 + (int)(rng_next(rng) % 8);   // 16..23
+    int bg_h      = 8  + (int)(rng_next(rng) % 5);   // 8..12  (bent-gallery height)
+    int bg_jog    = 7  + (int)(rng_next(rng) % 5);   // 7..11  (horizontal jog)
+    int bg_off    = 3  + (int)(rng_next(rng) % 5);   // 3..7   (bent offset from cx)
+    int bur_h     = 9  + (int)(rng_next(rng) % 5);   // 9..13
+    int bur_w     = 32 + (int)(rng_next(rng) % 14);  // 32..45
+    int alc_w     = 5  + (int)(rng_next(rng) % 4);   // 5..8
+    int alc_h     = 3  + (int)(rng_next(rng) % 2);   // 3..4
 
-    // Entry corridor (long approach)
-    carve_rect(dmap, cx-1, 62, 3, 11, DNG_FLOOR);          // y=62..72
+    // Y positions computed bottom-to-top
+    int entry_y = DMAP_H - 8;
+    int vest_y  = entry_y - vest_h - 1;
+    int gall_y  = vest_y  - gallery_h;
+    int ant_y   = gall_y  - ant_h;
+    int bg_top  = ant_y   - bg_h;
+    int bur_y   = bg_top  - 3 - bur_h;     // 3-tile gap for horizontal jog
+    if (bur_y < 3) { bur_y = 3; bur_h = bg_top - 3 - bur_y; if (bur_h < 5) bur_h = 5; }
 
-    // Vestibule (wide entrance hall, extended one tile each side to connect alcoves)
-    carve_rect(dmap, 26, 54, 28, 9, DNG_FLOOR);             // x=26..53, y=54..62
+    // Clamp x extents to map bounds
+    int vest_x = cx - vest_w / 2;  if (vest_x < 2) vest_x = 2;
+    int ant_x  = cx - ant_w  / 2;  if (ant_x  < 2) ant_x  = 2;
+    int bur_x  = cx - bur_w  / 2;  if (bur_x  < 2) bur_x  = 2;
+    if (vest_x + vest_w > DMAP_W - 2) vest_w = DMAP_W - 2 - vest_x;
+    if (ant_x  + ant_w  > DMAP_W - 2) ant_w  = DMAP_W - 2 - ant_x;
+    if (bur_x  + bur_w  > DMAP_W - 2) bur_w  = DMAP_W - 2 - bur_x;
 
-    // Dead-end alcoves east and west
-    carve_rect(dmap, 53, 56,  7, 4, DNG_FLOOR);             // east
-    carve_rect(dmap, 20, 56,  7, 4, DNG_FLOOR);             // west
+    // ── Carve passages south → north ─────────────────────────────────────
 
-    // Grand gallery (re-centred on cx)
-    carve_rect(dmap, cx-1, 42, 3, 13, DNG_FLOOR);           // y=42..54
+    // Entry corridor
+    carve_rect(dmap, cx-1, vest_y + vest_h, 3,
+               entry_y - (vest_y + vest_h) + 1, DNG_FLOOR);
+
+    // Vestibule
+    carve_rect(dmap, vest_x, vest_y, vest_w, vest_h, DNG_FLOOR);
+
+    // Dead-end alcoves
+    int alc_y  = vest_y + (vest_h - alc_h) / 2;
+    int east_x = vest_x + vest_w;
+    int west_x = vest_x - alc_w;
+    if (east_x + alc_w < DMAP_W - 1) carve_rect(dmap, east_x, alc_y, alc_w, alc_h, DNG_FLOOR);
+    if (west_x >= 1)                  carve_rect(dmap, west_x, alc_y, alc_w, alc_h, DNG_FLOOR);
+
+    // Grand gallery (vertical passage)
+    carve_rect(dmap, cx-1, gall_y, 3, gallery_h + 1, DNG_FLOOR);
 
     // Antechamber
-    carve_rect(dmap, 31, 34, 20, 9, DNG_FLOOR);             // x=31..50, y=34..42
+    carve_rect(dmap, ant_x, ant_y, ant_w, ant_h, DNG_FLOOR);
 
-    // Bent gallery — leg 1: north (slight west offset for an Egyptian "bent entrance")
-    carve_rect(dmap, 38, 24, 3, 11, DNG_FLOOR);             // x=38..40, y=24..34
+    // Bent gallery — leg 1: vertical north of antechamber
+    int bg_spine = cx - bg_off;
+    if (bg_spine < 2) bg_spine = 2;
+    carve_rect(dmap, bg_spine - 1, bg_top + 3, 3, ant_y - (bg_top + 3), DNG_FLOOR);
 
-    // Bent gallery — leg 2: westward jog
-    carve_rect(dmap, 30, 22, 11, 3, DNG_FLOOR);             // x=30..40, y=22..24
+    // Bent gallery — leg 2: westward horizontal jog
+    int jog_wx = bg_spine - bg_jog;
+    if (jog_wx < 2) jog_wx = 2;
+    carve_rect(dmap, jog_wx, bg_top, bg_spine - jog_wx + 2, 3, DNG_FLOOR);
 
-    // Bent gallery — leg 3: north again into burial chamber
-    carve_rect(dmap, 30, 12, 3, 12, DNG_FLOOR);             // x=30..32, y=12..23
+    // Bent gallery — leg 3: vertical north into burial chamber
+    carve_rect(dmap, jog_wx, bur_y + bur_h,
+               3, bg_top - (bur_y + bur_h) + 1, DNG_FLOOR);
 
-    // Burial chamber (grandest room)
-    carve_rect(dmap, 20,  3, 40, 12, DNG_FLOOR);            // x=20..59, y=3..14
+    // Burial chamber
+    carve_rect(dmap, bur_x, bur_y, bur_w, bur_h, DNG_FLOOR);
 
-    // ── Pillar rows in burial chamber (periodic columns, NOT solid walls) ─
-    // Two rows at y=6 and y=11, one pillar every 4 tiles along x.
-    // place_obstacle's safety radius prevents pillars from blocking the exit.
-    for (int px = 24; px <= 56; px += 4) {
-        place_obstacle(dmap, px,  6, 2);
-        place_obstacle(dmap, px, 11, 2);
+    // ── Pillar rows in burial chamber ─────────────────────────────────────
+    int ps = 3 + (int)(rng_next(rng) % 3);   // pillar spacing 3..5
+    for (int px = bur_x + 3; px <= bur_x + bur_w - 4; px += ps) {
+        place_obstacle(dmap, px, bur_y + 2,           2);
+        place_obstacle(dmap, px, bur_y + bur_h - 3,   2);
     }
 
-    // Pillar pairs flanking the antechamber corridor
-    place_obstacle(dmap, 34, 36, 2);
-    place_obstacle(dmap, 34, 40, 2);
-    place_obstacle(dmap, 47, 36, 2);
-    place_obstacle(dmap, 47, 40, 2);
+    // Pillar pairs flanking antechamber corridor entry
+    place_obstacle(dmap, ant_x + 2,           ant_y + 2,           2);
+    place_obstacle(dmap, ant_x + 2,           ant_y + ant_h - 3,   2);
+    place_obstacle(dmap, ant_x + ant_w - 3,   ant_y + 2,           2);
+    place_obstacle(dmap, ant_x + ant_w - 3,   ant_y + ant_h - 3,   2);
 
-    // ── Entry & exit set LAST so no carve_rect call overwrites them ───────
+    // ── Entry & exit set LAST ─────────────────────────────────────────────
     dmap->entry_x = cx;
-    dmap->entry_y = DMAP_H - 8;   // 72
-    dmap->exit_x  = cx;
-    dmap->exit_y  = 8;
+    dmap->entry_y = entry_y;
+    dmap->exit_x  = jog_wx + 1;
+    dmap->exit_y  = bur_y + 2;
+    if (dmap->exit_x >= DMAP_W) dmap->exit_x = DMAP_W - 2;
+
+    if (dmap->tiles[dmap->entry_y][dmap->entry_x] == DNG_WALL)
+        dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_FLOOR;
+    if (dmap->tiles[dmap->exit_y][dmap->exit_x] == DNG_WALL)
+        dmap->tiles[dmap->exit_y][dmap->exit_x] = DNG_FLOOR;
 
     dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
     dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
@@ -721,34 +791,211 @@ static void carve_oasis_layout(DungeonMap* dmap, uint32_t* rng) {
     }
 }
 
-// ── STONEHENGE: outer megalith ring + inner horseshoe ─────────────────────
-static void decorate_stonehenge(DungeonMap* dmap, uint32_t* rng) {
+// ── STONEHENGE: procgen logical maze projected into oblique space ─────────
+//
+// We generate a normal procgen maze in a hidden logical grid, add loops
+// and chambers, then project it into world space with an oblique transform.
+//
+// Logical cell (u, v) -> world tile:
+//
+//     world_x = origin_x + u * SHG_STEP_X - v * SHG_SKEW_X
+//     world_y = origin_y + v * SHG_STEP_Y
+//
+
+#define SHG_W       27
+#define SHG_H       27
+#define SHG_STEP_X   4
+#define SHG_STEP_Y   4
+#define SHG_SKEW_X   4
+#define SHG_STAMP_W  4
+#define SHG_STAMP_H  4
+
+enum { SHG_CELL_WALL = 0, SHG_CELL_FLOOR = 1 };
+
+static bool shg_in_bounds(int x, int y) {
+    return x >= 0 && x < SHG_W && y >= 0 && y < SHG_H;
+}
+static bool shg_is_inner_odd_cell(int x, int y) {
+    return x > 0 && x < SHG_W-1 && y > 0 && y < SHG_H-1 && (x&1) && (y&1);
+}
+static void shg_clear(uint8_t grid[SHG_H][SHG_W]) {
+    for (int y = 0; y < SHG_H; y++)
+        for (int x = 0; x < SHG_W; x++)
+            grid[y][x] = SHG_CELL_WALL;
+}
+static void shg_set_floor(uint8_t grid[SHG_H][SHG_W], int x, int y) {
+    if (shg_in_bounds(x, y)) grid[y][x] = SHG_CELL_FLOOR;
+}
+
+static void shg_generate_maze(uint8_t grid[SHG_H][SHG_W], uint32_t* rng) {
+    int stack_x[SHG_W * SHG_H], stack_y[SHG_W * SHG_H], top = 0;
+    static const int DIRS[4][2] = {{0,-2},{2,0},{0,2},{-2,0}};
+    shg_set_floor(grid, 1, 1);
+    stack_x[top] = 1; stack_y[top] = 1; top++;
+    while (top > 0) {
+        int cx = stack_x[top-1], cy = stack_y[top-1];
+        int order[4] = {0,1,2,3};
+        for (int i = 3; i > 0; i--) {
+            int j = (int)(rng_next(rng) % (unsigned)(i+1));
+            int t = order[i]; order[i] = order[j]; order[j] = t;
+        }
+        bool moved = false;
+        for (int i = 0; i < 4; i++) {
+            int dx = DIRS[order[i]][0], dy = DIRS[order[i]][1];
+            int nx = cx+dx, ny = cy+dy;
+            if (!shg_is_inner_odd_cell(nx, ny)) continue;
+            if (grid[ny][nx] == SHG_CELL_FLOOR) continue;
+            shg_set_floor(grid, cx+dx/2, cy+dy/2);
+            shg_set_floor(grid, nx, ny);
+            stack_x[top] = nx; stack_y[top] = ny; top++;
+            moved = true; break;
+        }
+        if (!moved) top--;
+    }
+}
+
+static void shg_add_loops(uint8_t grid[SHG_H][SHG_W], uint32_t* rng) {
+    int attempts = 18 + (int)(rng_next(rng) % 10);
+    for (int i = 0; i < attempts; i++) {
+        int x = 1 + (int)(rng_next(rng) % (SHG_W-2));
+        int y = 1 + (int)(rng_next(rng) % (SHG_H-2));
+        if (grid[y][x] != SHG_CELL_WALL) continue;
+        bool horiz = (x>0 && x<SHG_W-1 && grid[y][x-1]==SHG_CELL_FLOOR && grid[y][x+1]==SHG_CELL_FLOOR);
+        bool vert  = (y>0 && y<SHG_H-1 && grid[y-1][x]==SHG_CELL_FLOOR && grid[y+1][x]==SHG_CELL_FLOOR);
+        if (horiz || vert) grid[y][x] = SHG_CELL_FLOOR;
+    }
+}
+
+static void shg_add_chambers(uint8_t grid[SHG_H][SHG_W], uint32_t* rng) {
+    int chambers = 4 + (int)(rng_next(rng) % 4);
+    for (int c = 0; c < chambers; c++) {
+        int cw = 3 + 2*(int)(rng_next(rng) % 3);
+        int ch = 3 + 2*(int)(rng_next(rng) % 3);
+        int x  = 1 + (int)(rng_next(rng) % (SHG_W - cw - 1));
+        int y  = 1 + (int)(rng_next(rng) % (SHG_H - ch - 1));
+        for (int yy = y; yy < y+ch; yy++)
+            for (int xx = x; xx < x+cw; xx++)
+                grid[yy][xx] = SHG_CELL_FLOOR;
+    }
+}
+
+static void shg_force_outer_routes(uint8_t grid[SHG_H][SHG_W], uint32_t* rng) {
     (void)rng;
-    int cx = DMAP_W / 2, cy = DMAP_H / 2;
+    for (int x = 1; x < SHG_W-1; x++) grid[1][x] = SHG_CELL_FLOOR;
+    for (int y = 1; y < SHG_H-1; y++) grid[y][1] = SHG_CELL_FLOOR;
+    int yb = SHG_H/2;
+    for (int x = 3; x < SHG_W-3; x++) grid[yb][x] = SHG_CELL_FLOOR;
+    int xb = SHG_W/2;
+    for (int y = 3; y < SHG_H-3; y++) grid[y][xb] = SHG_CELL_FLOOR;
+}
 
-    // Outer ring: 12 evenly-spaced 2×2 standing stones at radius 14.
-    int num_stones = 12;
-    float ring_r = 14.0f;
-    for (int i = 0; i < num_stones; i++) {
-        float angle = ((float)i / num_stones) * 2.0f * 3.14159f;
-        int sx = cx + (int)(cosf(angle) * ring_r + 0.5f);
-        int sy = cy + (int)(sinf(angle) * ring_r + 0.5f);
-        place_obstacle(dmap, sx,   sy,   3);
-        place_obstacle(dmap, sx+1, sy,   3);
-        place_obstacle(dmap, sx,   sy+1, 3);
-        place_obstacle(dmap, sx+1, sy+1, 3);
+static void shg_logical_to_world(int origin_x, int origin_y,
+                                 int u, int v, int* wx, int* wy) {
+    *wx = origin_x + u * SHG_STEP_X - v * SHG_SKEW_X;
+    *wy = origin_y + v * SHG_STEP_Y;
+}
+
+static void shg_rasterize(DungeonMap* dmap,
+                          uint8_t grid[SHG_H][SHG_W],
+                          int origin_x, int origin_y) {
+    for (int v = 0; v < SHG_H; v++)
+        for (int u = 0; u < SHG_W; u++)
+            if (grid[v][u] == SHG_CELL_FLOOR)
+                carve_parallelogram(dmap, origin_x + u*SHG_STEP_X - v*SHG_SKEW_X,
+                                    origin_y + v*SHG_STEP_Y,
+                                    SHG_STAMP_W, SHG_STAMP_H, DNG_FLOOR);
+}
+
+static void shg_pick_portals(uint8_t grid[SHG_H][SHG_W],
+                             int* entry_u, int* entry_v,
+                             int* exit_u,  int* exit_v) {
+    int eu = 1, ev = 1;
+    bool found = false;
+    for (int y = 0; y < SHG_H && !found; y++)
+        for (int x = 0; x < SHG_W; x++)
+            if (grid[y][x] == SHG_CELL_FLOOR) { eu=x; ev=y; found=true; break; }
+    int fu = eu, fv = ev, best = -1;
+    for (int y = 0; y < SHG_H; y++)
+        for (int x = 0; x < SHG_W; x++) {
+            if (grid[y][x] != SHG_CELL_FLOOR) continue;
+            int dist = abs(x-eu) + abs(y-ev);
+            if (dist > best) { best=dist; fu=x; fv=y; }
+        }
+    *entry_u=eu; *entry_v=ev; *exit_u=fu; *exit_v=fv;
+}
+
+static void carve_stonehenge_layout(DungeonMap* dmap, uint32_t* rng) {
+    uint8_t grid[SHG_H][SHG_W];
+    shg_clear(grid);
+    shg_generate_maze(grid, rng);
+    shg_add_loops(grid, rng);
+
+    int origin_x = 104, origin_y = 5;
+    shg_rasterize(dmap, grid, origin_x, origin_y);
+
+    int entry_u, entry_v, exit_u, exit_v;
+    shg_pick_portals(grid, &entry_u, &entry_v, &exit_u, &exit_v);
+
+    shg_logical_to_world(origin_x, origin_y, entry_u, entry_v,
+                         &dmap->entry_x, &dmap->entry_y);
+    shg_logical_to_world(origin_x, origin_y, exit_u, exit_v,
+                         &dmap->exit_x, &dmap->exit_y);
+
+    dmap->entry_x += 1; dmap->entry_y += 1;
+    dmap->exit_x  += 1; dmap->exit_y  += 1;
+
+    auto clamp_portal = [](int v, int lo, int hi) { return v<lo?lo:v>hi?hi:v; };
+    dmap->entry_x = clamp_portal(dmap->entry_x, 1, DMAP_W-2);
+    dmap->entry_y = clamp_portal(dmap->entry_y, 1, DMAP_H-2);
+    dmap->exit_x  = clamp_portal(dmap->exit_x,  1, DMAP_W-2);
+    dmap->exit_y  = clamp_portal(dmap->exit_y,  1, DMAP_H-2);
+
+    if (dmap->tiles[dmap->entry_y][dmap->entry_x] == DNG_WALL)
+        dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_FLOOR;
+    if (dmap->tiles[dmap->exit_y][dmap->exit_x] == DNG_WALL)
+        dmap->tiles[dmap->exit_y][dmap->exit_x] = DNG_FLOOR;
+
+    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
+    dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
+}
+
+// ── STONEHENGE decoration: standing-stone rings in open chambers ──────────
+// Scans the already-generated layout for open floor areas and stamps
+// circular rings of wall tiles (standing stones) with the oblique skew
+// that matches the stonehenge projection (-1 x per world y step).
+static void decorate_stonehenge(DungeonMap* dmap, uint32_t* rng) {
+    int placed   = 0;
+    int attempts = 500;
+    while (attempts-- > 0 && placed < 6) {
+        int cx = 5 + (int)(rng_next(rng) % (DMAP_W - 10));
+        int cy = 5 + (int)(rng_next(rng) % (DMAP_H - 10));
+        if (dmap->tiles[cy][cx] != DNG_FLOOR) continue;
+        if (near_special_tile(dmap, cx, cy, 6)) continue;
+        // Require a reasonably open area so the ring has room to breathe.
+        if (count_floor_in_radius(dmap, cx, cy, 5) < 50) continue;
+
+        float ring_r    = 3.0f + (float)(rng_next(rng) % 3);  // 3..5 tiles
+        int   num_stones = 7   + (int)(rng_next(rng) % 5);    // 7..11 stones
+        int   ring_placed = 0;
+        for (int s = 0; s < num_stones; s++) {
+            float angle  = (float)s / (float)num_stones * 2.0f * 3.14159f;
+            float raw_dx = cosf(angle) * ring_r;
+            float raw_dy = sinf(angle) * ring_r;
+            // Oblique skew: world-x shifts -1 per world-y (SHG_SKEW_X / SHG_STEP_Y = 1)
+            int wx = cx + (int)(raw_dx - raw_dy);
+            int wy = cy + (int)(raw_dy);
+            if (wx < 2 || wx >= DMAP_W - 2 || wy < 2 || wy >= DMAP_H - 2) continue;
+            if (dmap->tiles[wy][wx] != DNG_FLOOR) continue;
+            if (near_special_tile(dmap, wx, wy, 2)) continue;
+            dmap->tiles[wy][wx] = DNG_WALL;
+            ring_placed++;
+        }
+        if (ring_placed >= 4) placed++;
     }
 
-    // Inner horseshoe: 5 single-tile marker stones in a north-facing arc.
-    // Radius 6 from centre, spanning the upper semicircle.
-    float inner_r = 6.0f;
-    for (int i = 0; i < 5; i++) {
-        // Arc from angle PI/6 to 5*PI/6  (northern hemisphere)
-        float angle = (3.14159f / 6.0f) + ((float)i / 4.0f) * (4.0f * 3.14159f / 6.0f);
-        int sx = cx + (int)(cosf(angle) * inner_r + 0.5f);
-        int sy = cy + (int)(sinf(angle) * inner_r + 0.5f);
-        place_obstacle(dmap, sx, sy, 3);
-    }
+    // Restore portals in case any stone landed on them.
+    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
+    dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
 }
 
 // ── Portal clearing ───────────────────────────────────────────────────────
@@ -797,12 +1044,9 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         return;
     }
 
-    // ── Stonehenge: radial paths + BSP overlay + megalith ring ───────────
+    // ── Stonehenge: procgen oblique maze + standing-stone rings ──────────
     if (type == DUNGEON_ENT_STONEHENGE) {
-        s_bsp_max_depth = 4;
-        s_bsp_min_part  = MIN_PART;
-        carve_hybrid_layout(dmap, rng);
-        decorate_stonehenge(dmap, &rng);
+        carve_stonehenge_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
         return;
     }
@@ -947,48 +1191,23 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
 }
 
 // ── Tile collision ─────────────────────────────────────────────────────────
-// Hitbox covers the lower half of the sprite, inset slightly on each side.
-#define HB_X1  4
-#define HB_X2  0
-#define HB_Y1  30
-#define HB_Y2  46
+static bool tile_solid(const void* map, float px, float py) {
+    const DungeonMap* dmap = static_cast<const DungeonMap*>(map);
 
-static bool tile_solid(const DungeonMap* dmap, float px, float py) {
     int tx = (int)(px / DMAP_TILE);
     int ty = (int)(py / DMAP_TILE);
     if (tx < 0 || tx >= DMAP_W || ty < 0 || ty >= DMAP_H) return true;
     return dmap->tiles[ty][tx] == DNG_WALL;
 }
 
-static bool can_occupy(const DungeonMap* dmap, float x, float y) {
-    return true;
-//1    return !tile_solid(dmap, x + HB_X1, y + HB_Y1)
-//1        && !tile_solid(dmap, x + HB_X2, y + HB_Y1)
-//1        && !tile_solid(dmap, x + HB_X1, y + HB_Y2)
-//1        && !tile_solid(dmap, x + HB_X2, y + HB_Y2);
-}
 
 // ── Public: player update ─────────────────────────────────────────────────
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
-                           float dt, const DungeonMap* dmap) {
-    float dx = 0.0f, dy = 0.0f;
+                           float dt, const DungeonMap* dmap, bool noclip) {
     float anim_speed;
-    player->is_moving = 0;
 
-    if (input_pressed(in, SDL_SCANCODE_LEFT)  || input_pressed(in, SDL_SCANCODE_A) ||
-        input_pressed(in, SDL_SCANCODE_RIGHT) || input_pressed(in, SDL_SCANCODE_D) ||
-        input_pressed(in, SDL_SCANCODE_UP)    || input_pressed(in, SDL_SCANCODE_W) ||
-        input_pressed(in, SDL_SCANCODE_DOWN)  || input_pressed(in, SDL_SCANCODE_S))
-        player->facing_locked = 0;
-
-    if (input_down(in, SDL_SCANCODE_LEFT)  || input_down(in, SDL_SCANCODE_A))
-        { dx -= 1.0f; if (!player->facing_locked) player->facing = 6; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_RIGHT) || input_down(in, SDL_SCANCODE_D))
-        { dx += 1.0f; if (!player->facing_locked) player->facing = 8; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_UP)    || input_down(in, SDL_SCANCODE_W))
-        { dy -= 1.0f; if (!player->facing_locked) player->facing = 3; player->is_moving = 1; }
-    if (input_down(in, SDL_SCANCODE_DOWN)  || input_down(in, SDL_SCANCODE_S))
-        { dy += 1.0f; if (!player->facing_locked) player->facing = 0; player->is_moving = 1; }
+    float dx, dy;
+    player_read_input(player, in, &dx, &dy);
 
     if (input_down(in, SDL_SCANCODE_LSHIFT))
         { dp->speed = 300.0f; anim_speed = 0.10f; }
@@ -996,15 +1215,15 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         { dp->speed = 150.0f; anim_speed = 0.20f; }
 
     if (dx != 0.0f || dy != 0.0f) {
-        float len = sqrtf(dx*dx + dy*dy);
-        dx /= len; dy /= len;
         float nx = dp->x + dx * dp->speed * dt;
         float ny = dp->y + dy * dp->speed * dt;
-        if (can_occupy(dmap, nx, dp->y)) dp->x = nx;
-        if (can_occupy(dmap, dp->x, ny)) dp->y = ny;
+        float px = dp->x, py = dp->y;
+        if (noclip || can_occupy(dmap, nx, dp->y, tile_solid)) dp->x = nx;
+        if (noclip || can_occupy(dmap, dp->x, ny, tile_solid)) dp->y = ny;
+        if (dp->x == px && dp->y == py) player->is_moving = 0;
     }
 
-    // Detect which special tile (ENTRY or EXIT) the player is standing on.
+    // detect which special tile (entry or exit) the player is standing on.
     float cx = dp->x + (HB_X1 + HB_X2) * 0.5f;
     float cy = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
     int tx = (int)(cx / DMAP_TILE);
@@ -1018,20 +1237,10 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         dp->at_entry = 0;
     }
 
-    // Animation
-    if (player->is_moving) {
-        player->anim_timer += dt;
-        if (player->anim_timer >= anim_speed) {
-            player->anim_timer = 0.0f;
-            player->anim_step  = (player->anim_step + 1) % 4;
-        }
-    } else {
-        player->anim_step  = 0;
-        player->anim_timer = 0.0f;
-    }
+    player_animate(player, dt, anim_speed);
 }
 
-// ── Public: draw dungeon tiles ────────────────────────────────────────────
+// ── public: draw dungeon tiles ────────────────────────────────────────────
 void dungeon_draw(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren) {
     float z   = cam->zoom;
     int   tsz = (int)(DMAP_TILE * z);
@@ -1041,7 +1250,7 @@ void dungeon_draw(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren) 
     if (ci < 0 || ci > 7) ci = 0;
     const DngPalette& pal = PALETTES[ci];
 
-    // Visible tile range
+    // visible tile range
     int tx0 = (int)(cam->x / DMAP_TILE) - 1;
     int ty0 = (int)(cam->y / DMAP_TILE) - 1;
     int tx1 = tx0 + (int)(cam->screen_w / tsz) + 3;

@@ -17,10 +17,11 @@ typedef struct Overworld {
     int at_dungeon_entrance;
     DungeonEntranceType dungeon_type;   // valid when at_dungeon_entrance == 1
     float dungeon_difficulty;           // valid when at_dungeon_entrance == 1
+
 } Overworld;
 
 void overworld_init(Overworld* ow, Player* player, float x, float y);
-void overworld_update(Overworld* ow, Player* player, const Input* in, float dt, ResourceNodeList* resources, Tilemap* map);
+void overworld_update(Overworld* ow, Player* player, const Input* in, float dt, ResourceNodeList* resources, Tilemap* map, bool noclip = false);
 
 // Draw the player sprite at any world position — used in all game states.
 void player_draw(const Player* player, float world_x, float world_y,

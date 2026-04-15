@@ -169,6 +169,8 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   float player_x, float player_y);
 
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
+// TileSolidFn-compatible wrapper: returns true if pixel (px,py) is on a non-walkable tile.
+bool tilemap_pixel_solid(const void* map, float px, float py);
 
 // GRAVEYARD_SM entrances hide their entrance tile under gravestones.
 // Call this from the main thread (not the gen thread) when the player gets close.

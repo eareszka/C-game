@@ -1,4 +1,5 @@
 #include "battle.h"
+#include "entity.h"
 #include <SDL2/SDL.h>
 #include <math.h>
 #include <string.h>
@@ -186,24 +187,10 @@ void battle_update(Battle* b, const Input* in, float dt) {
     {
         const float PSPEED     = 160.0f;
         const float MARGIN     = 16.0f;
-        const float ANIM_SPEED = 0.20f;
-        float mx = 0, my = 0;
+        const float ANIM_SPEED = input_down(in, SDL_SCANCODE_LSHIFT) ? 0.10f : 0.20f;
 
-        // a newly pressed movement key unlocks facing (same as overworld)
-        if (input_pressed(in, SDL_SCANCODE_LEFT)  || input_pressed(in, SDL_SCANCODE_A) ||
-            input_pressed(in, SDL_SCANCODE_RIGHT) || input_pressed(in, SDL_SCANCODE_D) ||
-            input_pressed(in, SDL_SCANCODE_UP)    || input_pressed(in, SDL_SCANCODE_W) ||
-            input_pressed(in, SDL_SCANCODE_DOWN)  || input_pressed(in, SDL_SCANCODE_S))
-            b->bp.facing_locked = 0;
-
-        if (input_down(in, SDL_SCANCODE_LEFT)  || input_down(in, SDL_SCANCODE_A)) { mx -= 1.0f; if (!b->bp.facing_locked) b->bp.facing = 6; }
-        if (input_down(in, SDL_SCANCODE_RIGHT) || input_down(in, SDL_SCANCODE_D)) { mx += 1.0f; if (!b->bp.facing_locked) b->bp.facing = 8; }
-        if (input_down(in, SDL_SCANCODE_UP)    || input_down(in, SDL_SCANCODE_W)) { my -= 1.0f; if (!b->bp.facing_locked) b->bp.facing = 3; }
-        if (input_down(in, SDL_SCANCODE_DOWN)  || input_down(in, SDL_SCANCODE_S)) { my += 1.0f; if (!b->bp.facing_locked) b->bp.facing = 0; }
-
-        b->bp.is_moving = (mx != 0.0f || my != 0.0f) ? 1 : 0;
-
-        if (mx != 0.0f && my != 0.0f) { mx *= 0.7071f; my *= 0.7071f; }
+        float mx, my;
+        player_read_input(b->player, in, &mx, &my);
 
         b->bp.x += mx * PSPEED * dt;
         b->bp.y += my * PSPEED * dt;
@@ -213,16 +200,7 @@ void battle_update(Battle* b, const Input* in, float dt) {
         if (b->bp.y < MARGIN)           b->bp.y = MARGIN;
         if (b->bp.y > ARENA_H - MARGIN) b->bp.y = ARENA_H - MARGIN;
 
-        if (b->bp.is_moving) {
-            b->bp.anim_timer += dt;
-            if (b->bp.anim_timer >= ANIM_SPEED) {
-                b->bp.anim_timer = 0.0f;
-                b->bp.anim_step  = (b->bp.anim_step + 1) % 4;
-            }
-        } else {
-            b->bp.anim_step  = 0;
-            b->bp.anim_timer = 0.0f;
-        }
+        player_animate(b->player, dt, ANIM_SPEED);
     }
 
     // ── Player fire on interact (Space / Z), gated by fire_rate cooldown ────────
@@ -234,9 +212,9 @@ void battle_update(Battle* b, const Input* in, float dt) {
             // face toward enemy on the dominant axis, same as resource-hit logic
             float ddx = ENEMY_X - b->bp.x;
             float ddy = ENEMY_Y - b->bp.y;
-            b->bp.facing        = (ddx*ddx >= ddy*ddy) ? (ddx >= 0.0f ? 8 : 6)
-                                                        : (ddy >= 0.0f ? 0 : 3);
-            b->bp.facing_locked = 1;
+            b->player->facing        = (ddx*ddx >= ddy*ddy) ? (ddx >= 0.0f ? 8 : 6)
+                                                             : (ddy >= 0.0f ? 0 : 3);
+            b->player->facing_locked = 1;
 
             const ProjectileProfile& wp = b->bp.weapon;
             float base_angle = atan2f(ENEMY_Y - b->bp.y, ENEMY_X - b->bp.x);
@@ -370,13 +348,13 @@ void battle_draw(const Battle* b, SDL_Renderer* ren, SDL_Texture* player_sprite)
                 static const int left_cycle[2]  = {7, 6};
                 static const int right_cycle[2] = {9, 8};
 
-                int facing = b->bp.facing;
-                int step   = b->bp.anim_step;
+                int facing = b->player->facing;
+                int step   = b->player->anim_step;
                 int frame;
-                if      (facing >= 8) frame = b->bp.is_moving ? right_cycle[step % 2] : facing;
-                else if (facing >= 6) frame = b->bp.is_moving ? left_cycle[step % 2]  : facing;
-                else if (facing >= 3) frame = b->bp.is_moving ? up_cycle[step]         : facing;
-                else                  frame = b->bp.is_moving ? down_cycle[step]       : facing;
+                if      (facing >= 8) frame = b->player->is_moving ? right_cycle[step % 2] : facing;
+                else if (facing >= 6) frame = b->player->is_moving ? left_cycle[step % 2]  : facing;
+                else if (facing >= 3) frame = b->player->is_moving ? up_cycle[step]         : facing;
+                else                  frame = b->player->is_moving ? down_cycle[step]       : facing;
 
                 SDL_Rect src = { frame * 16, 0, 16, 24 };
                 SDL_Rect dst = { px - 16, py - 24, 32, 48 };

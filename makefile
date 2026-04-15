@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -Wall -Wextra -std=c++17 -Iinclude -MMD -MP
+CXXFLAGS = -w -std=c++17 -Iinclude -MMD -MP
 SDL_FLAGS = $(shell pkg-config --cflags --libs sdl2 SDL2_image)
 
 SRC = $(wildcard src/*.cpp)

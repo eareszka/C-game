@@ -1,6 +1,8 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
+#include "input.h"
+
 typedef struct {
     int max_hp;
     int hp;
@@ -34,7 +36,19 @@ typedef struct {
     int   anim_step;
     float anim_timer;
     int   is_moving;
+
+    // Last-pressed direction for resolving opposing key conflicts
+    int   last_hdir;        // -1=left, +1=right
+    int   last_vdir;        // -1=up,   +1=down
 } Player;
+
+// Reads WASD/arrow keys, resolves opposing keys via last-pressed,
+// updates player facing/is_moving/last_hdir/last_vdir.
+// Outputs normalized dx/dy (not yet scaled by speed).
+void player_read_input(Player* player, const Input* in, float* out_dx, float* out_dy);
+
+// Advances the walk animation. Call after movement with the desired frame duration.
+void player_animate(Player* player, float dt, float anim_speed);
 
 typedef struct {
     Stats stats;

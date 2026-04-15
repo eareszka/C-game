@@ -63,13 +63,6 @@ struct BattlePlayer {
     float iframes;      // invincibility seconds remaining after a hit
     float fire_timer;   // countdown to next volley
     ProjectileProfile weapon;
-
-    // sprite animation — mirrors overworld state
-    int   facing;        // 0=down 3=up 6=left 8=right
-    int   facing_locked; // set when firing, cleared on movement key press
-    int   anim_step;
-    float anim_timer;
-    int   is_moving;
 };
 
 struct BattleEnemy {

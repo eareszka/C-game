@@ -8,9 +8,9 @@
 #include "camera.h"
 #include "tilemap.h"   // DungeonEntranceType
 
-#define DMAP_W    80
-#define DMAP_H    80
-#define DMAP_TILE 32
+#define DMAP_W    256
+#define DMAP_H    256
+#define DMAP_TILE 16
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,
@@ -43,7 +43,7 @@ void dungeon_orient_portals(DungeonMap* dmap, float exit_angle);
 // from_exit=0: spawn at DNG_ENTRY; from_exit=1: spawn at DNG_EXIT (connected entrance)
 void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, int from_exit);
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
-                           float dt, const DungeonMap* dmap);
+                           float dt, const DungeonMap* dmap, bool noclip = false);
 void dungeon_draw(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren);
 
 #endif

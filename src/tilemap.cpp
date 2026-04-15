@@ -2738,6 +2738,13 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_SNOW:
         case TILE_WASTELAND:
         case TILE_MEADOW:
+        // Elevated terrain top surfaces — walkable plateau; cliff FACE tiles are not listed here
+        case TILE_CLIFF:        case TILE_CLIFF_2:      case TILE_CLIFF_3:
+        case TILE_CLIFF_4:      case TILE_CLIFF_5:
+        case TILE_CLIFF_SNOW_1: case TILE_CLIFF_SNOW_2: case TILE_CLIFF_SNOW_3:
+        case TILE_CLIFF_SNOW_4: case TILE_CLIFF_SNOW_5:
+        case TILE_CLIFF_WASTE_1: case TILE_CLIFF_WASTE_2: case TILE_CLIFF_WASTE_3:
+        case TILE_CLIFF_WASTE_4: case TILE_CLIFF_WASTE_5:
         // Town/village/castle footprints — part of the overworld, fully walkable
         case TILE_BLUEPRINT:
         case TILE_VILLAGE_PLACEHOLDER:
@@ -2756,6 +2763,16 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         default:
             return false;
     }
+}
+
+bool tilemap_pixel_solid(const void* vmap, float px, float py) {
+    const Tilemap* map = static_cast<const Tilemap*>(vmap);
+    int tx = (int)(px / TILE_SIZE);
+    int ty = (int)(py / TILE_SIZE);
+    if (!tilemap_is_walkable(map, tx, ty)) return true;
+    // Trees, rocks, and gold ore live in the overlay — they're also solid.
+    int ov = map->overlay[ty][tx];
+    return ov == TILE_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
 }
 
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
