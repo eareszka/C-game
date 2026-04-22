@@ -92,7 +92,20 @@ enum TileId {
     TILE_DUNGEON_PYRAMID      = 68,
     TILE_DUNGEON_STONEHENGE   = 69,
     TILE_DUNGEON_LARGE_TREE   = 70,
+
+    // Tiles sampled from assets/tileset.png (256 cols × 256 rows = 65536 tiles).
+    // Index within sheet = (tile_id - TILE_TOWN0_BASE).
+    // col = index % TOWN0_SHEET_COLS,  row = index / TOWN0_SHEET_COLS.
+    TILE_TOWN0_BASE = 71,
+    TILE_TOWN0_END  = 71 + 256 * 256 - 1,   // 65606
+
+    // Tiles sampled from assets/overworld_0.png (18 cols × 8 rows = 144 tiles).
+    TILE_OW0_BASE = 71 + 256 * 256,          // 65607
+    TILE_OW0_END  = 71 + 256 * 256 + 18 * 8 - 1, // 65750
 };
+
+#define TOWN0_SHEET_COLS 256
+#define TOWN0_SHEET_ROWS 256
 
 typedef enum {
     DUNGEON_ENT_CAVE         = 0,
@@ -133,6 +146,8 @@ typedef struct {
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
     int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
+    uint8_t coll[MAP_HEIGHT][MAP_WIDTH];        // solid collision footprint from editor _coll layer
+    uint8_t depth_layer[MAP_HEIGHT][MAP_WIDTH]; // Y-sorted tiles drawn after the player
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
     DungeonEntrance dungeon_entrances[300];
     int num_dungeon_entrances;
@@ -152,17 +167,20 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed);
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed);
 
 void tilemap_update(float dt); // advance hit-jitter timers
-void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer);
+void tilemap_draw_base (const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
+void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
 
 // Pre-render all tile types into small textures so tilemap_draw uses one RenderCopy
 // per tile instead of ~65 RenderFillRect calls. Call once after creating the renderer.
 void tilemap_init_tile_cache(SDL_Renderer* renderer);
 void tilemap_free_tile_cache(void);
+// Returns the town/overworld tileset texture (16px-per-tile atlas). Valid after tilemap_init_tile_cache.
+SDL_Texture* tilemap_get_town_tex(void);
 
 // Hit a tree or rock tile near (px, py) within `range` pixels.
 // Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.
 // Destroys the tile(s) on depletion. Returns 1 if destroyed, 2 if hit, 0 if miss.
-int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry);
+int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry, int* out_tile = nullptr);
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,

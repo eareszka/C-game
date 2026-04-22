@@ -132,7 +132,7 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
     }
 }
 
-void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren)
+void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex)
 {
     float z = cam->zoom;
     for (int i = 0; i < list->count; i++)
@@ -142,9 +142,17 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
 
         int screen_x = (int)((n->x - cam->x) * z);
         int screen_y = (int)((n->y - cam->y) * z);
+        int w = (int)(n->width * z);
+        int h = (int)(n->height * z);
 
-        draw_resource_ascii(ren, screen_x, screen_y,
-                            (int)(n->width * z), (int)(n->height * z), n->type);
+        if (n->type == RESOURCE_TREE && tileset_tex) {
+            // Single-tile tree resource: (row=1, col=15) in the tileset atlas
+            SDL_Rect src = { 15 * 16, 1 * 16, 16, 16 };
+            SDL_Rect dst = { screen_x, screen_y, w, h };
+            SDL_RenderCopy(ren, tileset_tex, &src, &dst);
+        } else {
+            draw_resource_ascii(ren, screen_x, screen_y, w, h, n->type);
+        }
     }
 }
 
@@ -159,7 +167,7 @@ bool resource_node_solid(const void* vlist, float px, float py) {
     return false;
 }
 
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry)
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry, ResourceType* out_type)
 {
     for (int i = 0; i < list->count; i++)
     {
@@ -172,8 +180,9 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
         int dy = (int)(cy - player_y);
 
         if (abs_int(dx) <= range && abs_int(dy) <= range) {
-            if (out_rx) *out_rx = cx;
-            if (out_ry) *out_ry = cy;
+            if (out_rx)   *out_rx   = cx;
+            if (out_ry)   *out_ry   = cy;
+            if (out_type) *out_type = n->type;
             n->hp--;
 
             if (n->hp <= 0)

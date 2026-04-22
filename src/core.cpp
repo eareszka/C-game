@@ -107,6 +107,15 @@ int text_width(const char* text, int scale) {
     return (int)strlen(text) * 8 * scale;
 }
 
+void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h) {
+    SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+    SDL_Rect outer = {x, y, w, h};
+    SDL_RenderFillRect(ren, &outer);
+    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    SDL_Rect inner = {x + 4, y + 4, w - 8, h - 8};
+    SDL_RenderFillRect(ren, &inner);
+}
+
 void draw_fps(SDL_Renderer* renderer, float dt) {
     static float acc         = 0.0f;
     static int   frames      = 0;

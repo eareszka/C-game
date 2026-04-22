@@ -45,8 +45,9 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
 void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
                                    int hides_entrance, int reveal_tile_id,
                                    int reveal_tx, int reveal_ty);
-void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren);
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry);
+void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex);
+// Returns 0=miss, 1=destroyed, 2=hit. Sets *out_type to the hit node's ResourceType.
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry, ResourceType* out_type);
 // TileSolidFn-compatible: returns true if (px,py) is inside any alive tree or rock node.
 bool resource_node_solid(const void* list, float px, float py);
 

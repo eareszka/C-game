@@ -1,4 +1,6 @@
 #include "tilemap.h"
+#include "core.h"
+#include <SDL2/SDL_image.h>
 #include "resource_node.h"
 #include "towns.h"
 #include "castles.h"
@@ -20,8 +22,6 @@ static const uint8_t glyph_grass[8]  = {0x00,0x00,0x00,0x00,0x18,0x18,0x00,0x00}
 static const uint8_t glyph_path[8]   = {0x00,0x00,0x00,0x18,0x18,0x08,0x10,0x00}; // ','
 static const uint8_t glyph_tree[8]        = {0xFE,0xFE,0x18,0x18,0x18,0x18,0x18,0x18}; // 'T'
 // Tall tree (two stacked tree tiles): top = canopy, bottom = trunk
-static const uint8_t glyph_tall_tree_top[8] = {0x18,0x3C,0x7E,0xFF,0xFF,0x7E,0x18,0x18};
-static const uint8_t glyph_tall_tree_bot[8] = {0x18,0x18,0x18,0x18,0x18,0x18,0x3C,0x66};
 static const uint8_t glyph_water[8]  = {0x62,0x94,0x08,0x62,0x94,0x08,0x62,0x94}; // '~'
 static const uint8_t glyph_cliff[8]      = {0x24,0x7E,0x24,0x24,0x7E,0x24,0x00,0x00}; // '#'
 static const uint8_t glyph_rock[8]       = {0x3C,0x42,0x81,0x81,0x81,0x42,0x3C,0x00}; // 'o'
@@ -173,8 +173,8 @@ static inline uint32_t tile_key(int x, int y) {
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
 static const int TILE_CACHE_SIZE = 71; // TILE_DUNGEON_LARGE_TREE + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
-static SDL_Texture* s_tall_tree_top_tex = nullptr;
-static SDL_Texture* s_tall_tree_bot_tex  = nullptr;
+static SDL_Texture* s_town0_tex          = nullptr;
+static SDL_Texture* s_overworld0_tex     = nullptr;
 
 // ---------------------------------------------------------------------------
 
@@ -491,44 +491,57 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
 }
 
 // Stamp a town blueprint onto the map at tile position (tx, ty).
-// The entire footprint is pre-filled with TILE_BLUEPRINT so undesigned cells are visible.
-// ' ' leaves the blueprint marker in place; 'T' goes into the overlay; everything else
-// writes the base tile and clears the overlay.
+// Canvas value encoding: 0=blank, 1=grass, 2=path, 3=hub, 4=water, 5=tree, >=6=sprite.
 static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
-    // Pre-fill footprint with the blueprint marker
+    const int (*layout)[TOWN_W] = all_towns[town_idx];
+
     for (int dy = 0; dy < TOWN_H; dy++) {
         for (int dx = 0; dx < TOWN_W; dx++) {
+            int val = layout[dy][dx];
+            if (val == 0) continue;
             int wx = tx + dx, wy = ty + dy;
             if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
-            map->tiles[wy][wx]   = TILE_BLUEPRINT;
-            map->overlay[wy][wx] = 0;
-        }
-    }
-    // Stamp the actual blueprint chars on top
-    const char** layout = all_towns[town_idx];
-    for (int dy = 0; dy < TOWN_H; dy++) {
-        const char* row = layout[dy];
-        if (!row) break; // nullptr sentinel — remaining rows stay as blueprint marker
-        int row_len = (int)strlen(row);
-        for (int dx = 0; dx < TOWN_W; dx++) {
-            char c = (dx < row_len) ? row[dx] : ' ';
-            if (c == ' ') continue; // keep TILE_BLUEPRINT marker
-            int wx = tx + dx, wy = ty + dy;
-            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
-            if (c == 'T') {
+
+            int tile = -1;
+            if (val == 5) {
                 map->overlay[wy][wx] = TILE_TREE;
                 continue;
-            }
-            int tile = -1;
-            switch (c) {
-                case '.': tile = TILE_GRASS; break;
-                case ',': tile = TILE_PATH;  break;
-                case 'H': tile = TILE_HUB;   break;
-                case 'W': tile = TILE_WATER; break;
+            } else if (val == 1) { tile = TILE_GRASS;
+            } else if (val == 2) { tile = TILE_PATH;
+            } else if (val == 3) { tile = TILE_HUB;
+            } else if (val == 4) { tile = TILE_WATER;
+            } else if (val >= 6) {
+                tile = TILE_TOWN0_BASE + (val - 6);
             }
             if (tile < 0) continue;
             map->tiles[wy][wx]   = tile;
             map->overlay[wy][wx] = 0;
+        }
+    }
+    // Stamp collision layer
+    const char** coll_layout = all_towns_coll[town_idx];
+    for (int dy = 0; dy < TOWN_H && coll_layout[dy]; dy++) {
+        const char* row = coll_layout[dy];
+        int row_len = (int)strlen(row);
+        for (int dx = 0; dx < TOWN_W; dx++) {
+            char c = (dx < row_len) ? row[dx] : '.';
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            if (c == '#') map->coll[wy][wx] = 1;
+        }
+    }
+    // Stamp depth layer
+    const char** depth_rows = (town_idx == 0) ? town_0_depth
+                            : (town_idx == 1) ? town_1_depth
+                            :                   town_2_depth;
+    for (int dy = 0; dy < TOWN_H && depth_rows[dy]; dy++) {
+        const char* row = depth_rows[dy];
+        int row_len = (int)strlen(row);
+        for (int dx = 0; dx < TOWN_W; dx++) {
+            char c = (dx < row_len) ? row[dx] : '.';
+            int wx = tx + dx, wy = ty + dy;
+            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+            if (c == '#') map->depth_layer[wy][wx] = 1;
         }
     }
     map->towns[town_idx] = { tx, ty, town_idx };
@@ -973,7 +986,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     // --- Rivers ---
     const float PI = 3.14159265f;
-    int guard_r = hw - 1, brush_r = 6;
+    int guard_r = TOWN_W / 2, brush_r = 6;
     unsigned int cnt_seed = seed * 1664525u + 1013904223u;
     int num_rivers = 5 + (int)((cnt_seed >> 16) % 6);
     cnt_seed = cnt_seed * 1664525u + 1013904223u;
@@ -1005,7 +1018,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         while (angle >  PI) angle -= 2.0f * PI;
         while (angle < -PI) angle += 2.0f * PI;
         float dx = cosf(angle), dy = sinf(angle);
-        int sx = cx + (int)(dx * hw), sy = cy + (int)(dy * hw);
+        int sx = cx + (int)(dx * (TOWN_W / 2)), sy = cy + (int)(dy * (TOWN_W / 2));
         unsigned int js = (seed ^ (unsigned int)(0x7777*(i+1))) * 1664525u + 1013904223u;
         int jitter_range = (3 + (int)((js >> 16) % 3)) * 6;
         if (i == ocean_idx) {
@@ -1544,19 +1557,28 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
                 int t = map->tiles[y][x];
-                if (t != TILE_GRASS && t != TILE_MEADOW) continue;
+                if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SNOW) continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
                 int n = tile_noise(x, y, (int)seed ^ 7);
                 if (t == TILE_MEADOW) {
-                    if (n > 31000) map->overlay[y][x] = TILE_TREE;
+                    if (n > 32400) map->overlay[y][x] = TILE_TREE;
+                } else if (t == TILE_SNOW) {
+                    // Thin brush: only inside forest clusters, sparser than temperate forest
+                    int gx = x/FG, gy = y/FG;
+                    float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
+                    float top = tile_noise(gx,gy,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy,(int)seed^0xF05)-tile_noise(gx,gy,(int)seed^0xF05));
+                    float bot = tile_noise(gx,gy+1,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF05)-tile_noise(gx,gy+1,(int)seed^0xF05));
+                    int cluster = (int)(top + fy*(bot-top));
+                    if (cluster > 20000 && n > 16000)
+                        map->overlay[y][x] = TILE_TREE;
                 } else {
                     int gx = x/FG, gy = y/FG;
                     float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
                     float top = tile_noise(gx,gy,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy,(int)seed^0xF04)-tile_noise(gx,gy,(int)seed^0xF04));
                     float bot = tile_noise(gx,gy+1,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF04)-tile_noise(gx,gy+1,(int)seed^0xF04));
                     int cluster = (int)(top + fy*(bot-top));
-                    if (n > ((cluster > 16000) ? 5000 : 30500))
+                    if (n > ((cluster > 16000) ? 5000 : 32400))
                         map->overlay[y][x] = TILE_TREE;
                 }
             }
@@ -1566,7 +1588,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // --- Rocks (after cliffs for same reason) ---
     {
         unsigned int s = seed ^ 0xDEAD1;
-        for (int i = 0; i < 72000; i++) {
+        for (int i = 0; i < 40000; i++) {
             s = s * 1664525u + 1013904223u;
             int x = 1 + (int)((s >> 16) % (MAP_WIDTH  - 2));
             s = s * 1664525u + 1013904223u;
@@ -1583,11 +1605,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
                 int t = map->tiles[y][x];
                 int threshold;
-                if      (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) threshold = 27851; // ~15%
-                else if (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2) threshold = 24575; // ~25%
-                else if (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) threshold = 21298; // ~35%
-                else if (t == TILE_CLIFF_4 || t == TILE_CLIFF_SNOW_4 || t == TILE_CLIFF_WASTE_4) threshold = 18022; // ~45%
-                else if (t == TILE_CLIFF_5 || t == TILE_CLIFF_SNOW_5 || t == TILE_CLIFF_WASTE_5) threshold = 14745; // ~55%
+                if      (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) threshold = 29491; // ~10%
+                else if (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2) threshold = 27163; // ~17%
+                else if (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) threshold = 24575; // ~25%
+                else if (t == TILE_CLIFF_4 || t == TILE_CLIFF_SNOW_4 || t == TILE_CLIFF_WASTE_4) threshold = 21954; // ~33%
+                else if (t == TILE_CLIFF_5 || t == TILE_CLIFF_SNOW_5 || t == TILE_CLIFF_WASTE_5) threshold = 19660; // ~40%
                 else continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
@@ -1597,15 +1619,15 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
-    // --- Gold ore at high elevation (cliff 3+), rarer than rocks ---
+    // --- Gold ore at high elevation (cliff 3+) for all biomes ---
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
                 int t = map->tiles[y][x];
                 int threshold;
-                if      (t == TILE_CLIFF_3) threshold = 32127; // ~2%
-                else if (t == TILE_CLIFF_4) threshold = 31784; // ~3%
-                else if (t == TILE_CLIFF_5) threshold = 31129; // ~5%
+                if      (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) threshold = 32127; // ~2%
+                else if (t == TILE_CLIFF_4 || t == TILE_CLIFF_SNOW_4 || t == TILE_CLIFF_WASTE_4) threshold = 31784; // ~3%
+                else if (t == TILE_CLIFF_5 || t == TILE_CLIFF_SNOW_5 || t == TILE_CLIFF_WASTE_5) threshold = 31129; // ~5%
                 else continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
@@ -2318,24 +2340,56 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer) {
         s_tile_tex[i] = SDL_CreateTextureFromSurface(renderer, surf);
         SDL_FreeSurface(surf);
     }
-    SDL_Surface* top_surf = make_glyph_surf(0, 40, 0, 0, 140, 0, glyph_tall_tree_top);
-    SDL_Surface* bot_surf = make_glyph_surf(0, 40, 0, 0, 140, 0, glyph_tall_tree_bot);
-    if (top_surf) { s_tall_tree_top_tex = SDL_CreateTextureFromSurface(renderer, top_surf); SDL_FreeSurface(top_surf); }
-    if (bot_surf) { s_tall_tree_bot_tex  = SDL_CreateTextureFromSurface(renderer, bot_surf); SDL_FreeSurface(bot_surf); }
+    {
+        SDL_Surface* surf = IMG_Load("assets/tileset.png");
+        if (!surf) { printf("tileset.png not found: %s\n", SDL_GetError()); }
+        else {
+            SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, 255, 0, 0));
+            s_town0_tex = SDL_CreateTextureFromSurface(renderer, surf);
+            SDL_FreeSurface(surf);
+            if (s_town0_tex) SDL_SetTextureBlendMode(s_town0_tex, SDL_BLENDMODE_BLEND);
+        }
+    }
+    {
+        SDL_Surface* surf = IMG_Load("assets/overworld_0.png");
+        if (!surf) { printf("overworld_0.png not found: %s\n", SDL_GetError()); }
+        else {
+            SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, 255, 0, 0));
+            s_overworld0_tex = SDL_CreateTextureFromSurface(renderer, surf);
+            SDL_FreeSurface(surf);
+            if (s_overworld0_tex) SDL_SetTextureBlendMode(s_overworld0_tex, SDL_BLENDMODE_BLEND);
+        }
+    }
 }
+
+SDL_Texture* tilemap_get_town_tex(void) { return s_town0_tex; }
 
 void tilemap_free_tile_cache(void) {
     for (int i = 0; i < TILE_CACHE_SIZE; i++) {
         if (s_tile_tex[i]) { SDL_DestroyTexture(s_tile_tex[i]); s_tile_tex[i] = nullptr; }
     }
-    if (s_tall_tree_top_tex) { SDL_DestroyTexture(s_tall_tree_top_tex); s_tall_tree_top_tex = nullptr; }
-    if (s_tall_tree_bot_tex)  { SDL_DestroyTexture(s_tall_tree_bot_tex);  s_tall_tree_bot_tex  = nullptr; }
+    if (s_town0_tex)          { SDL_DestroyTexture(s_town0_tex);          s_town0_tex          = nullptr; }
+    if (s_overworld0_tex)     { SDL_DestroyTexture(s_overworld0_tex);     s_overworld0_tex     = nullptr; }
 }
 
 // Helper: copy a cached tile texture to the screen, falling back to immediate draw.
 static void blit_tile(SDL_Renderer* renderer, int tile_id,
                       int screen_x, int screen_y, int draw_size) {
-    if (tile_id >= 0 && tile_id < TILE_CACHE_SIZE && s_tile_tex[tile_id]) {
+    if (tile_id >= TILE_OW0_BASE && s_overworld0_tex) {
+        int idx = tile_id - TILE_OW0_BASE;
+        int col = idx % TOWN0_SHEET_COLS;
+        int row = idx / TOWN0_SHEET_COLS;
+        SDL_Rect src = { col * 16, row * 16, 16, 16 };
+        SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
+        SDL_RenderCopy(renderer, s_overworld0_tex, &src, &dst);
+    } else if (tile_id >= TILE_TOWN0_BASE && s_town0_tex) {
+        int idx = tile_id - TILE_TOWN0_BASE;
+        int col = idx % TOWN0_SHEET_COLS;
+        int row = idx / TOWN0_SHEET_COLS;
+        SDL_Rect src = { col * 16, row * 16, 16, 16 };
+        SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
+        SDL_RenderCopy(renderer, s_town0_tex, &src, &dst);
+    } else if (tile_id >= 0 && tile_id < TILE_CACHE_SIZE && s_tile_tex[tile_id]) {
         SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
         SDL_RenderCopy(renderer, s_tile_tex[tile_id], NULL, &dst);
     } else {
@@ -2343,14 +2397,16 @@ static void blit_tile(SDL_Renderer* renderer, int tile_id,
     }
 }
 
-void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer) {
+// depth_pass=false: draw all tiles except depth-marked ones.
+// depth_pass=true:  draw only depth-marked tiles (call after player_draw).
+static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
+                               bool depth_pass) {
     float z = cam->zoom;
     int draw_size = (int)(TILE_SIZE * z);
     if (draw_size < 1) draw_size = 1;
 
     int start_x = (int)(cam->x / TILE_SIZE);
     int start_y = (int)(cam->y / TILE_SIZE);
-    // How many tiles fit on screen at this zoom level
     int tiles_wide = (int)(cam->screen_w / z / TILE_SIZE) + 2;
     int tiles_tall = (int)(cam->screen_h / z / TILE_SIZE) + 2;
     int end_x = start_x + tiles_wide;
@@ -2363,60 +2419,80 @@ void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer)
 
     for (int y = start_y; y < end_y; y++) {
         for (int x = start_x; x < end_x; x++) {
+            bool is_depth = (map->depth_layer[y][x] != 0);
             int screen_x = (int)((x * TILE_SIZE - cam->x) * z);
             int screen_y = (int)((y * TILE_SIZE - cam->y) * z);
-            // Draw base tile
-            blit_tile(renderer, map->tiles[y][x], screen_x, screen_y, draw_size);
+
+            // Helper: compute jitter offset for a tree tile
+            auto tree_jox = [&](int tx, int ty2) -> int {
+                auto jit = s_tile_jitter.find(tile_key(tx, ty2));
+                if (jit == s_tile_jitter.end()) return 0;
+                float elapsed = (float)((double)(SDL_GetPerformanceCounter() - jit->second)
+                                        / SDL_GetPerformanceFrequency());
+                return (int)(sinf(elapsed * 80.0f) * 4.0f * z);
+            };
+
+            // Helper: draw a 2-tile tree's canopy (top sprite) for the tile at (tx, ty2).
+            // Canopy is rendered one tile above ty2 using dst_top.
+            auto draw_tree_canopy = [&](int tx, int ty2, int sx, int sy) {
+                uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty2 * 40503u) & 3;
+                if (h == 0) return; // solo tree — no canopy
+                bool is_snow = (map->tiles[ty2][tx] == TILE_SNOW);
+                int col;
+                if (is_snow)      col = (h & 1) ? 19 : 18;
+                else              col = (h == 3) ? 16 : 17;
+                int jox = tree_jox(tx, ty2);
+                SDL_Rect src_top = { col * 16, 0 * 16, 16, 16 };
+                SDL_Rect dst_top = { sx + jox, sy, draw_size, draw_size };
+                if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_top, &dst_top);
+            };
+
+            if (depth_pass) {
+                // Depth pass: town tile only — grass already drawn in base pass, before player
+                if (is_depth) blit_tile(renderer, map->tiles[y][x], screen_x, screen_y, draw_size);
+                // Draw canopy for any 2-tile tree whose trunk is in the row below (y+1).
+                if (y + 1 < MAP_HEIGHT && map->overlay[y+1][x] == TILE_TREE) {
+                    draw_tree_canopy(x, y + 1, screen_x, screen_y);
+                }
+                continue;
+            }
+
+            // Base pass: grass background drawn here (before player) for all town tiles
+            {
+                int tile_id = map->tiles[y][x];
+                if (tile_id >= TILE_TOWN0_BASE)
+                    blit_tile(renderer, TILE_GRASS, screen_x, screen_y, draw_size);
+                blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+            }
+            if (is_depth) continue;
 
             // Draw overlay (trees, rocks, gold ore) on top
             int ov = map->overlay[y][x];
             if (ov == TILE_TREE) {
-                bool tree_above = (y > 0            && map->overlay[y-1][x] == TILE_TREE);
-                bool tree_below = (y < MAP_HEIGHT-1 && map->overlay[y+1][x] == TILE_TREE);
-
-                // Jitter offset — shake horizontally on hit
-                int jox = 0;
-                {
-                    auto jit = s_tile_jitter.find(tile_key(x, y));
-                    if (jit != s_tile_jitter.end()) {
-                        float elapsed = (float)((double)(SDL_GetPerformanceCounter() - jit->second)
-                                                / SDL_GetPerformanceFrequency());
-                        jox = (int)(sinf(elapsed * 80.0f) * 4.0f * z);
-                    }
-                }
+                // Each tree tile is fully independent.
+                // Hash selects variant; snow tiles use a different sprite set (cols 18/19).
+                uint32_t h = (uint32_t)(x * 2654435761u ^ (uint32_t)y * 40503u) & 3;
+                bool is_snow = (map->tiles[y][x] == TILE_SNOW);
+                int jox = tree_jox(x, y);
                 int dx = screen_x + jox;
 
-                if (tree_above) {
-                    // Bottom of tall pair: trunk here, canopy drawn into tile above
+                if (is_snow) {
+                    // Snow: trunk only — canopy drawn in depth pass
+                    int col = (h & 1) ? 19 : 18;
+                    SDL_Rect src_bot = { col * 16, 1 * 16, 16, 16 };
                     SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
-                    SDL_Rect dst_top = { dx, screen_y - draw_size, draw_size, draw_size };
-                    if (s_tall_tree_bot_tex) {
-                        SDL_RenderCopy(renderer, s_tall_tree_bot_tex, NULL, &dst_bot);
-                    } else {
-                        SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
-                        SDL_RenderFillRect(renderer, &dst_bot);
-                        draw_glyph_only(renderer, glyph_tall_tree_bot, 0, 140, 0, dx, screen_y, draw_size);
-                    }
-                    if (s_tall_tree_top_tex) {
-                        SDL_RenderCopy(renderer, s_tall_tree_top_tex, NULL, &dst_top);
-                    } else {
-                        draw_glyph_only(renderer, glyph_tall_tree_top, 0, 140, 0, dx, screen_y - draw_size, draw_size);
-                    }
-                } else if (!tree_below) {
-                    // Single tree — s_tile_tex[TILE_TREE] has the same bg+glyph
+                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
+                } else if (h == 0) {
+                    // Solo tree: single tile, no canopy
+                    SDL_Rect src = { 15 * 16, 1 * 16, 16, 16 };
                     SDL_Rect dst = { dx, screen_y, draw_size, draw_size };
-                    if (s_tile_tex[TILE_TREE]) {
-                        SDL_RenderCopy(renderer, s_tile_tex[TILE_TREE], NULL, &dst);
-                    } else {
-                        SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
-                        SDL_RenderFillRect(renderer, &dst);
-                        draw_glyph_only(renderer, glyph_tree, 0, 140, 0, dx, screen_y, draw_size);
-                    }
+                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src, &dst);
                 } else {
-                    // Top of tall pair: bg only (glyph is drawn when processing the tile below)
-                    SDL_SetRenderDrawColor(renderer, 0, 40, 0, 255);
-                    SDL_Rect bg = { dx, screen_y, draw_size, draw_size };
-                    SDL_RenderFillRect(renderer, &bg);
+                    // 2-tile tree: trunk only — canopy drawn in depth pass
+                    int col = (h == 3) ? 16 : 17;
+                    SDL_Rect src_bot = { col * 16, 1 * 16, 16, 16 };
+                    SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
+                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
                 }
             } else if (ov != 0) {
                 // Rocks, gold ore — draw over base with optional jitter
@@ -2433,7 +2509,14 @@ void tilemap_draw(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer)
             }
         }
     }
+}
 
+void tilemap_draw_base(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float) {
+    tilemap_draw_impl(map, cam, renderer, false);
+}
+
+void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float) {
+    tilemap_draw_impl(map, cam, renderer, true);
 }
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
@@ -2450,11 +2533,8 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
     int ox = (screen_w - mw) / 2;
     int oy = (screen_h - mh) / 2;
 
-    // semi-transparent dark background
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
-    SDL_Rect bg = { ox - 4, oy - 4, mw + 8, mh + 8 };
-    SDL_RenderFillRect(renderer, &bg);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    draw_nes_panel(renderer, ox - 4, oy - 4, mw + 8, mh + 8);
 
     // Priority order for block sampling: higher = wins over lower tiles in block.
     // TREE and ROCK have priority 0 so they render as grass (not drawn separately).
@@ -2654,7 +2734,7 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     return 0;
 }
 
-int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry) {
+int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry, int* out_tile) {
     int tx0 = (int)((px - range) / TILE_SIZE); if (tx0 < 0) tx0 = 0;
     int ty0 = (int)((py - range) / TILE_SIZE); if (ty0 < 0) ty0 = 0;
     int tx1 = (int)((px + range) / TILE_SIZE); if (tx1 >= MAP_WIDTH)  tx1 = MAP_WIDTH  - 1;
@@ -2680,19 +2760,10 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, 
 
     int tx = best_tx, ty = best_ty;
     int t = map->overlay[ty][tx];
+    if (out_tile) *out_tile = t;
 
-    // Normalize to the bottom tile of a tall-tree pair
-    int key_tx = tx, key_ty = ty;
-    bool is_tall = false;
-    if (t == TILE_TREE) {
-        bool above = (ty > 0            && map->overlay[ty-1][tx] == TILE_TREE);
-        bool below = (ty+1 < MAP_HEIGHT && map->overlay[ty+1][tx] == TILE_TREE);
-        is_tall = above || below;
-        if (below && !above) key_ty = ty + 1; // hit the top tile — key to bottom
-    }
-
-    uint32_t key = tile_key(key_tx, key_ty);
-    int max_hp = tile_max_hp(map, key_tx, key_ty);
+    uint32_t key = tile_key(tx, ty);
+    int max_hp = tile_max_hp(map, tx, ty);
 
     auto it = s_tile_hp.find(key);
     int hp = (it == s_tile_hp.end()) ? max_hp : it->second;
@@ -2701,20 +2772,12 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, 
     if (hp <= 0) {
         s_tile_hp.erase(key);
         s_tile_jitter.erase(key);
-        if (is_tall) s_tile_jitter.erase(tile_key(key_tx, key_ty - 1));
-        // Clear overlay — base tile is always correct underneath
-        map->overlay[key_ty][key_tx] = 0;
-        if (is_tall && key_ty > 0 && map->overlay[key_ty-1][key_tx] == TILE_TREE)
-            map->overlay[key_ty-1][key_tx] = 0;
+        map->overlay[ty][tx] = 0;
         return 1; // destroyed
     }
 
     s_tile_hp[key] = hp;
-    // Trigger jitter on both tiles of a tall pair — store start timestamp
-    Uint64 now = SDL_GetPerformanceCounter();
-    s_tile_jitter[key] = now;
-    if (is_tall && key_ty > 0)
-        s_tile_jitter[tile_key(key_tx, key_ty - 1)] = now;
+    s_tile_jitter[key] = SDL_GetPerformanceCounter();
     return 2; // hit but not destroyed
 }
 
@@ -2761,6 +2824,12 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_DUNGEON_LARGE_TREE:
             return true;
         default:
+            // Town/overworld sheet tiles are walkable unless the editor marked them as solid
+            if ((map->tiles[tile_y][tile_x] >= TILE_TOWN0_BASE &&
+                 map->tiles[tile_y][tile_x] <= TILE_TOWN0_END) ||
+                (map->tiles[tile_y][tile_x] >= TILE_OW0_BASE &&
+                 map->tiles[tile_y][tile_x] <= TILE_OW0_END))
+                return map->coll[tile_y][tile_x] == 0;
             return false;
     }
 }

@@ -8,9 +8,10 @@
 #include "camera.h"
 #include "tilemap.h"   // DungeonEntranceType
 
-#define DMAP_W    256
-#define DMAP_H    256
-#define DMAP_TILE 16
+#define DMAP_W          768
+#define DMAP_H          512
+#define DMAP_TILE       32
+#define DUNGEON_FOV_RADIUS  12   // visible tile radius around player
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,
@@ -21,6 +22,7 @@ enum DungeonTile : uint8_t {
 
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
+    uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
     int entry_x, entry_y;
     int exit_x,  exit_y;
     DungeonEntranceType type;
@@ -36,14 +38,15 @@ struct DungeonPlayer {
 
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed);
-// Reposition DNG_ENTRY / DNG_EXIT so they face the overworld direction.
-// exit_angle: angle (radians) pointing from the DNG_ENTRY portal toward the DNG_EXIT portal
-// in overworld tile-space. Both tiles are moved to the floor tiles that best align with that axis.
 void dungeon_orient_portals(DungeonMap* dmap, float exit_angle);
 // from_exit=0: spawn at DNG_ENTRY; from_exit=1: spawn at DNG_EXIT (connected entrance)
 void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, int from_exit);
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
-                           float dt, const DungeonMap* dmap, bool noclip = false);
-void dungeon_draw(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren);
+                           float dt, DungeonMap* dmap, bool noclip = false);
+void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
+                  const Camera* cam, SDL_Renderer* ren, bool show_all = false);
+void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
+                          SDL_Renderer* ren, int screen_w, int screen_h,
+                          bool show_all = false);
 
 #endif

@@ -40,6 +40,9 @@ typedef struct {
     // Last-pressed direction for resolving opposing key conflicts
     int   last_hdir;        // -1=left, +1=right
     int   last_vdir;        // -1=up,   +1=down
+
+    // Inventory: counts indexed by ResourceType enum (TREE=0, ROCK=1, FLOWER=2, GOLD=3, GRAVESTONE=4)
+    int   inventory[5];
 } Player;
 
 // Reads WASD/arrow keys, resolves opposing keys via last-pressed,

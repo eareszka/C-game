@@ -15,4 +15,9 @@ void draw_text(SDL_Renderer* ren, const char* text, int x, int y, int scale,
 // Returns the pixel width of the string at the given scale.
 int text_width(const char* text, int scale);
 
+// NES-style panel: black fill, outer white border, 1px gap, inner white border.
+// Content area starts at (x+4, y+4). Use NES_PAD (4) as inner margin constant.
+void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h);
+static const int NES_PAD = 4;
+
 #endif

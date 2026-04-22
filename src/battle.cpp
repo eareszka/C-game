@@ -1,5 +1,6 @@
 #include "battle.h"
 #include "entity.h"
+#include "core.h"
 #include <SDL2/SDL.h>
 #include <math.h>
 #include <string.h>
@@ -65,13 +66,13 @@ static void draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int h,
 static void draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
                      float cur, float max,
                      Uint8 fr, Uint8 fg, Uint8 fb) {
-    fill_rect(ren, x, y, w, h, 30, 30, 30, 255);
+    fill_rect(ren, x, y, w, h, 0, 0, 0, 255);
     if (max > 0.0f && cur > 0.0f) {
         int filled = (int)(w * cur / max);
         if (filled > w) filled = w;
         fill_rect(ren, x, y, filled, h, fr, fg, fb, 255);
     }
-    draw_rect_outline(ren, x, y, w, h, 160, 160, 160);
+    draw_rect_outline(ren, x, y, w, h, 255, 255, 255);
 }
 
 // ── Bullet spawning ───────────────────────────────────────────────────────────
@@ -297,11 +298,8 @@ void battle_update(Battle* b, const Input* in, float dt) {
 // ── Drawing ───────────────────────────────────────────────────────────────────
 
 void battle_draw(const Battle* b, SDL_Renderer* ren, SDL_Texture* player_sprite) {
-    // background
-    fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 8, 8, 18, 255);
-
-    // arena border
-    draw_rect_outline(ren, 4, 4, ARENA_W - 8, ARENA_H - 8, 60, 60, 100);
+    fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, 255);
+    draw_rect_outline(ren, 4, 4, ARENA_W - 8, ARENA_H - 8, 255, 255, 255);
 
     // ── Enemy ─────────────────────────────────────────────────────────────────
     {
@@ -374,10 +372,12 @@ void battle_draw(const Battle* b, SDL_Renderer* ren, SDL_Texture* player_sprite)
 
     // ── Victory / defeat overlay ──────────────────────────────────────────────
     if (b->phase == BATTLE_PHASE_VICTORY) {
-        fill_rect(ren, 160, 180, 320, 70, 10, 60, 10, 220);
-        draw_rect_outline(ren, 160, 180, 320, 70, 80, 255, 80);
+        draw_nes_panel(ren, 160, 180, 320, 70);
+        draw_text(ren, "VICTORY",
+                  160 + (320 - text_width("VICTORY", 2)) / 2, 206, 2, 255, 255, 255);
     } else if (b->phase == BATTLE_PHASE_DEFEAT) {
-        fill_rect(ren, 160, 180, 320, 70, 70, 5, 5, 220);
-        draw_rect_outline(ren, 160, 180, 320, 70, 255, 50, 50);
+        draw_nes_panel(ren, 160, 180, 320, 70);
+        draw_text(ren, "GAME OVER",
+                  160 + (320 - text_width("GAME OVER", 2)) / 2, 206, 2, 255, 255, 255);
     }
 }

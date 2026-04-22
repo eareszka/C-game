@@ -59,6 +59,23 @@ int main(int argc, char *argv[])
 
     Battle battle;
 
+    // Floating +N resource text — one active at a time above the last hit node
+    struct FloatText { float wx, wy, drift, life; char text[8]; Uint8 r, g, b; bool active; int count; };
+    FloatText cur_float = {};
+    auto spawn_float = [&](float wx, float wy, Uint8 r, Uint8 g, Uint8 b) {
+        if (cur_float.active && fabsf(cur_float.wx - wx) < 2.0f && fabsf(cur_float.wy - wy) < 2.0f) {
+            cur_float.count++;
+            cur_float.life = 1.0f;
+            cur_float.drift = 0.0f;
+        } else {
+            cur_float = {};
+            cur_float.wx = wx; cur_float.wy = wy;
+            cur_float.life = 1.0f; cur_float.active = true; cur_float.count = 1;
+            cur_float.r = r; cur_float.g = g; cur_float.b = b;
+        }
+        SDL_snprintf(cur_float.text, sizeof(cur_float.text), "+%d", cur_float.count);
+    };
+
     Overworld ow;
 
     float start_x = (MAP_WIDTH  / 2) * TILE_SIZE;
@@ -98,10 +115,13 @@ int main(int argc, char *argv[])
     };
     static const int DBG_TYPE_COUNT = 8;
 
-    bool dbg_open   = false;
-    int  dbg_sel    = 0;   // 0=type, 1=enter, 2=regen, 3=noclip
-    int  dbg_type   = 0;
-    bool dbg_noclip = false;
+    bool dbg_open     = false;
+    int  dbg_sel      = 0;   // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all
+    int  dbg_type     = 0;
+    bool dbg_noclip   = false;
+    bool dbg_show_all = false;
+    bool crafting_open = false;
+    bool map_open      = false;
 
     DungeonMap    dmap    = {};
     DungeonPlayer dplayer = {};
@@ -146,9 +166,9 @@ int main(int argc, char *argv[])
         }
         if (dbg_open) {
             if (input_pressed(&in, SDL_SCANCODE_UP))
-                dbg_sel = (dbg_sel + 3) % 4;
+                dbg_sel = (dbg_sel + 4) % 5;
             if (input_pressed(&in, SDL_SCANCODE_DOWN))
-                dbg_sel = (dbg_sel + 1) % 4;
+                dbg_sel = (dbg_sel + 1) % 5;
 
             if (dbg_sel == 0) {
                 if (input_pressed(&in, SDL_SCANCODE_LEFT))
@@ -192,13 +212,16 @@ int main(int argc, char *argv[])
             if (dbg_sel == 3 && dbg_confirm)
                 dbg_noclip = !dbg_noclip;
 
+            if (dbg_sel == 4 && dbg_confirm)
+                dbg_show_all = !dbg_show_all;
+
             if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
                 dbg_open = false;
         }
 
         // Blank input fed to game logic while menu is open so the player stands still.
         Input in_blank = {0};
-        const Input* game_in = dbg_open ? &in_blank : &in;
+        const Input* game_in = (dbg_open || crafting_open || map_open) ? &in_blank : &in;
 
         if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && state != STATE_BATTLE) {
             // Placeholder encounter — replace with encounter data from overworld
@@ -251,7 +274,15 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip);
+                int resource_hit = -1;
+                float hit_wx = 0, hit_wy = 0;
+                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip, &resource_hit, &hit_wx, &hit_wy);
+                if (resource_hit >= 0) {
+                    Uint8 fr = 180, fg = 120, fb = 60;
+                    if      (resource_hit == (int)RESOURCE_ROCK) { fr = 160; fg = 160; fb = 160; }
+                    else if (resource_hit == (int)RESOURCE_GOLD) { fr = 255; fg = 210; fb =  40; }
+                    spawn_float(hit_wx, hit_wy, fr, fg, fb);
+                }
 
                 float player_cx = ow.x + player.width * 0.5f;
                 float player_cy = ow.y + player.height * 0.5f;
@@ -261,43 +292,27 @@ int main(int argc, char *argv[])
                 SDL_RenderClear(plat.renderer);
                 
 
-                //draw order
-                tilemap_draw(map, &cam, plat.renderer); //tiles
-                resource_nodes_draw(&resources, &cam, plat.renderer); //resources
+                tilemap_draw_base(map, &cam, plat.renderer);
+                resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
+                tilemap_draw_depth(map, &cam, plat.renderer);
 
-                // --- 8-bit zoom slider (top-center) ---
-                {
-                    const int SL_W  = 140;
-                    const int SL_X  = (640 - SL_W) / 2;
-                    const int SL_Y  = 8;
-                    const int TRK_H = 4;
-
-                    // Track groove
-                    SDL_SetRenderDrawColor(plat.renderer, 60, 60, 60, 255);
-                    SDL_Rect track = { SL_X, SL_Y + 5, SL_W, TRK_H };
-                    SDL_RenderFillRect(plat.renderer, &track);
-
-                    // Filled portion (left of handle) in dim blue
-                    int hx = SL_X + zoom_idx * SL_W / (zoom_count - 1);
-                    SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
-                    SDL_Rect fill = { SL_X, SL_Y + 5, hx - SL_X, TRK_H };
-                    SDL_RenderFillRect(plat.renderer, &fill);
-
-                    // Tick mark per zoom level
-                    for (int i = 0; i < zoom_count; i++) {
-                        int tx = SL_X + i * SL_W / (zoom_count - 1);
-                        SDL_SetRenderDrawColor(plat.renderer, 140, 140, 140, 255);
-                        SDL_Rect tick = { tx - 1, SL_Y + 3, 2, TRK_H + 4 };
-                        SDL_RenderFillRect(plat.renderer, &tick);
+                // --- Floating resource text ---
+                if (cur_float.active) {
+                    cur_float.drift += 60.0f * dt;
+                    cur_float.life  -= dt;
+                    if (cur_float.life <= 0.0f) {
+                        cur_float.active = false;
+                    } else {
+                        int sx = (int)((cur_float.wx - cam.x) * cam.zoom);
+                        int sy = (int)((cur_float.wy - cam.y) * cam.zoom) - (int)cur_float.drift;
+                        sx -= text_width(cur_float.text, 1) / 2;
+                        float a = cur_float.life;
+                        draw_text(plat.renderer, cur_float.text, sx, sy, 1,
+                                  (Uint8)(cur_float.r * a), (Uint8)(cur_float.g * a), (Uint8)(cur_float.b * a));
                     }
-
-                    // Handle knob (bright yellow, 8-bit chunky pixel)
-                    SDL_SetRenderDrawColor(plat.renderer, 255, 220, 0, 255);
-                    SDL_Rect knob = { hx - 4, SL_Y, 8, TRK_H + 14 };
-                    SDL_RenderFillRect(plat.renderer, &knob);
-
                 }
+
 
                 // Dungeon entry — show name prompt when standing on an entrance.
                 if (ow.at_dungeon_entrance) {
@@ -315,21 +330,17 @@ int main(int argc, char *argv[])
                     if (ci < 0 || ci > 7) ci = 0;
                     const char* name = dungeon_names[ci];
 
-                    // Dark bar at the bottom
-                    SDL_SetRenderDrawColor(plat.renderer, 10, 10, 10, 220);
-                    SDL_Rect bar = {0, 455, 640, 25};
-                    SDL_RenderFillRect(plat.renderer, &bar);
+                    draw_nes_panel(plat.renderer, 0, 448, 640, 32);
 
-                    // Dungeon name centred, white
                     int nx = (640 - text_width(name, 2)) / 2;
-                    draw_text(plat.renderer, name, nx, 459, 2, 255, 255, 255);
+                    draw_text(plat.renderer, name, nx, 456, 2, 255, 255, 255);
 
-                    // Difficulty indicator — thin bar below the text
+                    // difficulty bar inside inner border
                     SDL_SetRenderDrawColor(plat.renderer, 40, 40, 40, 255);
-                    SDL_Rect diff_track = {0, 476, 640, 4};
+                    SDL_Rect diff_track = {NES_PAD + 2, 472, 640 - (NES_PAD+2)*2, 4};
                     SDL_RenderFillRect(plat.renderer, &diff_track);
-                    SDL_SetRenderDrawColor(plat.renderer, 200, 200, 200, 255);
-                    SDL_Rect diff_fill = {0, 476, (int)(640 * ow.dungeon_difficulty), 4};
+                    SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                    SDL_Rect diff_fill = {NES_PAD + 2, 472, (int)((640 - (NES_PAD+2)*2) * ow.dungeon_difficulty), 4};
                     SDL_RenderFillRect(plat.renderer, &diff_fill);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
@@ -388,7 +399,15 @@ int main(int argc, char *argv[])
                             }
                         }
 
-                        dungeon_generate(&dmap, ow.dungeon_type,
+                        // SM connected to LG: generate at the larger scale.
+                        DungeonEntranceType gen_type = ow.dungeon_type;
+                        if (cur_ent && cur_ent->partner_idx >= 0) {
+                            DungeonEntrance* partner2 = &map->dungeon_entrances[cur_ent->partner_idx];
+                            if (gen_type == DUNGEON_ENT_GRAVEYARD_SM &&
+                                partner2->type == DUNGEON_ENT_GRAVEYARD_LG)
+                                gen_type = DUNGEON_ENT_GRAVEYARD_LG;
+                        }
+                        dungeon_generate(&dmap, gen_type,
                                          ow.dungeon_difficulty, dng_seed);
 
                         if (!isnan(connect_angle)) {
@@ -405,24 +424,21 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (input_down(&in, SDL_SCANCODE_TAB)) {
+                if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open)
+                    crafting_open = !crafting_open;
+
+                if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open)
+                    map_open = !map_open;
+
+                if (map_open) {
                     minimap_draw(map, plat.renderer, 640, 480, ow.x, ow.y);
+
                     if (in.mouse_left_pressed) {
-                        // SDL_RenderWindowToLogical uses renderer output pixels, but mouse
-                        // events are in window-point space (SDL_GetWindowSize). On WSL2 in
-                        // fullscreen these can diverge, so compute the transform manually.
-                        int win_w, win_h;
-                        SDL_GetWindowSize(plat.window, &win_w, &win_h);
-                        float scale = (win_w / 640.0f < win_h / 480.0f)
-                                      ? win_w / 640.0f : win_h / 480.0f;
-                        float vp_x = (win_w - 640.0f * scale) / 2.0f;
-                        float vp_y = (win_h - 480.0f * scale) / 2.0f;
-                        float lmx = (in.mouse_x - vp_x) / scale;
-                        float lmy = (in.mouse_y - vp_y) / scale;
                         float wx, wy;
-                        if (minimap_click_to_world(640, 480, (int)lmx, (int)lmy, &wx, &wy)) {
+                        if (minimap_click_to_world(640, 480, in.mouse_x, in.mouse_y, &wx, &wy)) {
                             ow.x = wx;
                             ow.y = wy;
+                            map_open = false;
                         }
                     }
                 }
@@ -449,17 +465,15 @@ int main(int argc, char *argv[])
                 SDL_SetRenderDrawColor(plat.renderer, 5, 5, 8, 255);
                 SDL_RenderClear(plat.renderer);
 
-                dungeon_draw(&dmap, &cam, plat.renderer);
+                dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
 
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
-                    SDL_SetRenderDrawColor(plat.renderer, 40, 120, 40, 200);
-                    SDL_Rect bar = {0, 460, 640, 20};
-                    SDL_RenderFillRect(plat.renderer, &bar);
+                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl = "EXIT";
                     draw_text(plat.renderer, lbl,
-                              (640 - text_width(lbl, 2)) / 2, 463, 2, 255, 255, 255);
+                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -472,9 +486,10 @@ int main(int argc, char *argv[])
 
                 // DNG_EXIT tile — exit to the connected overworld entrance (or back if none).
                 if (dplayer.at_exit) {
-                    SDL_SetRenderDrawColor(plat.renderer, 180, 50, 50, 200);
-                    SDL_Rect bar = {0, 460, 640, 20};
-                    SDL_RenderFillRect(plat.renderer, &bar);
+                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
+                    const char* lbl2 = "ENTER";
+                    draw_text(plat.renderer, lbl2,
+                              (640 - text_width(lbl2, 2)) / 2, 461, 2, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -485,10 +500,113 @@ int main(int argc, char *argv[])
                     }
                 }
 
+                if (input_pressed(&in, SDL_SCANCODE_TAB))
+                    crafting_open = !crafting_open;
+
+                if (input_pressed(&in, SDL_SCANCODE_M))
+                    map_open = !map_open;
+
+                if (map_open)
+                    dungeon_minimap_draw(&dmap, &dplayer, plat.renderer, 640, 480, dbg_show_all);
+
                 if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
                     state = STATE_OVERWORLD;
                 break;
             }
+        }
+
+        // ── Resource bar (top of screen, always visible) ─────────────────────
+        {
+            static const int   res_idx[]    = { 0, 1, 3 };
+            static const char* res_labels[] = { "WOOD", "STONE", "GOLD" };
+            static const Uint8 res_r[] = {180, 160, 255};
+            static const Uint8 res_g[] = {120, 160, 210};
+            static const Uint8 res_b[] = { 60, 160,  40};
+
+            SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
+            SDL_Rect res_bg = {0, 0, 640, 28};
+            SDL_RenderFillRect(plat.renderer, &res_bg);
+
+            char buf[16];
+            int cx = NES_PAD + 2;
+            for (int ri = 0; ri < 3; ri++) {
+                SDL_snprintf(buf, sizeof(buf), "%s:%d", res_labels[ri], player.inventory[res_idx[ri]]);
+                draw_text(plat.renderer, buf, cx, 10, 1, res_r[ri], res_g[ri], res_b[ri]);
+                cx += text_width(buf, 1) + 10;
+            }
+
+            SDL_snprintf(buf, sizeof(buf), "EXP:%d", player.stats.exp);
+            int ew = text_width(buf, 1);
+            draw_text(plat.renderer, buf, 640 - ew - NES_PAD - 2, 10, 1, 255, 255, 255);
+
+            // Zoom slider — centered in bar
+            {
+                const int SL_W  = 120;
+                const int SL_X  = (640 - SL_W) / 2;
+                const int TRK_Y = 12;
+                const int TRK_H = 3;
+
+                SDL_SetRenderDrawColor(plat.renderer, 80, 80, 80, 255);
+                SDL_Rect track = { SL_X, TRK_Y, SL_W, TRK_H };
+                SDL_RenderFillRect(plat.renderer, &track);
+
+                int hx = SL_X + zoom_idx * SL_W / (zoom_count - 1);
+                SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                SDL_Rect fill = { SL_X, TRK_Y, hx - SL_X, TRK_H };
+                SDL_RenderFillRect(plat.renderer, &fill);
+
+                for (int i = 0; i < zoom_count; i++) {
+                    int tx = SL_X + i * SL_W / (zoom_count - 1);
+                    SDL_SetRenderDrawColor(plat.renderer, 180, 180, 180, 255);
+                    SDL_Rect tick = { tx - 1, TRK_Y - 2, 2, TRK_H + 4 };
+                    SDL_RenderFillRect(plat.renderer, &tick);
+                }
+
+                SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                SDL_Rect knob = { hx - 3, 5, 6, 18 };
+                SDL_RenderFillRect(plat.renderer, &knob);
+                SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
+                SDL_Rect knob_inner = { hx - 1, 7, 2, 14 };
+                SDL_RenderFillRect(plat.renderer, &knob_inner);
+            }
+        }
+
+        // ── Crafting menu overlay ─────────────────────────────────────────────
+        if (crafting_open && state != STATE_BATTLE) {
+            const int PW = 460, PH = 180;
+            const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
+
+            draw_nes_panel(plat.renderer, PX, PY, PW, PH);
+
+            draw_text(plat.renderer, "CRAFTING MENU",
+                      PX + (PW - text_width("CRAFTING MENU", 2)) / 2, PY + NES_PAD + 4, 2, 255, 255, 255);
+
+            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+            SDL_Rect div1 = { PX + NES_PAD, PY + 36, PW - NES_PAD*2, 1 };
+            SDL_RenderFillRect(plat.renderer, &div1);
+
+            // ── Recipes row ───────────────────────────────────────────────────
+            draw_text(plat.renderer, "RECIPES", PX + NES_PAD + 2, PY + 44, 1, 255, 255, 255);
+            draw_text(plat.renderer, "COMING SOON...", PX + NES_PAD + 2, PY + 58, 1, 100, 100, 100);
+
+            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+            SDL_Rect div2 = { PX + NES_PAD, PY + 106, PW - NES_PAD*2, 1 };
+            SDL_RenderFillRect(plat.renderer, &div2);
+
+            // ── Rare items row ────────────────────────────────────────────────
+            draw_text(plat.renderer, "RARE ITEMS", PX + NES_PAD + 2, PY + 114, 1, 255, 255, 255);
+            {
+                char buf[32];
+                int rx = PX + NES_PAD + 2;
+                SDL_snprintf(buf, sizeof(buf), "FLOWER: %d", player.inventory[2]);
+                draw_text(plat.renderer, buf, rx, PY + 128, 1, 255, 180, 220);
+                rx += text_width(buf, 1) + 16;
+                SDL_snprintf(buf, sizeof(buf), "GRAVESTONE: %d", player.inventory[4]);
+                draw_text(plat.renderer, buf, rx, PY + 128, 1, 160, 160, 180);
+            }
+
+            draw_text(plat.renderer, "[TAB] CLOSE",
+                      PX + (PW - text_width("[TAB] CLOSE", 1)) / 2, PY + PH - 16, 1, 100, 100, 100);
         }
 
         // ── Debug menu overlay ───────────────────────────────────────────────
@@ -496,15 +614,9 @@ int main(int argc, char *argv[])
             const int MX = 120, MY = 130, MW = 400, MH = 180;
             const int LH = 22;  // line height
 
-            // Dark background box
-            SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 230);
-            SDL_Rect bg = { MX, MY, MW, MH };
-            SDL_RenderFillRect(plat.renderer, &bg);
-            SDL_SetRenderDrawColor(plat.renderer, 80, 120, 200, 255);
-            SDL_RenderDrawRect(plat.renderer, &bg);
+            draw_nes_panel(plat.renderer, MX, MY, MW, MH);
 
-            // Title
-            draw_text(plat.renderer, "DEBUG MENU", MX + 10, MY + 8, 2, 255, 220, 60);
+            draw_text(plat.renderer, "DEBUG MENU", MX + NES_PAD + 2, MY + NES_PAD + 4, 2, 255, 255, 255);
 
             // Helper lambda: draw one menu row
             auto draw_row = [&](int row, const char* label, bool selected) {
@@ -545,9 +657,14 @@ int main(int argc, char *argv[])
                 draw_row(3, nc, dbg_sel == 3);
             }
 
-            // Hint at bottom
+            // Row 4: show all tiles toggle
+            {
+                const char* sa = dbg_show_all ? "SHOW ALL: ON " : "SHOW ALL: OFF";
+                draw_row(4, sa, dbg_sel == 4);
+            }
+
             draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",
-                      MX + 6, MY + MH - 16, 1, 100, 100, 120);
+                      MX + 6, MY + MH - 16, 1, 180, 180, 180);
         }
 
         draw_fps(plat.renderer, dt);

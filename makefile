@@ -21,5 +21,8 @@ $(TARGET): $(OBJ)
 run: game
 	./game
 
+tile_editor: tools/tile_editor.cpp
+	$(CXX) -std=c++17 -O2 tools/tile_editor.cpp -o tile_editor $(SDL_FLAGS)
+
 clean:
-	rm -f src/*.o $(TARGET)
+	rm -f src/*.o $(TARGET) tile_editor

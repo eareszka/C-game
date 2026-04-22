@@ -31,7 +31,8 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
 }
 
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
-                      ResourceNodeList* resources, Tilemap* map, bool noclip)
+                      ResourceNodeList* resources, Tilemap* map, bool noclip, int* out_resource_hit,
+                      float* out_hit_x, float* out_hit_y)
 {
     // Action key — hit nearby resource or map tile
     if (input_pressed(in, SDL_SCANCODE_SPACE)
@@ -41,8 +42,33 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
         float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
         float rx, ry;
-        int rn_hit  = resource_nodes_try_hit(resources, hx, hy, 40, &rx, &ry);
-        int map_hit = !rn_hit && tilemap_try_hit(map, hx, hy, 40, &rx, &ry);
+        ResourceType hit_type;
+        int tile_hit_type = 0;
+        int rn_hit  = resource_nodes_try_hit(resources, hx, hy, 40, &rx, &ry, &hit_type);
+        int map_hit = !rn_hit && tilemap_try_hit(map, hx, hy, 40, &rx, &ry, &tile_hit_type);
+
+        if (rn_hit && (hit_type == RESOURCE_TREE || hit_type == RESOURCE_ROCK || hit_type == RESOURCE_GOLD || hit_type == RESOURCE_GRAVESTONE)) {
+            int award = (hit_type == RESOURCE_GRAVESTONE) ? (int)RESOURCE_ROCK : (int)hit_type;
+            player->inventory[award]++;
+            if (out_resource_hit) *out_resource_hit = award;
+            if (out_hit_x) *out_hit_x = rx;
+            if (out_hit_y) *out_hit_y = ry;
+        } else if (map_hit) {
+            if (tile_hit_type == TILE_TREE) {
+                player->inventory[(int)RESOURCE_TREE]++;
+                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_TREE;
+            } else if (tile_hit_type == TILE_ROCK) {
+                player->inventory[(int)RESOURCE_ROCK]++;
+                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_ROCK;
+            } else if (tile_hit_type == TILE_GOLD_ORE) {
+                player->inventory[(int)RESOURCE_GOLD]++;
+                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_GOLD;
+            }
+            if (map_hit && out_resource_hit && *out_resource_hit >= 0) {
+                if (out_hit_x) *out_hit_x = rx;
+                if (out_hit_y) *out_hit_y = ry;
+            }
+        }
 
         if (rn_hit == 1) {
             for (int i = 0; i < resources->count; i++) {
