@@ -8,10 +8,11 @@
 #include "camera.h"
 #include "tilemap.h"   // DungeonEntranceType
 
-#define DMAP_W          768
-#define DMAP_H          512
-#define DMAP_TILE       32
+#define DMAP_W              768
+#define DMAP_H              512
+#define DMAP_TILE           32
 #define DUNGEON_FOV_RADIUS  12   // visible tile radius around player
+#define DMAP_MAX_SPAWNERS   24
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,
@@ -20,13 +21,22 @@ enum DungeonTile : uint8_t {
     DNG_EXIT  = 3,   // goal / stairs deeper
 };
 
+struct DungeonSpawner {
+    int  tx, ty;
+    int  enemy_id;
+    bool dead;
+};
+
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
+    uint8_t visible[DMAP_H][DMAP_W];   // 1=currently in FOV (wall-blocked), reset each frame
     int entry_x, entry_y;
     int exit_x,  exit_y;
     DungeonEntranceType type;
     float difficulty;
+    DungeonSpawner spawners[DMAP_MAX_SPAWNERS];
+    int            num_spawners;
 };
 
 struct DungeonPlayer {

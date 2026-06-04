@@ -5,7 +5,7 @@
 
 double time_delta_seconds(void);
 
-void draw_fps(SDL_Renderer* renderer, float dt);
+void draw_fps(SDL_Renderer* renderer, float dt, float player_x, float player_y);
 
 // Draw an uppercase string at (x, y). scale=1 → 8px tall, scale=2 → 16px tall.
 // Supports A-Z, 0-9, space, colon, hyphen, period, question mark.

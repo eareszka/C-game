@@ -116,7 +116,7 @@ void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h) {
     SDL_RenderFillRect(ren, &inner);
 }
 
-void draw_fps(SDL_Renderer* renderer, float dt) {
+void draw_fps(SDL_Renderer* renderer, float dt, float player_x, float player_y) {
     static float acc         = 0.0f;
     static int   frames      = 0;
     static int   display_fps = 0;
@@ -129,9 +129,12 @@ void draw_fps(SDL_Renderer* renderer, float dt) {
         acc    = 0.0f;
     }
 
-    char buf[16];
+    char buf[32];
     SDL_snprintf(buf, sizeof(buf), "FPS:%d", display_fps);
     draw_text(renderer, buf, 4, 4, 2, 255, 220, 0);
+
+    SDL_snprintf(buf, sizeof(buf), "X:%d Y:%d", (int)player_x, (int)player_y);
+    draw_text(renderer, buf, 4, 22, 2, 255, 220, 0);
 }
 
 double time_delta_seconds(void) {

@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include "input.h"
 #include "entity.h"
+#include "enemy.h"
 
 // ── Weapon types ──────────────────────────────────────────────────────────────
 
@@ -15,29 +16,29 @@ enum WeaponType {
 };
 
 struct ProjectileProfile {
-    float speed;      // pixels per second
-    float damage;     // damage per hit
-    float fire_rate;  // volleys per second
-    int   count;      // bullets per volley
-    float spread;     // total arc in degrees (0 = single straight shot)
-    float radius;     // visual + hitbox radius in pixels
+    float speed;
+    float damage;
+    float fire_rate;
+    int   count;
+    float spread;
+    float radius;
 };
 
 ProjectileProfile weapon_profile(WeaponType type);
 
-// ── Arena ─────────────────────────────────────────────────────────────────────
+// ── Arena constants ────────────────────────────────────────────────────────────
 
 static const int ARENA_W  = 640;
 static const int ARENA_H  = 480;
-static const int ENEMY_X  = 320;  // fixed enemy position
+static const int ENEMY_X  = 320;
 static const int ENEMY_Y  = 160;
-static const int ENEMY_R  = 24;   // enemy hitbox radius
-static const int PLAYER_R = 12;   // player hitbox radius — adjust to taste
-
-// ── Bullet pools ──────────────────────────────────────────────────────────────
+static const int ENEMY_R  = 24;
+static const int PLAYER_R = 12;
 
 #define MAX_PLAYER_BULLETS 64
 #define MAX_ENEMY_BULLETS  256
+
+// ── Bullet ────────────────────────────────────────────────────────────────────
 
 struct Bullet {
     float x, y;
@@ -47,7 +48,7 @@ struct Bullet {
     bool  active;
 };
 
-// ── Phases ────────────────────────────────────────────────────────────────────
+// ── Phase ─────────────────────────────────────────────────────────────────────
 
 enum BattlePhase {
     BATTLE_PHASE_FIGHTING,
@@ -55,38 +56,52 @@ enum BattlePhase {
     BATTLE_PHASE_DEFEAT,
 };
 
-// ── Internal state ────────────────────────────────────────────────────────────
+// ── Player in battle ──────────────────────────────────────────────────────────
 
 struct BattlePlayer {
     float x, y;
     float hp, max_hp;
-    float iframes;      // invincibility seconds remaining after a hit
-    float fire_timer;   // countdown to next volley
+    float iframes;
+    float fire_timer;
     ProjectileProfile weapon;
 };
 
-struct BattleEnemy {
-    float hp, max_hp;
-    float fire_timer;   // countdown to next volley
-    int   spd, iq, luck;
+// ── Battle scene ──────────────────────────────────────────────────────────────
+
+class BattleScene {
+public:
+    BattleScene(Player* player, int enemy_id, WeaponType weapon);
+    ~BattleScene();
+
+    void update(const Input* in, float dt);
+    void draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const;
+
+    BattlePhase get_phase() const { return _phase; }
+    bool is_done() const { return _phase != BATTLE_PHASE_FIGHTING; }
+
+private:
+    BattlePhase  _phase;
+    BattlePlayer _bp;
+    Enemy*       _enemy;
+    Player*      _player_ref;
+    Bullet       _player_bullets[MAX_PLAYER_BULLETS];
+    Bullet       _enemy_bullets[MAX_ENEMY_BULLETS];
+
+    void _update_movement(const Input* in, float dt);
+    void _update_player_fire(const Input* in, float dt);
+    void _update_enemy(float dt);
+    void _move_bullets(float dt);
+    void _check_collisions();
+    void _spawn_player_bullet(float angle);
+    void _spawn_enemy_bullet(const BulletSpawn& bs);
+
+    static void _fill_rect(SDL_Renderer* ren, int x, int y, int w, int h,
+                            Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+    static void _draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int h,
+                                    Uint8 r, Uint8 g, Uint8 b);
+    static void _draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
+                          float cur, float max,
+                          Uint8 fr, Uint8 fg, Uint8 fb);
 };
-
-// ── Main struct ───────────────────────────────────────────────────────────────
-
-struct Battle {
-    BattlePhase  phase;
-    BattlePlayer bp;
-    BattleEnemy  be;
-    Player*      player;  // written back on exit
-
-    Bullet player_bullets[MAX_PLAYER_BULLETS];
-    Bullet enemy_bullets[MAX_ENEMY_BULLETS];
-};
-
-// ── API ───────────────────────────────────────────────────────────────────────
-
-void battle_start(Battle* b, Player* player, const Enemy* enemy, WeaponType weapon);
-void battle_update(Battle* b, const Input* in, float dt);
-void battle_draw(const Battle* b, SDL_Renderer* ren, SDL_Texture* player_sprite);
 
 #endif

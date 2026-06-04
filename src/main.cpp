@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <thread>
+#include <unordered_map>
+#include <vector>
 #include <SDL2/SDL_image.h>
 
 #include "game_state.h"
@@ -57,7 +59,16 @@ int main(int argc, char *argv[])
     player.stats.max_luck    = 30;  player.stats.luck    = 30;
     player.stats.max_iq      = 8;   player.stats.iq      = 8;
 
-    Battle battle;
+    BattleScene* battle_scene = nullptr;
+    GameState    state_after_battle = STATE_OVERWORLD;
+    int          battle_queue[3]             = {};
+    int          battle_queue_chaser_idx[3] = { -1, -1, -1 };
+    int          battle_queue_count = 0;
+    int          battle_queue_idx   = 0;
+    struct FlashEntry { float x, y; };
+    FlashEntry   flash_entries[3]   = {};
+    int          flash_count        = 0;
+    float        pre_battle_timer   = -1.0f;  // -1 = inactive
 
     // Floating +N resource text — one active at a time above the last hit node
     struct FloatText { float wx, wy, drift, life; char text[8]; Uint8 r, g, b; bool active; int count; };
@@ -78,8 +89,8 @@ int main(int argc, char *argv[])
 
     Overworld ow;
 
-    float start_x = (MAP_WIDTH  / 2) * TILE_SIZE;
-    float start_y = (MAP_HEIGHT / 2) * TILE_SIZE;
+    float start_x = 47916.0f;
+    float start_y = 46464.0f;
     overworld_init(&ow, &player, start_x, start_y);
 
     Tilemap* map = new Tilemap();
@@ -120,17 +131,41 @@ int main(int argc, char *argv[])
     int  dbg_type     = 0;
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
-    bool crafting_open = false;
-    bool map_open      = false;
+    bool crafting_open    = false;
+    bool map_open         = false;
+    bool battle_list_open = false;
+    int  battle_list_sel  = 0;
+
+    static const char* ENEMY_NAMES[50] = {
+        "CAVE BAT", "CAVE SLIME", "CAVE SPIDER", "CAVE TROLL", "CAVE WORM", "CAVE MUSHROOM",
+        "RUINS GUARD", "RUINS ARCHER", "RUINS GOLEM", "RUINS GHOST", "RUINS WISP", "RUINS COLOSSUS",
+        "ZOMBIE", "WRAITH", "SKELETON", "GHOUL", "BANSHEE", "LICH",
+        "GRAVE KNIGHT", "REVENANT", "DEMON", "NECROMANCER", "VAMPIRE", "GRAVE LORD",
+        "SERPENT", "SCORPION", "MIRAGE", "SANDWORM", "DJINN", "CROCODILE",
+        "MUMMY", "SCARAB", "ANUBIS", "BASTET", "SPHINX", "PHARAOH",
+        "ANCIENT", "DRUID", "WARDEN", "OBSERVER", "ORACLE", "ELDER",
+        "TREE SPRITE", "ENTWINE", "DRYAD", "WISP", "GUARDIAN", "TREE ANCIENT",
+        "BANDIT", "DRAGON",
+    };
 
     DungeonMap    dmap    = {};
     DungeonPlayer dplayer = {};
+
+    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; };
+    static const int MAX_CHASERS = 32;
+    DungeonChaser chasers[MAX_CHASERS] = {};
+    int num_chasers = 0;
+
+    std::unordered_map<uint32_t, std::vector<uint8_t>> dungeon_explored_cache;
+    uint32_t current_dng_seed = 0;
 
     // Portal state: which overworld tiles DNG_ENTRY / DNG_EXIT map back to.
     // Set when entering a dungeon; both default to the entrance tile if there
     // is no connected partner dungeon.
     int dng_entry_portal_x = -1, dng_entry_portal_y = -1;
     int dng_exit_portal_x  = -1, dng_exit_portal_y  = -1;
+
+    float esc_hold_time = 0.f;
 
     // Manual 60 fps frame cap — more consistent than SDL_RENDERER_PRESENTVSYNC on WSL2
     const Uint64 PERF_FREQ      = SDL_GetPerformanceFrequency();
@@ -151,7 +186,12 @@ int main(int argc, char *argv[])
             input_handle_event(&in, &e);
         }
         if (in.quit) running = false;
-        if (input_down(&in, SDL_SCANCODE_ESCAPE)) running = false;
+        if (input_down(&in, SDL_SCANCODE_ESCAPE)) {
+            esc_hold_time += dt;
+            if (esc_hold_time >= 3.f) running = false;
+        } else {
+            esc_hold_time = 0.f;
+        }
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
             Uint32 flags = SDL_GetWindowFlags(plat.window);
@@ -196,7 +236,9 @@ int main(int argc, char *argv[])
 
             if (dbg_sel == 2 && dbg_confirm) {
                 // Regenerate the entire overworld with a new seed
+                tilemap_cancel_gen();
                 gen_thread.join();
+                tilemap_reset_gen_cancel();
                 map_seed = (unsigned int)SDL_GetTicks();
                 delete map;
                 map = new Tilemap();
@@ -219,25 +261,40 @@ int main(int argc, char *argv[])
                 dbg_open = false;
         }
 
+        // ── Battle test list (F3) ─────────────────────────────────────────────
+        if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && state != STATE_BATTLE)
+            battle_list_open = !battle_list_open;
+
+        if (battle_list_open) {
+            if (input_pressed(&in, SDL_SCANCODE_UP))
+                battle_list_sel = (battle_list_sel + 49) % 50;
+            if (input_pressed(&in, SDL_SCANCODE_DOWN))
+                battle_list_sel = (battle_list_sel + 1) % 50;
+            if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
+                input_pressed(&in, SDL_SCANCODE_Z)) {
+                delete battle_scene;
+                battle_scene = new BattleScene(&player, battle_list_sel, WEAPON_DAGGER);
+                state = STATE_BATTLE;
+                battle_list_open = false;
+            }
+            if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                battle_list_open = false;
+        }
+
         // Blank input fed to game logic while menu is open so the player stands still.
         Input in_blank = {0};
-        const Input* game_in = (dbg_open || crafting_open || map_open) ? &in_blank : &in;
+        const Input* game_in = (dbg_open || crafting_open || map_open || battle_list_open)
+                                ? &in_blank : &in;
 
         if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && state != STATE_BATTLE) {
-            // Placeholder encounter — replace with encounter data from overworld
-            Enemy enc = {0};
-            enc.stats.max_hp    = 60; enc.stats.hp    = 60;
-            enc.stats.max_spd   = 6;  enc.stats.spd   = 6;
-            enc.stats.max_attack= 10; enc.stats.attack= 10;
-            enc.stats.max_iq    = 5;  enc.stats.iq    = 5;
-            enc.stats.max_luck  = 8;  enc.stats.luck  = 8;
-            battle_start(&battle, &player, &enc, WEAPON_DAGGER);
+            delete battle_scene;
+            battle_scene = new BattleScene(&player, 0, WEAPON_DAGGER);
             state = STATE_BATTLE;
         }
 
         // Mouse wheel steps through pixel-perfect zoom levels
         // scroll up (+y) = zoom in = higher index; scroll down = zoom out = lower index
-        if (in.mouse_wheel != 0) {
+        if (in.mouse_wheel != 0 && state != STATE_BATTLE) {
             zoom_idx += in.mouse_wheel;
             if (zoom_idx < 0)           zoom_idx = 0;
             if (zoom_idx >= zoom_count) zoom_idx = zoom_count - 1;
@@ -370,6 +427,19 @@ int main(int argc, char *argv[])
                             }
                         }
 
+                        // For solo entrances, anchor the seed to the entrance's
+                        // canonical top-left so any tile of a 2×2 stamp gives
+                        // the same layout every visit.
+                        if (cur_ent && cur_ent->partner_idx < 0) {
+                            dng_seed = map_seed
+                                ^ ((unsigned int)cur_ent->x * 73856093u)
+                                ^ ((unsigned int)cur_ent->y * 19349663u);
+                        }
+
+                        // Fixed cave at tile (1498, 1572) — same layout every seed.
+                        if (cur_ent && cur_ent->x == 1498 && cur_ent->y == 1572)
+                            dng_seed = 0xCA4E5EEDu;
+
                         if (cur_ent && cur_ent->partner_idx >= 0) {
                             DungeonEntrance* partner = &map->dungeon_entrances[cur_ent->partner_idx];
                             int ax = cur_ent->x, ay = cur_ent->y;
@@ -409,6 +479,12 @@ int main(int argc, char *argv[])
                         }
                         dungeon_generate(&dmap, gen_type,
                                          ow.dungeon_difficulty, dng_seed);
+                        current_dng_seed = dng_seed;
+                        {
+                            auto exp_it = dungeon_explored_cache.find(current_dng_seed);
+                            if (exp_it != dungeon_explored_cache.end())
+                                SDL_memcpy(dmap.explored, exp_it->second.data(), DMAP_H * DMAP_W);
+                        }
 
                         if (!isnan(connect_angle)) {
                             // Connected: orient portals so the underground direction
@@ -420,6 +496,15 @@ int main(int argc, char *argv[])
                         }
 
                         dungeon_player_init(&dplayer, &player, &dmap, from_exit);
+                        num_chasers = 0;
+                        for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
+                            DungeonSpawner& sp = dmap.spawners[si];
+                            chasers[num_chasers++] = {
+                                sp.tx * DMAP_TILE + DMAP_TILE * 0.5f,
+                                sp.ty * DMAP_TILE + DMAP_TILE * 0.5f,
+                                sp.enemy_id, true, false
+                            };
+                        }
                         state = STATE_DUNGEON;
                     }
                 }
@@ -446,20 +531,154 @@ int main(int argc, char *argv[])
             }
 
             case STATE_BATTLE:
-                battle_update(&battle, game_in, dt);
-                battle_draw(&battle, plat.renderer, player_sprite);
-                if (battle.phase == BATTLE_PHASE_VICTORY || battle.phase == BATTLE_PHASE_DEFEAT) {
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) || input_pressed(game_in, SDL_SCANCODE_Z))
-                        state = STATE_OVERWORLD;
+                if (battle_scene) {
+                    battle_scene->update(game_in, dt);
+                    battle_scene->draw(plat.renderer, player_sprite);
+                    if (battle_scene->is_done()) {
+                        if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                            input_pressed(game_in, SDL_SCANCODE_Z)) {
+                            bool victory = battle_scene->get_phase() == BATTLE_PHASE_VICTORY;
+                            delete battle_scene;
+                            battle_scene = nullptr;
+                            if (victory && battle_queue_idx + 1 < battle_queue_count) {
+                                battle_queue_idx++;
+                                battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx], WEAPON_DAGGER);
+                            } else {
+                                // Re-activate any queued enemies that were never fought.
+                                for (int qi = battle_queue_idx + 1; qi < battle_queue_count; qi++) {
+                                    int cidx = battle_queue_chaser_idx[qi];
+                                    if (cidx >= 0 && cidx < num_chasers)
+                                        chasers[cidx].active = true;
+                                }
+                                battle_queue_count = 0;
+                                battle_queue_idx   = 0;
+                                state = state_after_battle;
+                                state_after_battle = STATE_OVERWORLD;
+                            }
+                        }
+                    }
                 }
                 break;
 
             case STATE_DUNGEON: {
-                dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, dbg_noclip);
+                if (pre_battle_timer < 0.0f)
+                    dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, dbg_noclip);
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
                 float dpcy = dplayer.y + player.height * 0.5f;
                 camera_center_on(&cam, dpcx, dpcy);
+
+                // Pre-battle flash: each queued enemy flashes once in fight order,
+                // then 0.5s pause before battle starts.
+                static const float FLASH_STEP = 0.4f;  // total time per enemy
+                static const float FLASH_ON   = 0.25f; // how long it's visible within that window
+                if (pre_battle_timer >= 0.0f) {
+                    pre_battle_timer += dt;
+                    if (pre_battle_timer >= flash_count * FLASH_STEP + 0.5f) {
+                        pre_battle_timer = -1.0f;
+                        delete battle_scene;
+                        battle_scene = new BattleScene(&player, battle_queue[0], WEAPON_DAGGER);
+                        state_after_battle = STATE_DUNGEON;
+                        state = STATE_BATTLE;
+                    }
+                } else {
+                    // Update chasers — activate when seen, move toward player, queue on contact.
+                    const float CHASER_SPEED  = 300.0f;
+                    const float TRIGGER_DIST2 = 22.0f * 22.0f;
+                    for (int ci = 0; ci < num_chasers; ci++) {
+                        DungeonChaser& ch = chasers[ci];
+                        if (!ch.active) continue;
+
+                        // Drop aggro if the chaser has moved outside the player's FOV.
+                        if (ch.chasing) {
+                            int ctx = (int)(ch.x / DMAP_TILE), cty = (int)(ch.y / DMAP_TILE);
+                            if (ctx < 0 || ctx >= DMAP_W || cty < 0 || cty >= DMAP_H ||
+                                !dmap.visible[cty][ctx]) {
+                                ch.chasing = false;
+                            }
+                        }
+
+                        // Start aggro timer once the player's FOV reaches the chaser's tile.
+                        if (!ch.chasing) {
+                            int ctx = (int)(ch.x / DMAP_TILE), cty = (int)(ch.y / DMAP_TILE);
+                            if (ctx >= 0 && ctx < DMAP_W && cty >= 0 && cty < DMAP_H &&
+                                dmap.visible[cty][ctx]) {
+                                ch.chasing = true;
+                                ch.aggro_timer = 1.0f;
+                            } else {
+                                continue;
+                            }
+                        }
+
+                        if (ch.aggro_timer > 0.0f) {
+                            ch.aggro_timer -= dt;
+                            continue;
+                        }
+
+                        float cdx = dpcx - ch.x, cdy = dpcy - ch.y;
+                        float dist2 = cdx*cdx + cdy*cdy;
+
+                        if (dist2 < TRIGGER_DIST2) {
+                            ch.active = false;
+
+                            // Snapshot queue: touching enemy first, then up to 2 nearest
+                            // other chasers that are currently in the player's FOV.
+                            battle_queue_count = 0;
+                            battle_queue_idx   = 0;
+                            battle_queue_chaser_idx[0] = battle_queue_chaser_idx[1] = battle_queue_chaser_idx[2] = -1;
+                            battle_queue[battle_queue_count++] = ch.enemy_id;
+                            flash_entries[0] = { ch.x, ch.y };
+
+                            struct { float d2; int enemy_id; int idx; } cands[MAX_CHASERS];
+                            int nc = 0;
+                            for (int cj = 0; cj < num_chasers; cj++) {
+                                if (cj == ci) continue;
+                                DungeonChaser& o = chasers[cj];
+                                if (!o.active || !o.chasing) continue;
+                                int otx = (int)(o.x / DMAP_TILE), oty = (int)(o.y / DMAP_TILE);
+                                if (otx < 0 || otx >= DMAP_W || oty < 0 || oty >= DMAP_H) continue;
+                                if (!dmap.visible[oty][otx]) continue;
+                                float odx = dpcx - o.x, ody = dpcy - o.y;
+                                cands[nc++] = { odx*odx + ody*ody, o.enemy_id, cj };
+                            }
+                            for (int a = 1; a < nc; a++) {
+                                auto tmp = cands[a];
+                                int b = a - 1;
+                                while (b >= 0 && cands[b].d2 > tmp.d2) { cands[b+1] = cands[b]; b--; }
+                                cands[b+1] = tmp;
+                            }
+                            for (int k = 0; k < nc && battle_queue_count < 3; k++) {
+                                flash_entries[battle_queue_count] = { chasers[cands[k].idx].x, chasers[cands[k].idx].y };
+                                battle_queue_chaser_idx[battle_queue_count] = cands[k].idx;
+                                battle_queue[battle_queue_count++] = cands[k].enemy_id;
+                                chasers[cands[k].idx].active = false;
+                            }
+
+                            flash_count       = battle_queue_count;
+                            pre_battle_timer  = 0.0f;
+                            break;
+                        }
+
+                        float dist = sqrtf(dist2);
+                        float nx = ch.x + (cdx / dist) * CHASER_SPEED * dt;
+                        float ny = ch.y + (cdy / dist) * CHASER_SPEED * dt;
+                        int ntx = (int)(nx / DMAP_TILE), nty = (int)(ny / DMAP_TILE);
+                        if (ntx >= 0 && ntx < DMAP_W && nty >= 0 && nty < DMAP_H &&
+                            dmap.tiles[nty][ntx] != DNG_WALL) {
+                            ch.x = nx; ch.y = ny;
+                        } else {
+                            int ntx2 = (int)(nx / DMAP_TILE), nty2 = (int)(ch.y / DMAP_TILE);
+                            if (ntx2 >= 0 && ntx2 < DMAP_W && nty2 >= 0 && nty2 < DMAP_H &&
+                                dmap.tiles[nty2][ntx2] != DNG_WALL)
+                                ch.x = nx;
+                            int ntx3 = (int)(ch.x / DMAP_TILE), nty3 = (int)(ny / DMAP_TILE);
+                            if (ntx3 >= 0 && ntx3 < DMAP_W && nty3 >= 0 && nty3 < DMAP_H &&
+                                dmap.tiles[nty3][ntx3] != DNG_WALL)
+                                ch.y = ny;
+                        }
+                    }
+                }
+                if (state == STATE_BATTLE) break;
 
                 // Background matches wall colour so map edges blend in
                 SDL_SetRenderDrawColor(plat.renderer, 5, 5, 8, 255);
@@ -467,6 +686,46 @@ int main(int argc, char *argv[])
 
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
+
+                // Draw active chasers
+                for (int ci = 0; ci < num_chasers; ci++) {
+                    DungeonChaser& ch = chasers[ci];
+                    if (!ch.active) continue;
+                    int sz  = (int)(14 * cam.zoom);
+                    int sx  = (int)((ch.x - cam.x) * cam.zoom) - sz / 2;
+                    int sy  = (int)((ch.y - cam.y) * cam.zoom) - sz / 2;
+                    SDL_Rect cr = { sx, sy, sz, sz };
+                    SDL_SetRenderDrawColor(plat.renderer, 200, 30, 30, 255);
+                    SDL_RenderFillRect(plat.renderer, &cr);
+                    SDL_SetRenderDrawColor(plat.renderer, 255, 80, 80, 255);
+                    SDL_RenderDrawRect(plat.renderer, &cr);
+                }
+
+                // Draw pre-battle flash: each enemy flashes once in fight order
+                if (pre_battle_timer >= 0.0f) {
+                    int cur_step = (int)(pre_battle_timer / FLASH_STEP);
+                    float local_t = pre_battle_timer - cur_step * FLASH_STEP;
+                    for (int fi = 0; fi < flash_count; fi++) {
+                        int sz = (int)(14 * cam.zoom);
+                        int sx = (int)((flash_entries[fi].x - cam.x) * cam.zoom) - sz / 2;
+                        int sy = (int)((flash_entries[fi].y - cam.y) * cam.zoom) - sz / 2;
+                        SDL_Rect cr = { sx, sy, sz, sz };
+                        if (fi == cur_step && cur_step < flash_count && local_t < FLASH_ON) {
+                            // Currently flashing — bright yellow
+                            SDL_SetRenderDrawColor(plat.renderer, 255, 220, 50, 255);
+                            SDL_RenderFillRect(plat.renderer, &cr);
+                            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                            SDL_RenderDrawRect(plat.renderer, &cr);
+                        } else if (fi > cur_step && cur_step < flash_count) {
+                            // Not yet reached — shown dim
+                            SDL_SetRenderDrawColor(plat.renderer, 80, 20, 20, 255);
+                            SDL_RenderFillRect(plat.renderer, &cr);
+                            SDL_SetRenderDrawColor(plat.renderer, 120, 40, 40, 255);
+                            SDL_RenderDrawRect(plat.renderer, &cr);
+                        }
+                        // fi <= cur_step past FLASH_ON, or cur_step >= flash_count (pause): not drawn
+                    }
+                }
 
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
@@ -478,6 +737,8 @@ int main(int argc, char *argv[])
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        dungeon_explored_cache[current_dng_seed].assign(
+                            &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                         ow.x = (float)(dng_entry_portal_x * TILE_SIZE);
                         ow.y = (float)(dng_entry_portal_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
@@ -494,6 +755,8 @@ int main(int argc, char *argv[])
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        dungeon_explored_cache[current_dng_seed].assign(
+                            &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                         ow.x = (float)(dng_exit_portal_x * TILE_SIZE);
                         ow.y = (float)(dng_exit_portal_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
@@ -509,14 +772,17 @@ int main(int argc, char *argv[])
                 if (map_open)
                     dungeon_minimap_draw(&dmap, &dplayer, plat.renderer, 640, 480, dbg_show_all);
 
-                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
+                    dungeon_explored_cache[current_dng_seed].assign(
+                        &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                     state = STATE_OVERWORLD;
+                }
                 break;
             }
         }
 
-        // ── Resource bar (top of screen, always visible) ─────────────────────
-        {
+        // ── Resource bar (hidden during battle) ──────────────────────────────
+        if (state != STATE_BATTLE) {
             static const int   res_idx[]    = { 0, 1, 3 };
             static const char* res_labels[] = { "WOOD", "STONE", "GOLD" };
             static const Uint8 res_r[] = {180, 160, 255};
@@ -593,8 +859,8 @@ int main(int argc, char *argv[])
             SDL_Rect div2 = { PX + NES_PAD, PY + 106, PW - NES_PAD*2, 1 };
             SDL_RenderFillRect(plat.renderer, &div2);
 
-            // ── Rare items row ────────────────────────────────────────────────
-            draw_text(plat.renderer, "RARE ITEMS", PX + NES_PAD + 2, PY + 114, 1, 255, 255, 255);
+            // ── Collectibles row ──────────────────────────────────────────────
+            draw_text(plat.renderer, "COLLECTIBLES", PX + NES_PAD + 2, PY + 114, 1, 255, 255, 255);
             {
                 char buf[32];
                 int rx = PX + NES_PAD + 2;
@@ -667,7 +933,56 @@ int main(int argc, char *argv[])
                       MX + 6, MY + MH - 16, 1, 180, 180, 180);
         }
 
-        draw_fps(plat.renderer, dt);
+        // ── Battle test list overlay ──────────────────────────────────────────
+        if (battle_list_open) {
+            static const int VIEW = 10;
+            const int PW = 360, PH = 34 + VIEW * 18 + 18;
+            const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
+
+            draw_nes_panel(plat.renderer, PX, PY, PW, PH);
+            draw_text(plat.renderer, "BATTLE TEST",
+                      PX + (PW - text_width("BATTLE TEST", 2)) / 2,
+                      PY + NES_PAD + 4, 2, 255, 255, 255);
+
+            int top = battle_list_sel - VIEW / 2;
+            if (top < 0)       top = 0;
+            if (top > 50-VIEW) top = 50 - VIEW;
+
+            for (int i = 0; i < VIEW; i++) {
+                int idx = top + i;
+                if (idx >= 50) break;
+                bool sel = (idx == battle_list_sel);
+                int ry = PY + 34 + i * 18;
+                Uint8 cr = sel ? 255 : 180, cg = sel ? 255 : 180, cb = sel ? 80 : 180;
+                if (sel) draw_text(plat.renderer, ">", PX + 8, ry, 2, cr, cg, cb);
+                char label[32];
+                SDL_snprintf(label, sizeof(label), "%02d  %s", idx, ENEMY_NAMES[idx]);
+                draw_text(plat.renderer, label, PX + 24, ry, 2, cr, cg, cb);
+            }
+
+            draw_text(plat.renderer, "UP/DN:SELECT  Z:FIGHT  F3:CLOSE",
+                      PX + 6, PY + PH - 14, 1, 180, 180, 180);
+        }
+
+        float dbg_px = (state == STATE_DUNGEON) ? dplayer.x : ow.x;
+        float dbg_py = (state == STATE_DUNGEON) ? dplayer.y : ow.y;
+        draw_fps(plat.renderer, dt, dbg_px, dbg_py);
+
+        if (esc_hold_time > 0.f) {
+            const int BAR_W = 80;
+            const int BAR_H = 6;
+            const int BX = 4, BY = 34;
+            draw_text(plat.renderer, "HOLD ESC TO QUIT", BX, BY - 12, 1, 255, 255, 80);
+            SDL_SetRenderDrawColor(plat.renderer, 60, 60, 60, 255);
+            SDL_Rect track = { BX, BY, BAR_W, BAR_H };
+            SDL_RenderFillRect(plat.renderer, &track);
+            int fill_w = (int)(esc_hold_time / 3.f * BAR_W);
+            if (fill_w > BAR_W) fill_w = BAR_W;
+            SDL_SetRenderDrawColor(plat.renderer, 255, 80, 80, 255);
+            SDL_Rect fill = { BX, BY, fill_w, BAR_H };
+            SDL_RenderFillRect(plat.renderer, &fill);
+        }
+
         SDL_RenderPresent(plat.renderer);
 
         // Precise frame cap: sleep most of the wait, spin the last ~1 ms
@@ -682,7 +997,9 @@ int main(int argc, char *argv[])
         }
     }
 
+    tilemap_cancel_gen();
     gen_thread.join();
+    delete battle_scene;
     delete map;
 
     //cleanups textures

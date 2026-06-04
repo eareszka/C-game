@@ -1704,11 +1704,63 @@ static void carve_tree_ca(DungeonMap* dmap, uint32_t* rng) {
     dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
 }
 
+// ── Spawner placement ─────────────────────────────────────────────────────
+
+static int spawner_enemy_base(DungeonEntranceType type) {
+    switch (type) {
+        case DUNGEON_ENT_CAVE:         return  0;
+        case DUNGEON_ENT_RUINS:        return  6;
+        case DUNGEON_ENT_GRAVEYARD_SM: return 12;
+        case DUNGEON_ENT_GRAVEYARD_LG: return 18;
+        case DUNGEON_ENT_OASIS:        return 24;
+        case DUNGEON_ENT_PYRAMID:      return 30;
+        case DUNGEON_ENT_STONEHENGE:   return 36;
+        case DUNGEON_ENT_LARGE_TREE:   return 42;
+        default:                       return  0;
+    }
+}
+
+// Spread spawners across all floor tiles using a regular grid + local floor search.
+// Spawner tiles are never visible when placed, so they only activate in darkness.
+static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
+    dmap->num_spawners = 0;
+    const int STEP   = 24;   // grid spacing in tiles — guarantees spread
+    const int SEARCH = 8;    // radius to search for a floor tile near each grid point
+    int base = spawner_enemy_base(dmap->type);
+
+    int ox = (int)(rng_next(rng) % STEP);
+    int oy = (int)(rng_next(rng) % STEP);
+
+    for (int gy = oy; gy < DMAP_H && dmap->num_spawners < DMAP_MAX_SPAWNERS; gy += STEP) {
+        for (int gx = ox; gx < DMAP_W && dmap->num_spawners < DMAP_MAX_SPAWNERS; gx += STEP) {
+            int best_tx = -1, best_ty = -1, best_d2 = SEARCH * SEARCH + 1;
+            for (int dy = -SEARCH; dy <= SEARCH; dy++) {
+                for (int dx = -SEARCH; dx <= SEARCH; dx++) {
+                    int tx = gx + dx, ty = gy + dy;
+                    if (tx < 1 || tx >= DMAP_W - 1 || ty < 1 || ty >= DMAP_H - 1) continue;
+                    if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+                    // Keep clear of portals
+                    int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+                    int dxx = tx - dmap->exit_x,  dxy = ty - dmap->exit_y;
+                    if (dex*dex + dey*dey < STEP*STEP) continue;
+                    if (dxx*dxx + dxy*dxy < STEP*STEP) continue;
+                    int d2 = dx*dx + dy*dy;
+                    if (d2 < best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+                }
+            }
+            if (best_tx < 0) continue;
+            int eid = base + (int)(rng_next(rng) % 6);
+            dmap->spawners[dmap->num_spawners++] = { best_tx, best_ty, eid, false };
+        }
+    }
+}
+
 // ── Public: generate ──────────────────────────────────────────────────────
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed) {
     memset(dmap->tiles,    DNG_WALL, sizeof(dmap->tiles));
     memset(dmap->explored, 0,        sizeof(dmap->explored));
+    memset(dmap->visible,  0,        sizeof(dmap->visible));
     dmap->type       = type;
     dmap->difficulty = difficulty;
 
@@ -1719,6 +1771,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_cave_ca(dmap, &rng);
         decorate_cave(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1727,6 +1780,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_tree_ca(dmap, &rng);
         decorate_large_tree(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1734,6 +1788,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_STONEHENGE) {
         carve_stonehenge_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1741,6 +1796,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_PYRAMID) {
         carve_pyramid_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1748,6 +1804,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_OASIS) {
         carve_oasis_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1755,6 +1812,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_GRAVEYARD_SM) {
         carve_graveyard_layout(dmap, false, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1762,6 +1820,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_GRAVEYARD_LG) {
         carve_graveyard_layout(dmap, true, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1769,6 +1828,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     if (type == DUNGEON_ENT_RUINS) {
         carve_ruins_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
         return;
     }
 
@@ -1806,6 +1866,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
 
     clear_portal_surroundings(dmap);
+    place_spawners(dmap, &rng);
 }
 
 // ── Public: orient portals to match overworld direction ───────────────────
@@ -1893,6 +1954,35 @@ static bool tile_solid(const void* map, float px, float py) {
 }
 
 
+// Casts a Bresenham ray from (ptx,pty) to every tile within DUNGEON_FOV_RADIUS.
+// Stops at the first wall hit (marks that wall visible — you see the face blocking you).
+// Floors and open tiles along the ray are also marked visible.
+static void compute_fov(DungeonMap* dmap, int ptx, int pty) {
+    memset(dmap->visible, 0, sizeof(dmap->visible));
+    const int R = DUNGEON_FOV_RADIUS;
+    for (int dy = -R; dy <= R; dy++) {
+        for (int dx = -R; dx <= R; dx++) {
+            if (dx*dx + dy*dy > R*R) continue;
+            int tx = ptx + dx, ty = pty + dy;
+            if (tx < 0 || tx >= DMAP_W || ty < 0 || ty >= DMAP_H) continue;
+            // Bresenham line from player tile to target tile
+            int x = ptx, y = pty;
+            int absdx = abs(tx - x), absdy = abs(ty - y);
+            int sx = (tx >= x) ? 1 : -1, sy = (ty >= y) ? 1 : -1;
+            int err = absdx - absdy;
+            while (true) {
+                if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) break;
+                dmap->visible[y][x] = 1;
+                if (dmap->tiles[y][x] == DNG_WALL) break; // wall blocks further vision
+                if (x == tx && y == ty) break;
+                int e2 = 2 * err;
+                if (e2 > -absdy) { err -= absdy; x += sx; }
+                if (e2 < absdx) { err += absdx; y += sy; }
+            }
+        }
+    }
+}
+
 // ── Public: player update ─────────────────────────────────────────────────
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, bool noclip) {
@@ -1930,18 +2020,19 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     }
 
     player_animate(player, dt, anim_speed);
-    const int explored_r = 30;
 
-    // ── Exploration: mark tiles near player as explored ──────────────────
+    // ── FOV: compute wall-blocked visibility, then mark visible tiles explored ──
     int ptx = (int)((dp->x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE);
     int pty = (int)((dp->y + (HB_Y1 + HB_Y2) * 0.5f) / DMAP_TILE);
-    for (int fdy = -explored_r; fdy <= explored_r; fdy++)
-        for (int fdx = -230; fdx <= explored_r; fdx++) {
-            if (fdx*fdx + fdy*fdy > explored_r*explored_r) continue;
-            int ttx = ptx + fdx, tty = pty + fdy;
-            if (ttx >= 0 && ttx < DMAP_W && tty >= 0 && tty < DMAP_H)
-                dmap->explored[tty][ttx] = 1;
-        }
+    compute_fov(dmap, ptx, pty);
+    const int R = DUNGEON_FOV_RADIUS;
+    int fy0 = pty - R < 0      ? 0      : pty - R;
+    int fy1 = pty + R >= DMAP_H ? DMAP_H : pty + R + 1;
+    int fx0 = ptx - R < 0      ? 0      : ptx - R;
+    int fx1 = ptx + R >= DMAP_W ? DMAP_W : ptx + R + 1;
+    for (int fy = fy0; fy < fy1; fy++)
+        for (int fx = fx0; fx < fx1; fx++)
+            if (dmap->visible[fy][fx]) dmap->explored[fy][fx] = 1;
 }
 
 // ── public: draw dungeon tiles ────────────────────────────────────────────
@@ -1978,6 +2069,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
         for (int tx = tx0; tx < tx1; tx++) {
             if (!show_all && !dmap->explored[ty][tx]) continue;   // unexplored → black
 
+            bool in_fov = show_all || dmap->visible[ty][tx];
+
             uint8_t tile = dmap->tiles[ty][tx];
 
             // Outline walls: skip wall tiles not adjacent to any open tile (all except stonehenge)
@@ -1998,9 +2091,9 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 case DNG_EXIT:  c = &pal.exit_;  break;
                 default:        c = &pal.wall;  break;
             }
-            int r = c->r;
-            int g = c->g;
-            int b = c->b;
+            int r = in_fov ? c->r : c->r * 3 / 10;
+            int g = in_fov ? c->g : c->g * 3 / 10;
+            int b = in_fov ? c->b : c->b * 3 / 10;
 
             int sx = (int)((tx * DMAP_TILE - cam->x) * z);
             int sy = (int)((ty * DMAP_TILE - cam->y) * z);
@@ -2033,6 +2126,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     cb = (Uint8)((c->b + 255) / 2);
                     break;
             }
+            if (!in_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
             char buf[2] = {ch, '\0'};
             draw_text(ren, buf, sx + coff, sy + coff, scale, cr, cg, cb);
         }
@@ -2046,6 +2140,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 if (tile == DNG_WALL) continue;
                 if (!show_all && !dmap->explored[ty][tx]) continue;
 
+                bool shg_fov = show_all || dmap->visible[ty][tx];
                 const SDL_Color* c;
                 switch (tile) {
                     case DNG_ENTRY: c = &pal.entry; break;
@@ -2055,7 +2150,10 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 int sx = (int)((tx * DMAP_TILE - cam->x) * z);
                 int sy = (int)((ty * DMAP_TILE - cam->y) * z);
                 SDL_Rect rect = { sx, sy, tsz, tsz };
-                SDL_SetRenderDrawColor(ren, c->r, c->g, c->b, 255);
+                int sr = shg_fov ? c->r : c->r * 3 / 10;
+                int sg = shg_fov ? c->g : c->g * 3 / 10;
+                int sb = shg_fov ? c->b : c->b * 3 / 10;
+                SDL_SetRenderDrawColor(ren, sr, sg, sb, 255);
                 SDL_RenderFillRect(ren, &rect);
 
                 char ch; Uint8 cr, cg, cb;
@@ -2067,6 +2165,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
                         break;
                 }
+                if (!shg_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
                 char buf[2] = {ch, '\0'};
                 draw_text(ren, buf, sx + coff, sy + coff, scale, cr, cg, cb);
             }

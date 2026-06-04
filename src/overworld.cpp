@@ -54,7 +54,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
             if (out_hit_x) *out_hit_x = rx;
             if (out_hit_y) *out_hit_y = ry;
         } else if (map_hit) {
-            if (tile_hit_type == TILE_TREE) {
+            if (tile_hit_type == TILE_TREE || tile_hit_type == TILE_DEAD_TREE) {
                 player->inventory[(int)RESOURCE_TREE]++;
                 if (out_resource_hit) *out_resource_hit = (int)RESOURCE_TREE;
             } else if (tile_hit_type == TILE_ROCK) {

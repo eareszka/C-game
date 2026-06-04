@@ -56,6 +56,6 @@ void player_animate(Player* player, float dt, float anim_speed);
 typedef struct {
     Stats stats;
     int enemy_id;
-} Enemy;
+} EnemyData;
 
 #endif

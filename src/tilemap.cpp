@@ -12,7 +12,12 @@
 #include <unordered_map>
 #include <vector>
 #include <array>
+#include <atomic>
 #include <pthread.h>
+
+static std::atomic<bool> s_gen_cancel{false};
+void tilemap_cancel_gen()       { s_gen_cancel = true; }
+void tilemap_reset_gen_cancel() { s_gen_cancel = false; }
 
 // ---------------------------------------------------------------------------
 // Embedded 8x8 bitmap glyphs — one byte per row, MSB = leftmost pixel
@@ -21,6 +26,7 @@
 static const uint8_t glyph_grass[8]  = {0x00,0x00,0x00,0x00,0x18,0x18,0x00,0x00}; // '.'
 static const uint8_t glyph_path[8]   = {0x00,0x00,0x00,0x18,0x18,0x08,0x10,0x00}; // ','
 static const uint8_t glyph_tree[8]        = {0xFE,0xFE,0x18,0x18,0x18,0x18,0x18,0x18}; // 'T'
+static const uint8_t glyph_dead_tree[8]   = {0x66,0x3C,0x18,0x18,0x18,0x18,0x18,0x00}; // bare branches
 // Tall tree (two stacked tree tiles): top = canopy, bottom = trunk
 static const uint8_t glyph_water[8]  = {0x62,0x94,0x08,0x62,0x94,0x08,0x62,0x94}; // '~'
 static const uint8_t glyph_cliff[8]      = {0x24,0x7E,0x24,0x24,0x7E,0x24,0x00,0x00}; // '#'
@@ -150,6 +156,7 @@ static const TileStyle tile_styles[] =
     {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_PYRAMID      (68)
     {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_STONEHENGE   (69)
     { 40,  20,   5, 200, 120,  50, glyph_dungeon_tree_trunk }, // TILE_DUNGEON_LARGE_TREE   (70)
+    { 40,  30,  20, 100,  80,  55, glyph_dead_tree         }, // TILE_DEAD_TREE             (71)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -171,7 +178,7 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 71; // TILE_DUNGEON_LARGE_TREE + 1
+static const int TILE_CACHE_SIZE = 72; // TILE_DEAD_TREE + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 static SDL_Texture* s_overworld0_tex     = nullptr;
@@ -642,6 +649,38 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Town 0 — starting town, centred over the hub, same every seed.
     // Must be ready before the game loop so the player has ground to stand on.
     stamp_town_blueprint(map, 0, cx - TOWN_W / 2, cy - TOWN_H / 2);
+
+    // Fixed cave dungeon — world pixel (47936, 50329), tile (1498, 1572).
+    // Stamped in phase 1 so it's visible immediately on load.
+    {
+        const int fcx = 1498, fcy = 1572;
+        map->tiles[fcy][fcx]   = TILE_DUNGEON_CAVE;
+        map->overlay[fcy][fcx] = 0;
+        float fdx = (float)(fcx - MAP_WIDTH  / 2);
+        float fdy = (float)(fcy - MAP_HEIGHT / 2);
+        float dist     = sqrtf(fdx*fdx + fdy*fdy);
+        float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
+                               (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
+        float difficulty = ((dist / max_dist) + 3.0f / 5.0f) * 0.5f;
+        map->dungeon_entrances[0] = { fcx, fcy, 0, DUNGEON_ENT_CAVE, 3, difficulty, 0, -1 };
+        map->num_dungeon_entrances = 1;
+    }
+
+    // Fixed graveyard dungeon — world pixel (46816, 47082), tile (1463, 1471).
+    // Stamped in phase 1 so it's visible immediately on load.
+    {
+        const int gx = 1463, gy = 1471;
+        map->tiles[gy][gx]   = TILE_DUNGEON_GRAVEYARD_SM;
+        map->overlay[gy][gx] = 0;
+        float gdx = (float)(gx - MAP_WIDTH  / 2);
+        float gdy = (float)(gy - MAP_HEIGHT / 2);
+        float dist     = sqrtf(gdx*gdx + gdy*gdy);
+        float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
+                               (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
+        float difficulty = ((dist / max_dist) + 0.0f / 5.0f) * 0.5f;
+        map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1 };
+        map->num_dungeon_entrances = 2;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -985,6 +1024,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Rivers ---
+    if (s_gen_cancel) return;
     const float PI = 3.14159265f;
     int guard_r = TOWN_W / 2, brush_r = 6;
     unsigned int cnt_seed = seed * 1664525u + 1013904223u;
@@ -1118,6 +1158,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Biome pass: plains / desert / snow / wasteland ---
+    if (s_gen_cancel) return;
     // Desert: flat areas away from mountains. Snow/wasteland: map edges.
     {
         const int BIOME_GRID = 300;
@@ -1212,6 +1253,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Biome smoothing: eliminate tiny isolated patches ---
+    if (s_gen_cancel) return;
     // 3 passes of 5x5 majority vote. Only biome tiles (grass/sand/snow/waste/meadow)
     // participate; structural tiles (water, cliff, rock, river) are left alone.
     {
@@ -1300,6 +1342,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Minimum biome patch enforcement ---
+    if (s_gen_cancel) return;
     // Flood-fill connected components; absorb any component smaller than
     // MIN_BIOME_AREA tiles into its most common neighboring biome.
     {
@@ -1394,6 +1437,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Cliffs ---
+    if (s_gen_cancel) return;
     // Biomes are fully settled above; place_cliffs reads the biome under each tile
     // and selects the matching cliff variant (snow/wasteland/plain) directly.
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
@@ -1550,6 +1594,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Trees ---
+    if (s_gen_cancel) return;
     // TILE_GRASS = spotty dense forest (coarse cluster noise → dense patches + clearings)
     // TILE_MEADOW = open plains (~5% trees)
     {
@@ -1661,6 +1706,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int ly = 1 + (int)((ls >> 16) % (MAP_HEIGHT - 2));
             if (map->tiles[ly][lx] != TILE_WASTELAND || cliff_blocked[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
+        }
+    }
+
+    // --- Dead trees scattered in wasteland (~2%) ---
+    {
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+                if (map->tiles[y][x] != TILE_WASTELAND) continue;
+                if (cliff_blocked[y][x]) continue;
+                if (map->overlay[y][x] != 0) continue;
+                int ddx = x - cx, ddy = y - cy;
+                if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+                if (tile_noise(x, y, (int)seed ^ 0xDEAD7) > 32200)
+                    map->overlay[y][x] = TILE_DEAD_TREE;
+            }
         }
     }
 
@@ -1791,6 +1851,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     };
 
     // --- Towns 1-3 ---
+    if (s_gen_cancel) return;
     // Town 0 is already stamped in phase1 (player starts there).
     // Town 1: placed on the coastline, position varies by seed.
     // Town 2: random walkable location, far from towns 0 and 1.
@@ -2062,6 +2123,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     // --- Dungeon entrances ---
+    if (s_gen_cancel) return;
     // Each entrance derives its type (and therefore interior architecture) from the
     // biome at its placement position.  Mountain elevation (cliff ≥ 3) acts as a
     // modifier: adds Cave to the pool, removes Oasis and Large Tree.
@@ -2077,7 +2139,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         const int GW = (MAP_WIDTH  + CELL - 1) / CELL;
         const int GH = (MAP_HEIGHT + CELL - 1) / CELL;
 
-        map->num_dungeon_entrances = 0;
         unsigned int es = seed ^ 0xD06E0015u;
 
         // Fisher-Yates shuffle of cell indices so placement isn't grid-aligned
@@ -2209,10 +2270,20 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             std::swap(order[i], order[j]);
         }
 
+        // Dungeons within this tile radius of the map center stay solo
+        // so the starting area doesn't have confusing cross-dungeon connections.
+        const int START_ZONE_R = 300;
+
+        auto near_start = [&](const DungeonEntrance* e) {
+            int ddx = e->x - cx, ddy = e->y - cy;
+            return ddx*ddx + ddy*ddy < START_ZONE_R * START_ZONE_R;
+        };
+
         for (int oi = 0; oi < n; oi++) {
             int i = order[oi];
             DungeonEntrance* ei = &map->dungeon_entrances[i];
             if (ei->partner_idx != -1) continue;  // already paired
+            if (near_start(ei)) continue;          // solo in starting area
 
             // Find closest unlinked compatible neighbour.
             int best_j = -1, best_d2 = INT_MAX;
@@ -2220,6 +2291,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (j == i) continue;
                 DungeonEntrance* ej = &map->dungeon_entrances[j];
                 if (ej->partner_idx != -1) continue;
+                if (near_start(ej)) continue;      // don't pair into starting area
                 // Compatible: same type, or SM↔LG graveyard.
                 bool compat = (ei->type == ej->type);
                 if (!compat) {
@@ -2244,6 +2316,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             map->dungeon_entrances[best_j].partner_idx = i;
         }
     }
+
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
@@ -2436,8 +2509,8 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // Canopy is rendered one tile above ty2 using dst_top.
             auto draw_tree_canopy = [&](int tx, int ty2, int sx, int sy) {
                 uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty2 * 40503u) & 3;
-                if (h == 0) return; // solo tree — no canopy
                 bool is_snow = (map->tiles[ty2][tx] == TILE_SNOW);
+                if (h == 0 && !is_snow) return; // solo tree — no canopy (snow trees are always 2-tile)
                 int col;
                 if (is_snow)      col = (h & 1) ? 19 : 18;
                 else              col = (h == 3) ? 16 : 17;
@@ -2453,6 +2526,12 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // Draw canopy for any 2-tile tree whose trunk is in the row below (y+1).
                 if (y + 1 < MAP_HEIGHT && map->overlay[y+1][x] == TILE_TREE) {
                     draw_tree_canopy(x, y + 1, screen_x, screen_y);
+                }
+                if (y + 1 < MAP_HEIGHT && map->overlay[y+1][x] == TILE_DEAD_TREE) {
+                    int jox = tree_jox(x, y+1);
+                    SDL_Rect src_top = { 20 * 16, 0 * 16, 16, 16 };
+                    SDL_Rect dst_top = { screen_x + jox, screen_y, draw_size, draw_size };
+                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_top, &dst_top);
                 }
                 continue;
             }
@@ -2494,6 +2573,12 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
                     if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
                 }
+            } else if (ov == TILE_DEAD_TREE) {
+                // Always 2-tile tall. Trunk drawn here, canopy in depth pass above.
+                int jox = tree_jox(x, y);
+                SDL_Rect src_bot = { 20 * 16, 1 * 16, 16, 16 };
+                SDL_Rect dst_bot = { screen_x + jox, screen_y, draw_size, draw_size };
+                if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
             } else if (ov != 0) {
                 // Rocks, gold ore — draw over base with optional jitter
                 int draw_x = screen_x;
@@ -2724,10 +2809,10 @@ static std::unordered_map<uint32_t, int> s_tile_hp;
 // For tall trees the bottom tile is the key so both tiles share the same pool.
 static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     int t = map->overlay[ty][tx];
-    if (t == TILE_ROCK)     return 3;
-    if (t == TILE_GOLD_ORE) return 5;
+    if (t == TILE_ROCK)      return 3;
+    if (t == TILE_GOLD_ORE)  return 5;
+    if (t == TILE_DEAD_TREE) return 3;
     if (t == TILE_TREE) {
-        // "bottom" tile has tree above it
         bool paired = (ty > 0 && map->overlay[ty-1][tx] == TILE_TREE);
         return paired ? 4 : 2;
     }
@@ -2746,7 +2831,7 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, 
     for (int ty = ty0; ty <= ty1; ty++) {
         for (int tx = tx0; tx <= tx1; tx++) {
             int t = map->overlay[ty][tx];
-            if (t != TILE_TREE && t != TILE_ROCK && t != TILE_GOLD_ORE) continue;
+            if (t != TILE_TREE && t != TILE_DEAD_TREE && t != TILE_ROCK && t != TILE_GOLD_ORE) continue;
             float dx = (tx + 0.5f) * TILE_SIZE - px;
             float dy = (ty + 0.5f) * TILE_SIZE - py;
             float d2 = dx*dx + dy*dy;
@@ -2841,7 +2926,7 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     if (!tilemap_is_walkable(map, tx, ty)) return true;
     // Trees, rocks, and gold ore live in the overlay — they're also solid.
     int ov = map->overlay[ty][tx];
-    return ov == TILE_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
+    return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
 }
 
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
