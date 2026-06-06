@@ -84,6 +84,8 @@ private:
     BattlePlayer _bp;
     Enemy*       _enemy;
     Player*      _player_ref;
+    WeaponType   _weapon_type;
+    bool         _tab_open;
     Bullet       _player_bullets[MAX_PLAYER_BULLETS];
     Bullet       _enemy_bullets[MAX_ENEMY_BULLETS];
 

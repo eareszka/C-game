@@ -18,6 +18,16 @@ ProjectileProfile weapon_profile(WeaponType type) {
     }
 }
 
+static const char* weapon_name(WeaponType type) {
+    switch (type) {
+        case WEAPON_DAGGER:    return "DAGGER";
+        case WEAPON_LONGSWORD: return "LONGSWORD";
+        case WEAPON_SPEAR:     return "SPEAR";
+        case WEAPON_AXE:       return "AXE";
+        default:               return "UNKNOWN";
+    }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 static bool circles_overlap(float ax, float ay, float ar,
@@ -32,8 +42,10 @@ BattleScene::BattleScene(Player* player, int enemy_id, WeaponType weapon) {
     memset(_player_bullets, 0, sizeof(_player_bullets));
     memset(_enemy_bullets,  0, sizeof(_enemy_bullets));
 
-    _phase      = BATTLE_PHASE_FIGHTING;
-    _player_ref = player;
+    _phase       = BATTLE_PHASE_FIGHTING;
+    _player_ref  = player;
+    _weapon_type = weapon;
+    _tab_open    = false;
 
     _bp = {};
     _bp.x      = ARENA_W * 0.5f;
@@ -53,7 +65,10 @@ BattleScene::~BattleScene() {
 // ── update ────────────────────────────────────────────────────────────────────
 
 void BattleScene::update(const Input* in, float dt) {
-    if (_phase != BATTLE_PHASE_FIGHTING) return;
+    if (input_pressed(in, SDL_SCANCODE_TAB) && _phase == BATTLE_PHASE_FIGHTING)
+        _tab_open = !_tab_open;
+
+    if (_phase != BATTLE_PHASE_FIGHTING || _tab_open) return;
 
     _update_movement(in, dt);
     _update_player_fire(in, dt);
@@ -311,5 +326,39 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         draw_nes_panel(ren, 160, 180, 320, 70);
         draw_text(ren, "GAME OVER",
                   160 + (320 - text_width("GAME OVER", 2)) / 2, 206, 2, 255, 255, 255);
+    }
+
+    // Tab menu overlay
+    if (_tab_open) {
+        const int PW = 300, PH = 130;
+        const int PX = (ARENA_W - PW) / 2, PY = (ARENA_H - PH) / 2;
+
+        draw_nes_panel(ren, PX, PY, PW, PH);
+
+        draw_text(ren, "EQUIPMENT",
+                  PX + (PW - text_width("EQUIPMENT", 2)) / 2, PY + 8, 2, 255, 255, 255);
+
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        SDL_Rect div = { PX + 8, PY + 30, PW - 16, 1 };
+        SDL_RenderFillRect(ren, &div);
+
+        char buf[48];
+        int row_y = PY + 38;
+
+        SDL_snprintf(buf, sizeof(buf), "WEAPON : %s", weapon_name(_weapon_type));
+        draw_text(ren, buf, PX + 12, row_y, 1, 255, 230, 80);
+        row_y += 18;
+
+        SDL_snprintf(buf, sizeof(buf), "SPELL  : NONE");
+        draw_text(ren, buf, PX + 12, row_y, 1, 100, 180, 255);
+        row_y += 18;
+
+        SDL_snprintf(buf, sizeof(buf), "HEALING: NONE");
+        draw_text(ren, buf, PX + 12, row_y, 1, 80, 220, 120);
+        row_y += 18;
+
+        const char* hint = "[TAB] CLOSE";
+        draw_text(ren, hint, PX + (PW - text_width(hint, 1)) / 2,
+                  PY + PH - 16, 1, 160, 160, 160);
     }
 }
