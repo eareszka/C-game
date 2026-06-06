@@ -354,6 +354,20 @@ int main(int argc, char *argv[])
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
                 tilemap_draw_depth(map, &cam, plat.renderer);
 
+                // --- Weapon cooldown bar ---
+                {
+                    float max_cd = 1.0f / weapon_profile(player.equipped_weapon).fire_rate;
+                    float ready  = 1.0f - (ow.tool_cd > 0.0f ? ow.tool_cd / max_cd : 0.0f);
+                    const int BAR_W = 160, BAR_H = 5;
+                    const int BAR_X = (640 - BAR_W) / 2, BAR_Y = 480 - 12;
+                    SDL_SetRenderDrawColor(plat.renderer, 40, 40, 40, 200);
+                    SDL_Rect track = { BAR_X, BAR_Y, BAR_W, BAR_H };
+                    SDL_RenderFillRect(plat.renderer, &track);
+                    SDL_SetRenderDrawColor(plat.renderer, 255, 220, 0, 255);
+                    SDL_Rect fill = { BAR_X, BAR_Y, (int)(BAR_W * ready), BAR_H };
+                    SDL_RenderFillRect(plat.renderer, &fill);
+                }
+
                 // --- Floating resource text ---
                 if (cur_float.active) {
                     cur_float.drift += 60.0f * dt;

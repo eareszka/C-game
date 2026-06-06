@@ -8,13 +8,6 @@
 
 // ── Weapon types ──────────────────────────────────────────────────────────────
 
-enum WeaponType {
-    WEAPON_DAGGER,
-    WEAPON_LONGSWORD,
-    WEAPON_SPEAR,
-    WEAPON_AXE,
-};
-
 struct ProjectileProfile {
     float speed;
     float damage;

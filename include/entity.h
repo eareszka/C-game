@@ -3,6 +3,13 @@
 
 #include "input.h"
 
+enum WeaponType {
+    WEAPON_DAGGER,
+    WEAPON_LONGSWORD,
+    WEAPON_SPEAR,
+    WEAPON_AXE,
+};
+
 typedef struct {
     int max_hp;
     int hp;
@@ -43,6 +50,8 @@ typedef struct {
 
     // Inventory: counts indexed by ResourceType enum (TREE=0, ROCK=1, FLOWER=2, GOLD=3, GRAVESTONE=4)
     int   inventory[5];
+
+    WeaponType equipped_weapon;
 } Player;
 
 // Reads WASD/arrow keys, resolves opposing keys via last-pressed,

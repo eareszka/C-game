@@ -1267,6 +1267,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         };
         const int R = 3; // 5x5 window (radius 2)
         for (int pass = 0; pass < 7; pass++) {
+            if (s_gen_cancel) return;
             for (int y = R; y < MAP_HEIGHT - R; y++) {
                 for (int x = R; x < MAP_WIDTH - R; x++) {
                     int cur = map->tiles[y][x];
@@ -1295,6 +1296,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     {
         const int SNOW_BUFFER = 50;
         for (int y = SNOW_BUFFER; y < MAP_HEIGHT - SNOW_BUFFER; y++) {
+            if (s_gen_cancel) return;
             for (int x = SNOW_BUFFER; x < MAP_WIDTH - SNOW_BUFFER; x++) {
                 if (map->tiles[y][x] != TILE_SAND) continue;
                 bool near_snow = false;
@@ -1321,6 +1323,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         };
         const int R = 3;
         for (int pass = 0; pass < 10; pass++) {
+            if (s_gen_cancel) return;
             for (int y = R; y < MAP_HEIGHT - R; y++) {
                 for (int x = R; x < MAP_WIDTH - R; x++) {
                     int cur = map->tiles[y][x];

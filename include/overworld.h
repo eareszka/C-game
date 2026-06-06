@@ -18,6 +18,8 @@ typedef struct Overworld {
     DungeonEntranceType dungeon_type;   // valid when at_dungeon_entrance == 1
     float dungeon_difficulty;           // valid when at_dungeon_entrance == 1
 
+    float tool_cd;   // seconds remaining before next resource hit is allowed
+
 } Overworld;
 
 void overworld_init(Overworld* ow, Player* player, float x, float y);

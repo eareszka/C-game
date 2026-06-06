@@ -1,6 +1,7 @@
 #include "overworld.h"
 #include "resource_node.h"
 #include "collision.h"
+#include "battle.h"
 #include <math.h>
 
 struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; };
@@ -17,10 +18,12 @@ static const int right_cycle[2] = {9, 8};
 
 void overworld_init(Overworld* ow, Player* player, float x, float y)
 {
-    ow->x     = x;
-    ow->y     = y;
-    ow->speed = 150.0f;
+    ow->x       = x;
+    ow->y       = y;
+    ow->speed   = 150.0f;
+    ow->tool_cd = 0.0f;
 
+    player->equipped_weapon = WEAPON_DAGGER;
     player->width  = 32;
     player->height = 48;
     player->facing = 0;
@@ -34,10 +37,13 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       ResourceNodeList* resources, Tilemap* map, bool noclip, int* out_resource_hit,
                       float* out_hit_x, float* out_hit_y)
 {
+    if (ow->tool_cd > 0.0f) ow->tool_cd -= dt;
+
     // Action key — hit nearby resource or map tile
-    if (input_pressed(in, SDL_SCANCODE_SPACE)
-     || input_pressed(in, SDL_SCANCODE_Z)
-     || input_pressed(in, SDL_SCANCODE_RETURN))
+    if (ow->tool_cd <= 0.0f
+     && (input_down(in, SDL_SCANCODE_SPACE)
+      || input_down(in, SDL_SCANCODE_Z)
+      || input_down(in, SDL_SCANCODE_RETURN)))
     {
         float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
         float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
@@ -89,6 +95,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
             else
                 player->facing = ddy >= 0.0f ? 0 : 3;
             player->facing_locked = 1;
+            ow->tool_cd = 1.0f / weapon_profile(player->equipped_weapon).fire_rate;
         }
     }
 
