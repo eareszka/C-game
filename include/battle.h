@@ -39,6 +39,11 @@ struct Bullet {
     float radius;
     float damage;
     bool  active;
+    bool  bouncing;
+    int   bounces;        // wall hits; deleted at 3
+    bool  spawner;        // orange orb — emits sub-bullets while in flight
+    float spawn_timer;
+    float spawn_interval;
 };
 
 // ── Phase ─────────────────────────────────────────────────────────────────────
@@ -89,6 +94,7 @@ private:
     void _check_collisions();
     void _spawn_player_bullet(float angle);
     void _spawn_enemy_bullet(const BulletSpawn& bs);
+    void _spawn_bullet_at(float ox, float oy, const BulletSpawn& bs);
 
     static void _fill_rect(SDL_Renderer* ren, int x, int y, int w, int h,
                             Uint8 r, Uint8 g, Uint8 b, Uint8 a);

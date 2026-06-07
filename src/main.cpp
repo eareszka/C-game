@@ -137,15 +137,27 @@ int main(int argc, char *argv[])
     int  battle_list_sel  = 0;
 
     static const char* ENEMY_NAMES[50] = {
-        "CAVE BAT", "CAVE SLIME", "CAVE SPIDER", "CAVE TROLL", "CAVE WORM", "CAVE MUSHROOM",
-        "RUINS GUARD", "RUINS ARCHER", "RUINS GOLEM", "RUINS GHOST", "RUINS WISP", "RUINS COLOSSUS",
-        "ZOMBIE", "WRAITH", "SKELETON", "GHOUL", "BANSHEE", "LICH",
-        "GRAVE KNIGHT", "REVENANT", "DEMON", "NECROMANCER", "VAMPIRE", "GRAVE LORD",
-        "SERPENT", "SCORPION", "MIRAGE", "SANDWORM", "DJINN", "CROCODILE",
-        "MUMMY", "SCARAB", "ANUBIS", "BASTET", "SPHINX", "PHARAOH",
-        "ANCIENT", "DRUID", "WARDEN", "OBSERVER", "ORACLE", "ELDER",
-        "TREE SPRITE", "ENTWINE", "DRYAD", "WISP", "GUARDIAN", "TREE ANCIENT",
-        "BANDIT", "DRAGON",
+        // Grassland 0–6
+        "SKVADER", "WOLPERTINGER", "TREESQUEAK", "QIQUE", "LILI",
+        "CROWING CRESTED COBRA", "WAKMANGGANCHI ARAGONDI",
+        // Forest 7–13
+        "ALBER", "SNAWFUS", "QUESTING BEAST", "GRAND'GOULE", "PAOXIAO",
+        "EBIGANE", "BEAST OF THE CHARRED FORESTS",
+        // Snow 14–20
+        "LODSILUNGUR", "OFUGUGGI", "KAMAITACHI", "QIQIRN", "VATNAORMUR",
+        "SKELJASKRIMSLI", "SERMILIK",
+        // Desert 21–27
+        "ASP", "CACTUS CAT", "OLGOI-KHORKHOI", "ZOUREG", "MYRMECOLEON",
+        "AKHEKH", "GROOTSLANG",
+        // Wasteland 28–34
+        "OPIMACHUS", "KARNABO", "DAJNA", "MAN-EATING BOULDER", "ANGONT",
+        "TSE'NAGAHI", "ANAYE",
+        // Mountains 35–41
+        "LOMIE", "CU SITH", "CELESTIAL STAG", "IGTUK", "AJAJU",
+        "SLIDE-ROCK BOLTER", "SASNALKAHI",
+        // Ocean 42–49
+        "NYKUR", "SAZAE-ONI", "ITQIIRPAK", "KUSA KAP", "LUSCA",
+        "MOHA-MOHA", "BJARNDYRAKONGUR", "PHYSETER",
     };
 
     DungeonMap    dmap    = {};

@@ -1,10 +1,19 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
+#include "entity.h"
+
 struct BulletSpawn {
     float vx, vy;
     float radius;
     float damage;
+    bool  bouncing       = false;
+    bool  spawner        = false;
+    float spawn_interval = 0.0f;
+};
+
+struct WeaponMults {
+    float knife, club, dagger, axe, halberd, katana, scythe;
 };
 
 class Enemy {
@@ -12,18 +21,29 @@ public:
     float x, y;
     float hp, max_hp;
     float fire_timer;
+    WeaponMults mults;
 
-    Enemy(float x, float y, float hp)
-        : x(x), y(y), hp(hp), max_hp(hp), fire_timer(1.5f) {}
+    Enemy(float x, float y, float hp, WeaponMults m)
+        : x(x), y(y), hp(hp), max_hp(hp), fire_timer(1.5f), mults(m) {}
     virtual ~Enemy() = default;
 
-    // seconds between volleys
     virtual float fire_interval() const = 0;
-    // fills out[] with bullets to spawn; returns count (max_out is 32)
-    virtual int fire(float px, float py, BulletSpawn out[], int max_out) = 0;
-    // optional per-frame update (tracking, movement, etc.)
-    virtual void update(float /*dt*/, float /*px*/, float /*py*/) {}
+    virtual int   fire(float px, float py, BulletSpawn out[], int max_out) = 0;
+    virtual void  update(float /*dt*/, float /*px*/, float /*py*/) {}
     virtual const char* name() const = 0;
+
+    float damage_mult(WeaponType wt) const {
+        switch (wt) {
+            case WEAPON_KNIFE:   return mults.knife;
+            case WEAPON_CLUB:    return mults.club;
+            case WEAPON_DAGGER:  return mults.dagger;
+            case WEAPON_AXE:     return mults.axe;
+            case WEAPON_HALBERD: return mults.halberd;
+            case WEAPON_KATANA:  return mults.katana;
+            case WEAPON_SCYTHE:  return mults.scythe;
+            default:             return 1.0f;
+        }
+    }
 
     bool is_alive() const { return hp > 0.0f; }
     void take_damage(float dmg) { hp -= dmg; if (hp < 0.0f) hp = 0.0f; }

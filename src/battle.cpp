@@ -4,27 +4,35 @@
 #include <math.h>
 #include <string.h>
 
-static const float PI = 3.14159265f;
+static const float PI  = 3.14159265f;
+static const float TAU = 6.28318530f;
 
 // ── Weapon profiles ───────────────────────────────────────────────────────────
 
 ProjectileProfile weapon_profile(WeaponType type) {
+    // {speed, damage, fire_rate, count, spread_deg, radius}
     switch (type) {
-        case WEAPON_DAGGER:    return { 320.0f, 4.0f,  5.0f, 1, 0.0f,  3.0f };
-        case WEAPON_LONGSWORD: return { 220.0f, 8.0f,  2.0f, 3, 20.0f, 4.0f };
-        case WEAPON_SPEAR:     return { 480.0f, 12.0f, 1.5f, 1, 0.0f,  3.0f };
-        case WEAPON_AXE:       return { 160.0f, 15.0f, 1.0f, 5, 60.0f, 5.0f };
-        default:               return { 320.0f, 4.0f,  5.0f, 1, 0.0f,  3.0f };
+        case WEAPON_KNIFE:   return { 280.0f,  8.0f, 1.8f, 1,  0.0f, 3.0f };
+        case WEAPON_CLUB:    return { 140.0f, 14.0f, 0.8f, 1,  0.0f, 7.0f };
+        case WEAPON_DAGGER:  return { 320.0f,  6.0f, 2.2f, 1,  0.0f, 3.0f };
+        case WEAPON_AXE:     return { 160.0f, 18.0f, 0.7f, 5, 60.0f, 5.0f };
+        case WEAPON_HALBERD: return { 500.0f, 16.0f, 0.6f, 1,  0.0f, 4.0f };
+        case WEAPON_KATANA:  return { 240.0f, 13.0f, 1.4f, 2, 15.0f, 4.0f };
+        case WEAPON_SCYTHE:  return { 200.0f, 17.0f, 0.9f, 3, 30.0f, 4.0f };
+        default:             return { 320.0f,  6.0f, 2.2f, 1,  0.0f, 3.0f };
     }
 }
 
 static const char* weapon_name(WeaponType type) {
     switch (type) {
-        case WEAPON_DAGGER:    return "DAGGER";
-        case WEAPON_LONGSWORD: return "LONGSWORD";
-        case WEAPON_SPEAR:     return "SPEAR";
-        case WEAPON_AXE:       return "AXE";
-        default:               return "UNKNOWN";
+        case WEAPON_KNIFE:   return "KNIFE";
+        case WEAPON_CLUB:    return "CLUB";
+        case WEAPON_DAGGER:  return "DAGGER";
+        case WEAPON_AXE:     return "AXE";
+        case WEAPON_HALBERD: return "HALBERD";
+        case WEAPON_KATANA:  return "KATANA";
+        case WEAPON_SCYTHE:  return "SCYTHE";
+        default:             return "UNKNOWN";
     }
 }
 
@@ -149,13 +157,51 @@ void BattleScene::_move_bullets(float dt) {
         if (bl.x < 0 || bl.x > ARENA_W || bl.y < 0 || bl.y > ARENA_H)
             bl.active = false;
     }
+
+    // Collect orb spawn positions so we don't modify the array while iterating.
+    struct OrbSpawn { float x, y; };
+    OrbSpawn orb_pending[32];
+    int n_orb = 0;
+
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
         bl.x += bl.vx * dt;
         bl.y += bl.vy * dt;
-        if (bl.x < 0 || bl.x > ARENA_W || bl.y < 0 || bl.y > ARENA_H)
-            bl.active = false;
+
+        if (bl.spawner) {
+            bl.spawn_timer -= dt;
+            if (bl.spawn_timer <= 0.0f && n_orb < 32) {
+                orb_pending[n_orb++] = { bl.x, bl.y };
+                bl.spawn_timer = bl.spawn_interval;
+            }
+            if (bl.x < -20 || bl.x > ARENA_W + 20 ||
+                bl.y < -20 || bl.y > ARENA_H + 20)
+                bl.active = false;
+        } else if (bl.bouncing) {
+            float r = bl.radius;
+            if (bl.x - r < 0)       { bl.x = r;           bl.vx =  fabsf(bl.vx); bl.bounces++; }
+            if (bl.x + r > ARENA_W) { bl.x = ARENA_W - r; bl.vx = -fabsf(bl.vx); bl.bounces++; }
+            if (bl.y - r < 0)       { bl.y = r;           bl.vy =  fabsf(bl.vy); bl.bounces++; }
+            if (bl.y + r > ARENA_H) { bl.y = ARENA_H - r; bl.vy = -fabsf(bl.vy); bl.bounces++; }
+            if (bl.bounces >= 3) bl.active = false;
+        } else {
+            if (bl.x < 0 || bl.x > ARENA_W || bl.y < 0 || bl.y > ARENA_H)
+                bl.active = false;
+        }
+    }
+
+    // Emit 8-way ring from each orb that ticked.
+    for (int p = 0; p < n_orb; p++) {
+        for (int i = 0; i < 8; i++) {
+            float a = i * (TAU / 8.0f);
+            BulletSpawn sub;
+            sub.vx = cosf(a) * 130.0f;
+            sub.vy = sinf(a) * 130.0f;
+            sub.radius = 3.5f;
+            sub.damage = 1.0f;
+            _spawn_bullet_at(orb_pending[p].x, orb_pending[p].y, sub);
+        }
     }
 }
 
@@ -165,7 +211,7 @@ void BattleScene::_check_collisions() {
         if (!bl.active) continue;
         if (circles_overlap(bl.x, bl.y, bl.radius,
                             _enemy->x, _enemy->y, (float)ENEMY_R)) {
-            _enemy->take_damage(bl.damage);
+            _enemy->take_damage(bl.damage * _enemy->damage_mult(_weapon_type));
             bl.active = false;
         }
     }
@@ -198,17 +244,26 @@ void BattleScene::_spawn_player_bullet(float angle) {
     }
 }
 
-void BattleScene::_spawn_enemy_bullet(const BulletSpawn& bs) {
+void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (bl.active) continue;
-        bl.x = _enemy->x; bl.y = _enemy->y;
+        bl.x = ox; bl.y = oy;
         bl.vx = bs.vx; bl.vy = bs.vy;
         bl.radius = bs.radius;
         bl.damage = bs.damage;
-        bl.active = true;
+        bl.bouncing       = bs.bouncing;
+        bl.bounces        = 0;
+        bl.spawner        = bs.spawner;
+        bl.spawn_interval = bs.spawn_interval;
+        bl.spawn_timer    = bs.spawn_interval;
+        bl.active         = true;
         return;
     }
+}
+
+void BattleScene::_spawn_enemy_bullet(const BulletSpawn& bs) {
+    _spawn_bullet_at(_enemy->x, _enemy->y, bs);
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
@@ -267,11 +322,16 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         SDL_RenderFillRect(ren, &rect);
     }
 
-    // Enemy bullets — orange-red
-    SDL_SetRenderDrawColor(ren, 255, 80, 30, 255);
+    // Enemy bullets — orange-red (normal), blue (bouncing), bright orange (orb)
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
+        if (bl.spawner)
+            SDL_SetRenderDrawColor(ren, 255, 140, 0, 255);
+        else if (bl.bouncing)
+            SDL_SetRenderDrawColor(ren, 60, 140, 255, 255);
+        else
+            SDL_SetRenderDrawColor(ren, 255, 80, 30, 255);
         int r = (int)bl.radius;
         SDL_Rect rect = { (int)bl.x - r, (int)bl.y - r, r*2, r*2 };
         SDL_RenderFillRect(ren, &rect);

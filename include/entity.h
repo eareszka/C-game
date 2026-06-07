@@ -4,10 +4,13 @@
 #include "input.h"
 
 enum WeaponType {
+    WEAPON_KNIFE,
+    WEAPON_CLUB,
     WEAPON_DAGGER,
-    WEAPON_LONGSWORD,
-    WEAPON_SPEAR,
     WEAPON_AXE,
+    WEAPON_HALBERD,
+    WEAPON_KATANA,
+    WEAPON_SCYTHE,
 };
 
 typedef struct {

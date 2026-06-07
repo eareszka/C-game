@@ -1707,15 +1707,19 @@ static void carve_tree_ca(DungeonMap* dmap, uint32_t* rng) {
 // ── Spawner placement ─────────────────────────────────────────────────────
 
 static int spawner_enemy_base(DungeonEntranceType type) {
+    // Returns base enemy ID for each dungeon type, reflecting the overworld
+    // biome in which that dungeon entrance is found.
+    // Grassland 0–6 | Forest 7–13 | Snow 14–20 | Desert 21–27
+    // Wasteland 28–34 | Mountains 35–41 | Ocean 42–49
     switch (type) {
-        case DUNGEON_ENT_CAVE:         return  0;
-        case DUNGEON_ENT_RUINS:        return  6;
-        case DUNGEON_ENT_GRAVEYARD_SM: return 12;
-        case DUNGEON_ENT_GRAVEYARD_LG: return 18;
-        case DUNGEON_ENT_OASIS:        return 24;
-        case DUNGEON_ENT_PYRAMID:      return 30;
-        case DUNGEON_ENT_STONEHENGE:   return 36;
-        case DUNGEON_ENT_LARGE_TREE:   return 42;
+        case DUNGEON_ENT_CAVE:         return 35; // mountains
+        case DUNGEON_ENT_RUINS:        return 28; // wasteland
+        case DUNGEON_ENT_GRAVEYARD_SM: return  0; // grassland
+        case DUNGEON_ENT_GRAVEYARD_LG: return  7; // forest
+        case DUNGEON_ENT_OASIS:        return 21; // desert
+        case DUNGEON_ENT_PYRAMID:      return 21; // desert
+        case DUNGEON_ENT_STONEHENGE:   return 14; // snow
+        case DUNGEON_ENT_LARGE_TREE:   return  7; // forest
         default:                       return  0;
     }
 }
@@ -1749,7 +1753,7 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
                 }
             }
             if (best_tx < 0) continue;
-            int eid = base + (int)(rng_next(rng) % 6);
+            int eid = base + (int)(rng_next(rng) % 7);
             dmap->spawners[dmap->num_spawners++] = { best_tx, best_ty, eid, false };
         }
     }
