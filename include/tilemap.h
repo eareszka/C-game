@@ -134,6 +134,14 @@ typedef struct {
     int index;   // which of the hand-crafted towns this is
 } TownPlacement;
 
+#define MAX_INTERIOR_DOORS 128
+
+typedef struct {
+    int x, y;        // world tile of the door's left tile (bottom row of the building sprite)
+    int w;           // door width in tiles
+    int interior_id; // which interior layout this door opens into
+} InteriorDoor;
+
 typedef struct {
     int x, y;    // top-left tile coordinate where the village was stamped
     int variant; // which of the village blueprint variants was used
@@ -155,6 +163,8 @@ typedef struct Tilemap {
     TownPlacement    towns[3];         // filled during phase2
     VillagePlacement villages[15];     // filled during phase2
     int num_villages;
+    InteriorDoor doors[MAX_INTERIOR_DOORS]; // building doors, registered at stamp time
+    int num_doors;
     CastlePlacement  castles[4];       // [0-2] placed in phase2; [3] placed via dungeon diving
 } Tilemap;
 

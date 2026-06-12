@@ -11,6 +11,8 @@
 #include "core.h"
 #include "input.h"
 #include "overworld.h"
+#include "interior.h"
+#include "collision.h"
 #include "camera.h"
 #include "tilemap.h"
 #include "resource_node.h"
@@ -89,13 +91,27 @@ int main(int argc, char *argv[])
 
     Overworld ow;
 
-    float start_x = 47916.0f;
-    float start_y = 46464.0f;
-    overworld_init(&ow, &player, start_x, start_y);
-
     Tilemap* map = new Tilemap();
     unsigned int map_seed = (unsigned int)SDL_GetTicks();
     tilemap_build_overworld_phase1(map, map_seed);
+
+    // Spawn directly in front of the spawn house's front door. Phase 1 only
+    // stamps town 0, and the stamp scans top-to-bottom, so the first
+    // interior-0 door registered is the spawn house. Must be read before the
+    // phase-2 thread starts appending doors from the other towns.
+    float start_x = 47916.0f;
+    float start_y = 46528.0f;   // fallback if the door lookup fails
+    for (int i = 0; i < map->num_doors; i++) {
+        const InteriorDoor& d = map->doors[i];
+        if (d.interior_id != 0) continue;
+        // Feet centred under the door, one tile row below it; the -8 mirrors
+        // the door-detection bias in overworld_update.
+        start_x = (d.x + d.w * 0.5f) * TILE_SIZE - 8.0f - (HB_X1 + HB_X2) * 0.5f;
+        start_y = (d.y + 1) * TILE_SIZE + TILE_SIZE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+        break;
+    }
+    overworld_init(&ow, &player, start_x, start_y);
+
     std::thread gen_thread(tilemap_build_overworld_phase2, map, map_seed);
 
     //initializes resources
@@ -162,6 +178,18 @@ int main(int argc, char *argv[])
 
     DungeonMap    dmap    = {};
     DungeonPlayer dplayer = {};
+
+    InteriorMap    imap    = {};
+    InteriorPlayer iplayer = {};
+
+    // Begin the game inside the spawn house, standing mid-room. Exiting the
+    // doormat drops the player onto the overworld at start_x/start_y.
+    interior_load(&imap, 0);
+    interior_player_init(&iplayer, &player, &imap);
+    iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
+    iplayer.y = 7 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+    player.facing = 0;  // down, toward the door
+    state = STATE_INTERIOR;
 
     struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; };
     static const int MAX_CHASERS = 32;
@@ -285,7 +313,7 @@ int main(int argc, char *argv[])
             if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
                 input_pressed(&in, SDL_SCANCODE_Z)) {
                 delete battle_scene;
-                battle_scene = new BattleScene(&player, battle_list_sel, WEAPON_DAGGER);
+                battle_scene = new BattleScene(&player, battle_list_sel);
                 state = STATE_BATTLE;
                 battle_list_open = false;
             }
@@ -300,7 +328,7 @@ int main(int argc, char *argv[])
 
         if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && state != STATE_BATTLE) {
             delete battle_scene;
-            battle_scene = new BattleScene(&player, 0, WEAPON_DAGGER);
+            battle_scene = new BattleScene(&player, 0);
             state = STATE_BATTLE;
         }
 
@@ -534,6 +562,22 @@ int main(int argc, char *argv[])
                         state = STATE_DUNGEON;
                     }
                 }
+                // Building door — prompt and enter the interior.
+                else if (ow.at_interior_door) {
+                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
+                    const char* lbl = "ENTER";
+                    draw_text(plat.renderer, lbl,
+                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        const InteriorDoor& d = map->doors[ow.interior_door_idx];
+                        interior_load(&imap, d.interior_id);
+                        interior_player_init(&iplayer, &player, &imap);
+                        state = STATE_INTERIOR;
+                    }
+                }
 
                 if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open)
                     crafting_open = !crafting_open;
@@ -568,7 +612,7 @@ int main(int argc, char *argv[])
                             battle_scene = nullptr;
                             if (victory && battle_queue_idx + 1 < battle_queue_count) {
                                 battle_queue_idx++;
-                                battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx], WEAPON_DAGGER);
+                                battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx]);
                             } else {
                                 // Re-activate any queued enemies that were never fought.
                                 for (int qi = battle_queue_idx + 1; qi < battle_queue_count; qi++) {
@@ -603,7 +647,7 @@ int main(int argc, char *argv[])
                     if (pre_battle_timer >= flash_count * FLASH_STEP + 0.5f) {
                         pre_battle_timer = -1.0f;
                         delete battle_scene;
-                        battle_scene = new BattleScene(&player, battle_queue[0], WEAPON_DAGGER);
+                        battle_scene = new BattleScene(&player, battle_queue[0]);
                         state_after_battle = STATE_DUNGEON;
                         state = STATE_BATTLE;
                     }
@@ -803,6 +847,41 @@ int main(int argc, char *argv[])
                         &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                     state = STATE_OVERWORLD;
                 }
+                break;
+            }
+
+            case STATE_INTERIOR: {
+                interior_player_update(&iplayer, &player, game_in, dt, &imap);
+
+                SDL_SetRenderDrawColor(plat.renderer, 5, 5, 8, 255);
+                SDL_RenderClear(plat.renderer);
+
+                interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
+
+                // Interior fills the screen 1:1 — identity camera.
+                Camera icam = {};
+                icam.zoom = 1.0f;
+                icam.screen_w = 640;
+                icam.screen_h = 480;
+                player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
+
+                // Doormat — exit back to the overworld; ow.x/ow.y were never
+                // touched, so the player reappears where they entered.
+                if (iplayer.at_exit) {
+                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
+                    const char* lbl = "EXIT";
+                    draw_text(plat.renderer, lbl,
+                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        state = STATE_OVERWORLD;
+                    }
+                }
+
+                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                    state = STATE_OVERWORLD;
                 break;
             }
         }

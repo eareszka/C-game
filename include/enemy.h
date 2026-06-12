@@ -10,6 +10,8 @@ struct BulletSpawn {
     bool  bouncing       = false;
     bool  spawner        = false;
     float spawn_interval = 0.0f;
+    bool  homing         = false;
+    float homing_timer   = 0.0f;  // seconds before homing turns off; 0 = never
 };
 
 struct WeaponMults {

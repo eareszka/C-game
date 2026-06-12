@@ -31,6 +31,22 @@ static BulletSpawn mksp(float angle, float speed, float spawn_interval) {
     return { cosf(angle)*speed, sinf(angle)*speed, 9.0f, 2.0f, false, true, spawn_interval };
 }
 
+// Homing bullet — white/purple flash, curves toward player, then goes straight.
+static BulletSpawn mkh(float angle, float speed, float radius, float damage,
+                       float homing_time = 2.0f) {
+    BulletSpawn b = mk(angle, speed, radius, damage);
+    b.homing       = true;
+    b.homing_timer = homing_time;
+    return b;
+}
+
+// Homing spawner orb — white/orange flash, curves toward player AND emits rings.
+static BulletSpawn mkhsp(float angle, float speed, float spawn_interval) {
+    BulletSpawn b = mksp(angle, speed, spawn_interval);
+    b.homing = true;
+    return b;
+}
+
 static float aim_at(float ox, float oy, float tx, float ty) {
     return atan2f(ty - oy, tx - ox);
 }
@@ -68,12 +84,11 @@ public:
             out[0] = mk(a - 0.25f, 230.0f, 2.5f, 0.5f);
             out[1] = mk(a,         230.0f, 2.5f, 0.5f);
             out[2] = mk(a + 0.25f, 230.0f, 2.5f, 0.5f);
-            out[3] = mk(a + PI,    180.0f, 2.5f, 0.4f);
+            out[3] = mkh(a + PI,   130.0f, 3.5f, 0.5f);
             return 4;
         }
-        out[0] = mk(a - 0.15f, 210.0f, 2.5f, 0.4f);
-        out[1] = mk(a + 0.15f, 210.0f, 2.5f, 0.4f);
-        return 2;
+        out[0] = mkh(a, 140.0f, 3.5f, 0.4f);
+        return 1;
     }
 };
 
@@ -1084,25 +1099,25 @@ public:
     int fire(float px, float py, BulletSpawn out[], int) override {
         float a = aim_at(x,y,px,py);
         if (ENRAGED) {
-            for (int i = 0; i < 12; i++) {
-                float ang = i * TAU/12.0f;
-                out[i]    = mk(ang,              110.0f, 5.5f, 2.3f);
-                out[i+12] = mk(ang + PI/12.0f,    75.0f, 6.5f, 2.8f);
+            for (int i = 0; i < 8; i++) {
+                float ang = i * TAU/8.0f;
+                out[i]   = mk(ang,             110.0f, 5.5f, 2.3f);
+                out[i+8] = mk(ang + PI/8.0f,    75.0f, 6.5f, 2.8f);
             }
-            out[24] = mk(a,         200.0f, 7.5f, 4.5f);
-            out[25] = mk(a + 0.25f, 170.0f, 6.5f, 3.5f);
-            out[26] = mk(a - 0.25f, 170.0f, 6.5f, 3.5f);
-            out[27] = mksp(a, 50.0f, 0.4f);
-            return 28;
+            out[16] = mk(a,         200.0f, 7.5f, 4.5f);
+            out[17] = mk(a + 0.25f, 170.0f, 6.5f, 3.5f);
+            out[18] = mk(a - 0.25f, 170.0f, 6.5f, 3.5f);
+            out[19] = mksp(a, 50.0f, 0.4f);
+            return 20;
         }
-        for (int i = 0; i < 12; i++) {
-            float ang = i * TAU/12.0f;
-            out[i]    = mk(ang,            95.0f, 5.5f, 2.0f);
-            out[i+12] = mk(ang + PI/12.0f, 60.0f, 6.5f, 2.5f);
+        for (int i = 0; i < 8; i++) {
+            float ang = i * TAU/8.0f;
+            out[i]   = mk(ang,           95.0f, 5.5f, 2.0f);
+            out[i+8] = mk(ang + PI/8.0f, 60.0f, 6.5f, 2.5f);
         }
-        out[24] = mk(a, 180.0f, 7.0f, 4.0f);
-        out[25] = mksp(a, 45.0f, 0.5f);
-        return 26;
+        out[16] = mk(a, 180.0f, 7.0f, 4.0f);
+        out[17] = mksp(a, 45.0f, 0.5f);
+        return 18;
     }
 };
 

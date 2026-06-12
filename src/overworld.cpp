@@ -22,8 +22,11 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->y       = y;
     ow->speed   = 150.0f;
     ow->tool_cd = 0.0f;
+    ow->at_dungeon_entrance = 0;
+    ow->at_interior_door    = 0;
+    ow->interior_door_idx   = -1;
 
-    player->equipped_weapon = WEAPON_DAGGER;
+    player->equipped_weapon = WEAPON_KNIFE;
     player->width  = 32;
     player->height = 48;
     player->facing = 0;
@@ -138,6 +141,20 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                         break;
                     }
                 }
+            }
+        }
+
+        // Interior door detection — on the door tiles or the tile row below them.
+        // Biased 8px left: the feet hitbox sits right of the sprite centre, so
+        // an unshifted check makes doors detect too far to the right visually.
+        int door_tx = (int)((feet_x + 8.0f) / TILE_SIZE);
+        ow->at_interior_door = 0;
+        for (int i = 0; i < map->num_doors; i++) {
+            const InteriorDoor& d = map->doors[i];
+            if (door_tx >= d.x && door_tx < d.x + d.w && (ty == d.y || ty == d.y + 1)) {
+                ow->at_interior_door  = 1;
+                ow->interior_door_idx = i;
+                break;
             }
         }
     }

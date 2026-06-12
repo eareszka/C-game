@@ -46,13 +46,13 @@ static bool circles_overlap(float ax, float ay, float ar,
 
 // ── BattleScene ───────────────────────────────────────────────────────────────
 
-BattleScene::BattleScene(Player* player, int enemy_id, WeaponType weapon) {
+BattleScene::BattleScene(Player* player, int enemy_id) {
     memset(_player_bullets, 0, sizeof(_player_bullets));
     memset(_enemy_bullets,  0, sizeof(_enemy_bullets));
 
     _phase       = BATTLE_PHASE_FIGHTING;
     _player_ref  = player;
-    _weapon_type = weapon;
+    _weapon_type = player->equipped_weapon;
     _tab_open    = false;
 
     _bp = {};
@@ -60,7 +60,7 @@ BattleScene::BattleScene(Player* player, int enemy_id, WeaponType weapon) {
     _bp.y      = ARENA_H - 80.0f;
     _bp.hp     = (float)player->stats.hp;
     _bp.max_hp = (float)player->stats.max_hp;
-    _bp.weapon = weapon_profile(weapon);
+    _bp.weapon = weapon_profile(_weapon_type);
 
     seed_enemy_rng((unsigned int)SDL_GetTicks());
     _enemy = enemy_create(enemy_id);
@@ -166,6 +166,29 @@ void BattleScene::_move_bullets(float dt) {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
+
+        if (bl.homing && bl.homing_timer > 0.0f) {
+            bl.homing_timer -= dt;
+            if (bl.homing_timer <= 0.0f) bl.homing = false;
+        }
+
+        if (bl.homing) {
+            // Turn rate: fast for bullets, slow for orbs so the ring still matters
+            const float TURN = bl.spawner ? 0.9f : 2.2f;
+            float dx = _bp.x - bl.x, dy = _bp.y - bl.y;
+            float dist = sqrtf(dx*dx + dy*dy);
+            if (dist > 1.0f) {
+                float spd = sqrtf(bl.vx*bl.vx + bl.vy*bl.vy);
+                if (spd > 0.0f) {
+                    float nx = bl.vx/spd + dx/dist * TURN * dt;
+                    float ny = bl.vy/spd + dy/dist * TURN * dt;
+                    float len = sqrtf(nx*nx + ny*ny);
+                    bl.vx = nx/len * spd;
+                    bl.vy = ny/len * spd;
+                }
+            }
+        }
+
         bl.x += bl.vx * dt;
         bl.y += bl.vy * dt;
 
@@ -192,7 +215,12 @@ void BattleScene::_move_bullets(float dt) {
     }
 
     // Emit 8-way ring from each orb that ticked.
+    // Minimum distance: at d < 50px the ring gaps (39px) are too small for the
+    // player circle (r=12) to fit through, making the hit unavoidable.
     for (int p = 0; p < n_orb; p++) {
+        float dx = orb_pending[p].x - _bp.x;
+        float dy = orb_pending[p].y - _bp.y;
+        if (dx*dx + dy*dy < 50.0f*50.0f) continue;
         for (int i = 0; i < 8; i++) {
             float a = i * (TAU / 8.0f);
             BulletSpawn sub;
@@ -257,6 +285,8 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
         bl.spawner        = bs.spawner;
         bl.spawn_interval = bs.spawn_interval;
         bl.spawn_timer    = bs.spawn_interval;
+        bl.homing         = bs.homing;
+        bl.homing_timer   = bs.homing_timer;
         bl.active         = true;
         return;
     }
@@ -322,14 +352,21 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         SDL_RenderFillRect(ren, &rect);
     }
 
-    // Enemy bullets — orange-red (normal), blue (bouncing), bright orange (orb)
+    // Enemy bullets
+    bool flash = (SDL_GetTicks() / 100) % 2 == 0;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
-        if (bl.spawner)
+        if (bl.spawner && bl.homing)
+            SDL_SetRenderDrawColor(ren, 255, flash ? 255 : 140, flash ? 255 :   0, 255);
+        else if (bl.spawner)
             SDL_SetRenderDrawColor(ren, 255, 140, 0, 255);
+        else if (bl.homing)
+            SDL_SetRenderDrawColor(ren, flash ? 255 : 180, flash ? 255 :  30, 255, 255);
         else if (bl.bouncing)
-            SDL_SetRenderDrawColor(ren, 60, 140, 255, 255);
+            SDL_SetRenderDrawColor(ren, bl.bounces >= 2 ? 255 : 60,
+                                        bl.bounces >= 2 ?  80 : 140,
+                                        bl.bounces >= 2 ?  30 : 255, 255);
         else
             SDL_SetRenderDrawColor(ren, 255, 80, 30, 255);
         int r = (int)bl.radius;

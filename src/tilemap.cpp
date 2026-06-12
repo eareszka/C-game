@@ -519,6 +519,11 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
             } else if (val == 4) { tile = TILE_WATER;
             } else if (val >= 6) {
                 tile = TILE_TOWN0_BASE + (val - 6);
+                // Left door tile of a building sprite → register an interior door.
+                // val 1288: stone house (2-wide door), val 1294: white house.
+                int interior_id = (val == 1288) ? 0 : (val == 1294) ? 1 : -1;
+                if (interior_id >= 0 && map->num_doors < MAX_INTERIOR_DOORS)
+                    map->doors[map->num_doors++] = { wx, wy, 2, interior_id };
             }
             if (tile < 0) continue;
             map->tiles[wy][wx]   = tile;
@@ -636,6 +641,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Grass fill (TILE_GRASS==0)
     memset(map->tiles, 0, sizeof(map->tiles));
     memset(map->overlay, 0, sizeof(map->overlay));
+    map->num_doors = 0;
 
     // Hub ring — cleared by the starting town stamp below
     int ring_inner = hw - 12, ring_outer = hw + 12;

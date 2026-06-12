@@ -44,6 +44,8 @@ struct Bullet {
     bool  spawner;        // orange orb — emits sub-bullets while in flight
     float spawn_timer;
     float spawn_interval;
+    bool  homing;         // steers toward player each frame
+    float homing_timer;   // counts down; when 0 homing turns off
 };
 
 // ── Phase ─────────────────────────────────────────────────────────────────────
@@ -68,7 +70,7 @@ struct BattlePlayer {
 
 class BattleScene {
 public:
-    BattleScene(Player* player, int enemy_id, WeaponType weapon);
+    BattleScene(Player* player, int enemy_id);
     ~BattleScene();
 
     void update(const Input* in, float dt);

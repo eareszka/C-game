@@ -18,6 +18,10 @@ typedef struct Overworld {
     DungeonEntranceType dungeon_type;   // valid when at_dungeon_entrance == 1
     float dungeon_difficulty;           // valid when at_dungeon_entrance == 1
 
+    // Set each frame — 1 if the player is standing at a building door.
+    int at_interior_door;
+    int interior_door_idx;              // index into map->doors, valid when at_interior_door == 1
+
     float tool_cd;   // seconds remaining before next resource hit is allowed
 
 } Overworld;
