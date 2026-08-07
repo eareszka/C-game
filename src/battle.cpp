@@ -78,6 +78,10 @@ void BattleScene::update(const Input* in, float dt) {
 
     if (_phase != BATTLE_PHASE_FIGHTING || _tab_open) return;
 
+    // Debug: instantly win the current battle.
+    if (input_pressed(in, SDL_SCANCODE_T))
+        _enemy->take_damage(_enemy->hp);
+
     _update_movement(in, dt);
     _update_player_fire(in, dt);
     _update_enemy(dt);

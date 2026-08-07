@@ -2227,6 +2227,24 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             SDL_SetRenderDrawColor(ren, r, g, b, 255);
             SDL_RenderFillRect(ren, &rect);
 
+            // Loot: plain gold square drawn over the floor tile.
+            bool has_loot = false;
+            if (tile == DNG_FLOOR) {
+                for (int li = 0; li < dmap->num_loot; li++) {
+                    const DungeonLoot& lo = dmap->loot[li];
+                    if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
+                    int pad = tsz / 4;
+                    SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
+                    int lr = 255, lg = 215, lb = 60;
+                    if (!in_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
+                    SDL_SetRenderDrawColor(ren, lr, lg, lb, 255);
+                    SDL_RenderFillRect(ren, &loot_rect);
+                    has_loot = true;
+                    break;
+                }
+            }
+            if (has_loot) continue;   // skip the ASCII floor dot — keep the square clean
+
             // ASCII char overlay
             char ch; Uint8 cr, cg, cb;
             switch (tile) {
@@ -2248,14 +2266,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     cg = (Uint8)((c->g + 255) / 2);
                     cb = (Uint8)((c->b + 255) / 2);
                     break;
-            }
-            if (tile == DNG_FLOOR) {
-                for (int li = 0; li < dmap->num_loot; li++) {
-                    const DungeonLoot& lo = dmap->loot[li];
-                    if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                    ch = '$'; cr = 255; cg = 215; cb = 60;
-                    break;
-                }
             }
             if (!in_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
             char buf[2] = {ch, '\0'};
@@ -2287,6 +2297,23 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 SDL_SetRenderDrawColor(ren, sr, sg, sb, 255);
                 SDL_RenderFillRect(ren, &rect);
 
+                bool has_loot = false;
+                if (tile == DNG_FLOOR) {
+                    for (int li = 0; li < dmap->num_loot; li++) {
+                        const DungeonLoot& lo = dmap->loot[li];
+                        if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
+                        int pad = tsz / 4;
+                        SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
+                        int lr = 255, lg = 215, lb = 60;
+                        if (!shg_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
+                        SDL_SetRenderDrawColor(ren, lr, lg, lb, 255);
+                        SDL_RenderFillRect(ren, &loot_rect);
+                        has_loot = true;
+                        break;
+                    }
+                }
+                if (has_loot) continue;   // skip the ASCII floor dot — keep the square clean
+
                 char ch; Uint8 cr, cg, cb;
                 switch (tile) {
                     case DNG_ENTRY: ch = '<'; cr=255; cg=240; cb=80; break;
@@ -2295,14 +2322,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         ch = ascii.floor;
                         cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
                         break;
-                }
-                if (tile == DNG_FLOOR) {
-                    for (int li = 0; li < dmap->num_loot; li++) {
-                        const DungeonLoot& lo = dmap->loot[li];
-                        if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                        ch = '$'; cr = 255; cg = 215; cb = 60;
-                        break;
-                    }
                 }
                 if (!shg_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
                 char buf[2] = {ch, '\0'};

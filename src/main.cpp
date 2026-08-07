@@ -724,6 +724,20 @@ int main(int argc, char *argv[])
                                 chasers[cands[k].idx].active = false;
                             }
 
+                            // Clear every other active chaser currently visible in the
+                            // player's FOV — not just the ones joining this fight — so
+                            // finishing this encounter doesn't immediately chain into
+                            // another one with whoever else was standing nearby.
+                            for (int cj = 0; cj < num_chasers; cj++) {
+                                if (cj == ci) continue;
+                                DungeonChaser& o = chasers[cj];
+                                if (!o.active) continue;
+                                int otx = (int)(o.x / DMAP_TILE), oty = (int)(o.y / DMAP_TILE);
+                                if (otx < 0 || otx >= DMAP_W || oty < 0 || oty >= DMAP_H) continue;
+                                if (!dmap.visible[oty][otx]) continue;
+                                o.active = false;
+                            }
+
                             flash_count       = battle_queue_count;
                             pre_battle_timer  = 0.0f;
                             break;
