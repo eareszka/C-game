@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "camera.h"
+#include "entity.h"   // WeaponType, weapon_harvest_damage, weapon_sweeps
 
 #define MAX_RESOURCE_NODES 512
 
@@ -46,8 +47,45 @@ void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
                                    int hides_entrance, int reveal_tile_id,
                                    int reveal_tx, int reveal_ty);
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex);
-// Returns 0=miss, 1=destroyed, 2=hit. Sets *out_type to the hit node's ResourceType.
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry, ResourceType* out_type);
+// ── Harvest results ─────────────────────────────────────────────────────────
+// One swing can now strike several things at once (a scythe sweeps everything
+// in range), so a swing reports a list rather than a single outcome. Tile-based
+// trees and rocks report into the same struct, which is why `resource` is a
+// plain int: it holds a ResourceType, or -1 for something that awards nothing.
+#define MAX_HARVEST_HITS 64
+
+typedef struct HarvestHit {
+    float x, y;      // centre of what was struck, for the floating "+1"
+    int   resource;  // ResourceType awarded, or -1 for none (e.g. flowers)
+    int   destroyed; // 1 if this hit finished it off
+} HarvestHit;
+
+typedef struct HarvestResult {
+    int        count;
+    HarvestHit hits[MAX_HARVEST_HITS];
+} HarvestResult;
+
+// Append a hit; silently ignores overflow past MAX_HARVEST_HITS.
+void harvest_add(HarvestResult* r, float x, float y, int resource, int destroyed);
+// True if any hit in the result finished something off.
+bool harvest_any_destroyed(const HarvestResult* r);
+
+// Strike nodes within `range` of the player. The weapon decides how much damage
+// each node takes and whether every node in range is struck or only the first.
+// Appends to *out. Returns the number of nodes struck this call.
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y,
+                           int range, WeaponType weapon, HarvestResult* out);
+
+// Strike nodes the blade crossed this frame: those within `radius` whose
+// bearing from the player falls in [rel0, rel1) measured clockwise from
+// `start_ang`. Each node is therefore struck once per turn of the blade.
+int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
+                         float radius, float start_ang, float rel0, float rel1,
+                         WeaponType weapon, HarvestResult* out);
+
+// Bearing of (x,y) from the player, folded to [0, 2PI) clockwise from start_ang.
+// Shared with the tile sweep so both agree on where the blade is.
+float sweep_relative_angle(float start_ang, float dx, float dy);
 // TileSolidFn-compatible: returns true if (px,py) is inside any alive tree or rock node.
 bool resource_node_solid(const void* list, float px, float py);
 

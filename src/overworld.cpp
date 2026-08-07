@@ -11,6 +11,15 @@ static bool ow_solid(const void* ctx, float px, float py) {
         || resource_node_solid(c->res, px, py);
 }
 
+// Bearing the player is looking, matching the frame ranges player_draw uses.
+// World y grows downward, so down is +PI/2 and up is -PI/2.
+static float facing_angle(int facing) {
+    if (facing >= 8) return 0.0f;           // right
+    if (facing >= 6) return 3.1415927f;     // left
+    if (facing >= 3) return -1.5707963f;    // up
+    return 1.5707963f;                      // down
+}
+
 static const int down_cycle[4]  = {1, 0, 2, 0};
 static const int up_cycle[4]    = {4, 3, 5, 3};
 static const int left_cycle[2]  = {7, 6};
@@ -25,6 +34,8 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->at_dungeon_entrance = 0;
     ow->at_interior_door    = 0;
     ow->interior_door_idx   = -1;
+    ow->sweep_t             = -1.0f;   // no swing running
+    ow->sweep_start         = 0.0f;
 
     player->equipped_weapon = WEAPON_KNIFE;
     player->width  = 32;
@@ -37,8 +48,8 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
 }
 
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
-                      ResourceNodeList* resources, Tilemap* map, bool noclip, int* out_resource_hit,
-                      float* out_hit_x, float* out_hit_y)
+                      ResourceNodeList* resources, Tilemap* map, bool noclip,
+                      HarvestResult* out_harvest)
 {
     if (ow->tool_cd > 0.0f) ow->tool_cd -= dt;
 
@@ -53,62 +64,77 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     // works for every hit that does the revealing.
     bool at_prompt = ow->at_dungeon_entrance || ow->at_interior_door;
 
+    float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
+    float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
+    WeaponType weapon = player->equipped_weapon;
+
+    HarvestResult local = {};
+    HarvestResult* h = out_harvest ? out_harvest : &local;
+
     if (ow->tool_cd <= 0.0f && !at_prompt
      && (input_down(in, SDL_SCANCODE_SPACE)
       || input_down(in, SDL_SCANCODE_Z)
       || input_down(in, SDL_SCANCODE_RETURN)))
     {
-        float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
-        float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
-        float rx, ry;
-        ResourceType hit_type;
-        int tile_hit_type = 0;
-        int rn_hit  = resource_nodes_try_hit(resources, hx, hy, 40, &rx, &ry, &hit_type);
-        int map_hit = !rn_hit && tilemap_try_hit(map, hx, hy, 40, &rx, &ry, &tile_hit_type);
+        if (weapon_sweeps(weapon)) {
+            // Set the blade going from where the player is looking; the strikes
+            // land below, as it comes round.
+            ow->sweep_t     = 0.0f;
+            ow->sweep_start = facing_angle(player->facing);
+            // Cooldown is the turn itself, so the next swing begins exactly as
+            // this one finishes rather than after a pause.
+            ow->tool_cd     = SWEEP_SECONDS;
+        } else {
+            int rn_hit = resource_nodes_try_hit(resources, hx, hy, 40, weapon, h);
+            // Map tiles are only reached when no node was in range.
+            if (rn_hit == 0)
+                tilemap_try_hit(map, hx, hy, 40, weapon, h);
 
-        if (rn_hit && (hit_type == RESOURCE_TREE || hit_type == RESOURCE_ROCK || hit_type == RESOURCE_GOLD || hit_type == RESOURCE_GRAVESTONE)) {
-            int award = (hit_type == RESOURCE_GRAVESTONE) ? (int)RESOURCE_ROCK : (int)hit_type;
-            player->inventory[award]++;
-            if (out_resource_hit) *out_resource_hit = award;
-            if (out_hit_x) *out_hit_x = rx;
-            if (out_hit_y) *out_hit_y = ry;
-        } else if (map_hit) {
-            if (tile_hit_type == TILE_TREE || tile_hit_type == TILE_DEAD_TREE) {
-                player->inventory[(int)RESOURCE_TREE]++;
-                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_TREE;
-            } else if (tile_hit_type == TILE_ROCK) {
-                player->inventory[(int)RESOURCE_ROCK]++;
-                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_ROCK;
-            } else if (tile_hit_type == TILE_GOLD_ORE) {
-                player->inventory[(int)RESOURCE_GOLD]++;
-                if (out_resource_hit) *out_resource_hit = (int)RESOURCE_GOLD;
-            }
-            if (map_hit && out_resource_hit && *out_resource_hit >= 0) {
-                if (out_hit_x) *out_hit_x = rx;
-                if (out_hit_y) *out_hit_y = ry;
+            if (h->count > 0) {
+                float ddx = h->hits[0].x - hx;
+                float ddy = h->hits[0].y - hy;
+                if (ddx * ddx >= ddy * ddy)
+                    player->facing = ddx >= 0.0f ? 8 : 6;
+                else
+                    player->facing = ddy >= 0.0f ? 0 : 3;
+                player->facing_locked = 1;
+                ow->tool_cd = 1.0f / weapon_profile(weapon).fire_rate;
             }
         }
+    }
 
-        if (rn_hit == 1) {
-            for (int i = 0; i < resources->count; i++) {
-                ResourceNode* n = &resources->nodes[i];
-                if (n->type == RESOURCE_GRAVESTONE &&
-                    !n->alive && n->hides_entrance && n->reveal_tx >= 0) {
-                    map->tiles[n->reveal_ty][n->reveal_tx] = n->reveal_tile_id;
-                    map->overlay[n->reveal_ty][n->reveal_tx] = 0;
-                    n->reveal_tx = -1;
-                }
+    // Advance a running sweep and strike whatever arc the blade covered this
+    // frame. Driven by elapsed time rather than per-frame steps so the swing
+    // takes the same path regardless of frame rate.
+    if (ow->sweep_t >= 0.0f) {
+        const float TWO_PI = 6.2831853f;
+        float t0 = ow->sweep_t / SWEEP_SECONDS;
+        ow->sweep_t += dt;
+        float t1 = ow->sweep_t / SWEEP_SECONDS;
+        if (t1 > 1.0f) t1 = 1.0f;
+
+        resource_nodes_sweep(resources, hx, hy, SWEEP_RADIUS, ow->sweep_start,
+                             t0 * TWO_PI, t1 * TWO_PI, weapon, h);
+        tilemap_sweep(map, hx, hy, SWEEP_RADIUS, ow->sweep_start,
+                      t0 * TWO_PI, t1 * TWO_PI, weapon, h);
+
+        if (ow->sweep_t >= SWEEP_SECONDS) ow->sweep_t = -1.0f;
+    }
+
+    for (int i = 0; i < h->count; i++)
+        if (h->hits[i].resource >= 0)
+            player->inventory[h->hits[i].resource]++;
+
+    // Any destroyed gravestone may have been hiding a dungeon entrance.
+    if (harvest_any_destroyed(h)) {
+        for (int i = 0; i < resources->count; i++) {
+            ResourceNode* n = &resources->nodes[i];
+            if (n->type == RESOURCE_GRAVESTONE &&
+                !n->alive && n->hides_entrance && n->reveal_tx >= 0) {
+                map->tiles[n->reveal_ty][n->reveal_tx] = n->reveal_tile_id;
+                map->overlay[n->reveal_ty][n->reveal_tx] = 0;
+                n->reveal_tx = -1;
             }
-        }
-        if (rn_hit || map_hit) {
-            float ddx = rx - hx;
-            float ddy = ry - hy;
-            if (ddx * ddx >= ddy * ddy)
-                player->facing = ddx >= 0.0f ? 8 : 6;
-            else
-                player->facing = ddy >= 0.0f ? 0 : 3;
-            player->facing_locked = 1;
-            ow->tool_cd = 1.0f / weapon_profile(player->equipped_weapon).fire_rate;
         }
     }
 
@@ -192,4 +218,46 @@ void player_draw(const Player* player, float world_x, float world_y,
     SDL_Rect src = { frame * 16, 0, 16, 24 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
+}
+
+void overworld_draw_sweep(const Overworld* ow, const Camera* cam, SDL_Renderer* ren)
+{
+    if (ow->sweep_t < 0.0f) return;
+
+    const float TWO_PI = 6.2831853f;
+    float z  = cam->zoom;
+    float px = ow->x + (HB_X1 + HB_X2) * 0.5f;
+    float py = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
+    int cx = (int)((px - cam->x) * z);
+    int cy = (int)((py - cam->y) * z);
+    float r = SWEEP_RADIUS * z;
+
+    float prog = ow->sweep_t / SWEEP_SECONDS;
+    if (prog > 1.0f) prog = 1.0f;
+
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+
+    // Trail along the arc already cut, brightest just behind the blade so the
+    // direction of travel reads at a glance.
+    const int STEPS = 28;
+    for (int i = 0; i < STEPS; i++) {
+        float f0 = (float)i / STEPS;
+        float f1 = (float)(i + 1) / STEPS;
+        float a0 = ow->sweep_start + f0 * prog * TWO_PI;
+        float a1 = ow->sweep_start + f1 * prog * TWO_PI;
+        SDL_SetRenderDrawColor(ren, 210, 225, 255, (Uint8)(25.0f + 165.0f * f1));
+        SDL_RenderDrawLine(ren,
+            cx + (int)(cosf(a0) * r), cy + (int)(sinf(a0) * r),
+            cx + (int)(cosf(a1) * r), cy + (int)(sinf(a1) * r));
+    }
+
+    // The blade itself.
+    float cur = ow->sweep_start + prog * TWO_PI;
+    int bx = cx + (int)(cosf(cur) * r);
+    int by = cy + (int)(sinf(cur) * r);
+    SDL_SetRenderDrawColor(ren, 255, 255, 255, 235);
+    SDL_RenderDrawLine(ren, cx, cy, bx, by);
+    SDL_RenderDrawLine(ren, cx, cy + 1, bx, by + 1);
+
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
 }

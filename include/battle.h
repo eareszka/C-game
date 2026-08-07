@@ -19,6 +19,10 @@ struct ProjectileProfile {
 
 ProjectileProfile weapon_profile(WeaponType type);
 
+// Display name, e.g. "KATANA". Shared by the battle HUD and the debug menu so
+// there is one list to update when a weapon is added.
+const char* weapon_name(WeaponType type);
+
 // ── Arena constants ────────────────────────────────────────────────────────────
 
 static const int ARENA_W  = 640;

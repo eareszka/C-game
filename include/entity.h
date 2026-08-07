@@ -11,7 +11,21 @@ enum WeaponType {
     WEAPON_HALBERD,
     WEAPON_KATANA,
     WEAPON_SCYTHE,
+    WEAPON_COUNT   // keep last — number of weapons, not a weapon
 };
+
+// ── Harvesting ──────────────────────────────────────────────────────────────
+// Axe and scythe fell a tree in a single swing; everything else chips one point
+// off at a time. Non-tree nodes are unaffected, so rock and ore still take the
+// same work with any weapon.
+inline int weapon_harvest_damage(WeaponType w, bool target_is_tree) {
+    if (target_is_tree && (w == WEAPON_AXE || w == WEAPON_SCYTHE)) return 9999;
+    return 1;
+}
+
+// The scythe sweeps every node in range instead of just the nearest, which is
+// what makes it the farming tool rather than a single-target one.
+inline bool weapon_sweeps(WeaponType w) { return w == WEAPON_SCYTHE; }
 
 typedef struct {
     int max_hp;

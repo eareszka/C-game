@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "camera.h"
+#include "resource_node.h"   // HarvestResult, WeaponType
 
 #define MAP_WIDTH  3000
 #define MAP_HEIGHT 3000
@@ -190,8 +191,17 @@ SDL_Texture* tilemap_get_town_tex(void);
 
 // Hit a tree or rock tile near (px, py) within `range` pixels.
 // Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.
-// Destroys the tile(s) on depletion. Returns 1 if destroyed, 2 if hit, 0 if miss.
-int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry, int* out_tile = nullptr);
+// Strike harvestable overlay tiles (trees, rocks, ore) within `range`. The
+// weapon decides damage and whether every tile in range is struck or only the
+// nearest. Destroys tiles on depletion, appends to *out, returns tiles struck.
+int tilemap_try_hit(Tilemap* map, float px, float py, int range,
+                    WeaponType weapon, HarvestResult* out);
+
+// Tile counterpart of resource_nodes_sweep: strike harvestable overlay tiles
+// whose centre the blade crossed this frame.
+int tilemap_sweep(Tilemap* map, float px, float py, float radius,
+                  float start_ang, float rel0, float rel1,
+                  WeaponType weapon, HarvestResult* out);
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,

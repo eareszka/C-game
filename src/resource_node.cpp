@@ -167,8 +167,84 @@ bool resource_node_solid(const void* vlist, float px, float py) {
     return false;
 }
 
-int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y, int range, float* out_rx, float* out_ry, ResourceType* out_type)
+void harvest_add(HarvestResult* r, float x, float y, int resource, int destroyed)
 {
+    if (!r || r->count >= MAX_HARVEST_HITS) return;
+    HarvestHit* h = &r->hits[r->count++];
+    h->x = x;
+    h->y = y;
+    h->resource  = resource;
+    h->destroyed = destroyed;
+}
+
+bool harvest_any_destroyed(const HarvestResult* r)
+{
+    if (!r) return false;
+    for (int i = 0; i < r->count; i++)
+        if (r->hits[i].destroyed) return true;
+    return false;
+}
+
+// Flowers are hittable but pay nothing, so they report -1 and no inventory
+// entry is credited for them.
+static int node_award(ResourceType t)
+{
+    switch (t) {
+        case RESOURCE_TREE:       return (int)RESOURCE_TREE;
+        case RESOURCE_ROCK:       return (int)RESOURCE_ROCK;
+        case RESOURCE_GOLD:       return (int)RESOURCE_GOLD;
+        case RESOURCE_GRAVESTONE: return (int)RESOURCE_ROCK;  // gravestones give rock
+        default:                  return -1;
+    }
+}
+
+// World y grows downward, so atan2(dy, dx) increases clockwise on screen — the
+// blade just needs its angle to rise over the swing.
+float sweep_relative_angle(float start_ang, float dx, float dy)
+{
+    const float TWO_PI = 6.2831853f;
+    float rel = atan2f(dy, dx) - start_ang;
+    rel = fmodf(rel, TWO_PI);
+    if (rel < 0.0f) rel += TWO_PI;
+    return rel;
+}
+
+int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
+                         float radius, float start_ang, float rel0, float rel1,
+                         WeaponType weapon, HarvestResult* out)
+{
+    int struck = 0;
+    for (int i = 0; i < list->count; i++)
+    {
+        ResourceNode* n = &list->nodes[i];
+        if (!n->alive) continue;
+
+        float cx = n->x + n->width  * 0.5f;
+        float cy = n->y + n->height * 0.5f;
+        float dx = cx - player_x, dy = cy - player_y;
+        if (dx*dx + dy*dy > radius * radius) continue;
+
+        // Half-open span, so a node is struck exactly once per turn however the
+        // frame boundaries happen to fall.
+        float rel = sweep_relative_angle(start_ang, dx, dy);
+        if (rel < rel0 || rel >= rel1) continue;
+
+        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        int destroyed = 0;
+        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+
+        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        struck++;
+    }
+    return struck;
+}
+
+int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y,
+                           int range, WeaponType weapon, HarvestResult* out)
+{
+    const bool sweep = weapon_sweeps(weapon);
+    int struck = 0;
+
     for (int i = 0; i < list->count; i++)
     {
         ResourceNode* n = &list->nodes[i];
@@ -178,21 +254,17 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
         float cy = n->y + n->height * 0.5f;
         int dx = (int)(cx - player_x);
         int dy = (int)(cy - player_y);
+        if (abs_int(dx) > range || abs_int(dy) > range) continue;
 
-        if (abs_int(dx) <= range && abs_int(dy) <= range) {
-            if (out_rx)   *out_rx   = cx;
-            if (out_ry)   *out_ry   = cy;
-            if (out_type) *out_type = n->type;
-            n->hp--;
+        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        int destroyed = 0;
+        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
 
-            if (n->hp <= 0)
-            {
-                n->alive = 0;
-                return 1; // destroyed
-            }
-            return 2; // hit but not destroyed
-        }
+        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        struck++;
+
+        if (!sweep) break;   // single-target weapons stop at the first node
     }
-    return 0; // nothing hit
+    return struck;
 }
 

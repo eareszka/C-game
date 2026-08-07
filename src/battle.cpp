@@ -23,7 +23,7 @@ ProjectileProfile weapon_profile(WeaponType type) {
     }
 }
 
-static const char* weapon_name(WeaponType type) {
+const char* weapon_name(WeaponType type) {
     switch (type) {
         case WEAPON_KNIFE:   return "KNIFE";
         case WEAPON_CLUB:    return "CLUB";

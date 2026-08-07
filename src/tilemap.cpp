@@ -2490,6 +2490,56 @@ static void blit_tile(SDL_Renderer* renderer, int tile_id,
     }
 }
 
+// ── Default-biome grass variants ────────────────────────────────────────────
+// Six 16px cells at (288,32)-(336,64) in assets/tileset.png — cols 18-20, rows
+// 2-3, numbered 1-6 in reading order. 1 and 2 are a single clump that spans two
+// tiles and must stay together left-to-right; 3, 4 and 5 are lone tufts; 6 is
+// plain. Purely a draw-time choice: the map still stores TILE_GRASS, so
+// collision, the minimap and worldgen are untouched.
+static constexpr int grass_cell(int col, int row) {
+    return TILE_TOWN0_BASE + row * TOWN0_SHEET_COLS + col;
+}
+static constexpr int GRASS_CLUMP_L = grass_cell(18, 2);  // 1
+static constexpr int GRASS_CLUMP_R = grass_cell(19, 2);  // 2
+static constexpr int GRASS_TUFT_A  = grass_cell(20, 2);  // 3
+static constexpr int GRASS_TUFT_B  = grass_cell(18, 3);  // 4
+static constexpr int GRASS_TUFT_C  = grass_cell(19, 3);  // 5
+static constexpr int GRASS_PLAIN   = grass_cell(20, 3);  // 6
+
+static inline unsigned int grass_hash(int x, int y, unsigned int salt) {
+    unsigned int h = (unsigned int)x * 73856093u ^ (unsigned int)y * 19349663u ^ salt;
+    h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
+    return h;
+}
+
+// Raw chance a clump begins at this tile. A start claims two tiles and is
+// suppressed beside another start, so ~8% here lands near 15% of the field
+// under clumps: 2 * p * (1-p) with p = 0.08.
+static const unsigned int GRASS_CLUMP_PCT = 8;
+static inline bool grass_clump_raw(int x, int y) {
+    return (grass_hash(x, y, 0x9e3779b9u) % 100u) < GRASS_CLUMP_PCT;
+}
+
+static int grass_variant(int x, int y) {
+    if (!s_town0_tex) return TILE_GRASS;  // sheet missing — keep the flat tile
+
+    // Right half first: a start beside a start is suppressed, which is what
+    // stops a run of raw starts from emitting a right half with no left half.
+    bool left_starts = x > 0 && grass_clump_raw(x - 1, y)
+                             && !(x > 1 && grass_clump_raw(x - 2, y));
+    if (left_starts) return GRASS_CLUMP_R;
+    if (grass_clump_raw(x, y) && !(x > 0 && grass_clump_raw(x - 1, y)))
+        return GRASS_CLUMP_L;
+
+    // Of the tiles left over, ~53% plain and the rest split between the three
+    // tufts, which comes out near the intended 45/40/15 plain/tuft/clump mix.
+    unsigned int v = grass_hash(x, y, 0x85ebca6bu) % 100u;
+    if (v < 53) return GRASS_PLAIN;
+    if (v < 69) return GRASS_TUFT_A;
+    if (v < 85) return GRASS_TUFT_B;
+    return GRASS_TUFT_C;
+}
+
 // depth_pass=false: draw all tiles except depth-marked ones.
 // depth_pass=true:  draw only depth-marked tiles (call after player_draw).
 static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
@@ -2560,8 +2610,9 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             {
                 int tile_id = map->tiles[y][x];
                 if (tile_id >= TILE_TOWN0_BASE)
-                    blit_tile(renderer, TILE_GRASS, screen_x, screen_y, draw_size);
-                blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                    blit_tile(renderer, grass_variant(x, y), screen_x, screen_y, draw_size);
+                blit_tile(renderer, tile_id == TILE_GRASS ? grass_variant(x, y) : tile_id,
+                          screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 
@@ -2845,19 +2896,95 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     return 0;
 }
 
-int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, float* out_ry, int* out_tile) {
+static bool tile_is_harvestable(int t) {
+    return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE;
+}
+
+static int tile_award(int t) {
+    if (t == TILE_TREE || t == TILE_DEAD_TREE) return (int)RESOURCE_TREE;
+    if (t == TILE_ROCK)                        return (int)RESOURCE_ROCK;
+    if (t == TILE_GOLD_ORE)                    return (int)RESOURCE_GOLD;
+    return -1;
+}
+
+// Strike one tile. Returns 1 if it was destroyed.
+static int tilemap_strike(Tilemap* map, int tx, int ty, WeaponType weapon, HarvestResult* out) {
+    int t = map->overlay[ty][tx];
+    uint32_t key = tile_key(tx, ty);
+
+    auto it = s_tile_hp.find(key);
+    int hp = (it == s_tile_hp.end()) ? tile_max_hp(map, tx, ty) : it->second;
+    hp -= weapon_harvest_damage(weapon, t == TILE_TREE || t == TILE_DEAD_TREE);
+
+    float cx = (tx + 0.5f) * TILE_SIZE;
+    float cy = (ty + 0.5f) * TILE_SIZE;
+
+    if (hp <= 0) {
+        s_tile_hp.erase(key);
+        s_tile_jitter.erase(key);
+        map->overlay[ty][tx] = 0;
+        harvest_add(out, cx, cy, tile_award(t), 1);
+        return 1;
+    }
+
+    s_tile_hp[key] = hp;
+    s_tile_jitter[key] = SDL_GetPerformanceCounter();
+    harvest_add(out, cx, cy, tile_award(t), 0);
+    return 0;
+}
+
+int tilemap_sweep(Tilemap* map, float px, float py, float radius,
+                  float start_ang, float rel0, float rel1,
+                  WeaponType weapon, HarvestResult* out) {
+    int r = (int)radius;
+    int tx0 = (int)((px - r) / TILE_SIZE); if (tx0 < 0) tx0 = 0;
+    int ty0 = (int)((py - r) / TILE_SIZE); if (ty0 < 0) ty0 = 0;
+    int tx1 = (int)((px + r) / TILE_SIZE); if (tx1 >= MAP_WIDTH)  tx1 = MAP_WIDTH  - 1;
+    int ty1 = (int)((py + r) / TILE_SIZE); if (ty1 >= MAP_HEIGHT) ty1 = MAP_HEIGHT - 1;
+
+    int struck = 0;
+    for (int ty = ty0; ty <= ty1; ty++) {
+        for (int tx = tx0; tx <= tx1; tx++) {
+            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
+            float cx = (tx + 0.5f) * TILE_SIZE;
+            float cy = (ty + 0.5f) * TILE_SIZE;
+            float dx = cx - px, dy = cy - py;
+            if (dx*dx + dy*dy > radius * radius) continue;
+            float rel = sweep_relative_angle(start_ang, dx, dy);
+            if (rel < rel0 || rel >= rel1) continue;
+            tilemap_strike(map, tx, ty, weapon, out);
+            struck++;
+        }
+    }
+    return struck;
+}
+
+int tilemap_try_hit(Tilemap* map, float px, float py, int range,
+                    WeaponType weapon, HarvestResult* out) {
     int tx0 = (int)((px - range) / TILE_SIZE); if (tx0 < 0) tx0 = 0;
     int ty0 = (int)((py - range) / TILE_SIZE); if (ty0 < 0) ty0 = 0;
     int tx1 = (int)((px + range) / TILE_SIZE); if (tx1 >= MAP_WIDTH)  tx1 = MAP_WIDTH  - 1;
     int ty1 = (int)((py + range) / TILE_SIZE); if (ty1 >= MAP_HEIGHT) ty1 = MAP_HEIGHT - 1;
 
-    // Find closest hittable tile within range
+    // A sweeping weapon takes everything in the box; anything else takes only
+    // the nearest tile, which is the original single-target behaviour.
+    if (weapon_sweeps(weapon)) {
+        int struck = 0;
+        for (int ty = ty0; ty <= ty1; ty++) {
+            for (int tx = tx0; tx <= tx1; tx++) {
+                if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
+                tilemap_strike(map, tx, ty, weapon, out);
+                struck++;
+            }
+        }
+        return struck;
+    }
+
     float best_dist2 = (float)(range * range) * 2.0f + 1.0f;
     int best_tx = -1, best_ty = -1;
     for (int ty = ty0; ty <= ty1; ty++) {
         for (int tx = tx0; tx <= tx1; tx++) {
-            int t = map->overlay[ty][tx];
-            if (t != TILE_TREE && t != TILE_DEAD_TREE && t != TILE_ROCK && t != TILE_GOLD_ORE) continue;
+            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
             float dx = (tx + 0.5f) * TILE_SIZE - px;
             float dy = (ty + 0.5f) * TILE_SIZE - py;
             float d2 = dx*dx + dy*dy;
@@ -2866,30 +2993,8 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range, float* out_rx, 
     }
     if (best_tx < 0) return 0;
 
-    if (out_rx) *out_rx = (best_tx + 0.5f) * TILE_SIZE;
-    if (out_ry) *out_ry = (best_ty + 0.5f) * TILE_SIZE;
-
-    int tx = best_tx, ty = best_ty;
-    int t = map->overlay[ty][tx];
-    if (out_tile) *out_tile = t;
-
-    uint32_t key = tile_key(tx, ty);
-    int max_hp = tile_max_hp(map, tx, ty);
-
-    auto it = s_tile_hp.find(key);
-    int hp = (it == s_tile_hp.end()) ? max_hp : it->second;
-    hp--;
-
-    if (hp <= 0) {
-        s_tile_hp.erase(key);
-        s_tile_jitter.erase(key);
-        map->overlay[ty][tx] = 0;
-        return 1; // destroyed
-    }
-
-    s_tile_hp[key] = hp;
-    s_tile_jitter[key] = SDL_GetPerformanceCounter();
-    return 2; // hit but not destroyed
+    tilemap_strike(map, best_tx, best_ty, weapon, out);
+    return 1;
 }
 
 void tilemap_update(float /*dt*/) {

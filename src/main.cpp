@@ -143,7 +143,9 @@ int main(int argc, char *argv[])
     static const int DBG_TYPE_COUNT = 8;
 
     bool dbg_open     = false;
-    int  dbg_sel      = 0;   // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all
+    // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon
+    static const int DBG_ROW_COUNT = 6;
+    int  dbg_sel      = 0;
     int  dbg_type     = 0;
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
@@ -246,15 +248,26 @@ int main(int argc, char *argv[])
         }
         if (dbg_open) {
             if (input_pressed(&in, SDL_SCANCODE_UP))
-                dbg_sel = (dbg_sel + 4) % 5;
+                dbg_sel = (dbg_sel + DBG_ROW_COUNT - 1) % DBG_ROW_COUNT;
             if (input_pressed(&in, SDL_SCANCODE_DOWN))
-                dbg_sel = (dbg_sel + 1) % 5;
+                dbg_sel = (dbg_sel + 1) % DBG_ROW_COUNT;
 
             if (dbg_sel == 0) {
                 if (input_pressed(&in, SDL_SCANCODE_LEFT))
                     dbg_type = (dbg_type + DBG_TYPE_COUNT - 1) % DBG_TYPE_COUNT;
                 if (input_pressed(&in, SDL_SCANCODE_RIGHT))
                     dbg_type = (dbg_type + 1) % DBG_TYPE_COUNT;
+            }
+
+            // Weapon: applied straight to the player so the change is visible
+            // immediately — it drives both battle damage and the overworld tool
+            // cooldown, with no confirm step to forget.
+            if (dbg_sel == 5) {
+                int w = (int)player.equipped_weapon;
+                if (input_pressed(&in, SDL_SCANCODE_LEFT))
+                    player.equipped_weapon = (WeaponType)((w + WEAPON_COUNT - 1) % WEAPON_COUNT);
+                if (input_pressed(&in, SDL_SCANCODE_RIGHT))
+                    player.equipped_weapon = (WeaponType)((w + 1) % WEAPON_COUNT);
             }
 
             bool dbg_confirm = input_pressed(&in, SDL_SCANCODE_RETURN) ||
@@ -373,14 +386,17 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                int resource_hit = -1;
-                float hit_wx = 0, hit_wy = 0;
-                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip, &resource_hit, &hit_wx, &hit_wy);
-                if (resource_hit >= 0) {
+                HarvestResult harvest = {};
+                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip, &harvest);
+                // One popup per thing struck — a scythe sweep hits several, and
+                // a single "+1" would understate what was actually collected.
+                for (int hi = 0; hi < harvest.count; hi++) {
+                    int res = harvest.hits[hi].resource;
+                    if (res < 0) continue;
                     Uint8 fr = 180, fg = 120, fb = 60;
-                    if      (resource_hit == (int)RESOURCE_ROCK) { fr = 160; fg = 160; fb = 160; }
-                    else if (resource_hit == (int)RESOURCE_GOLD) { fr = 255; fg = 210; fb =  40; }
-                    spawn_float(hit_wx, hit_wy, fr, fg, fb);
+                    if      (res == (int)RESOURCE_ROCK) { fr = 160; fg = 160; fb = 160; }
+                    else if (res == (int)RESOURCE_GOLD) { fr = 255; fg = 210; fb =  40; }
+                    spawn_float(harvest.hits[hi].x, harvest.hits[hi].y, fr, fg, fb);
                 }
 
                 float player_cx = ow.x + player.width * 0.5f;
@@ -394,6 +410,7 @@ int main(int argc, char *argv[])
                 tilemap_draw_base(map, &cam, plat.renderer);
                 resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
+                overworld_draw_sweep(&ow, &cam, plat.renderer);
                 tilemap_draw_depth(map, &cam, plat.renderer);
 
                 // --- Weapon cooldown bar ---
@@ -1083,7 +1100,7 @@ int main(int argc, char *argv[])
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
-            const int MX = 120, MY = 130, MW = 400, MH = 180;
+            const int MX = 120, MY = 130, MW = 400, MH = 204;
             const int LH = 22;  // line height
 
             draw_nes_panel(plat.renderer, MX, MY, MW, MH);
@@ -1133,6 +1150,14 @@ int main(int argc, char *argv[])
             {
                 const char* sa = dbg_show_all ? "SHOW ALL: ON " : "SHOW ALL: OFF";
                 draw_row(4, sa, dbg_sel == 4);
+            }
+
+            // Row 5: equipped weapon selector
+            {
+                char wbuf[64];
+                SDL_snprintf(wbuf, sizeof(wbuf), "WEAPON: < %s >",
+                             weapon_name(player.equipped_weapon));
+                draw_row(5, wbuf, dbg_sel == 5);
             }
 
             draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",
