@@ -387,7 +387,7 @@ int main(int argc, char *argv[])
                 }
 
                 HarvestResult harvest = {};
-                overworld_update(&ow, &player, game_in, dt, &resources, map, dbg_noclip, &harvest);
+                overworld_update(&ow, &player, game_in, dt, &resources, map, &cam, dbg_noclip, &harvest);
                 // One popup per thing struck — a scythe sweep hits several, and
                 // a single "+1" would understate what was actually collected.
                 for (int hi = 0; hi < harvest.count; hi++) {
@@ -410,13 +410,19 @@ int main(int argc, char *argv[])
                 tilemap_draw_base(map, &cam, plat.renderer);
                 resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
-                overworld_draw_sweep(&ow, &cam, plat.renderer);
+                overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_depth(map, &cam, plat.renderer);
 
                 // --- Weapon cooldown bar ---
                 {
-                    float max_cd = 1.0f / weapon_profile(player.equipped_weapon).fire_rate;
-                    float ready  = 1.0f - (ow.tool_cd > 0.0f ? ow.tool_cd / max_cd : 0.0f);
+                    // Same source the swing uses, so the bar always spans the
+                    // cooldown this weapon actually sets rather than its raw
+                    // fire rate — which several weapons no longer go by.
+                    float max_cd = weapon_cooldown_seconds(player.equipped_weapon);
+                    float ready  = (max_cd > 0.0f && ow.tool_cd > 0.0f)
+                                 ? 1.0f - ow.tool_cd / max_cd : 1.0f;
+                    if (ready < 0.0f) ready = 0.0f;
+                    if (ready > 1.0f) ready = 1.0f;
                     const int BAR_W = 160, BAR_H = 5;
                     const int BAR_X = (640 - BAR_W) / 2, BAR_Y = 480 - 12;
                     SDL_SetRenderDrawColor(plat.renderer, 40, 40, 40, 200);

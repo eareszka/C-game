@@ -203,6 +203,17 @@ int tilemap_sweep(Tilemap* map, float px, float py, float radius,
                   float start_ang, float rel0, float rel1,
                   WeaponType weapon, HarvestResult* out);
 
+// Tile counterparts of the thrust pair.
+float tilemap_first_along(const Tilemap* map, float px, float py,
+                          float angle, float half_width, float max_reach);
+int tilemap_thrust(Tilemap* map, float px, float py, float angle,
+                   float half_width, float from, float to,
+                   WeaponType weapon, HarvestResult* out);
+
+// Strike the harvestable tile a point lands on, if any. Returns 1 if struck.
+int tilemap_strike_point(Tilemap* map, float x, float y,
+                         WeaponType weapon, HarvestResult* out);
+
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,
                   float player_x, float player_y);

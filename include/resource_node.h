@@ -86,6 +86,27 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
 // Bearing of (x,y) from the player, folded to [0, 2PI) clockwise from start_ang.
 // Shared with the tile sweep so both agree on where the blade is.
 float sweep_relative_angle(float start_ang, float dx, float dy);
+
+// Resolve an offset into distance along the thrust line and sideways off it.
+// Shared with the tile thrust so both measure the corridor identically.
+void thrust_project(float angle, float dx, float dy, float* out_along, float* out_side);
+
+// Distance to the nearest node in the corridor ahead, or -1 if there is none
+// within max_reach. This is the "first target" a thrust extends beyond.
+float resource_nodes_first_along(const ResourceNodeList* list, float px, float py,
+                                 float angle, float half_width, float max_reach);
+
+// Strike nodes the thrust head passed this frame: those in the corridor whose
+// distance along the line falls in [from, to). Half-open for the same reason as
+// the sweep — each node is struck once per thrust however the frames land.
+int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
+                          float half_width, float from, float to,
+                          WeaponType weapon, HarvestResult* out);
+
+// Strike the first node overlapping a point — used by thrown objects, which
+// stop at whatever they meet. Returns 1 if something was struck.
+int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float radius,
+                                WeaponType weapon, HarvestResult* out);
 // TileSolidFn-compatible: returns true if (px,py) is inside any alive tree or rock node.
 bool resource_node_solid(const void* list, float px, float py);
 

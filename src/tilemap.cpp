@@ -2959,6 +2959,70 @@ int tilemap_sweep(Tilemap* map, float px, float py, float radius,
     return struck;
 }
 
+// Tile bounds of the box that could contain anything within `reach` of (px,py).
+static void thrust_tile_bounds(float px, float py, float reach,
+                               int* tx0, int* ty0, int* tx1, int* ty1) {
+    int r = (int)reach + TILE_SIZE;
+    *tx0 = (int)((px - r) / TILE_SIZE); if (*tx0 < 0) *tx0 = 0;
+    *ty0 = (int)((py - r) / TILE_SIZE); if (*ty0 < 0) *ty0 = 0;
+    *tx1 = (int)((px + r) / TILE_SIZE); if (*tx1 >= MAP_WIDTH)  *tx1 = MAP_WIDTH  - 1;
+    *ty1 = (int)((py + r) / TILE_SIZE); if (*ty1 >= MAP_HEIGHT) *ty1 = MAP_HEIGHT - 1;
+}
+
+float tilemap_first_along(const Tilemap* map, float px, float py,
+                          float angle, float half_width, float max_reach) {
+    int tx0, ty0, tx1, ty1;
+    thrust_tile_bounds(px, py, max_reach, &tx0, &ty0, &tx1, &ty1);
+
+    float best = -1.0f;
+    for (int ty = ty0; ty <= ty1; ty++) {
+        for (int tx = tx0; tx <= tx1; tx++) {
+            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
+            float cx = (tx + 0.5f) * TILE_SIZE;
+            float cy = (ty + 0.5f) * TILE_SIZE;
+            float along, side;
+            thrust_project(angle, cx - px, cy - py, &along, &side);
+            if (along < 0.0f || along > max_reach) continue;
+            if (side < -half_width || side > half_width) continue;
+            if (best < 0.0f || along < best) best = along;
+        }
+    }
+    return best;
+}
+
+int tilemap_thrust(Tilemap* map, float px, float py, float angle,
+                   float half_width, float from, float to,
+                   WeaponType weapon, HarvestResult* out) {
+    int tx0, ty0, tx1, ty1;
+    thrust_tile_bounds(px, py, to, &tx0, &ty0, &tx1, &ty1);
+
+    int struck = 0;
+    for (int ty = ty0; ty <= ty1; ty++) {
+        for (int tx = tx0; tx <= tx1; tx++) {
+            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
+            float cx = (tx + 0.5f) * TILE_SIZE;
+            float cy = (ty + 0.5f) * TILE_SIZE;
+            float along, side;
+            thrust_project(angle, cx - px, cy - py, &along, &side);
+            if (along < from || along >= to) continue;
+            if (side < -half_width || side > half_width) continue;
+            tilemap_strike(map, tx, ty, weapon, out);
+            struck++;
+        }
+    }
+    return struck;
+}
+
+int tilemap_strike_point(Tilemap* map, float x, float y,
+                         WeaponType weapon, HarvestResult* out) {
+    int tx = (int)(x / TILE_SIZE);
+    int ty = (int)(y / TILE_SIZE);
+    if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return 0;
+    if (!tile_is_harvestable(map->overlay[ty][tx])) return 0;
+    tilemap_strike(map, tx, ty, weapon, out);
+    return 1;
+}
+
 int tilemap_try_hit(Tilemap* map, float px, float py, int range,
                     WeaponType weapon, HarvestResult* out) {
     int tx0 = (int)((px - range) / TILE_SIZE); if (tx0 < 0) tx0 = 0;

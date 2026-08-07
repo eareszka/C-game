@@ -239,6 +239,82 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
     return struck;
 }
 
+void thrust_project(float angle, float dx, float dy, float* out_along, float* out_side)
+{
+    float ca = cosf(angle), sa = sinf(angle);
+    if (out_along) *out_along =  dx * ca + dy * sa;
+    if (out_side)  *out_side  = -dx * sa + dy * ca;
+}
+
+float resource_nodes_first_along(const ResourceNodeList* list, float px, float py,
+                                 float angle, float half_width, float max_reach)
+{
+    float best = -1.0f;
+    for (int i = 0; i < list->count; i++) {
+        const ResourceNode* n = &list->nodes[i];
+        if (!n->alive) continue;
+
+        float cx = n->x + n->width  * 0.5f;
+        float cy = n->y + n->height * 0.5f;
+        float along, side;
+        thrust_project(angle, cx - px, cy - py, &along, &side);
+
+        if (along < 0.0f || along > max_reach) continue;
+        if (side < -half_width || side > half_width) continue;
+        if (best < 0.0f || along < best) best = along;
+    }
+    return best;
+}
+
+int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
+                          float half_width, float from, float to,
+                          WeaponType weapon, HarvestResult* out)
+{
+    int struck = 0;
+    for (int i = 0; i < list->count; i++) {
+        ResourceNode* n = &list->nodes[i];
+        if (!n->alive) continue;
+
+        float cx = n->x + n->width  * 0.5f;
+        float cy = n->y + n->height * 0.5f;
+        float along, side;
+        thrust_project(angle, cx - px, cy - py, &along, &side);
+
+        if (along < from || along >= to) continue;
+        if (side < -half_width || side > half_width) continue;
+
+        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        int destroyed = 0;
+        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+
+        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        struck++;
+    }
+    return struck;
+}
+
+int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float radius,
+                                WeaponType weapon, HarvestResult* out)
+{
+    for (int i = 0; i < list->count; i++) {
+        ResourceNode* n = &list->nodes[i];
+        if (!n->alive) continue;
+
+        // Node box grown by the object's radius.
+        if (x < n->x - radius || x > n->x + n->width  + radius) continue;
+        if (y < n->y - radius || y > n->y + n->height + radius) continue;
+
+        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        int destroyed = 0;
+        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+
+        harvest_add(out, n->x + n->width * 0.5f, n->y + n->height * 0.5f,
+                    node_award(n->type), destroyed);
+        return 1;
+    }
+    return 0;
+}
+
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y,
                            int range, WeaponType weapon, HarvestResult* out)
 {
