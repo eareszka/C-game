@@ -655,6 +655,16 @@ int main(int argc, char *argv[])
                     // Update chasers — activate when seen, move toward player, queue on contact.
                     const float CHASER_SPEED  = 300.0f;
                     const float TRIGGER_DIST2 = 22.0f * 22.0f;
+                    // Chasers are drawn 14px wide; keep their centres this far
+                    // apart so a pack never stacks into a single square.
+                    const float CHASER_SEP    = 16.0f;
+
+                    auto dng_walkable = [&](float wx, float wy) {
+                        int tx = (int)(wx / DMAP_TILE), ty = (int)(wy / DMAP_TILE);
+                        return tx >= 0 && tx < DMAP_W && ty >= 0 && ty < DMAP_H &&
+                               dmap.tiles[ty][tx] != DNG_WALL;
+                    };
+
                     for (int ci = 0; ci < num_chasers; ci++) {
                         DungeonChaser& ch = chasers[ci];
                         if (!ch.active) continue;
@@ -743,22 +753,63 @@ int main(int argc, char *argv[])
                             break;
                         }
 
+                        // Steer toward the player, blended with a short-range push
+                        // away from any other chaser we're crowding, so they flow
+                        // around each other instead of merging.
                         float dist = sqrtf(dist2);
-                        float nx = ch.x + (cdx / dist) * CHASER_SPEED * dt;
-                        float ny = ch.y + (cdy / dist) * CHASER_SPEED * dt;
-                        int ntx = (int)(nx / DMAP_TILE), nty = (int)(ny / DMAP_TILE);
-                        if (ntx >= 0 && ntx < DMAP_W && nty >= 0 && nty < DMAP_H &&
-                            dmap.tiles[nty][ntx] != DNG_WALL) {
+                        float mvx = cdx / dist, mvy = cdy / dist;
+                        for (int cj = 0; cj < num_chasers; cj++) {
+                            if (cj == ci) continue;
+                            const DungeonChaser& o = chasers[cj];
+                            if (!o.active) continue;
+                            float sx = ch.x - o.x, sy = ch.y - o.y;
+                            float sd2 = sx*sx + sy*sy;
+                            if (sd2 >= CHASER_SEP * CHASER_SEP) continue;
+                            if (sd2 < 0.0001f) { sx = 1.0f; sy = 0.0f; sd2 = 1.0f; }
+                            float sd = sqrtf(sd2);
+                            float w  = (CHASER_SEP - sd) / CHASER_SEP;  // 1 when coincident
+                            mvx += (sx / sd) * w * 1.5f;
+                            mvy += (sy / sd) * w * 1.5f;
+                        }
+                        float mvl = sqrtf(mvx*mvx + mvy*mvy);
+                        if (mvl > 0.0001f) { mvx /= mvl; mvy /= mvl; }
+
+                        float nx = ch.x + mvx * CHASER_SPEED * dt;
+                        float ny = ch.y + mvy * CHASER_SPEED * dt;
+                        if (dng_walkable(nx, ny)) {
                             ch.x = nx; ch.y = ny;
                         } else {
-                            int ntx2 = (int)(nx / DMAP_TILE), nty2 = (int)(ch.y / DMAP_TILE);
-                            if (ntx2 >= 0 && ntx2 < DMAP_W && nty2 >= 0 && nty2 < DMAP_H &&
-                                dmap.tiles[nty2][ntx2] != DNG_WALL)
-                                ch.x = nx;
-                            int ntx3 = (int)(ch.x / DMAP_TILE), nty3 = (int)(ny / DMAP_TILE);
-                            if (ntx3 >= 0 && ntx3 < DMAP_W && nty3 >= 0 && nty3 < DMAP_H &&
-                                dmap.tiles[nty3][ntx3] != DNG_WALL)
-                                ch.y = ny;
+                            if (dng_walkable(nx, ch.y)) ch.x = nx;
+                            if (dng_walkable(ch.x, ny)) ch.y = ny;
+                        }
+                    }
+
+                    // Hard separation pass: anything still overlapping after the
+                    // move gets pushed apart, so chasers can never occupy the same
+                    // spot even when squeezed into a corridor or against a wall.
+                    if (pre_battle_timer < 0.0f) {
+                        for (int pass = 0; pass < 2; pass++) {
+                            for (int a = 0; a < num_chasers; a++) {
+                                if (!chasers[a].active) continue;
+                                for (int b = a + 1; b < num_chasers; b++) {
+                                    if (!chasers[b].active) continue;
+                                    DungeonChaser& A = chasers[a];
+                                    DungeonChaser& B = chasers[b];
+                                    float sx = B.x - A.x, sy = B.y - A.y;
+                                    float d2 = sx*sx + sy*sy;
+                                    if (d2 >= CHASER_SEP * CHASER_SEP) continue;
+                                    float d = sqrtf(d2);
+                                    if (d < 0.0001f) { sx = 1.0f; sy = 0.0f; d = 1.0f; }
+                                    float ux = sx / d, uy = sy / d;
+                                    float push = (CHASER_SEP - d) * 0.5f;
+                                    float ax = A.x - ux * push, ay = A.y - uy * push;
+                                    float bx = B.x + ux * push, by = B.y + uy * push;
+                                    if (dng_walkable(ax, A.y)) A.x = ax;
+                                    if (dng_walkable(A.x, ay)) A.y = ay;
+                                    if (dng_walkable(bx, B.y)) B.x = bx;
+                                    if (dng_walkable(B.x, by)) B.y = by;
+                                }
+                            }
                         }
                     }
                 }

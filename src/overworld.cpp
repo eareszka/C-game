@@ -182,14 +182,4 @@ void player_draw(const Player* player, float world_x, float world_y,
     SDL_Rect src = { frame * 16, 0, 16, 24 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
-
-    // Debug: draw hitbox
-    SDL_Rect hb = {
-        sx + (int)(HB_X1 * z),
-        sy + (int)(HB_Y1 * z),
-        (int)((HB_X2 - HB_X1) * z),
-        (int)((HB_Y2 - HB_Y1) * z)
-    };
-    SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
-    SDL_RenderDrawRect(ren, &hb);
 }
