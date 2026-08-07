@@ -13,6 +13,7 @@
 #define DMAP_TILE           32
 #define DUNGEON_FOV_RADIUS  12   // visible tile radius around player
 #define DMAP_MAX_SPAWNERS   24
+#define DMAP_MAX_LOOT       32
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,
@@ -27,6 +28,15 @@ struct DungeonSpawner {
     bool dead;
 };
 
+// Fixed loot pickup placed deterministically at generation time. Rewards
+// exploration rather than combat: only reachable by walking to (tx,ty),
+// and only rendered once that tile has been explored.
+struct DungeonLoot {
+    int  tx, ty;
+    int  gold;
+    bool collected;
+};
+
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
@@ -37,6 +47,8 @@ struct DungeonMap {
     float difficulty;
     DungeonSpawner spawners[DMAP_MAX_SPAWNERS];
     int            num_spawners;
+    DungeonLoot    loot[DMAP_MAX_LOOT];
+    int            num_loot;
 };
 
 struct DungeonPlayer {

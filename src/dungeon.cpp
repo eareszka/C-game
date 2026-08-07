@@ -1,6 +1,7 @@
 #include "dungeon.h"
 #include "collision.h"
 #include "core.h"
+#include "resource_node.h"   // RESOURCE_GOLD inventory index
 #include <string.h>
 #include <math.h>
 
@@ -1759,6 +1760,105 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
     }
 }
 
+// ── Loot placement ─────────────────────────────────────────────────────────
+
+// True if (tx,ty) sits in open room interior — not a corridor pinch or a
+// pocket walled on multiple sides. Requires all 8 neighbors but at most one
+// to be non-wall.
+static bool tile_open_interior(const DungeonMap* dmap, int tx, int ty) {
+    int open = 0;
+    for (int ny = ty - 1; ny <= ty + 1; ny++)
+        for (int nx = tx - 1; nx <= tx + 1; nx++) {
+            if (nx == tx && ny == ty) continue;
+            if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) continue;
+            if (dmap->tiles[ny][nx] != DNG_WALL) open++;
+        }
+    return open >= 6;
+}
+
+// Spread loot across floor tiles using the same grid + local-search shape as
+// place_spawners, but biased away from the entrance and away from dead ends /
+// wall-hugging pockets, so it rewards exploring the dungeon's open rooms.
+static void place_loot(DungeonMap* dmap, uint32_t* rng) {
+    dmap->num_loot = 0;
+    const int STEP   = 48;   // sparser than spawners
+    const int SEARCH = 10;
+
+    // Entry-clear radius scales with how far this dungeon's floor actually
+    // reaches from the entrance, so compact layouts (e.g. the large tree's
+    // 64x64 trunk) still get loot placed instead of clearing the whole map.
+    long max_d2 = 0;
+    for (int ty = 1; ty < DMAP_H - 1; ty++)
+        for (int tx = 1; tx < DMAP_W - 1; tx++) {
+            if (dmap->tiles[ty][tx] == DNG_WALL) continue;
+            long dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+            long d2 = dex*dex + dey*dey;
+            if (d2 > max_d2) max_d2 = d2;
+        }
+    int entry_clear = (int)(sqrtf((float)max_d2) * 0.35f);
+    if (entry_clear < 6)  entry_clear = 6;
+    if (entry_clear > 40) entry_clear = 40;
+
+    int ox = (int)(rng_next(rng) % STEP);
+    int oy = (int)(rng_next(rng) % STEP);
+
+    for (int gy = oy; gy < DMAP_H && dmap->num_loot < DMAP_MAX_LOOT; gy += STEP) {
+        for (int gx = ox; gx < DMAP_W && dmap->num_loot < DMAP_MAX_LOOT; gx += STEP) {
+            int best_tx = -1, best_ty = -1, best_d2 = SEARCH * SEARCH + 1;
+            for (int dy = -SEARCH; dy <= SEARCH; dy++) {
+                for (int dx = -SEARCH; dx <= SEARCH; dx++) {
+                    int tx = gx + dx, ty = gy + dy;
+                    if (tx < 1 || tx >= DMAP_W - 1 || ty < 1 || ty >= DMAP_H - 1) continue;
+                    if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+
+                    int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+                    if (dex*dex + dey*dey < entry_clear*entry_clear) continue;
+
+                    if (!tile_open_interior(dmap, tx, ty)) continue;
+
+                    int d2 = dx*dx + dy*dy;
+                    if (d2 < best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+                }
+            }
+            if (best_tx < 0) continue;
+            int gold = 10 + (int)(rng_next(rng) % 21) + (int)(dmap->difficulty * 15.0f);
+            dmap->loot[dmap->num_loot++] = { best_tx, best_ty, gold, false };
+        }
+    }
+
+    // Fallback for tiny/cramped layouts where the grid search above found no
+    // candidate passing every filter — guarantee at least one loot item.
+    // Tier 1: farthest floor tile from the entrance that's still open
+    // interior (keeps the dead-end/wall-hugging rule). Tier 2: if the
+    // dungeon has no open-interior tile at all, fall back to any floor tile.
+    if (dmap->num_loot == 0) {
+        int best_tx = -1, best_ty = -1, best_d2 = -1;
+        for (int ty = 1; ty < DMAP_H - 1; ty++) {
+            for (int tx = 1; tx < DMAP_W - 1; tx++) {
+                if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+                if (!tile_open_interior(dmap, tx, ty)) continue;
+                int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+                int d2 = dex*dex + dey*dey;
+                if (d2 > best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+            }
+        }
+        if (best_tx < 0) {
+            for (int ty = 1; ty < DMAP_H - 1; ty++) {
+                for (int tx = 1; tx < DMAP_W - 1; tx++) {
+                    if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+                    int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+                    int d2 = dex*dex + dey*dey;
+                    if (d2 > best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+                }
+            }
+        }
+        if (best_tx >= 0) {
+            int gold = 10 + (int)(rng_next(rng) % 21) + (int)(dmap->difficulty * 15.0f);
+            dmap->loot[dmap->num_loot++] = { best_tx, best_ty, gold, false };
+        }
+    }
+}
+
 // ── Public: generate ──────────────────────────────────────────────────────
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed) {
@@ -1776,6 +1876,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         decorate_cave(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1785,6 +1886,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         decorate_large_tree(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1793,6 +1895,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_stonehenge_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1801,6 +1904,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_pyramid_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1809,6 +1913,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_oasis_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1817,6 +1922,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_graveyard_layout(dmap, false, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1825,6 +1931,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_graveyard_layout(dmap, true, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1833,6 +1940,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         carve_ruins_layout(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
         return;
     }
 
@@ -1871,6 +1979,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
 
     clear_portal_surroundings(dmap);
     place_spawners(dmap, &rng);
+    place_loot(dmap, &rng);
 }
 
 // ── Public: orient portals to match overworld direction ───────────────────
@@ -2023,6 +2132,16 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         dp->at_entry = 0;
     }
 
+    // Loot pickup: auto-collect when standing on an unclaimed loot tile.
+    for (int li = 0; li < dmap->num_loot; li++) {
+        DungeonLoot& lo = dmap->loot[li];
+        if (lo.collected) continue;
+        if (lo.tx == tx && lo.ty == ty) {
+            lo.collected = true;
+            player->inventory[(int)RESOURCE_GOLD] += lo.gold;
+        }
+    }
+
     player_animate(player, dt, anim_speed);
 
     // ── FOV: compute wall-blocked visibility, then mark visible tiles explored ──
@@ -2130,6 +2249,14 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     cb = (Uint8)((c->b + 255) / 2);
                     break;
             }
+            if (tile == DNG_FLOOR) {
+                for (int li = 0; li < dmap->num_loot; li++) {
+                    const DungeonLoot& lo = dmap->loot[li];
+                    if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
+                    ch = '$'; cr = 255; cg = 215; cb = 60;
+                    break;
+                }
+            }
             if (!in_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
             char buf[2] = {ch, '\0'};
             draw_text(ren, buf, sx + coff, sy + coff, scale, cr, cg, cb);
@@ -2168,6 +2295,14 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         ch = ascii.floor;
                         cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
                         break;
+                }
+                if (tile == DNG_FLOOR) {
+                    for (int li = 0; li < dmap->num_loot; li++) {
+                        const DungeonLoot& lo = dmap->loot[li];
+                        if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
+                        ch = '$'; cr = 255; cg = 215; cb = 60;
+                        break;
+                    }
                 }
                 if (!shg_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
                 char buf[2] = {ch, '\0'};
