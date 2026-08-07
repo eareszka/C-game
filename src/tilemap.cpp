@@ -2778,11 +2778,17 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         SDL_RenderFillRect(renderer, &ddot);
     }
 
-    // white 3×3 dot for player position
+    // Player — a flashing 5×5 square. It alternates between two bright colours
+    // rather than blinking to nothing, so the marker never disappears on a map
+    // you opened to find yourself, and the movement is what catches the eye.
+    // Bigger and animated also tells it apart from the static white 4×4 castles.
     int px = ox + (int)(player_x / TILE_SIZE) / step;
     int py = oy + (int)(player_y / TILE_SIZE) / step;
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_Rect dot = { px - 1, py - 1, 3, 3 };
+    if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1)
+        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+    else
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_Rect dot = { px - 2, py - 2, 5, 5 };
     SDL_RenderFillRect(renderer, &dot);
 
     // red 5×5 dot for cliff gradient peak (debug)

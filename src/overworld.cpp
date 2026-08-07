@@ -42,8 +42,18 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
 {
     if (ow->tool_cd > 0.0f) ow->tool_cd -= dt;
 
-    // Action key — hit nearby resource or map tile
-    if (ow->tool_cd <= 0.0f
+    // Action key — hit nearby resource or map tile.
+    //
+    // Standing on a door or dungeon entrance, the interact key belongs to the
+    // ENTER prompt, so don't also swing at whatever is beside the doorway. The
+    // at_* flags were computed at the end of the previous call, which is what we
+    // want: they describe the tile the player is standing on right now, before
+    // this frame's movement. Graveyards are unaffected — a hidden entrance is
+    // not an entrance tile until a gravestone reveals it, so the tool still
+    // works for every hit that does the revealing.
+    bool at_prompt = ow->at_dungeon_entrance || ow->at_interior_door;
+
+    if (ow->tool_cd <= 0.0f && !at_prompt
      && (input_down(in, SDL_SCANCODE_SPACE)
       || input_down(in, SDL_SCANCODE_Z)
       || input_down(in, SDL_SCANCODE_RETURN)))

@@ -20,4 +20,8 @@ int text_width(const char* text, int scale);
 void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h);
 static const int NES_PAD = 4;
 
+// Half-period of the flashing player marker on both minimaps, in milliseconds.
+// Shared so the overworld and dungeon maps blink in step.
+static const Uint32 MINIMAP_FLASH_MS = 350;
+
 #endif

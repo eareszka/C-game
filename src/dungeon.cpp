@@ -2370,11 +2370,14 @@ void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
         }
     }
 
-    // Player dot — 3×3 white square
+    // Player — flashing 5×5 square, matching the overworld minimap marker.
     int px = ox + (int)(dplayer->x / DMAP_TILE) / step;
     int py = oy + (int)(dplayer->y / DMAP_TILE) / step;
-    SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
-    SDL_Rect dot = { px - 1, py - 1, 3, 3 };
+    if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1)
+        SDL_SetRenderDrawColor(ren, 0, 255, 255, 255);
+    else
+        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+    SDL_Rect dot = { px - 2, py - 2, 5, 5 };
     SDL_RenderFillRect(ren, &dot);
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
