@@ -1,4 +1,8 @@
 # Compiled output
 *.o
 *.d
+*.exe
 game
+game_asan
+game_dbg
+tile_editor

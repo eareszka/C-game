@@ -13,7 +13,13 @@
 #include <vector>
 #include <array>
 #include <atomic>
-#include <pthread.h>
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #define NOMINMAX
+  #include <windows.h>
+#else
+  #include <pthread.h>
+#endif
 
 static std::atomic<bool> s_gen_cancel{false};
 void tilemap_cancel_gen()       { s_gen_cancel = true; }
@@ -973,8 +979,13 @@ static int entrance_tile_id(DungeonEntranceType type) {
 
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Run at idle priority so this thread doesn't compete with the game loop
+#ifdef _WIN32
+    // Windows has no SCHED_IDLE; lowest priority is the closest equivalent
+    SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_LOWEST);
+#else
     struct sched_param sp = {0};
     pthread_setschedparam(pthread_self(), SCHED_IDLE, &sp);
+#endif
 
     const int cx = MAP_WIDTH  / 2;
     const int cy = MAP_HEIGHT / 2;
