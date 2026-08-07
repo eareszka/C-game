@@ -784,11 +784,28 @@ int main(int argc, char *argv[])
                         }
                     }
 
-                    // Hard separation pass: anything still overlapping after the
-                    // move gets pushed apart, so chasers can never occupy the same
-                    // spot even when squeezed into a corridor or against a wall.
+                    // Hard separation: push overlapping pairs apart until nothing
+                    // overlaps, so what gets drawn this frame never shows two
+                    // chasers merged. This is a relaxation, and one sweep only
+                    // propagates a correction one link along a chain -- a pack
+                    // crammed into a corridor needs many sweeps to spread out, so
+                    // the cap is high and the loop exits as soon as it is clean.
+                    // In the common case (nothing touching) that costs one sweep.
                     if (pre_battle_timer < 0.0f) {
-                        for (int pass = 0; pass < 2; pass++) {
+                        // Slide per-axis, so a corridor wall blocking one
+                        // component doesn't discard the whole correction.
+                        auto shove = [&](DungeonChaser& C, float dx, float dy) {
+                            if (dng_walkable(C.x + dx, C.y + dy)) {
+                                C.x += dx; C.y += dy; return true;
+                            }
+                            bool moved = false;
+                            if (dx != 0.0f && dng_walkable(C.x + dx, C.y)) { C.x += dx; moved = true; }
+                            if (dy != 0.0f && dng_walkable(C.x, C.y + dy)) { C.y += dy; moved = true; }
+                            return moved;
+                        };
+
+                        for (int pass = 0; pass < 32; pass++) {
+                            bool overlapped = false;
                             for (int a = 0; a < num_chasers; a++) {
                                 if (!chasers[a].active) continue;
                                 for (int b = a + 1; b < num_chasers; b++) {
@@ -798,18 +815,24 @@ int main(int argc, char *argv[])
                                     float sx = B.x - A.x, sy = B.y - A.y;
                                     float d2 = sx*sx + sy*sy;
                                     if (d2 >= CHASER_SEP * CHASER_SEP) continue;
+                                    overlapped = true;
                                     float d = sqrtf(d2);
-                                    if (d < 0.0001f) { sx = 1.0f; sy = 0.0f; d = 1.0f; }
+                                    if (d < 0.0001f) {
+                                        // Coincident: vary the direction by index so
+                                        // a whole stack doesn't unfold along one axis.
+                                        float ang = (float)((a * 7 + b) % 16) / 16.0f * 6.28318f;
+                                        sx = cosf(ang); sy = sinf(ang); d = 1.0f;
+                                    }
                                     float ux = sx / d, uy = sy / d;
-                                    float push = (CHASER_SEP - d) * 0.5f;
-                                    float ax = A.x - ux * push, ay = A.y - uy * push;
-                                    float bx = B.x + ux * push, by = B.y + uy * push;
-                                    if (dng_walkable(ax, A.y)) A.x = ax;
-                                    if (dng_walkable(A.x, ay)) A.y = ay;
-                                    if (dng_walkable(bx, B.y)) B.x = bx;
-                                    if (dng_walkable(B.x, by)) B.y = by;
+                                    float half = (CHASER_SEP - d) * 0.5f;
+                                    bool a_moved = shove(A, -ux * half, -uy * half);
+                                    bool b_moved = shove(B,  ux * half,  uy * half);
+                                    // Whatever one side couldn't take, give to the other.
+                                    if (!a_moved) shove(B,  ux * half,  uy * half);
+                                    if (!b_moved) shove(A, -ux * half, -uy * half);
                                 }
                             }
+                            if (!overlapped) break;
                         }
                     }
                 }
