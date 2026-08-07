@@ -78,6 +78,14 @@ bool input_pressed(const Input* in, SDL_Scancode key) {
     return in->keys[key] == KEY_PRESSED;
 }
 
+void input_consume(Input* in, SDL_Scancode key) {
+    // KEY_CONSUMED survives input_begin_frame, so the key stays ignored for as
+    // long as it is held. The SDL_KEYUP handler moves it to KEY_RELEASED, and
+    // only then can a fresh press register.
+    if (in->keys[key] == KEY_PRESSED || in->keys[key] == KEY_HELD)
+        in->keys[key] = KEY_CONSUMED;
+}
+
 bool input_released(const Input* in, SDL_Scancode key) {
     return in->keys[key] == KEY_RELEASED;
 }

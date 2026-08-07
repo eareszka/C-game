@@ -7,7 +7,8 @@ typedef enum {
     KEY_UP,
     KEY_PRESSED,
     KEY_HELD,
-    KEY_RELEASED
+    KEY_RELEASED,
+    KEY_CONSUMED   // spent by an earlier action; ignored until physically released
 } KeyState;
 
 typedef struct Input {
@@ -25,5 +26,10 @@ void input_handle_event(Input* in, const SDL_Event* e);
 bool input_down(const Input* in, SDL_Scancode key);
 bool input_pressed(const Input* in, SDL_Scancode key);
 bool input_released(const Input* in, SDL_Scancode key);
+
+// Mark a key as already acted on. It reads as up until the player lets go and
+// presses again, so a key held across a scene change can't also act in the new
+// scene. Safe to call on a key that isn't down.
+void input_consume(Input* in, SDL_Scancode key);
 
 #endif

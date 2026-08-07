@@ -341,6 +341,8 @@ int main(int argc, char *argv[])
             cam.zoom = zoom_levels[zoom_idx];
         }
 
+        GameState state_before = state;
+
         switch (state) {
             case STATE_TITLE:
                 SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
@@ -972,6 +974,17 @@ int main(int argc, char *argv[])
                     state = STATE_OVERWORLD;
                 break;
             }
+        }
+
+        // A scene change consumes the key that caused it. The prompts confirm on
+        // input_pressed, but the overworld tool swings on input_down, so without
+        // this the key is still held on the next frame and the press that walked
+        // you out of a dungeon or closed a battle also swings at whatever
+        // resource happens to be standing next to the door.
+        if (state != state_before) {
+            input_consume(&in, SDL_SCANCODE_RETURN);
+            input_consume(&in, SDL_SCANCODE_Z);
+            input_consume(&in, SDL_SCANCODE_SPACE);
         }
 
         // ── Resource bar (hidden during battle) ──────────────────────────────
