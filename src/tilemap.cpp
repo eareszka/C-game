@@ -188,11 +188,63 @@ static const int TILE_CACHE_SIZE = 72; // TILE_DEAD_TREE + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 static SDL_Texture* s_overworld0_tex     = nullptr;
+// Biome edge fringes — see "Biome edge" below. Indexed by an eight-bit map of
+// which surrounding tiles hold the other biome, so the mask depends on the
+// whole neighbourhood rather than on one side at a time. That is what lets a
+// corner round off instead of meeting at a right angle.
+static const int EDGE_VARIANTS = 2;
+static SDL_Texture* s_edge_tex[256][EDGE_VARIANTS] = {};
+// Water is drawn differently: a crisp outline, a solid band of shallows on the
+// land side of it, and highlights scattered over the open surface.
+static const int SPARKLE_VARIANTS = 4;
+static SDL_Texture* s_fill_tex[256]      = {};  // the other biome's body, hard-edged
+static SDL_Texture* s_shore_out_tex[256] = {};  // shallows just outside that body
+static SDL_Texture* s_shore_in_tex[256]  = {};  // shallows just inside it
+static SDL_Texture* s_sparkle_tex[SPARKLE_VARIANTS] = {};
 
 // ---------------------------------------------------------------------------
 
 static bool in_bounds(int x, int y) {
     return x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT;
+}
+
+// Ground an overlay must not stand in or overhang. Kept as a plain tile test
+// rather than going through the biome table because worldgen calls it millions
+// of times; if a new liquid tile is added it needs listing in both places.
+static inline bool tile_id_is_liquid(int t) {
+    return t == TILE_WATER || t == TILE_RIVER || t == TILE_HUB
+        || t == TILE_POND  || t == TILE_LAVA;
+}
+
+// Trees, rocks and ore are drawn as if rooted in their tile, and the waterline
+// is smoothed, so water rounds into tiles whose own id is still land. An
+// overlay one tile from water can therefore overlap it, and only a clear 3x3
+// guarantees a bank.
+static bool overlay_site_dry(const Tilemap* map, int tx, int ty) {
+    for (int dy = -1; dy <= 1; dy++)
+        for (int dx = -1; dx <= 1; dx++) {
+            int nx = tx + dx, ny = ty + dy;
+            if (in_bounds(nx, ny) && tile_id_is_liquid(map->tiles[ny][nx])) return false;
+        }
+    return true;
+}
+
+// Sweep the overlays after generation rather than testing at each placement:
+// ponds and streams are carved after the trees are scattered, so a placement
+// test would pass and then be overtaken by the water arriving beside it.
+static void clear_overlays_near_liquid(Tilemap* map) {
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            int ov = map->overlay[y][x];
+            if (ov == 0) continue;
+            bool dry = overlay_site_dry(map, x, y);
+            // A tree's canopy is drawn one tile up, so that tile needs the same
+            // clearance or the crown hangs out over the water.
+            if (dry && (ov == TILE_TREE || ov == TILE_DEAD_TREE) && y > 0)
+                dry = overlay_site_dry(map, x, y - 1);
+            if (!dry) map->overlay[y][x] = 0;
+        }
+    }
 }
 
 // Simple deterministic LCG noise — returns 0..32767
@@ -693,6 +745,10 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
         map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1 };
         map->num_dungeon_entrances = 2;
     }
+
+    // Phase 1's region is on screen before phase 2 finishes, so it clears its
+    // own banks rather than waiting for the sweep at the end of generation.
+    clear_overlays_near_liquid(map);
 }
 
 // ---------------------------------------------------------------------------
@@ -2337,6 +2393,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    // Last, after every pond, stream and town stamp has had its say.
+    clear_overlays_near_liquid(map);
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
@@ -2426,6 +2484,10 @@ static SDL_Surface* make_glyph_surf(uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
     return surf;
 }
 
+// Defined with the rest of the ground-cover code, but needs the sheet surface
+// while init still has it loaded.
+static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet);
+
 void tilemap_init_tile_cache(SDL_Renderer* renderer) {
     for (int i = 0; i < TILE_CACHE_SIZE && i < NUM_TILE_STYLES; i++) {
         SDL_Surface* surf = make_tile_surf(&tile_styles[i]);
@@ -2439,9 +2501,12 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer) {
         else {
             SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, 255, 0, 0));
             s_town0_tex = SDL_CreateTextureFromSurface(renderer, surf);
-            SDL_FreeSurface(surf);
             if (s_town0_tex) SDL_SetTextureBlendMode(s_town0_tex, SDL_BLENDMODE_BLEND);
         }
+        // Runs whether or not the sheet loaded: the biomes with no art take
+        // their colour from tile_styles either way.
+        build_edge_textures(renderer, surf);
+        if (surf) SDL_FreeSurface(surf);
     }
     {
         SDL_Surface* surf = IMG_Load("assets/overworld_0.png");
@@ -2461,6 +2526,15 @@ void tilemap_free_tile_cache(void) {
     for (int i = 0; i < TILE_CACHE_SIZE; i++) {
         if (s_tile_tex[i]) { SDL_DestroyTexture(s_tile_tex[i]); s_tile_tex[i] = nullptr; }
     }
+    for (int c = 0; c < 256; c++) {
+        for (int v = 0; v < EDGE_VARIANTS; v++)
+            if (s_edge_tex[c][v]) { SDL_DestroyTexture(s_edge_tex[c][v]); s_edge_tex[c][v] = nullptr; }
+        SDL_Texture** water[] = { &s_fill_tex[c], &s_shore_out_tex[c], &s_shore_in_tex[c] };
+        for (int i = 0; i < 3; i++)
+            if (*water[i]) { SDL_DestroyTexture(*water[i]); *water[i] = nullptr; }
+    }
+    for (int v = 0; v < SPARKLE_VARIANTS; v++)
+        if (s_sparkle_tex[v]) { SDL_DestroyTexture(s_sparkle_tex[v]); s_sparkle_tex[v] = nullptr; }
     if (s_town0_tex)          { SDL_DestroyTexture(s_town0_tex);          s_town0_tex          = nullptr; }
     if (s_overworld0_tex)     { SDL_DestroyTexture(s_overworld0_tex);     s_overworld0_tex     = nullptr; }
 }
@@ -2490,23 +2564,273 @@ static void blit_tile(SDL_Renderer* renderer, int tile_id,
     }
 }
 
-// ── Default-biome grass variants ────────────────────────────────────────────
-// Six 16px cells at (288,32)-(336,64) in assets/tileset.png — cols 18-20, rows
-// 2-3, numbered 1-6 in reading order. 1 and 2 are a single clump that spans two
-// tiles and must stay together left-to-right; 3, 4 and 5 are lone tufts; 6 is
-// plain. Purely a draw-time choice: the map still stores TILE_GRASS, so
-// collision, the minimap and worldgen are untouched.
-static constexpr int grass_cell(int col, int row) {
+// ── Ground cover variants ───────────────────────────────────────────────────
+// Blocks of six 16px cells in assets/tileset.png, rows 2-3, three columns each
+// and one per biome: green grass at cols 18-20, the meadow's pale flowering
+// grass at 21-23, snow at 24-26. Every block shares a layout, numbered 1-6 in
+// reading order. 1 and 2 are a single clump that spans two tiles and must stay
+// together left to right; 3, 4 and 5 are lone tufts; 6 is plain. Purely a
+// draw-time choice: the map still stores TILE_GRASS, TILE_MEADOW or TILE_SNOW,
+// so collision, the minimap and worldgen are untouched.
+static constexpr int sheet_cell(int col, int row) {
     return TILE_TOWN0_BASE + row * TOWN0_SHEET_COLS + col;
 }
-static constexpr int GRASS_CLUMP_L = grass_cell(18, 2);  // 1
-static constexpr int GRASS_CLUMP_R = grass_cell(19, 2);  // 2
-static constexpr int GRASS_TUFT_A  = grass_cell(20, 2);  // 3
-static constexpr int GRASS_TUFT_B  = grass_cell(18, 3);  // 4
-static constexpr int GRASS_TUFT_C  = grass_cell(19, 3);  // 5
-static constexpr int GRASS_PLAIN   = grass_cell(20, 3);  // 6
 
-static inline unsigned int grass_hash(int x, int y, unsigned int salt) {
+struct GroundCover {
+    int clump_l, clump_r;         // 1, 2 — one clump spanning two tiles
+    int tuft_a, tuft_b, tuft_c;   // 3, 4, 5
+    int plain;                    // 6
+    int flat;                     // stand-in when the sheet failed to load
+};
+
+static constexpr GroundCover COVER_GRASS = {
+    sheet_cell(18, 2), sheet_cell(19, 2),
+    sheet_cell(20, 2), sheet_cell(18, 3), sheet_cell(19, 3),
+    sheet_cell(20, 3), TILE_GRASS,
+};
+// Same six roles three columns right: mint base, pink blossoms.
+static constexpr GroundCover COVER_MEADOW = {
+    sheet_cell(21, 2), sheet_cell(22, 2),
+    sheet_cell(23, 2), sheet_cell(21, 3), sheet_cell(22, 3),
+    sheet_cell(23, 3), TILE_MEADOW,
+};
+// Three further right: white base, gold detail. Pixel for pixel the grass
+// block's shapes recoloured, so the six roles line up exactly.
+static constexpr GroundCover COVER_SNOW = {
+    sheet_cell(24, 2), sheet_cell(25, 2),
+    sheet_cell(26, 2), sheet_cell(24, 3), sheet_cell(25, 3),
+    sheet_cell(26, 3), TILE_SNOW,
+};
+
+// ── Biome edge ──────────────────────────────────────────────────────────────
+// Where two biomes meet the join is one straight line along the tile grid,
+// which reads as a cut. Instead each tile scatters its neighbour's colour into
+// the pixels nearest it, thinning inward, the way Mother 1 runs grass into
+// desert: the shape of the border stays smooth and the only fine detail is a
+// dotted fringe a few pixels deep.
+//
+// Smoothness comes from treating the tile grid as a field rather than as a set
+// of sides. Each pixel asks how much of the surrounding neighbourhood is the
+// other biome, weighted by distance. Along a straight run the two sides balance
+// exactly on the tile line, so it stays straight; at a corner the surrounding
+// tiles outvote it and the boundary curves. Nothing wanders, which is what
+// separates this from a hand-wobbled line — the shape is the map's own shape,
+// smoothed.
+//
+// The fringe is the only randomness. In the narrow band where coverage is
+// undecided a pixel is lit by chance, with the odds tracking coverage, so the
+// dots crowd at the boundary and peter out either side. Both tiles compute the
+// same field from the same neighbourhood, so they agree about where the border
+// lies and their fringes interlock instead of fighting.
+//
+// The tile keeps its own tufts underneath — this paints over a few pixels, it
+// does not replace the tile. Generated rather than drawn into the sheet, so it
+// stays in step with the palette and a new biome needs no new art.
+static const float EDGE_KERNEL_R = 1.6f;   // smoothing radius, in tiles
+static const float EDGE_FRINGE   = 0.10f;  // half-width of the undecided band
+// Coverage, not pixels: the field falls about 0.03 per pixel across a straight
+// shore, so this lands the shallows at one pixel. 0.07 is where it becomes two.
+static const float SHORE_BAND    = 0.05f;
+static const unsigned int SPARKLE_PCT = 4; // percent of open water carrying a highlight
+
+// Biomes that take part. Order is only a tie-break: the field decides which
+// biome owns a pixel, and it is symmetric, so neither side of a border gives
+// way. Liquids are in — the same treatment gives shorelines, riverbanks and the
+// rim of a lava pool. Cliffs stay out; a cliff is a change in height rather than
+// in ground, and wants real edge art rather than a softened outline.
+//
+// This is drawing only. Collision still reads the tile grid, so the walkable
+// line and the drawn waterline disagree by the few pixels the fringe covers.
+// A biome can cover several tile ids. Ocean, river, hub and pond are one water
+// as far as edges go: they are the same blue, and treating them apart would put
+// a border where a river runs into the sea and have it fringe against itself.
+// A biome may also name a shore colour. Where one is set, both sides of that
+// biome's borders fringe in it instead of in each other's ground colour: water
+// gets a pale rim that reads as shallows and holds the waterline apart from
+// whatever it runs along, rather than blue crumbling into green.
+//
+// The pale is tinted blue rather than pure white on purpose — snow is very near
+// white already, and an untinted rim would vanish along a snow coast.
+#define MAX_BIOME_TILES 4
+struct GroundBiome {
+    int tiles[MAX_BIOME_TILES];  // TileIds this biome paints, -1 padded
+    const GroundCover* cover;    // sheet block, or null for biomes with no art yet
+    uint8_t r, g, b;             // plain colour, filled in at load
+    int sr, sg, sb;              // shore colour, or -1 to fringe in ground colour
+};
+static GroundBiome s_biomes[] = {
+    { { TILE_GRASS,     -1, -1, -1 },                  &COVER_GRASS,  0,0,0,  -1,  -1,  -1 },
+    { { TILE_MEADOW,    -1, -1, -1 },                  &COVER_MEADOW, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_SAND,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
+    { { TILE_WASTELAND, -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
+    { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   0,0,0,  -1,  -1,  -1 },
+    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, nullptr,       0,0,0, 220, 240, 255 },
+    { { TILE_LAVA,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
+};
+static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
+
+// Index into s_biomes, or -1 for a tile that takes no part in biome edges.
+static int biome_at(const Tilemap* map, int x, int y) {
+    if (!in_bounds(x, y)) return -1;
+    int t = map->tiles[y][x];
+    if (t >= TILE_TOWN0_BASE) return 0;  // town cells paint grass behind themselves
+    for (int i = 0; i < NUM_GROUND_BIOMES; i++)
+        for (int j = 0; j < MAX_BIOME_TILES && s_biomes[i].tiles[j] >= 0; j++)
+            if (s_biomes[i].tiles[j] == t) return i;
+    return -1;
+}
+
+// Which block a tile draws its ground from, or null if it draws no ground.
+static const GroundCover* tile_cover(const Tilemap* map, int x, int y) {
+    int b = biome_at(map, x, y);
+    return b < 0 ? nullptr : s_biomes[b].cover;
+}
+
+static inline unsigned int cover_hash(int x, int y, unsigned int salt);
+
+// Neighbour ordering for a config byte: bit 0 is N, then clockwise.
+static const int EDGE_NB[8][2] = {
+    {0,-1}, {1,-1}, {1,0}, {1,1}, {0,1}, {-1,1}, {-1,0}, {-1,-1}
+};
+
+// Coverage of `other` at one pixel: the eight neighbours plus this tile, each
+// weighted by how near its centre is, normalised to 0..1. Smoothing a binary
+// tile grid this way is what rounds the corners — a run of straight edge stays
+// straight because the two sides balance exactly on the tile line, while at a
+// corner the surrounding tiles outvote it and the boundary curves.
+static float edge_coverage(int config, int px, int py) {
+    float u = (px + 0.5f) / 16.0f, v = (py + 0.5f) / 16.0f;
+    float num = 0.0f, den = 0.0f;
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            float ex = u - (dx + 0.5f), ey = v - (dy + 0.5f);
+            float t = 1.0f - (ex * ex + ey * ey) / (EDGE_KERNEL_R * EDGE_KERNEL_R);
+            if (t <= 0.0f) continue;
+            float w = t * t;
+            den += w;
+            if (dx == 0 && dy == 0) continue;      // this tile is never the other biome
+            for (int i = 0; i < 8; i++)
+                if (EDGE_NB[i][0] == dx && EDGE_NB[i][1] == dy) {
+                    if (config & (1 << i)) num += w;
+                    break;
+                }
+        }
+    }
+    return den > 0.0f ? num / den : 0.0f;
+}
+
+// Ground-to-ground mask: solid where the other biome clearly owns the pixel,
+// clear where it clearly does not, and stippled in between. The stipple is the
+// only high-frequency detail in the transition — it thins out with coverage,
+// which is what turns the boundary into a dotted fringe a few pixels deep
+// rather than a drawn line.
+static void edge_mask(int config, int variant, bool* on) {
+    for (int py = 0; py < 16; py++) {
+        for (int px = 0; px < 16; px++) {
+            float f = edge_coverage(config, px, py);
+            bool lit;
+            if      (f >= 0.5f + EDGE_FRINGE) lit = true;
+            else if (f <= 0.5f - EDGE_FRINGE) lit = false;
+            else {
+                float p = (f - (0.5f - EDGE_FRINGE)) / (2.0f * EDGE_FRINGE);
+                unsigned int h = cover_hash(px, py, 0xF2149E00u + (unsigned int)variant);
+                lit = (float)(h % 1000u) / 1000.0f < p;
+            }
+            on[py * 16 + px] = lit;
+        }
+    }
+}
+
+// Solid mask for a coverage window, used to build the water treatment out of
+// the same field. A waterline is not a fringe: it is a clean outline with a
+// band of shallows alongside it, so these are hard-edged rather than stippled.
+//   lo 0.5, hi 1  — the other biome's own body, giving the crisp outline
+//   lo 0.5-S, hi 0.5 — the band just outside it
+//   lo 0.5, hi 0.5+S — the band just inside it
+// Which of the last two a tile wants depends on which side of the waterline it
+// is: the shallows always sit on the land side, so the tile standing in water
+// takes the inner band and the tile on the bank takes the outer one.
+static void band_mask(int config, float lo, float hi, bool* on) {
+    for (int py = 0; py < 16; py++) {
+        for (int px = 0; px < 16; px++) {
+            float f = edge_coverage(config, px, py);
+            on[py * 16 + px] = (f >= lo && f < hi);
+        }
+    }
+}
+
+// Scattered highlights across a body of water. Not an edge effect — it covers
+// the whole surface, and it is what stops a large expanse reading as one flat
+// slab of colour. Several patterns, picked per tile, so the repeat does not
+// show up as a grid at this size.
+static void sparkle_mask(int variant, bool* on) {
+    for (int py = 0; py < 16; py++)
+        for (int px = 0; px < 16; px++)
+            on[py * 16 + px] =
+                (cover_hash(px, py, 0x5A4C1E00u + (unsigned int)variant) % 100u) < SPARKLE_PCT;
+}
+
+// Masks are white where the neighbouring biome laps over, clear elsewhere, and
+// get colour-modulated at draw time — so one set serves every pair of biomes
+// rather than needing a set per pair.
+static SDL_Texture* mask_texture(SDL_Renderer* renderer, const bool* on) {
+    SDL_Surface* out = SDL_CreateRGBSurfaceWithFormat(0, 16, 16, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!out) return nullptr;
+    uint32_t* dp = (uint32_t*)out->pixels;
+    int dpitch = out->pitch / 4;
+    uint32_t lit   = SDL_MapRGBA(out->format, 255, 255, 255, 255);
+    uint32_t clear = SDL_MapRGBA(out->format, 0, 0, 0, 0);
+    for (int py = 0; py < 16; py++)
+        for (int px = 0; px < 16; px++)
+            dp[py * dpitch + px] = on[py * 16 + px] ? lit : clear;
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, out);
+    if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+    SDL_FreeSurface(out);
+    return tex;
+}
+
+static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
+    // Each biome's plain colour: the solid fill of its plain cell where it has
+    // art, otherwise the flat style colour the tile already draws with.
+    SDL_Surface* src = sheet ? SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0) : nullptr;
+    for (int i = 0; i < NUM_GROUND_BIOMES; i++) {
+        GroundBiome* b = &s_biomes[i];
+        if (b->cover && src) {
+            int idx = b->cover->plain - TILE_TOWN0_BASE;
+            int cx = (idx % TOWN0_SHEET_COLS) * 16, cy = (idx / TOWN0_SHEET_COLS) * 16;
+            uint32_t px = ((const uint32_t*)src->pixels)[(cy + 8) * (src->pitch / 4) + cx + 8];
+            uint8_t a;
+            SDL_GetRGBA(px, src->format, &b->r, &b->g, &b->b, &a);
+        } else if (b->tiles[0] >= 0 && b->tiles[0] < NUM_TILE_STYLES) {
+            b->r = tile_styles[b->tiles[0]].bg_r;
+            b->g = tile_styles[b->tiles[0]].bg_g;
+            b->b = tile_styles[b->tiles[0]].bg_b;
+        }
+    }
+    if (src) SDL_FreeSurface(src);
+
+    // 256 neighbourhoods, but only the ones with a neighbour in them can ever be
+    // asked for; config 0 stays null and is skipped at draw time.
+    bool on[16 * 16];
+    for (int config = 1; config < 256; config++) {
+        for (int v = 0; v < EDGE_VARIANTS; v++) {
+            edge_mask(config, v, on);
+            s_edge_tex[config][v] = mask_texture(renderer, on);
+        }
+        band_mask(config, 0.5f, 1.01f, on);
+        s_fill_tex[config] = mask_texture(renderer, on);
+        band_mask(config, 0.5f - SHORE_BAND, 0.5f, on);
+        s_shore_out_tex[config] = mask_texture(renderer, on);
+        band_mask(config, 0.5f, 0.5f + SHORE_BAND, on);
+        s_shore_in_tex[config] = mask_texture(renderer, on);
+    }
+    for (int v = 0; v < SPARKLE_VARIANTS; v++) {
+        sparkle_mask(v, on);
+        s_sparkle_tex[v] = mask_texture(renderer, on);
+    }
+}
+
+static inline unsigned int cover_hash(int x, int y, unsigned int salt) {
     unsigned int h = (unsigned int)x * 73856093u ^ (unsigned int)y * 19349663u ^ salt;
     h ^= h >> 13; h *= 1274126177u; h ^= h >> 16;
     return h;
@@ -2515,29 +2839,162 @@ static inline unsigned int grass_hash(int x, int y, unsigned int salt) {
 // Raw chance a clump begins at this tile. A start claims two tiles and is
 // suppressed beside another start, so ~8% here lands near 15% of the field
 // under clumps: 2 * p * (1-p) with p = 0.08.
-static const unsigned int GRASS_CLUMP_PCT = 8;
-static inline bool grass_clump_raw(int x, int y) {
-    return (grass_hash(x, y, 0x9e3779b9u) % 100u) < GRASS_CLUMP_PCT;
+static const unsigned int COVER_CLUMP_PCT = 8;
+static inline bool cover_clump_raw(int x, int y) {
+    return (cover_hash(x, y, 0x9e3779b9u) % 100u) < COVER_CLUMP_PCT;
 }
 
-static int grass_variant(int x, int y) {
-    if (!s_town0_tex) return TILE_GRASS;  // sheet missing — keep the flat tile
+static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    if (!s_town0_tex) return cover->flat;  // sheet missing — keep the flat tile
 
     // Right half first: a start beside a start is suppressed, which is what
     // stops a run of raw starts from emitting a right half with no left half.
-    bool left_starts = x > 0 && grass_clump_raw(x - 1, y)
-                             && !(x > 1 && grass_clump_raw(x - 2, y));
-    if (left_starts) return GRASS_CLUMP_R;
-    if (grass_clump_raw(x, y) && !(x > 0 && grass_clump_raw(x - 1, y)))
-        return GRASS_CLUMP_L;
+    // Both halves also have to sit on the same cover, or the pair straddles a
+    // biome edge and a green half ends up against a pink one. The edge lip does
+    // not enter into it — a lipped tile still draws its own variant underneath.
+    auto pairs_with = [&](int nx) { return tile_cover(map, nx, y) == cover; };
+    bool left_starts = x > 0 && pairs_with(x - 1)
+                             && cover_clump_raw(x - 1, y)
+                             && !(x > 1 && cover_clump_raw(x - 2, y));
+    if (left_starts) return cover->clump_r;
+    if (cover_clump_raw(x, y) && !(x > 0 && cover_clump_raw(x - 1, y))
+                              && pairs_with(x + 1))
+        return cover->clump_l;
 
     // Of the tiles left over, ~53% plain and the rest split between the three
     // tufts, which comes out near the intended 45/40/15 plain/tuft/clump mix.
-    unsigned int v = grass_hash(x, y, 0x85ebca6bu) % 100u;
-    if (v < 53) return GRASS_PLAIN;
-    if (v < 69) return GRASS_TUFT_A;
-    if (v < 85) return GRASS_TUFT_B;
-    return GRASS_TUFT_C;
+    unsigned int v = cover_hash(x, y, 0x85ebca6bu) % 100u;
+    if (v < 53) return cover->plain;
+    if (v < 69) return cover->tuft_a;
+    if (v < 85) return cover->tuft_b;
+    return cover->tuft_c;
+}
+
+// Which neighbouring biomes reach into this tile, and the neighbourhood shape
+// each of them makes. Kept apart from the drawing so the decision can be
+// inspected without a renderer.
+//
+// Every distinct neighbouring biome is handled separately, so a tile in a
+// three-biome corner fringes each of them in its own colour rather than having
+// to settle on one. Precedence does not come into it: the field is symmetric,
+// so wherever this tile scatters a neighbour's colour inward, that neighbour is
+// scattering this tile's colour back the other way by the same amount.
+#define MAX_EDGE_NEIGHBOURS 4
+struct EdgeFringe {
+    int count;
+    int biome[MAX_EDGE_NEIGHBOURS];   // index into s_biomes
+    int config[MAX_EDGE_NEIGHBOURS];  // which of the eight neighbours hold it
+    int variant;
+};
+
+static void biome_fringe(const Tilemap* map, int x, int y, EdgeFringe* out) {
+    out->count = 0;
+    out->variant = 0;
+    int mine = biome_at(map, x, y);
+    if (mine < 0) return;
+    out->variant = (int)(cover_hash(x, y, 0xF7149E00u) % EDGE_VARIANTS);
+
+    for (int i = 0; i < 8; i++) {
+        int b = biome_at(map, x + EDGE_NB[i][0], y + EDGE_NB[i][1]);
+        if (b < 0 || b == mine) continue;
+        int slot = -1;
+        for (int j = 0; j < out->count; j++)
+            if (out->biome[j] == b) { slot = j; break; }
+        if (slot < 0) {
+            if (out->count == MAX_EDGE_NEIGHBOURS) continue;  // more than four meeting here
+            slot = out->count++;
+            out->biome[slot] = b;
+            out->config[slot] = 0;
+        }
+        out->config[slot] |= 1 << i;
+    }
+}
+
+static inline bool biome_is_liquid(int b) { return b >= 0 && s_biomes[b].sr >= 0; }
+
+// What gets laid over a tile at its borders, in order. Kept apart from the
+// drawing so the decision can be inspected without a renderer.
+//
+// Two treatments. Ground against ground interleaves: a stippled fringe in the
+// neighbour's own colour, dots crowding the boundary and petering out. Anything
+// against water instead gets a hard outline plus a band of shallows, because a
+// waterline wants to read as an edge rather than as two grounds mixing.
+//
+// The shallows always sit on the land side of that line. Which band gives that
+// depends on where the tile stands: on the bank it is the ring just outside the
+// water, and standing in the water it is the ring just inside the land that
+// rounds into the tile. Both sides work from the same field, so the two halves
+// meet as one continuous band.
+enum EdgeMaskKind { MASK_FRINGE, MASK_FILL, MASK_SHORE_OUT, MASK_SHORE_IN, MASK_SPARKLE };
+struct EdgeLayer {
+    int kind;
+    int config;   // neighbourhood for the border masks, unused by the sparkle
+    int variant;  // stipple or sparkle pattern, unused by the solid bands
+    uint8_t r, g, b;
+};
+#define MAX_EDGE_LAYERS (1 + MAX_EDGE_NEIGHBOURS * 2)
+struct EdgeLayers { int count; EdgeLayer v[MAX_EDGE_LAYERS]; };
+
+static void push_layer(EdgeLayers* out, int kind, int config, int variant,
+                       uint8_t r, uint8_t g, uint8_t b) {
+    if (out->count >= MAX_EDGE_LAYERS) return;
+    EdgeLayer* l = &out->v[out->count++];
+    l->kind = kind; l->config = config; l->variant = variant;
+    l->r = r; l->g = g; l->b = b;
+}
+
+static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out) {
+    out->count = 0;
+    int mine = biome_at(map, x, y);
+    if (mine < 0) return;
+    EdgeFringe fr;
+    biome_fringe(map, x, y, &fr);
+
+    // Highlights first, so anything lapping into this tile covers them.
+    if (biome_is_liquid(mine)) {
+        const GroundBiome& w = s_biomes[mine];
+        push_layer(out, MASK_SPARKLE, 0,
+                   (int)(cover_hash(x, y, 0x5A4C1E77u) % SPARKLE_VARIANTS),
+                   (uint8_t)w.sr, (uint8_t)w.sg, (uint8_t)w.sb);
+    }
+
+    for (int i = 0; i < fr.count; i++) {
+        int other = fr.biome[i], cfg = fr.config[i];
+        const GroundBiome& o = s_biomes[other];
+
+        if (!biome_is_liquid(mine) && !biome_is_liquid(other)) {
+            push_layer(out, MASK_FRINGE, cfg, fr.variant, o.r, o.g, o.b);
+            continue;
+        }
+        const GroundBiome& liquid = biome_is_liquid(other) ? o : s_biomes[mine];
+        push_layer(out, MASK_FILL, cfg, 0, o.r, o.g, o.b);
+        push_layer(out, biome_is_liquid(other) ? MASK_SHORE_OUT : MASK_SHORE_IN, cfg, 0,
+                   (uint8_t)liquid.sr, (uint8_t)liquid.sg, (uint8_t)liquid.sb);
+    }
+}
+
+// Paint them. Runs after the tile has drawn itself, so everything here goes
+// over the top — the tile keeps its tufts.
+static void draw_biome_edges(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
+                             int sx, int sy, int size) {
+    EdgeLayers ls;
+    biome_edge_layers(map, x, y, &ls);
+    SDL_Rect dst = { sx, sy, size, size };
+
+    for (int i = 0; i < ls.count; i++) {
+        const EdgeLayer& l = ls.v[i];
+        SDL_Texture* t = nullptr;
+        switch (l.kind) {
+            case MASK_FRINGE:    t = s_edge_tex[l.config][l.variant]; break;
+            case MASK_FILL:      t = s_fill_tex[l.config];            break;
+            case MASK_SHORE_OUT: t = s_shore_out_tex[l.config];       break;
+            case MASK_SHORE_IN:  t = s_shore_in_tex[l.config];        break;
+            default:             t = s_sparkle_tex[l.variant];        break;
+        }
+        if (!t) continue;
+        SDL_SetTextureColorMod(t, l.r, l.g, l.b);
+        SDL_RenderCopy(renderer, t, NULL, &dst);
+    }
 }
 
 // depth_pass=false: draw all tiles except depth-marked ones.
@@ -2609,10 +3066,12 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // Base pass: grass background drawn here (before player) for all town tiles
             {
                 int tile_id = map->tiles[y][x];
-                if (tile_id >= TILE_TOWN0_BASE)
-                    blit_tile(renderer, grass_variant(x, y), screen_x, screen_y, draw_size);
-                blit_tile(renderer, tile_id == TILE_GRASS ? grass_variant(x, y) : tile_id,
+                const GroundCover* cover = tile_cover(map, x, y);
+                bool is_town = (tile_id >= TILE_TOWN0_BASE);
+                blit_tile(renderer, cover ? cover_variant(map, x, y, cover) : tile_id,
                           screen_x, screen_y, draw_size);
+                draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
+                if (is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 
@@ -2900,6 +3359,13 @@ static bool tile_is_harvestable(int t) {
     return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE;
 }
 
+static HarvestTarget tile_target(int t) {
+    if (t == TILE_TREE || t == TILE_DEAD_TREE) return HARVEST_TREE;
+    if (t == TILE_ROCK)                        return HARVEST_ROCK;
+    if (t == TILE_GOLD_ORE)                    return HARVEST_ORE;
+    return HARVEST_OTHER;
+}
+
 static int tile_award(int t) {
     if (t == TILE_TREE || t == TILE_DEAD_TREE) return (int)RESOURCE_TREE;
     if (t == TILE_ROCK)                        return (int)RESOURCE_ROCK;
@@ -2914,7 +3380,7 @@ static int tilemap_strike(Tilemap* map, int tx, int ty, WeaponType weapon, Harve
 
     auto it = s_tile_hp.find(key);
     int hp = (it == s_tile_hp.end()) ? tile_max_hp(map, tx, ty) : it->second;
-    hp -= weapon_harvest_damage(weapon, t == TILE_TREE || t == TILE_DEAD_TREE);
+    hp -= weapon_harvest_damage(weapon, tile_target(t));
 
     float cx = (tx + 0.5f) * TILE_SIZE;
     float cy = (ty + 0.5f) * TILE_SIZE;
@@ -3114,11 +3580,50 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
     }
 }
 
+// Which biome the smoothed field hands this pixel to. Only the hard-edged
+// liquid treatment counts: a stippled ground fringe is two grounds mixing and
+// moves no line, so it owns nothing. Matches the order the layers paint in, so
+// the answer here is the colour on screen.
+static int field_owner_at(const Tilemap* map, int tx, int ty, float px, float py) {
+    int mine = biome_at(map, tx, ty);
+    if (mine < 0) return -1;
+    EdgeFringe fr;
+    biome_fringe(map, tx, ty, &fr);
+    if (fr.count == 0) return mine;
+
+    int ax = (int)((px - tx * TILE_SIZE) * 16.0f / TILE_SIZE);
+    int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
+    if (ax < 0) ax = 0; else if (ax > 15) ax = 15;
+    if (ay < 0) ay = 0; else if (ay > 15) ay = 15;
+
+    int owner = mine;
+    for (int i = 0; i < fr.count; i++) {
+        if (!biome_is_liquid(mine) && !biome_is_liquid(fr.biome[i])) continue;
+        if (edge_coverage(fr.config[i], ax, ay) > 0.5f) owner = fr.biome[i];
+    }
+    return owner;
+}
+
 bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     const Tilemap* map = static_cast<const Tilemap*>(vmap);
     int tx = (int)(px / TILE_SIZE);
     int ty = (int)(py / TILE_SIZE);
-    if (!tilemap_is_walkable(map, tx, ty)) return true;
+    if (!in_bounds(tx, ty)) return true;
+
+    // Water is drawn along the smoothed field rather than the tile grid, so its
+    // collision reads that same field. Without this the shore you can see and
+    // the shore you can walk to disagree by up to half a tile wherever the
+    // outline rounds a corner — visibly, since the waterline is a hard edge.
+    // Everything else keeps the tile-grid answer.
+    int mine  = biome_at(map, tx, ty);
+    int owner = field_owner_at(map, tx, ty, px, py);
+    bool mine_is_water = biome_is_liquid(mine);
+
+    if (biome_is_liquid(owner)) return true;
+    // A water tile whose pixel the field gave to the land is standable; asking
+    // tilemap_is_walkable here would call the whole tile solid and undo that.
+    if (!mine_is_water && !tilemap_is_walkable(map, tx, ty)) return true;
+
     // Trees, rocks, and gold ore live in the overlay — they're also solid.
     int ov = map->overlay[ty][tx];
     return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
@@ -3157,6 +3662,9 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
 
         int tx = e->x + dx, ty = e->y + dy;
         if (!tilemap_is_walkable(map, tx, ty)) continue;
+        // Same bank clearance the overlays get — a gravestone standing in
+        // the shallows reads as a mistake rather than as a graveyard.
+        if (!overlay_site_dry(map, tx, ty)) continue;
 
         // Reject if another gravestone is already at this tile
         float wx = (float)(tx * TILE_SIZE), wy = (float)(ty * TILE_SIZE);
@@ -3217,6 +3725,9 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
         int dy = slots[order[i]][1];
         int tx = e->x + dx, ty = e->y + dy;
         if (!tilemap_is_walkable(map, tx, ty)) continue;
+        // Same bank clearance the overlays get — a gravestone standing in
+        // the shallows reads as a mistake rather than as a graveyard.
+        if (!overlay_site_dry(map, tx, ty)) continue;
         resource_nodes_add_gravestone(resources,
             (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE),
             0, 0, -1, -1);

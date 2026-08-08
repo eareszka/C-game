@@ -209,6 +209,18 @@ float sweep_relative_angle(float start_ang, float dx, float dy)
     return rel;
 }
 
+// Gravestones fall under HARVEST_OTHER rather than rock: they are the one node
+// that can hide a dungeon entrance, so no weapon gets a shortcut through them.
+static HarvestTarget node_target(ResourceType t)
+{
+    switch (t) {
+        case RESOURCE_TREE: return HARVEST_TREE;
+        case RESOURCE_ROCK: return HARVEST_ROCK;
+        case RESOURCE_GOLD: return HARVEST_ORE;
+        default:            return HARVEST_OTHER;
+    }
+}
+
 int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
                          float radius, float start_ang, float rel0, float rel1,
                          WeaponType weapon, HarvestResult* out)
@@ -229,7 +241,7 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
         float rel = sweep_relative_angle(start_ang, dx, dy);
         if (rel < rel0 || rel >= rel1) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
         int destroyed = 0;
         if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
 
@@ -283,7 +295,7 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
         if (along < from || along >= to) continue;
         if (side < -half_width || side > half_width) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
         int destroyed = 0;
         if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
 
@@ -304,7 +316,7 @@ int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float 
         if (x < n->x - radius || x > n->x + n->width  + radius) continue;
         if (y < n->y - radius || y > n->y + n->height + radius) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
         int destroyed = 0;
         if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
 
@@ -332,7 +344,7 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
         int dy = (int)(cy - player_y);
         if (abs_int(dx) > range || abs_int(dy) > range) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, n->type == RESOURCE_TREE);
+        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
         int destroyed = 0;
         if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
 

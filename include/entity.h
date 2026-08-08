@@ -18,8 +18,21 @@ enum WeaponType {
 // Axe and scythe fell a tree in a single swing; everything else chips one point
 // off at a time. Non-tree nodes are unaffected, so rock and ore still take the
 // same work with any weapon.
-inline int weapon_harvest_damage(WeaponType w, bool target_is_tree) {
-    if (target_is_tree && (w == WEAPON_AXE || w == WEAPON_SCYTHE)) return 9999;
+// What a swing is landing on. Resource nodes and overlay tiles are separate
+// type systems, so both map onto this and the damage rules live in one place.
+typedef enum HarvestTarget {
+    HARVEST_TREE,
+    HARVEST_ROCK,
+    HARVEST_ORE,
+    HARVEST_OTHER,   // gravestones, flowers — no shortcut applies
+} HarvestTarget;
+
+inline int weapon_harvest_damage(WeaponType w, HarvestTarget t) {
+    if (t == HARVEST_OTHER) return 1;
+    // The scythe goes through tree, rock and ore alike in a single pass — that
+    // is what makes it the farming tool. The axe only fells trees outright.
+    if (w == WEAPON_SCYTHE) return 9999;
+    if (w == WEAPON_AXE && t == HARVEST_TREE) return 9999;
     return 1;
 }
 
