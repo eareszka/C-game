@@ -194,13 +194,13 @@ static SDL_Texture* s_overworld0_tex     = nullptr;
 // corner round off instead of meeting at a right angle.
 static const int EDGE_VARIANTS = 2;
 static SDL_Texture* s_edge_tex[256][EDGE_VARIANTS] = {};
-// Water is drawn differently: a crisp outline, a solid band of shallows on the
-// land side of it, and highlights scattered over the open surface.
-static const int SPARKLE_VARIANTS = 4;
-static SDL_Texture* s_fill_tex[256]      = {};  // the other biome's body, hard-edged
-static SDL_Texture* s_shore_out_tex[256] = {};  // shallows just outside that body
-static SDL_Texture* s_shore_in_tex[256]  = {};  // shallows just inside it
-static SDL_Texture* s_sparkle_tex[SPARKLE_VARIANTS] = {};
+// Water is drawn differently: a crisp outline and a solid band of shallows on
+// the land side of it. Its surface texture comes from the sheet cell itself.
+// Variant-indexed like the fringe: the waterline carries a per-pixel jitter, so
+// without a per-tile choice of pattern that jitter would repeat every tile.
+static SDL_Texture* s_fill_tex[256][EDGE_VARIANTS]      = {};  // the body, hard-edged
+static SDL_Texture* s_shore_out_tex[256][EDGE_VARIANTS] = {};  // shallows outside it
+static SDL_Texture* s_shore_in_tex[256][EDGE_VARIANTS]  = {};  // shallows inside it
 
 // ---------------------------------------------------------------------------
 
@@ -2529,12 +2529,13 @@ void tilemap_free_tile_cache(void) {
     for (int c = 0; c < 256; c++) {
         for (int v = 0; v < EDGE_VARIANTS; v++)
             if (s_edge_tex[c][v]) { SDL_DestroyTexture(s_edge_tex[c][v]); s_edge_tex[c][v] = nullptr; }
-        SDL_Texture** water[] = { &s_fill_tex[c], &s_shore_out_tex[c], &s_shore_in_tex[c] };
-        for (int i = 0; i < 3; i++)
-            if (*water[i]) { SDL_DestroyTexture(*water[i]); *water[i] = nullptr; }
+        for (int v = 0; v < EDGE_VARIANTS; v++) {
+            SDL_Texture** water[] = { &s_fill_tex[c][v], &s_shore_out_tex[c][v],
+                                      &s_shore_in_tex[c][v] };
+            for (int i = 0; i < 3; i++)
+                if (*water[i]) { SDL_DestroyTexture(*water[i]); *water[i] = nullptr; }
+        }
     }
-    for (int v = 0; v < SPARKLE_VARIANTS; v++)
-        if (s_sparkle_tex[v]) { SDL_DestroyTexture(s_sparkle_tex[v]); s_sparkle_tex[v] = nullptr; }
     if (s_town0_tex)          { SDL_DestroyTexture(s_town0_tex);          s_town0_tex          = nullptr; }
     if (s_overworld0_tex)     { SDL_DestroyTexture(s_overworld0_tex);     s_overworld0_tex     = nullptr; }
 }
@@ -2602,6 +2603,15 @@ static constexpr GroundCover COVER_SNOW = {
     sheet_cell(26, 3), TILE_SNOW,
 };
 
+// A biome drawn from one cell rather than a six-cell block. Every role points
+// at the same cell, so the variant picker and the clump pairing resolve to it
+// whichever way they fall and neither needs a special case.
+static constexpr GroundCover cover_single(int cell, int flat) {
+    return { cell, cell, cell, cell, cell, cell, flat };
+}
+// Water: one tile, carrying its own ripples, and it repeats seamlessly.
+static constexpr GroundCover COVER_WATER = cover_single(sheet_cell(14, 0), TILE_WATER);
+
 // ── Biome edge ──────────────────────────────────────────────────────────────
 // Where two biomes meet the join is one straight line along the tile grid,
 // which reads as a cut. Instead each tile scatters its neighbour's colour into
@@ -2631,7 +2641,10 @@ static const float EDGE_FRINGE   = 0.10f;  // half-width of the undecided band
 // Coverage, not pixels: the field falls about 0.03 per pixel across a straight
 // shore, so this lands the shallows at one pixel. 0.07 is where it becomes two.
 static const float SHORE_BAND    = 0.05f;
-static const unsigned int SPARKLE_PCT = 4; // percent of open water carrying a highlight
+// A perfectly smooth waterline looks poured rather than worn. This nudges where
+// the line falls, per pixel, by well under a pixel's worth of coverage — enough
+// to rough it up without letting it wander off the shape the field describes.
+static const float SHORE_JITTER  = 0.025f;
 
 // Biomes that take part. Order is only a tie-break: the field decides which
 // biome owns a pixel, and it is symmetric, so neither side of a border gives
@@ -2664,7 +2677,7 @@ static GroundBiome s_biomes[] = {
     { { TILE_SAND,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
     { { TILE_WASTELAND, -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   0,0,0,  -1,  -1,  -1 },
-    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, nullptr,       0,0,0, 220, 240, 255 },
+    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  0,0,0, 220, 240, 255 },
     { { TILE_LAVA,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
 };
 static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
@@ -2741,33 +2754,34 @@ static void edge_mask(int config, int variant, bool* on) {
     }
 }
 
-// Solid mask for a coverage window, used to build the water treatment out of
-// the same field. A waterline is not a fringe: it is a clean outline with a
-// band of shallows alongside it, so these are hard-edged rather than stippled.
-//   lo 0.5, hi 1  — the other biome's own body, giving the crisp outline
-//   lo 0.5-S, hi 0.5 — the band just outside it
-//   lo 0.5, hi 0.5+S — the band just inside it
-// Which of the last two a tile wants depends on which side of the waterline it
-// is: the shallows always sit on the land side, so the tile standing in water
-// takes the inner band and the tile on the bank takes the outer one.
-static void band_mask(int config, float lo, float hi, bool* on) {
+// Where the waterline falls at one pixel. Half coverage, roughed up a little so
+// the line is worn rather than poured. Both the masks and the collision test go
+// through here, which is what keeps the shore you see and the shore you can
+// walk to the same shore — the jitter would pull them apart otherwise.
+static inline float shore_threshold(int px, int py, int variant) {
+    unsigned int h = cover_hash(px, py, 0x54093E00u + (unsigned int)variant);
+    return 0.5f + SHORE_JITTER * ((float)(h % 2001u) / 1000.0f - 1.0f);
+}
+
+// Solid mask for a window around that line, used to build the water treatment
+// out of the same field. A waterline is not a fringe: it is a clean outline
+// with shallows alongside, so these are hard-edged rather than stippled. The
+// bounds are offsets from the threshold, so the shallows follow the outline
+// wherever the jitter puts it instead of drifting off it.
+//   0, +big  — the other biome's own body, giving the outline
+//   -S, 0    — the band just outside it
+//   0, +S    — the band just inside it
+// Which of the last two a tile wants depends on which side of the water it is
+// on: the shallows always sit on the land side, so a tile standing in water
+// takes the inner band and one on the bank takes the outer.
+static void band_mask(int config, int variant, float lo_off, float hi_off, bool* on) {
     for (int py = 0; py < 16; py++) {
         for (int px = 0; px < 16; px++) {
             float f = edge_coverage(config, px, py);
-            on[py * 16 + px] = (f >= lo && f < hi);
+            float t = shore_threshold(px, py, variant);
+            on[py * 16 + px] = (f >= t + lo_off && f < t + hi_off);
         }
     }
-}
-
-// Scattered highlights across a body of water. Not an edge effect — it covers
-// the whole surface, and it is what stops a large expanse reading as one flat
-// slab of colour. Several patterns, picked per tile, so the repeat does not
-// show up as a grid at this size.
-static void sparkle_mask(int variant, bool* on) {
-    for (int py = 0; py < 16; py++)
-        for (int px = 0; px < 16; px++)
-            on[py * 16 + px] =
-                (cover_hash(px, py, 0x5A4C1E00u + (unsigned int)variant) % 100u) < SPARKLE_PCT;
 }
 
 // Masks are white where the neighbouring biome laps over, clear elsewhere, and
@@ -2790,17 +2804,31 @@ static SDL_Texture* mask_texture(SDL_Renderer* renderer, const bool* on) {
 }
 
 static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
-    // Each biome's plain colour: the solid fill of its plain cell where it has
-    // art, otherwise the flat style colour the tile already draws with.
+    // Each biome's plain colour: the commonest colour in its plain cell where it
+    // has art, otherwise the flat style colour the tile already draws with.
+    // Commonest rather than any one pixel — water's cell carries ripples, and
+    // sampling its centre would have taken whatever happened to be there.
     SDL_Surface* src = sheet ? SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0) : nullptr;
     for (int i = 0; i < NUM_GROUND_BIOMES; i++) {
         GroundBiome* b = &s_biomes[i];
         if (b->cover && src) {
             int idx = b->cover->plain - TILE_TOWN0_BASE;
             int cx = (idx % TOWN0_SHEET_COLS) * 16, cy = (idx / TOWN0_SHEET_COLS) * 16;
-            uint32_t px = ((const uint32_t*)src->pixels)[(cy + 8) * (src->pitch / 4) + cx + 8];
+            const uint32_t* sp = (const uint32_t*)src->pixels;
+            int spitch = src->pitch / 4;
+            uint32_t best = 0; int best_n = 0;
+            for (int py = 0; py < 16; py++) {
+                for (int px = 0; px < 16; px++) {
+                    uint32_t c = sp[(cy + py) * spitch + cx + px];
+                    int n = 0;
+                    for (int qy = 0; qy < 16; qy++)
+                        for (int qx = 0; qx < 16; qx++)
+                            if (sp[(cy + qy) * spitch + cx + qx] == c) n++;
+                    if (n > best_n) { best_n = n; best = c; }
+                }
+            }
             uint8_t a;
-            SDL_GetRGBA(px, src->format, &b->r, &b->g, &b->b, &a);
+            SDL_GetRGBA(best, src->format, &b->r, &b->g, &b->b, &a);
         } else if (b->tiles[0] >= 0 && b->tiles[0] < NUM_TILE_STYLES) {
             b->r = tile_styles[b->tiles[0]].bg_r;
             b->g = tile_styles[b->tiles[0]].bg_g;
@@ -2816,17 +2844,13 @@ static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
         for (int v = 0; v < EDGE_VARIANTS; v++) {
             edge_mask(config, v, on);
             s_edge_tex[config][v] = mask_texture(renderer, on);
+            band_mask(config, v, 0.0f, 2.0f, on);
+            s_fill_tex[config][v] = mask_texture(renderer, on);
+            band_mask(config, v, -SHORE_BAND, 0.0f, on);
+            s_shore_out_tex[config][v] = mask_texture(renderer, on);
+            band_mask(config, v, 0.0f, SHORE_BAND, on);
+            s_shore_in_tex[config][v] = mask_texture(renderer, on);
         }
-        band_mask(config, 0.5f, 1.01f, on);
-        s_fill_tex[config] = mask_texture(renderer, on);
-        band_mask(config, 0.5f - SHORE_BAND, 0.5f, on);
-        s_shore_out_tex[config] = mask_texture(renderer, on);
-        band_mask(config, 0.5f, 0.5f + SHORE_BAND, on);
-        s_shore_in_tex[config] = mask_texture(renderer, on);
-    }
-    for (int v = 0; v < SPARKLE_VARIANTS; v++) {
-        sparkle_mask(v, on);
-        s_sparkle_tex[v] = mask_texture(renderer, on);
     }
 }
 
@@ -2925,14 +2949,14 @@ static inline bool biome_is_liquid(int b) { return b >= 0 && s_biomes[b].sr >= 0
 // water, and standing in the water it is the ring just inside the land that
 // rounds into the tile. Both sides work from the same field, so the two halves
 // meet as one continuous band.
-enum EdgeMaskKind { MASK_FRINGE, MASK_FILL, MASK_SHORE_OUT, MASK_SHORE_IN, MASK_SPARKLE };
+enum EdgeMaskKind { MASK_FRINGE, MASK_FILL, MASK_SHORE_OUT, MASK_SHORE_IN };
 struct EdgeLayer {
     int kind;
-    int config;   // neighbourhood for the border masks, unused by the sparkle
-    int variant;  // stipple or sparkle pattern, unused by the solid bands
+    int config;   // which surrounding tiles hold the other biome
+    int variant;  // stipple pattern for a fringe, jitter pattern for a waterline
     uint8_t r, g, b;
 };
-#define MAX_EDGE_LAYERS (1 + MAX_EDGE_NEIGHBOURS * 2)
+#define MAX_EDGE_LAYERS (MAX_EDGE_NEIGHBOURS * 2)
 struct EdgeLayers { int count; EdgeLayer v[MAX_EDGE_LAYERS]; };
 
 static void push_layer(EdgeLayers* out, int kind, int config, int variant,
@@ -2950,14 +2974,6 @@ static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out)
     EdgeFringe fr;
     biome_fringe(map, x, y, &fr);
 
-    // Highlights first, so anything lapping into this tile covers them.
-    if (biome_is_liquid(mine)) {
-        const GroundBiome& w = s_biomes[mine];
-        push_layer(out, MASK_SPARKLE, 0,
-                   (int)(cover_hash(x, y, 0x5A4C1E77u) % SPARKLE_VARIANTS),
-                   (uint8_t)w.sr, (uint8_t)w.sg, (uint8_t)w.sb);
-    }
-
     for (int i = 0; i < fr.count; i++) {
         int other = fr.biome[i], cfg = fr.config[i];
         const GroundBiome& o = s_biomes[other];
@@ -2967,8 +2983,9 @@ static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out)
             continue;
         }
         const GroundBiome& liquid = biome_is_liquid(other) ? o : s_biomes[mine];
-        push_layer(out, MASK_FILL, cfg, 0, o.r, o.g, o.b);
-        push_layer(out, biome_is_liquid(other) ? MASK_SHORE_OUT : MASK_SHORE_IN, cfg, 0,
+        push_layer(out, MASK_FILL, cfg, fr.variant, o.r, o.g, o.b);
+        push_layer(out, biome_is_liquid(other) ? MASK_SHORE_OUT : MASK_SHORE_IN,
+                   cfg, fr.variant,
                    (uint8_t)liquid.sr, (uint8_t)liquid.sg, (uint8_t)liquid.sb);
     }
 }
@@ -2985,11 +3002,10 @@ static void draw_biome_edges(SDL_Renderer* renderer, const Tilemap* map, int x, 
         const EdgeLayer& l = ls.v[i];
         SDL_Texture* t = nullptr;
         switch (l.kind) {
-            case MASK_FRINGE:    t = s_edge_tex[l.config][l.variant]; break;
-            case MASK_FILL:      t = s_fill_tex[l.config];            break;
-            case MASK_SHORE_OUT: t = s_shore_out_tex[l.config];       break;
-            case MASK_SHORE_IN:  t = s_shore_in_tex[l.config];        break;
-            default:             t = s_sparkle_tex[l.variant];        break;
+            case MASK_FRINGE:    t = s_edge_tex[l.config][l.variant];      break;
+            case MASK_FILL:      t = s_fill_tex[l.config][l.variant];      break;
+            case MASK_SHORE_OUT: t = s_shore_out_tex[l.config][l.variant]; break;
+            default:             t = s_shore_in_tex[l.config][l.variant]; break;
         }
         if (!t) continue;
         SDL_SetTextureColorMod(t, l.r, l.g, l.b);
@@ -3596,10 +3612,15 @@ static int field_owner_at(const Tilemap* map, int tx, int ty, float px, float py
     if (ax < 0) ax = 0; else if (ax > 15) ax = 15;
     if (ay < 0) ay = 0; else if (ay > 15) ay = 15;
 
+    // Half coverage flat — deliberately not shore_threshold's jittered line.
+    // The roughness is there to make the bank look worn, and a hitbox that
+    // followed it would catch on bumps too small to see. The two therefore
+    // disagree, but only ever inside the jitter band: under a pixel, and always
+    // hugging the drawn line rather than wandering off it.
     int owner = mine;
     for (int i = 0; i < fr.count; i++) {
         if (!biome_is_liquid(mine) && !biome_is_liquid(fr.biome[i])) continue;
-        if (edge_coverage(fr.config[i], ax, ay) > 0.5f) owner = fr.biome[i];
+        if (edge_coverage(fr.config[i], ax, ay) >= 0.5f) owner = fr.biome[i];
     }
     return owner;
 }
