@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>   // strtoul, for the seed argument
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -92,7 +93,14 @@ int main(int argc, char *argv[])
     Overworld ow;
 
     Tilemap* map = new Tilemap();
-    unsigned int map_seed = (unsigned int)SDL_GetTicks();
+    // Print the seed, and take one on the command line. Worlds were seeded from
+    // the clock and never recorded, so a world you noticed something wrong in
+    // was gone the moment you closed the game and there was no way to get back
+    // to it. Pass the number back in to regenerate that exact world.
+    unsigned int map_seed = (argc > 1) ? (unsigned int)strtoul(argv[1], nullptr, 10)
+                                       : (unsigned int)SDL_GetTicks();
+    printf("World seed: %u   (re-run with: game.exe %u)\n", map_seed, map_seed);
+    fflush(stdout);
     tilemap_build_overworld_phase1(map, map_seed);
 
     // Spawn directly in front of the spawn house's front door. Phase 1 only
@@ -293,6 +301,8 @@ int main(int argc, char *argv[])
                 gen_thread.join();
                 tilemap_reset_gen_cancel();
                 map_seed = (unsigned int)SDL_GetTicks();
+                printf("World seed: %u   (re-run with: game.exe %u)\n", map_seed, map_seed);
+                fflush(stdout);
                 delete map;
                 map = new Tilemap();
                 tilemap_build_overworld_phase1(map, map_seed);
