@@ -208,6 +208,18 @@ static bool in_bounds(int x, int y) {
     return x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT;
 }
 
+// Generation tracing. Worldgen runs two dozen passes over the whole map, so
+// when a shape in the finished world looks wrong there is no reading your way
+// back to which pass made it. Defining GEN_TRACE lets a probe snapshot the grid
+// at every stage boundary and diff consecutive pairs; without it this compiles
+// to nothing and the shipping build is unchanged.
+#ifdef GEN_TRACE
+void gen_trace_stage(const Tilemap* map, const char* stage);
+#define GEN_STAGE(map, name) gen_trace_stage((map), (name))
+#else
+#define GEN_STAGE(map, name) ((void)0)
+#endif
+
 // Ground an overlay must not stand in or overhang. Kept as a plain tile test
 // rather than going through the biome table because worldgen calls it millions
 // of times; if a new liquid tile is added it needs listing in both places.
@@ -1052,6 +1064,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     side_seed = side_seed * 1664525u + 1013904223u;
     int ocean_side = (int)((side_seed >> 16) % 4);
 
+    GEN_STAGE(map, "before Ocean");
     // --- Ocean ---
     {
         static int coast_h[MAP_HEIGHT]; // used for W/E oceans (varies along Y)
@@ -1096,6 +1109,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Rivers");
     // --- Rivers ---
     if (s_gen_cancel) return;
     const float PI = 3.14159265f;
@@ -1169,6 +1183,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Cliff gradient direction");
     // --- Cliff gradient direction ---
     // Cliffs are dense on the side opposite the ocean.
     {
@@ -1213,6 +1228,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         s_cliff_dir_y = dir_y / s_cliff_dir_len;
     }
 
+    GEN_STAGE(map, "before Cliff blocked prepass");
     // --- Cliff blocked prepass ---
     const int CLIFF_CLEAR = 20;
     memset(cliff_blocked, 0, sizeof(cliff_blocked));
@@ -1230,6 +1246,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Biome pass");
     // --- Biome pass: plains / desert / snow / wasteland ---
     if (s_gen_cancel) return;
     // Desert: flat areas away from mountains. Snow/wasteland: map edges.
@@ -1325,6 +1342,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Biome smoothing");
     // --- Biome smoothing: eliminate tiny isolated patches ---
     if (s_gen_cancel) return;
     // 3 passes of 5x5 majority vote. Only biome tiles (grass/sand/snow/waste/meadow)
@@ -1361,6 +1379,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Biome adjacency fixup");
     // --- Biome adjacency fixup ---
     // Rule 1: TILE_SAND cannot be adjacent to TILE_SNOW.
     // Rule 2: TILE_SNOW can only be adjacent to TILE_GRASS or TILE_MEADOW (among biome tiles).
@@ -1382,6 +1401,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Post-fixup biome smoothing");
     // --- Post-fixup biome smoothing ---
     // Re-run majority vote after the adjacency fixup to dissolve thin strips of desert
     // or snow that were left orphaned when their neighbors were converted to meadow.
@@ -1417,6 +1437,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Minimum biome patch enforcement");
     // --- Minimum biome patch enforcement ---
     if (s_gen_cancel) return;
     // Flood-fill connected components; absorb any component smaller than
@@ -1512,12 +1533,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 #undef LABEL
     }
 
+    GEN_STAGE(map, "before Cliffs");
     // --- Cliffs ---
     if (s_gen_cancel) return;
     // Biomes are fully settled above; place_cliffs reads the biome under each tile
     // and selects the matching cliff variant (snow/wasteland/plain) directly.
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
 
+    GEN_STAGE(map, "before Cliff edge pass");
     // --- Cliff edge pass (bottom-to-top so each drop level gets its own edge) ---
     // For each tile, if the tile directly south is at lower elevation, place a
     // south-facing edge tile there showing the dirt face of the cliff.
@@ -1561,6 +1584,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Cliff side/corner pass");
     // --- Cliff side/corner pass ---
     // East/west faces and outer (convex) corners.
     // Run bottom-to-top so higher-elevation cliffs overwrite lower-elevation placements
@@ -1669,6 +1693,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Trees");
     // --- Trees ---
     if (s_gen_cancel) return;
     // TILE_GRASS = spotty dense forest (coarse cluster noise → dense patches + clearings)
@@ -1706,6 +1731,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Rocks");
     // --- Rocks (after cliffs for same reason) ---
     {
         unsigned int s = seed ^ 0xDEAD1;
@@ -1720,6 +1746,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Rocks at elevation");
     // --- Rocks at elevation (density scales with cliff level) ---
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
@@ -1740,6 +1767,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Gold ore at high elevation");
     // --- Gold ore at high elevation (cliff 3+) for all biomes ---
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
@@ -1758,6 +1786,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Lava streams and pools inside wasteland");
     // --- Lava streams and pools inside wasteland ---
     {
         unsigned int ls = seed ^ 0x1A4A1u;
@@ -1785,6 +1814,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Dead trees scattered in wasteland");
     // --- Dead trees scattered in wasteland (~2%) ---
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
@@ -1800,6 +1830,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Pond streams and pools inside meadows");
     // --- Pond streams and pools inside meadows ---
     {
         unsigned int ps = seed ^ 0xF0D5u;
@@ -1827,6 +1858,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Biome guarantee pass");
     // --- Biome guarantee pass: ensure every biome appears at least once ---
     {
         bool has_sand=false, has_snow=false, has_waste=false, has_lava=false, has_meadow=false;
@@ -1926,6 +1958,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             || (bt >= TILE_CLIFF_SIDE_1 && bt <= TILE_CLIFF_CORNER_NE_5); // 34-58: sides/corners
     };
 
+    GEN_STAGE(map, "before Towns 1-3");
     // --- Towns 1-3 ---
     if (s_gen_cancel) return;
     // Town 0 is already stamped in phase1 (player starts there).
@@ -2038,6 +2071,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Villages");
     // --- Villages ---
     // 10-15 small settlements scattered across the map.
     // Dungeons are allowed inside village footprints (no tile pre-fill, so
@@ -2095,6 +2129,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Castles");
     // --- Castles ---
     // castle[3] (dungeon) is left at {-1,-1,3} — placed externally via dungeon diving.
     {
@@ -2198,6 +2233,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Dungeon entrances");
     // --- Dungeon entrances ---
     if (s_gen_cancel) return;
     // Each entrance derives its type (and therefore interior architecture) from the
@@ -2395,6 +2431,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     // Last, after every pond, stream and town stamp has had its say.
     clear_overlays_near_liquid(map);
+    GEN_STAGE(map, "final");
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
