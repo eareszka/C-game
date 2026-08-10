@@ -2501,12 +2501,22 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // between places actually do.
     {
         const int LAVA_CLEARANCE = 3;      // tiles kept between trail and lava
+        // Wider than the lava margin, and asked for rather than required: the
+        // router gives it up a tile at a time until a way through appears, so
+        // this is how far from the border a trail would like to run, not how
+        // far it must. Three was enough to stop trails tracing the rim but left
+        // them well inside it — routed at a mean of five tiles' clearance where
+        // the wasteland's own mean was nine — because a shortest path still
+        // hugs the inside of a bend once it is clear of the margin.
+        const int EDGE_CLEARANCE = 6;      // tiles the trail would rather keep from the border
+        const int ENDPOINT_FREE  = 10;     // radius around a dungeon where that is waived
         const int ANCHOR_SEARCH  = 8;      // how far off a dungeon to find ground
         const int DX4[4] = {1,-1,0,0}, DY4[4] = {0,0,1,-1};
         std::vector<uint8_t> seen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<uint8_t> incomp((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<uint8_t> nearedge((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<int> prev((size_t)MAP_WIDTH * MAP_HEIGHT, -1);
-        std::vector<int> comp, route, touched, path;
+        std::vector<int> comp, route, touched, path, rimq;
         unsigned int ts = seed ^ 0x7A11D0u;
 
         // Where a trail may not go: lava, and a margin around it. Shortest
@@ -2613,7 +2623,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     // consider points with a clearance ring of the same
                     // component around them, so the target — and the path
                     // approaching it — stays away from the edge.
-                    const int EDGE_MARGIN = 3;
+                    //
+                    // The same ring the route wants, so the target is somewhere
+                    // the route can reach without giving that up. A smaller one
+                    // let the target sit up a narrow arm or spit, and a route
+                    // has no way to travel a five-wide arm except along its
+                    // edge, however much clearance it would rather have.
+                    const int EDGE_MARGIN = EDGE_CLEARANCE;
                     int a = anchors[0];
                     int ax = a % MAP_WIDTH, ay = a / MAP_WIDTH;
                     auto is_deep = [&](int px2, int py2) {
@@ -2656,6 +2672,53 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     auto in_this = [&](int x, int y) {
                         return in_bounds(x, y) && incomp[(size_t)y * MAP_WIDTH + x];
                     };
+
+                    // Keep the route off the wasteland's own border, for the
+                    // same reason it is kept off lava. A shortest path through
+                    // a curved region hugs the inside of the bend, so the
+                    // clearance around the target was not enough on its own:
+                    // the route reaching a target well out in the waste still
+                    // ran along the rim for most of its length.
+                    //
+                    // How far in each tile is, up to EDGE_CLEARANCE, by growing
+                    // the rim inward that many times: 1 for a tile against the
+                    // border, 0 for anything deeper than the margin. It is a
+                    // depth rather than a flag because the router gives the
+                    // margin up a tile at a time — banning tiles outright would
+                    // cost a narrow arm of a wasteland the rule altogether,
+                    // since every tile in a five-wide neck is within three of
+                    // the border and there would be no way through at all.
+                    //
+                    // With the drift clamped to two tiles and a radius-one
+                    // brush, a route three tiles in leaves the painted trail
+                    // clear of the border at worst.
+                    rimq.clear();
+                    for (int c : comp) {
+                        int qx = c % MAP_WIDTH, qy = c / MAP_WIDTH;
+                        bool onrim = false;
+                        for (int dy = -1; dy <= 1 && !onrim; dy++)
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = qx + dx, ny = qy + dy;
+                                if (!in_this(nx, ny)) { onrim = true; break; }
+                            }
+                        if (onrim) { nearedge[c] = 1; rimq.push_back(c); }
+                    }
+                    for (int depth = 1, lo = 0, hi = (int)rimq.size();
+                         depth < EDGE_CLEARANCE; depth++, lo = hi, hi = (int)rimq.size()) {
+                        for (int h = lo; h < hi; h++) {
+                            int qx = rimq[h] % MAP_WIDTH, qy = rimq[h] / MAP_WIDTH;
+                            for (int dy = -1; dy <= 1; dy++)
+                                for (int dx = -1; dx <= 1; dx++) {
+                                    int nx = qx + dx, ny = qy + dy;
+                                    if (!in_this(nx, ny)) continue;
+                                    size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                                    if (nearedge[ni]) continue;
+                                    nearedge[ni] = (uint8_t)(depth + 1);
+                                    rimq.push_back((int)ni);
+                                }
+                        }
+                    }
+
                     auto paint_trail = [&](int ix, int iy) {
                         // Radius one, so the stroke is three tiles at its
                         // narrowest and only widens where it turns. Three is
@@ -2686,13 +2749,37 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
                         // Route through the region rather than straight at the
                         // target: a straight run leaves the wasteland wherever
-                        // it bends and paints nothing out there. Try to keep
-                        // clear of lava first; if that walls the way off, take
-                        // the direct route rather than leave the pair unjoined.
+                        // it bends and paints nothing out there.
+                        //
+                        // Each attempt gives up a little of what the route
+                        // would rather have: the border margin narrows a tile
+                        // at a time, then goes, then the lava margin goes and
+                        // it takes whatever way there is rather than leave the
+                        // pair unjoined. Giving them up together would cost a
+                        // trail its lava margin the moment a wasteland was too
+                        // narrow to route down the middle of, and dropping the
+                        // border margin in one go would put a route that only
+                        // needed to squeeze through one neck back against the
+                        // rim for its whole length.
+                        //
+                        // The border rule is waived near either end. A dungeon
+                        // can sit anywhere, including hard against the rim, and
+                        // a route that may not start within three tiles of the
+                        // border would fail outright and fall through to the
+                        // attempt that hugs it for its whole length.
+                        int fex = from % MAP_WIDTH, fey = from / MAP_WIDTH;
+                        int tex = to   % MAP_WIDTH, tey = to   / MAP_WIDTH;
+                        auto near_end = [&](int x, int y) {
+                            return (abs(x - fex) <= ENDPOINT_FREE && abs(y - fey) <= ENDPOINT_FREE)
+                                || (abs(x - tex) <= ENDPOINT_FREE && abs(y - tey) <= ENDPOINT_FREE);
+                        };
                         bool found = false;
                         path.clear();
-                        for (int attempt = 0; attempt < 2 && !found; attempt++) {
-                            bool avoid = (attempt == 0);
+                        const int ATTEMPTS = EDGE_CLEARANCE + 2;
+                        for (int attempt = 0; attempt < ATTEMPTS && !found; attempt++) {
+                            bool avoid = (attempt < ATTEMPTS - 1);
+                            int margin = EDGE_CLEARANCE - attempt;
+                            if (margin < 0) margin = 0;
                             route.clear();
                             route.push_back(from);
                             prev[from] = from;
@@ -2713,6 +2800,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                     int ni = ny * MAP_WIDTH + nx;
                                     if (prev[ni] != -1 || !incomp[ni]) continue;
                                     if (avoid && blocked[ni] && ni != to) continue;
+                                    if (nearedge[ni] && nearedge[ni] <= margin
+                                        && ni != to && !near_end(nx, ny)) continue;
                                     prev[ni] = route[h];
                                     touched.push_back(ni);
                                     route.push_back(ni);
@@ -2770,19 +2859,50 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                             // bounds the swing regardless of how long the path
                             // between two dungeons is, so the trail stays an
                             // even, gentle snake its whole length.
-                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.02f;
+                            //
+                            // How loose it is decides what the snake looks
+                            // like. Stiff enough and the wander never gets
+                            // anywhere: at 0.02 the swing settled around 0.7
+                            // of a tile, well under the width of the trail
+                            // itself, and long runs came out as ruled straight
+                            // lines. This leaves it near a tile and a half,
+                            // inside the clamp, and stretches a full swing out
+                            // over some seventy tiles.
+                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
                             drift += dvel;
                             if (drift >  2.0f) drift =  2.0f;
                             if (drift < -2.0f) drift = -2.0f;
                             float tx2 = fxs[i+1] - fxs[i-1], ty2 = fys[i+1] - fys[i-1];
                             float len2 = sqrtf(tx2*tx2 + ty2*ty2);
                             if (len2 < 0.001f) continue;
-                            float px2 = fxs[i] - ty2 / len2 * drift;
-                            float py2 = fys[i] + tx2 / len2 * drift;
-                            int ix = (int)px2, iy = (int)py2;
-                            if (in_this(ix, iy) && !blocked[(size_t)iy*MAP_WIDTH+ix]) {
+                            // Where the offset point is not somewhere a trail
+                            // can go, shorten it rather than drop it. Refusing
+                            // it outright left the point on the routed line
+                            // while its neighbours stood a full drift away, and
+                            // the brush, which draws between consecutive
+                            // centres, filled that jump in solid — a bulge
+                            // several tiles across in exactly the places the
+                            // drift gets refused most, along the border and
+                            // around lava. Backing off keeps the line
+                            // continuous, so it leans away from the obstacle
+                            // instead of jumping off it.
+                            //
+                            // The drift itself is wound back to what was
+                            // accepted, or the spring would spend the next
+                            // dozen steps hauling a value the line never took
+                            // back toward the centre.
+                            float taken = 0.0f;
+                            for (float s = 1.0f; s > 0.0f; s -= 0.25f) {
+                                float px2 = fxs[i] - ty2 / len2 * drift * s;
+                                float py2 = fys[i] + tx2 / len2 * drift * s;
+                                int ix = (int)px2, iy = (int)py2;
+                                if (!in_this(ix, iy)) continue;
+                                if (blocked[(size_t)iy*MAP_WIDTH + ix]) continue;
                                 fxs[i] = px2; fys[i] = py2;
+                                taken = s;
+                                break;
                             }
+                            drift *= taken;
                         }
 
                         // Draw between consecutive centres rather than stamping
@@ -2811,7 +2931,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         }
                     }
                 }
-                for (int c : comp) incomp[c] = 0;
+                for (int c : comp) { incomp[c] = 0; nearedge[c] = 0; }
             }
         }
     }
