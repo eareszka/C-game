@@ -37,6 +37,7 @@ static const uint8_t glyph_tree[8]        = {0xFE,0xFE,0x18,0x18,0x18,0x18,0x18,
 static const uint8_t glyph_dead_tree[8]   = {0x66,0x3C,0x18,0x18,0x18,0x18,0x18,0x00}; // bare branches
 // Tall tree (two stacked tree tiles): top = canopy, bottom = trunk
 static const uint8_t glyph_water[8]  = {0x62,0x94,0x08,0x62,0x94,0x08,0x62,0x94}; // '~'
+static const uint8_t glyph_bridge[8] = {0xFF,0x00,0xFF,0x00,0xFF,0x00,0xFF,0x00}; // planks
 static const uint8_t glyph_cliff[8]      = {0x24,0x7E,0x24,0x24,0x7E,0x24,0x00,0x00}; // '#'
 static const uint8_t glyph_rock[8]       = {0x3C,0x42,0x81,0x81,0x81,0x42,0x3C,0x00}; // 'o'
 static const uint8_t glyph_cliff_edge[8] = {0xFF,0x00,0xFF,0x00,0xFF,0x00,0xFF,0xFF}; // horizontal strata
@@ -166,6 +167,7 @@ static const TileStyle tile_styles[] =
     { 40,  20,   5, 200, 120,  50, glyph_dungeon_tree_trunk }, // TILE_DUNGEON_LARGE_TREE   (70)
     { 40,  30,  20, 100,  80,  55, glyph_dead_tree         }, // TILE_DEAD_TREE             (71)
     { 62,  28,  14, 100,  60,  35, glyph_path              }, // TILE_WASTE_TRAIL           (72)
+    { 84,  52,  26, 140,  96,  52, glyph_bridge            }, // TILE_WASTE_BRIDGE          (73)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -187,7 +189,7 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 73; // TILE_WASTE_TRAIL + 1
+static const int TILE_CACHE_SIZE = 74; // TILE_WASTE_BRIDGE + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 static SDL_Texture* s_overworld0_tex     = nullptr;
@@ -242,6 +244,14 @@ static bool overlay_site_dry(const Tilemap* map, int tx, int ty) {
             if (in_bounds(nx, ny) && tile_id_is_liquid(map->tiles[ny][nx])) return false;
         }
     return true;
+}
+
+// Trail, and the bridge that carries it over lava. Nothing destroyable stands
+// on either: the overlays are cleared as the trail is painted over them, and
+// the nodes placed later — gravestones, which are scattered when the player
+// first comes near a graveyard — ask this before choosing a tile.
+static inline bool tile_id_is_trail(int t) {
+    return t == TILE_WASTE_TRAIL || t == TILE_WASTE_BRIDGE;
 }
 
 // Sweep the overlays after generation rather than testing at each placement:
@@ -2492,16 +2502,15 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // connect.
     //
     // Runs at the very end because dungeon entrances are the last thing placed.
-    // Everything the trail has to route around — cliffs, lava, towns — is
-    // already on the map by now.
+    // Everything the trail has to route around — cliffs, towns — and everything
+    // it clears out of its way or bridges over is already on the map by now.
     //
     // The dungeons of a region are joined by a minimum spanning tree, so every
     // one is reachable and no pair is linked twice. A chain visiting them in
     // turn would double back across the region; a tree branches the way tracks
     // between places actually do.
     {
-        const int LAVA_CLEARANCE = 3;      // tiles kept between trail and lava
-        // Wider than the lava margin, and asked for rather than required: the
+        // Asked for rather than required: the
         // router gives it up a tile at a time until a way through appears, so
         // this is how far from the border a trail would like to run, not how
         // far it must. Three was enough to stop trails tracing the rim but left
@@ -2519,29 +2528,28 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         std::vector<int> comp, route, touched, path, rimq;
         unsigned int ts = seed ^ 0x7A11D0u;
 
-        // Where a trail may not go: lava, and a margin around it. Shortest
-        // paths hug their obstacles, so without the margin the trail squeezes
-        // flush against the lava and looks like it is running over it.
-        std::vector<uint8_t> blocked((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        for (int y = 0; y < MAP_HEIGHT; y++)
-            for (int x = 0; x < MAP_WIDTH; x++) {
-                if (map->tiles[y][x] != TILE_LAVA) continue;
-                for (int dy = -LAVA_CLEARANCE; dy <= LAVA_CLEARANCE; dy++)
-                    for (int dx = -LAVA_CLEARANCE; dx <= LAVA_CLEARANCE; dx++) {
-                        int nx = x + dx, ny = y + dy;
-                        if (in_bounds(nx, ny)) blocked[(size_t)ny*MAP_WIDTH + nx] = 1;
-                    }
-            }
-
         // Ground a trail can be laid on. Cliffs are excluded here rather than
         // left to the brush: routing over ground that cannot be painted tears
         // a hole in the trail, and mountains are to be gone around anyway.
+        //
+        // Lava counts as ground. A trail crosses it on a bridge rather than
+        // going round, so a channel is something to be spanned and not an
+        // obstacle — and it is not a border either, which matters twice over:
+        // a wasteland cut in two by a channel is one region again, so its
+        // dungeons are joined to each other rather than each stranded on its
+        // own side, and the clearance the route keeps from the biome's border
+        // is no longer measured from the lava.
         auto is_region = [&](int x, int y) {
             int t = map->tiles[y][x];
-            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL) return false;
+            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL
+                && t != TILE_LAVA && t != TILE_WASTE_BRIDGE) return false;
             if (cliff_blocked[y][x]) return false;
             if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
             return true;
+        };
+        auto is_lava = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
         };
 
         for (int y0 = 0; y0 < MAP_HEIGHT && !s_gen_cancel; y0++) {
@@ -2569,6 +2577,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 // dungeon tile itself is not part of the region. Anchor to the
                 // nearest walkable tile of this wasteland instead, and if there
                 // is none within reach the dungeon belongs to somewhere else.
+                //
+                // Not to lava, near as it might be: an anchor is where a trail
+                // begins, and one out in a channel would start it on a stretch
+                // of bridge going nowhere.
                 std::vector<int> anchors;
                 for (int i = 0; i < map->num_dungeon_entrances; i++) {
                     int ex = map->dungeon_entrances[i].x;
@@ -2579,7 +2591,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                             int nx = ex + dx, ny = ey + dy;
                             if (!in_bounds(nx, ny)) continue;
                             size_t ni = (size_t)ny * MAP_WIDTH + nx;
-                            if (!incomp[ni]) continue;
+                            if (!incomp[ni] || is_lava(nx, ny)) continue;
                             int dd = dx*dx + dy*dy;
                             if (dd < bestd) { bestd = dd; best = (int)ni; }
                         }
@@ -2644,6 +2656,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     int pick = -1; long bestd = -1;
                     for (int c : comp) {
                         int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                        if (is_lava(px2, py2)) continue;   // no track ends mid-bridge
                         if (!is_deep(px2, py2)) continue;
                         long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
                         if (dd > bestd) { bestd = dd; pick = c; }
@@ -2654,6 +2667,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         // rather than leave the lone dungeon without a trail.
                         for (int c : comp) {
                             int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                            if (is_lava(px2, py2)) continue;
                             long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
                             if (dd > bestd) { bestd = dd; pick = c; }
                         }
@@ -2735,8 +2749,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 // across a thin barrier: that leaves a scrap of
                                 // trail somewhere it was not asked for.
                                 if (!incomp[pi]) continue;
-                                if (map->tiles[py2][px2] != TILE_WASTELAND) continue;
-                                map->tiles[py2][px2] = TILE_WASTE_TRAIL;
+                                int t = map->tiles[py2][px2];
+                                // Lava the stroke crosses is decked over. The
+                                // brush is what decides how wide a bridge is,
+                                // so it is exactly as wide as the trail either
+                                // side of it and needs no separate handling.
+                                if (t == TILE_LAVA)           map->tiles[py2][px2] = TILE_WASTE_BRIDGE;
+                                else if (t == TILE_WASTELAND) map->tiles[py2][px2] = TILE_WASTE_TRAIL;
+                                else continue;
+                                // Nothing grows on a trail. Trees, dead trees,
+                                // rocks and ore are all scattered long before
+                                // the route through them is known, so they are
+                                // cleared here rather than tested for at
+                                // placement — the same reason the overlays
+                                // beside water are swept afterwards.
+                                map->overlay[py2][px2] = 0;
                             }
                     };
 
@@ -2751,14 +2778,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         // target: a straight run leaves the wasteland wherever
                         // it bends and paints nothing out there.
                         //
-                        // Each attempt gives up a little of what the route
-                        // would rather have: the border margin narrows a tile
-                        // at a time, then goes, then the lava margin goes and
-                        // it takes whatever way there is rather than leave the
-                        // pair unjoined. Giving them up together would cost a
-                        // trail its lava margin the moment a wasteland was too
-                        // narrow to route down the middle of, and dropping the
-                        // border margin in one go would put a route that only
+                        // Each attempt gives up a tile of the border margin,
+                        // down to none, rather than leave the pair unjoined.
+                        // Dropping it in one go would put a route that only
                         // needed to squeeze through one neck back against the
                         // rim for its whole length.
                         //
@@ -2775,11 +2797,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         };
                         bool found = false;
                         path.clear();
-                        const int ATTEMPTS = EDGE_CLEARANCE + 2;
-                        for (int attempt = 0; attempt < ATTEMPTS && !found; attempt++) {
-                            bool avoid = (attempt < ATTEMPTS - 1);
-                            int margin = EDGE_CLEARANCE - attempt;
-                            if (margin < 0) margin = 0;
+                        for (int margin = EDGE_CLEARANCE; margin >= 0 && !found; margin--) {
                             route.clear();
                             route.push_back(from);
                             prev[from] = from;
@@ -2799,7 +2817,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                     if (!in_bounds(nx, ny)) continue;
                                     int ni = ny * MAP_WIDTH + nx;
                                     if (prev[ni] != -1 || !incomp[ni]) continue;
-                                    if (avoid && blocked[ni] && ni != to) continue;
                                     if (nearedge[ni] && nearedge[ni] <= margin
                                         && ni != to && !near_end(nx, ny)) continue;
                                     prev[ni] = route[h];
@@ -2897,7 +2914,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 float py2 = fys[i] + tx2 / len2 * drift * s;
                                 int ix = (int)px2, iy = (int)py2;
                                 if (!in_this(ix, iy)) continue;
-                                if (blocked[(size_t)iy*MAP_WIDTH + ix]) continue;
                                 fxs[i] = px2; fys[i] = py2;
                                 taken = s;
                                 break;
@@ -4277,6 +4293,7 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_SNOW:
         case TILE_WASTELAND:
         case TILE_WASTE_TRAIL:
+        case TILE_WASTE_BRIDGE:
         case TILE_MEADOW:
         // Elevated terrain top surfaces — walkable plateau; cliff FACE tiles are not listed here
         case TILE_CLIFF:        case TILE_CLIFF_2:      case TILE_CLIFF_3:
@@ -4351,6 +4368,13 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // Without this the edge you can see and the edge you can walk to disagree
     // by up to half a tile wherever the outline rounds a corner, which is very
     // visible against a hard edge. Everything else keeps the tile-grid answer.
+    // A bridge is the exception, and has to be tested before the field: it is
+    // a deck laid over lava, so lava reaches into it from every side and the
+    // field would hand most of its pixels to something solid. The deck is
+    // walkable to its tile edges — that is the whole point of it — and it is
+    // the one tile the drawn edge is not the walkable one.
+    if (map->tiles[ty][tx] == TILE_WASTE_BRIDGE) return false;
+
     int mine  = biome_at(map, tx, ty);
     int owner = field_owner_at(map, tx, ty, px, py);
     bool mine_is_solid = biome_solid(mine);
@@ -4401,6 +4425,7 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.
         if (!overlay_site_dry(map, tx, ty)) continue;
+        if (tile_id_is_trail(map->tiles[ty][tx])) continue;
 
         // Reject if another gravestone is already at this tile
         float wx = (float)(tx * TILE_SIZE), wy = (float)(ty * TILE_SIZE);
@@ -4464,6 +4489,7 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.
         if (!overlay_site_dry(map, tx, ty)) continue;
+        if (tile_id_is_trail(map->tiles[ty][tx])) continue;
         resource_nodes_add_gravestone(resources,
             (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE),
             0, 0, -1, -1);

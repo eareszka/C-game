@@ -98,11 +98,15 @@ enum TileId {
     // system can see it as a region and give it a smoothed outline; walkable,
     // and only ever found inside wasteland.
     TILE_WASTE_TRAIL          = 72,
+    // The deck a trail crosses lava on. Placeholder art: the trail routes
+    // through lava rather than around it, and every lava tile it crosses
+    // becomes one of these — walkable, and only ever found with lava around it.
+    TILE_WASTE_BRIDGE         = 73,
 
     // Tiles sampled from assets/tileset.png (256 cols × 256 rows = 65536 tiles).
     // Index within sheet = (tile_id - TILE_TOWN0_BASE).
     // col = index % TOWN0_SHEET_COLS,  row = index / TOWN0_SHEET_COLS.
-    TILE_TOWN0_BASE = 73,
+    TILE_TOWN0_BASE = 74,
     TILE_TOWN0_END  = TILE_TOWN0_BASE + 256 * 256 - 1,
 
     // Tiles sampled from assets/overworld_0.png (18 cols × 8 rows = 144 tiles).
