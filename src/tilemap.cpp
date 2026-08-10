@@ -2601,17 +2601,46 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     }
                 } else if (anchors.size() == 1) {
                     // A lone dungeon has nothing to join. Rather than leave the
-                    // wasteland bare, run its path out to the point furthest
+                    // wasteland bare, run its path out toward the point furthest
                     // away — a track leading somewhere from the mouth. Pairing
                     // it with a dungeon in another wasteland is not an option:
                     // a trail cannot leave the biome to get there.
+                    //
+                    // The literal furthest point of an elongated wasteland
+                    // almost always sits right against its outer border, which
+                    // made the route to it run along that border for most of
+                    // its length instead of just ending out in the waste. Only
+                    // consider points with a clearance ring of the same
+                    // component around them, so the target — and the path
+                    // approaching it — stays away from the edge.
+                    const int EDGE_MARGIN = 3;
                     int a = anchors[0];
                     int ax = a % MAP_WIDTH, ay = a / MAP_WIDTH;
+                    auto is_deep = [&](int px2, int py2) {
+                        for (int dy = -EDGE_MARGIN; dy <= EDGE_MARGIN; dy++)
+                            for (int dx = -EDGE_MARGIN; dx <= EDGE_MARGIN; dx++) {
+                                int nx = px2 + dx, ny = py2 + dy;
+                                if (!in_bounds(nx, ny)) return false;
+                                if (!incomp[(size_t)ny * MAP_WIDTH + nx]) return false;
+                            }
+                        return true;
+                    };
                     int pick = -1; long bestd = -1;
                     for (int c : comp) {
                         int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                        if (!is_deep(px2, py2)) continue;
                         long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
                         if (dd > bestd) { bestd = dd; pick = c; }
+                    }
+                    if (pick < 0) {
+                        // No point has full clearance — a thin sliver of a
+                        // wasteland. Fall back to the plain furthest point
+                        // rather than leave the lone dungeon without a trail.
+                        for (int c : comp) {
+                            int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                            long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                            if (dd > bestd) { bestd = dd; pick = c; }
+                        }
                     }
                     if (pick >= 0) edges.push_back({ a, pick });
                 }
@@ -2732,10 +2761,19 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         for (size_t i = 1; i + 1 < path.size(); i++) {
                             ts = ts * 1664525u + 1013904223u;
                             float kick = (float)((ts >> 16) % 2001u) / 1000.0f - 1.0f;
-                            dvel = dvel * 0.94f + kick * 0.06f;
+                            // Pull the wander back toward the centreline as it
+                            // goes, not just clamp it: without a restoring
+                            // force this is an integrated random walk, so its
+                            // swing keeps growing with every extra step and a
+                            // long path ends up far more distorted at its far
+                            // end than near where it started. The spring term
+                            // bounds the swing regardless of how long the path
+                            // between two dungeons is, so the trail stays an
+                            // even, gentle snake its whole length.
+                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.02f;
                             drift += dvel;
-                            if (drift >  4.0f) drift =  4.0f;
-                            if (drift < -4.0f) drift = -4.0f;
+                            if (drift >  2.0f) drift =  2.0f;
+                            if (drift < -2.0f) drift = -2.0f;
                             float tx2 = fxs[i+1] - fxs[i-1], ty2 = fys[i+1] - fys[i-1];
                             float len2 = sqrtf(tx2*tx2 + ty2*ty2);
                             if (len2 < 0.001f) continue;
