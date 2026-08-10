@@ -726,6 +726,60 @@ static void stamp_village_blueprint(Tilemap* map, int variant, int tx, int ty) {
     map->villages[vi] = { tx, ty, variant };
 }
 
+// The wasteland citadel stands inside a ring of lava with no way across it, so
+// reaching it waits on an item that lets you cross. That only holds if the ring
+// is unbroken, which is what these three numbers and the way it is drawn are
+// for: a gap of one tile anywhere would undo the whole thing.
+static const int MOAT_RADIUS = 20;   // from the middle of the castle to the middle of the ring
+static const int MOAT_WOBBLE = 4;    // how far in and out the ring wanders
+static const int MOAT_HALF   = 2;    // half the channel's width, so five tiles across
+// Everything the ring can reach, with a tile to spare. Used well away from here
+// to keep trails from bridging it.
+static const int MOAT_REACH  = MOAT_RADIUS + MOAT_WOBBLE + MOAT_HALF + 2;
+
+// Drawn as a ring of overlapping blobs rather than as a band between two radii.
+// A band has to decide, tile by tile, whether each one is inside it, and a
+// wobble that changes faster than the shell it is cutting leaves a hole. Blobs
+// cannot: consecutive centres here are a sixth of a tile apart and each blob is
+// two across, so the painted run is unbroken by construction, and it closes on
+// itself because the radius is built from harmonics of the angle — periodic, so
+// the last step meets the first exactly.
+static void stamp_castle_moat(Tilemap* map, int tx, int ty, unsigned int seed) {
+    float ccx = tx + CASTLE_W * 0.5f, ccy = ty + CASTLE_H * 0.5f;
+    // Amplitudes summing to MOAT_WOBBLE, so the ring's radius stays inside the
+    // range the reach above is worked out from however the phases land.
+    static const float SHARE[3] = { 0.5f, 0.3f, 0.2f };
+    float ph[3];
+    unsigned int s = seed ^ 0x1A7A0A7Au;
+    for (int k = 0; k < 3; k++) {
+        s = s * 1664525u + 1013904223u;
+        ph[k] = (float)((s >> 16) & 0xFFFFu) / 65536.0f * 6.28318f;
+    }
+    const int STEPS = 1024;
+    for (int i = 0; i < STEPS; i++) {
+        float th = 6.28318f * (float)i / (float)STEPS;
+        float r = (float)MOAT_RADIUS;
+        for (int k = 0; k < 3; k++)
+            r += MOAT_WOBBLE * SHARE[k] * sinf((float)(k + 1) * th + ph[k]);
+        int px = (int)(ccx + cosf(th) * r);
+        int py = (int)(ccy + sinf(th) * r);
+        for (int dy = -MOAT_HALF; dy <= MOAT_HALF; dy++)
+            for (int dx = -MOAT_HALF; dx <= MOAT_HALF; dx++) {
+                if (dx*dx + dy*dy > MOAT_HALF*MOAT_HALF + 1) continue;
+                int nx = px + dx, ny = py + dy;
+                if (!in_bounds(nx, ny)) continue;
+                // Over whatever is there — the ring has to be closed, and a
+                // stretch of it declining to paint because the wasteland ran
+                // out is exactly the gap this is guarding against. Not over the
+                // castle: the geometry keeps well clear of the walls, and this
+                // is here so that stays true if the numbers are ever changed.
+                if (map->tiles[ny][nx] == TILE_CASTLE_PLACEHOLDER) continue;
+                map->tiles[ny][nx]   = TILE_LAVA;
+                map->overlay[ny][nx] = 0;
+            }
+    }
+}
+
 static void stamp_castle_blueprint(Tilemap* map, int type, int tx, int ty) {
     for (int dy = 0; dy < CASTLE_H; dy++)
         for (int dx = 0; dx < CASTLE_W; dx++) {
@@ -2279,6 +2333,16 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         int tx = lava_tiles[idx].first  - CASTLE_W / 2;
                         int ty = lava_tiles[idx].second - CASTLE_H / 2;
                         if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
+                        // Room for the whole moat, not just the castle. Placed
+                        // against the edge of the world, the ring runs off it
+                        // and the citadel ends up walled by the map boundary on
+                        // that side instead of by lava — sealed, but only by
+                        // accident, and it reads as a moat someone forgot to
+                        // finish.
+                        if (tx + CASTLE_W / 2 - MOAT_REACH < 0 ||
+                            ty + CASTLE_H / 2 - MOAT_REACH < 0 ||
+                            tx + CASTLE_W / 2 + MOAT_REACH >= MAP_WIDTH ||
+                            ty + CASTLE_H / 2 + MOAT_REACH >= MAP_HEIGHT) continue;
                         int waste_count = 0; bool valid = true;
                         for (int dy = 0; dy < CASTLE_H && valid; dy++)
                             for (int dx = 0; dx < CASTLE_W && valid; dx++) {
@@ -2291,6 +2355,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         if (!valid) continue;
                         if (pass == 1 && waste_count * 4 < CASTLE_W * CASTLE_H * 3) continue;
                         stamp_castle_blueprint(map, 2, tx, ty);
+                        stamp_castle_moat(map, tx, ty, seed);
                         placed = true;
                     }
                 }
@@ -2373,6 +2438,18 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int cax = map->castles[i].x, cay = map->castles[i].y;
                 if (ex + sz > cax && ex < cax + CASTLE_W &&
                     ey + sz > cay && ey < cay + CASTLE_H) return false;
+            }
+            // And anywhere the wasteland citadel's moat reaches. An entrance
+            // stamp writes over whatever is under it, so one landing on the
+            // ring would cut a walkable gap through the one thing that is
+            // supposed to have none — and one landing inside the ring would be
+            // a dungeon nobody can reach until they can cross lava.
+            if (map->castles[2].x >= 0) {
+                int mx = map->castles[2].x + CASTLE_W / 2;
+                int my = map->castles[2].y + CASTLE_H / 2;
+                int nx = (ex + sz / 2) - mx, ny = (ey + sz / 2) - my;
+                int keep = MOAT_REACH + sz;
+                if (nx*nx + ny*ny <= keep * keep) return false;
             }
             return true;
         };
@@ -2539,10 +2616,23 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // dungeons are joined to each other rather than each stranded on its
         // own side, and the clearance the route keeps from the biome's border
         // is no longer measured from the lava.
+        // The citadel's moat is the one lava a trail may not cross. Bridging it
+        // would hand over the way in that the ring exists to withhold, so lava
+        // anywhere the moat can reach is an obstacle again rather than
+        // something to span — which also leaves the ground inside the ring a
+        // region of its own, with no route out of it.
+        const CastlePlacement& citadel = map->castles[2];
+        int moat_cx = citadel.x + CASTLE_W / 2, moat_cy = citadel.y + CASTLE_H / 2;
+        auto in_moat = [&](int x, int y) {
+            if (citadel.x < 0) return false;
+            int dx = x - moat_cx, dy = y - moat_cy;
+            return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
+        };
         auto is_region = [&](int x, int y) {
             int t = map->tiles[y][x];
             if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL
                 && t != TILE_LAVA && t != TILE_WASTE_BRIDGE) return false;
+            if ((t == TILE_LAVA || t == TILE_WASTE_BRIDGE) && in_moat(x, y)) return false;
             if (cliff_blocked[y][x]) return false;
             if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
             return true;
@@ -2951,6 +3041,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
     }
+    // The citadel's moat, laid again over whatever has happened since it was
+    // first drawn. It is stamped when the castle is placed, because everything
+    // after that needs to see the lava — the trail router reads it, and the
+    // entrances keep away from it — but a stamp is only as good as the last
+    // thing to write those tiles, and plenty of passes between there and here
+    // write tiles without asking what was underneath. One four-tile entrance
+    // across the ring is a doorway.
+    //
+    // Drawing it twice from the same seed costs a thousand steps and makes the
+    // ring the last word rather than the first, so the invariant holds no
+    // matter what is added to generation later: there is no way to the castle
+    // that does not cross lava.
+    if (map->castles[2].x >= 0)
+        stamp_castle_moat(map, map->castles[2].x, map->castles[2].y, seed);
+
     // Last, after every pond, stream and town stamp has had its say.
     clear_overlays_near_liquid(map);
     GEN_STAGE(map, "final");
