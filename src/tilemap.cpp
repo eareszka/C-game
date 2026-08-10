@@ -2322,9 +2322,36 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 for (int x = 0; x < MAP_WIDTH; x++)
                     if (map->tiles[y][x] == TILE_LAVA)
                         lava_tiles.push_back({x, y});
+            // Everything the ring will lie on, and a two-tile skirt outside it,
+            // has to be this biome's own ground — which is what MOAT_REACH is:
+            // the ring's outer edge plus two. A site that fails this is one
+            // where the lava runs off the wasteland and into the grass, or up
+            // the side of a mountain, which is what the wasteland's cliffs are.
+            //
+            // Towns and villages are already stamped by now and castles 0 and 1
+            // are placed above, so their tiles are on the map for this to see.
+            // What comes after — dungeon entrances, then the trails — keeps
+            // clear of the moat's reach on its own account.
+            auto moat_site_clear = [&](int mx, int my) {
+                for (int dy = -MOAT_REACH; dy <= MOAT_REACH; dy++)
+                    for (int dx = -MOAT_REACH; dx <= MOAT_REACH; dx++) {
+                        if (dx*dx + dy*dy > MOAT_REACH * MOAT_REACH) continue;
+                        int nx = mx + dx, ny = my + dy;
+                        if (!in_bounds(nx, ny)) return false;
+                        int t = map->tiles[ny][nx];
+                        if (t != TILE_WASTELAND && t != TILE_LAVA) return false;
+                    }
+                return true;
+            };
+
             bool placed = false;
             if (!lava_tiles.empty()) {
-                for (int pass = 0; pass < 2 && !placed; pass++) {
+                // A third pass, and only if the first two find nowhere at all:
+                // it drops the requirement above rather than leave the world
+                // without its citadel. Nothing in the seeds tried has needed
+                // it — a wasteland with lava in it has room for a ring
+                // somewhere — but "no castle" is the worse failure of the two.
+                for (int pass = 0; pass < 3 && !placed; pass++) {
                     unsigned int ls = seed ^ 0xA55A001Bu;
                     ls = ls * 1664525u + 1013904223u;
                     int start = (int)((ls >> 16) % (unsigned)lava_tiles.size());
@@ -2353,7 +2380,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 else if (pass == 0) { valid = false; break; }
                             }
                         if (!valid) continue;
-                        if (pass == 1 && waste_count * 4 < CASTLE_W * CASTLE_H * 3) continue;
+                        if (pass >= 1 && waste_count * 4 < CASTLE_W * CASTLE_H * 3) continue;
+                        // Last because it is the dearest: a couple of thousand
+                        // tiles per candidate, where the tests above turn most
+                        // of them away after a handful.
+                        if (pass < 2 && !moat_site_clear(tx + CASTLE_W / 2,
+                                                         ty + CASTLE_H / 2)) continue;
                         stamp_castle_blueprint(map, 2, tx, ty);
                         stamp_castle_moat(map, tx, ty, seed);
                         placed = true;
