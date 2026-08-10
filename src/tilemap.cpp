@@ -3958,49 +3958,168 @@ static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover
 static const int CLIFF_ART_COL = 27;   // leftmost column of the block
 static const int CLIFF_ART_ROW = 0;    // topmost row
 
-// Only elevation 1 is drawn so far. The rest take the same art until their own
-// blocks exist; the shade that tells the layers apart comes from tile_styles
-// and is applied over the top of it.
-static int cliff_art_cell(int x, int y, int t) {
-    if (!s_town0_tex) return -1;
+// Which layer a plateau tile is, or 0 for anything that is not plateau surface.
+static int cliff_body_elev(int t) {
+    switch (t) {
+        case TILE_CLIFF:   case TILE_CLIFF_SNOW_1: case TILE_CLIFF_WASTE_1: return 1;
+        case TILE_CLIFF_2: case TILE_CLIFF_SNOW_2: case TILE_CLIFF_WASTE_2: return 2;
+        case TILE_CLIFF_3: case TILE_CLIFF_SNOW_3: case TILE_CLIFF_WASTE_3: return 3;
+        case TILE_CLIFF_4: case TILE_CLIFF_SNOW_4: case TILE_CLIFF_WASTE_4: return 4;
+        case TILE_CLIFF_5: case TILE_CLIFF_SNOW_5: case TILE_CLIFF_WASTE_5: return 5;
+        default: return 0;
+    }
+}
+static bool cliff_is_face_tile(int t) {
+    return (t >= TILE_CLIFF_EDGE_1   && t <= TILE_CLIFF_EDGE_5)
+        || (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_CORNER_NE_5)
+        || (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_BACK_5);
+}
+
+// Which way is away from the plateau a ring tile belongs to. The tile's own
+// role says it: a west face has its plateau to the east, a back face has it to
+// the south, and so on. What lies that way is what the ring tile is level with.
+static bool cliff_ring_outward(int t, int* dx, int* dy) {
+    if (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_SIDE_5)   { *dx = -1; *dy =  0; return true; }
+    if (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_SIDE_E_5) { *dx =  1; *dy =  0; return true; }
+    if (t >= TILE_CLIFF_BACK_1   && t <= TILE_CLIFF_BACK_5)   { *dx =  0; *dy = -1; return true; }
+    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) { *dx = -1; *dy = -1; return true; }
+    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) { *dx =  1; *dy = -1; return true; }
+    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) { *dx = -1; *dy =  1; return true; }
+    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) { *dx =  1; *dy =  1; return true; }
+    return false;
+}
+
+// Returned instead of a cell for the ring of tiles around a plateau that
+// generation fills with side, back and corner faces. The art puts the rim on
+// the plateau's own edge tiles rather than on the ground beside it — the side
+// and back cells are four-fifths white, so they are surface with a rim along
+// one side, not a face. Drawing them out here made every plateau read a tile
+// wider than it is and pushed a white notch into the south face wherever the
+// edge stepped.
+//
+// The ring still exists and is still impassable, so a cliff is walled as it
+// always was; it just draws as the ground it stands in. Which does mean the
+// wall is a tile further out than the drawn edge.
+static const int CLIFF_ART_HIDDEN = -2;
+
+// Two blocks of art, and they do different jobs.
+//
+//   cols 27-29, rows 0-4   the rim: an outline with nothing inside it. The
+//                          middle of the block is keyed out entirely, so a
+//                          plateau tile draws its own ground and then wears as
+//                          many of these as it has open sides. That is what
+//                          being hollow buys — a tile at a step in the edge is
+//                          exposed north and west at once, and two opaque
+//                          cells could not both be on it.
+//   cols 30-32, rows 2-4   the hill: solid rock, for the face below a plateau.
+//                          Nine-sliced, so a face of any height and length has
+//                          a top course, a fill and a rounded foot.
+//
+// The one-tile-tall face — every elevation-1 cliff, so most of them — is the
+// rim block's own bottom row, which is drawn with both a top edge and a
+// rounded foot in the one cell.
+static const int CLIFF_HILL_COL = 30;   // solid face block, cols 30-32
+static const int CLIFF_HILL_TOP = 2;    // its top course; +1 fill, +2 foot
+
+// Does this tile show rock face? Any south-face tile does, and so does a ring
+// tile with a plateau directly above it — at a step in the edge the side pass
+// overwrote the south face the earlier pass had already put there, so the tile
+// carries a side-face id while being, in every visible sense, the face of the
+// plateau above. Without this the outline broke at every step, which is most of
+// them: the terrain steps far more often than it runs straight.
+static bool cliff_draws_face(const Tilemap* map, int x, int y) {
+    if (!in_bounds(x, y)) return false;
+    int t = map->tiles[y][x];
+    if (t >= TILE_CLIFF_EDGE_1 && t <= TILE_CLIFF_EDGE_5) return true;
+    return cliff_is_face_tile(t) && in_bounds(x, y - 1)
+        && cliff_body_elev(map->tiles[y - 1][x]) > 0;
+}
+
+// Up to three cells to draw over the tile's ground, in order. Returns how many,
+// 0 for a tile that is not cliff, or CLIFF_ART_HIDDEN for the ring.
+static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3]) {
+    if (!s_town0_tex) return 0;
     auto band = [&](int col) {
-        // 1, 2 or 3 — one of the three middle rows.
         return sheet_cell(col, CLIFF_ART_ROW + 1 + (int)(cover_hash(x, y, 0xC11FF000u) % 3u));
     };
     const int L = CLIFF_ART_COL, M = CLIFF_ART_COL + 1, R = CLIFF_ART_COL + 2;
     const int TOP = CLIFF_ART_ROW, BOT = CLIFF_ART_ROW + 4;
+    int n_out = 0;
 
-    // Plateau surface, whichever biome it belongs to: the art draws one top and
-    // all three families use it.
-    if (t == TILE_CLIFF || (t >= TILE_CLIFF_2 && t <= TILE_CLIFF_5)) return band(M);
-    if (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  return band(M);
-    if (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) return band(M);
+    // The plateau surface: its own ground, with a rim along every side that
+    // falls away. The corner cells carry both of their sides, so they stand in
+    // for the pair rather than adding to it.
+    int E = cliff_body_elev(t);
+    if (E > 0) {
+        auto drops = [&](int nx, int ny) {
+            return !in_bounds(nx, ny) || cliff_body_elev(map->tiles[ny][nx]) < E;
+        };
+        bool n = drops(x, y - 1), w = drops(x - 1, y), e = drops(x + 1, y);
+        bool north_done = false;
+        if (n && w) { out[n_out++] = sheet_cell(L, TOP); north_done = true; }
+        if (n && e) { out[n_out++] = sheet_cell(R, TOP); north_done = true; }
+        if (n && !north_done) out[n_out++] = sheet_cell(M, TOP);
+        if (w && !(n && w)) out[n_out++] = band(L);
+        if (e && !(n && e)) out[n_out++] = band(R);
+        return n_out;
+    }
 
-    if (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_SIDE_5)   return band(L);
-    if (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_SIDE_E_5) return band(R);
-    if (t >= TILE_CLIFF_BACK_1   && t <= TILE_CLIFF_BACK_5)   return sheet_cell(M, TOP);
-    if (t >= TILE_CLIFF_EDGE_1   && t <= TILE_CLIFF_EDGE_5)   return sheet_cell(M, BOT);
+    // The face below a plateau. Where it sits in its own run decides the cell:
+    // which course down, and which end along.
+    if (cliff_draws_face(map, x, y)) {
+        auto is_face = [&](int nx, int ny) { return cliff_draws_face(map, nx, ny); };
+        bool above = is_face(x, y - 1), below = is_face(x, y + 1);
+        bool lend  = !is_face(x - 1, y), rend = !is_face(x + 1, y);
+        int off = (lend && !rend) ? 0 : ((rend && !lend) ? 2 : 1);
+        if (!above && !below) {
+            out[n_out++] = sheet_cell(CLIFF_ART_COL + off, BOT);   // one course tall
+        } else {
+            int row = !above ? CLIFF_HILL_TOP
+                    : (!below ? CLIFF_HILL_TOP + 2 : CLIFF_HILL_TOP + 1);
+            out[n_out++] = sheet_cell(CLIFF_HILL_COL + off, row);
+        }
+        return n_out;
+    }
 
-    // The corners. Generation lays SW and SE at the foot of a side face and NW
-    // and NE on the diagonal above it, which is where the silhouette's four
-    // rounded corners belong.
-    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) return sheet_cell(L, BOT);
-    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) return sheet_cell(R, BOT);
-    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) return sheet_cell(L, TOP);
-    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) return sheet_cell(R, TOP);
-    return -1;
+    if (cliff_is_face_tile(t)) return CLIFF_ART_HIDDEN;
+    return 0;
 }
 
-// What shows through the corners. Those four cells key their outside corner out
-// to nothing, so something has to be under them, and it should be the ground
-// the cliff is standing in rather than a fixed guess — grass behind a snowfield
-// cliff would read as a hole. Nearest neighbour that is not itself cliff.
+// The ground a plateau's surface is made of. Each of the three cliff families
+// belongs to a biome and that is the whole point of having three: the rim is
+// drawn over grass, snow or waste rather than over a colour of its own.
+static const GroundCover* cliff_top_cover(int t) {
+    if (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  return &COVER_SNOW;
+    if (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) return &COVER_WASTE;
+    return &COVER_GRASS;
+}
+
+// What shows through the keyed-out corners, and what the hidden ring draws as.
+// It should be the ground the cliff is standing in rather than a fixed guess —
+// grass behind a snowfield cliff would read as a hole.
+//
+// A ring tile is level with whatever is on the far side of it from its own
+// plateau, so that is asked first. Where two plateaus sit against each other
+// the ground on that side is the lower one's surface, and taking the nearest
+// non-cliff neighbour instead ran a strip of grass down between them.
 static const GroundCover* cliff_under_cover(const Tilemap* map, int x, int y) {
+    int ox, oy;
+    if (cliff_ring_outward(map->tiles[y][x], &ox, &oy)) {
+        int nx = x + ox, ny = y + oy;
+        if (in_bounds(nx, ny)) {
+            int q = map->tiles[ny][nx];
+            if (cliff_body_elev(q) == 0 && !cliff_is_face_tile(q)) {
+                const GroundCover* c = tile_cover(map, nx, ny);
+                if (c) return c;
+            }
+        }
+    }
     static const int NB[8][2] = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{-1,1},{1,-1},{-1,-1}};
     for (int i = 0; i < 8; i++) {
         int nx = x + NB[i][0], ny = y + NB[i][1];
         if (!in_bounds(nx, ny)) continue;
-        if (cliff_art_cell(nx, ny, map->tiles[ny][nx]) >= 0) continue;
+        int q = map->tiles[ny][nx];
+        if (cliff_body_elev(q) > 0 || cliff_is_face_tile(q)) continue;
         const GroundCover* c = tile_cover(map, nx, ny);
         if (c) return c;
     }
@@ -4222,17 +4341,26 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // A cliff draws as ground with its piece of the silhouette laid
                 // over: the corners of that art are keyed out, and what belongs
                 // behind them is the terrain the cliff stands in.
-                int cliff_art = cliff_art_cell(x, y, tile_id);
-                const GroundCover* cover = (cliff_art >= 0) ? cliff_under_cover(map, x, y)
-                                                            : tile_cover(map, x, y);
+                int layers[3];
+                int n_layers = cliff_art_layers(map, x, y, tile_id, layers);
+                bool is_ring  = (n_layers == CLIFF_ART_HIDDEN);
+                bool is_body  = (cliff_body_elev(tile_id) > 0);
+                bool is_cliff = is_ring || is_body || n_layers > 0;
+                if (is_ring) n_layers = 0;
+                // A plateau's surface is its biome's ground; the ring takes the
+                // ground it is level with; everything else its own cover.
+                const GroundCover* cover = is_body ? cliff_top_cover(tile_id)
+                                         : (is_cliff ? cliff_under_cover(map, x, y)
+                                                     : tile_cover(map, x, y));
                 bool is_town = (tile_id >= TILE_TOWN0_BASE);
                 if (cover)
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
-                else if (cliff_art < 0)
+                else if (!is_cliff)
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
                 draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
-                if (cliff_art >= 0)   blit_tile(renderer, cliff_art, screen_x, screen_y, draw_size);
-                else if (is_town)     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                for (int li = 0; li < n_layers; li++)
+                    blit_tile(renderer, layers[li], screen_x, screen_y, draw_size);
+                if (!is_cliff && is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 
