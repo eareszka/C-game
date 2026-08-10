@@ -46,7 +46,10 @@ enum TileId {
     TILE_CLIFF_WASTE_3 = 31,
     TILE_CLIFF_WASTE_4 = 32,
     TILE_CLIFF_WASTE_5 = 33,
-    // East/west side-face tiles (one per elevation layer, same brown gradient as edges)
+    // West side-face tiles (one per elevation layer, same brown gradient as edges).
+    // East faces and the north back face have their own ids further down: the
+    // art draws all three differently, the west and east being mirrors of each
+    // other and the back face being the rim seen from above.
     TILE_CLIFF_SIDE_1 = 34,
     TILE_CLIFF_SIDE_2 = 35,
     TILE_CLIFF_SIDE_3 = 36,
@@ -103,10 +106,25 @@ enum TileId {
     // becomes one of these — walkable, and only ever found with lava around it.
     TILE_WASTE_BRIDGE         = 73,
 
+    // East side-face, and the north back-face: the rim of the plateau seen from
+    // above, one tile deep whatever the elevation, where the side faces stack a
+    // tile per layer. All three were one id until the art arrived and drew them
+    // as three different things.
+    TILE_CLIFF_SIDE_E_1 = 74,
+    TILE_CLIFF_SIDE_E_2 = 75,
+    TILE_CLIFF_SIDE_E_3 = 76,
+    TILE_CLIFF_SIDE_E_4 = 77,
+    TILE_CLIFF_SIDE_E_5 = 78,
+    TILE_CLIFF_BACK_1   = 79,
+    TILE_CLIFF_BACK_2   = 80,
+    TILE_CLIFF_BACK_3   = 81,
+    TILE_CLIFF_BACK_4   = 82,
+    TILE_CLIFF_BACK_5   = 83,
+
     // Tiles sampled from assets/tileset.png (256 cols × 256 rows = 65536 tiles).
     // Index within sheet = (tile_id - TILE_TOWN0_BASE).
     // col = index % TOWN0_SHEET_COLS,  row = index / TOWN0_SHEET_COLS.
-    TILE_TOWN0_BASE = 74,
+    TILE_TOWN0_BASE = 84,
     TILE_TOWN0_END  = TILE_TOWN0_BASE + 256 * 256 - 1,
 
     // Tiles sampled from assets/overworld_0.png (18 cols × 8 rows = 144 tiles).

@@ -168,6 +168,18 @@ static const TileStyle tile_styles[] =
     { 40,  30,  20, 100,  80,  55, glyph_dead_tree         }, // TILE_DEAD_TREE             (71)
     { 62,  28,  14, 100,  60,  35, glyph_path              }, // TILE_WASTE_TRAIL           (72)
     { 84,  52,  26, 140,  96,  52, glyph_bridge            }, // TILE_WASTE_BRIDGE          (73)
+    // East faces and north back-faces, same brown gradient as the west faces
+    // they were split out of.
+    {100,  65,  25,  140,  90,  40, glyph_cliff_side }, // TILE_CLIFF_SIDE_E_1 (74)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_side }, // TILE_CLIFF_SIDE_E_2 (75)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_side }, // TILE_CLIFF_SIDE_E_3 (76)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_side }, // TILE_CLIFF_SIDE_E_4 (77)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_side }, // TILE_CLIFF_SIDE_E_5 (78)
+    {100,  65,  25,  140,  90,  40, glyph_cliff_side }, // TILE_CLIFF_BACK_1   (79)
+    { 90,  58,  22,  130,  82,  36, glyph_cliff_side }, // TILE_CLIFF_BACK_2   (80)
+    { 80,  52,  20,  120,  74,  32, glyph_cliff_side }, // TILE_CLIFF_BACK_3   (81)
+    { 70,  46,  18,  110,  66,  28, glyph_cliff_side }, // TILE_CLIFF_BACK_4   (82)
+    { 60,  40,  16,  100,  58,  24, glyph_cliff_side }, // TILE_CLIFF_BACK_5   (83)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -189,7 +201,15 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 74; // TILE_WASTE_BRIDGE + 1
+static const int TILE_CACHE_SIZE = 84; // TILE_CLIFF_BACK_5 + 1
+// Every id below TILE_TOWN0_BASE draws from tile_styles and gets a cached
+// texture, so the three have to agree. They are three separate edits when a
+// tile is added and it is the second one that gets forgotten, which shows up
+// as a tile drawn from whatever is off the end of the table.
+static_assert(NUM_TILE_STYLES == TILE_CACHE_SIZE,
+              "tile_styles needs one entry per tile id below TILE_TOWN0_BASE");
+static_assert(TILE_CACHE_SIZE == TILE_TOWN0_BASE,
+              "TILE_CACHE_SIZE must cover exactly the non-sheet tile ids");
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 static SDL_Texture* s_overworld0_tex     = nullptr;
@@ -1705,10 +1725,22 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Run bottom-to-top so higher-elevation cliffs overwrite lower-elevation placements
     // at shared positions, mirroring the south-face pass ordering.
     {
+        // West and east faces are mirrors of each other in the art, and the
+        // north rim is a different thing again, so each gets its own tile.
         static const int side_tile[] = {
             0,
             TILE_CLIFF_SIDE_1, TILE_CLIFF_SIDE_2, TILE_CLIFF_SIDE_3,
             TILE_CLIFF_SIDE_4, TILE_CLIFF_SIDE_5,
+        };
+        static const int side_tile_e[] = {
+            0,
+            TILE_CLIFF_SIDE_E_1, TILE_CLIFF_SIDE_E_2, TILE_CLIFF_SIDE_E_3,
+            TILE_CLIFF_SIDE_E_4, TILE_CLIFF_SIDE_E_5,
+        };
+        static const int back_tile[] = {
+            0,
+            TILE_CLIFF_BACK_1, TILE_CLIFF_BACK_2, TILE_CLIFF_BACK_3,
+            TILE_CLIFF_BACK_4, TILE_CLIFF_BACK_5,
         };
         static const int corner_sw[] = {
             0,
@@ -1750,7 +1782,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         int ey = y + d;
                         if (ey >= MAP_HEIGHT)             { full = false; break; }
                         if (cliff_elev(map->tiles[ey][x+1]) >= E) { full = false; break; }
-                        map->tiles[ey][x+1] = side_tile[E];
+                        map->tiles[ey][x+1] = side_tile_e[E];
                     }
                     if (full) {
                         int cy = y + E;
@@ -1768,7 +1800,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int E = cliff_elev(map->tiles[y][x]);
                 if (E == 0) continue;
                 if (cliff_elev(map->tiles[y-1][x]) >= E) continue;
-                map->tiles[y-1][x] = side_tile[E];
+                map->tiles[y-1][x] = back_tile[E];
             }
         }
 
@@ -2073,8 +2105,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Slope-only subset: edge faces, side faces, and corner transitions.
     // These are the "side of a mountain" tiles — not flat ground.
     auto is_cliff_slope = [](int bt) -> bool {
-        return (bt >= TILE_CLIFF_EDGE_1 && bt <= TILE_CLIFF_EDGE_5)     // 12-16: south drop
-            || (bt >= TILE_CLIFF_SIDE_1 && bt <= TILE_CLIFF_CORNER_NE_5); // 34-58: sides/corners
+        return (bt >= TILE_CLIFF_EDGE_1   && bt <= TILE_CLIFF_EDGE_5)     // 12-16: south drop
+            || (bt >= TILE_CLIFF_SIDE_1   && bt <= TILE_CLIFF_CORNER_NE_5) // 34-58: west sides/corners
+            || (bt >= TILE_CLIFF_SIDE_E_1 && bt <= TILE_CLIFF_BACK_5);     // 74-83: east sides, back faces
     };
 
     GEN_STAGE(map, "before Towns 1-3");
@@ -3891,6 +3924,75 @@ static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover
     return cover->plain;
 }
 
+// ── Cliff art ───────────────────────────────────────────────────────────────
+// Hand-drawn at cols 27-29, rows 0-4 of the sheet, as one closed silhouette:
+//
+//     NW   back   NE          row 0
+//     W    top    E           rows 1-3, three variants of the same band
+//     SW   south  SE          row 4
+//
+// The three middle rows are the same band drawn three times over, so a long
+// face or a wide plateau picks between them per tile instead of repeating one
+// cell into a visible stripe.
+//
+// It lines up with where generation already puts each piece: the plateau body
+// takes the middle, and the rim tiles it lays around the body — back face one
+// row north, side faces down each flank, south face below, corners on the
+// diagonals — take the eight around it. So there is nothing to work out at
+// draw time beyond which row a middle cell should use; the tile id already
+// says which of the nine it is.
+static const int CLIFF_ART_COL = 27;   // leftmost column of the block
+static const int CLIFF_ART_ROW = 0;    // topmost row
+
+// Only elevation 1 is drawn so far. The rest take the same art until their own
+// blocks exist; the shade that tells the layers apart comes from tile_styles
+// and is applied over the top of it.
+static int cliff_art_cell(int x, int y, int t) {
+    if (!s_town0_tex) return -1;
+    auto band = [&](int col) {
+        // 1, 2 or 3 — one of the three middle rows.
+        return sheet_cell(col, CLIFF_ART_ROW + 1 + (int)(cover_hash(x, y, 0xC11FF000u) % 3u));
+    };
+    const int L = CLIFF_ART_COL, M = CLIFF_ART_COL + 1, R = CLIFF_ART_COL + 2;
+    const int TOP = CLIFF_ART_ROW, BOT = CLIFF_ART_ROW + 4;
+
+    // Plateau surface, whichever biome it belongs to: the art draws one top and
+    // all three families use it.
+    if (t == TILE_CLIFF || (t >= TILE_CLIFF_2 && t <= TILE_CLIFF_5)) return band(M);
+    if (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  return band(M);
+    if (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) return band(M);
+
+    if (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_SIDE_5)   return band(L);
+    if (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_SIDE_E_5) return band(R);
+    if (t >= TILE_CLIFF_BACK_1   && t <= TILE_CLIFF_BACK_5)   return sheet_cell(M, TOP);
+    if (t >= TILE_CLIFF_EDGE_1   && t <= TILE_CLIFF_EDGE_5)   return sheet_cell(M, BOT);
+
+    // The corners. Generation lays SW and SE at the foot of a side face and NW
+    // and NE on the diagonal above it, which is where the silhouette's four
+    // rounded corners belong.
+    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) return sheet_cell(L, BOT);
+    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) return sheet_cell(R, BOT);
+    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) return sheet_cell(L, TOP);
+    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) return sheet_cell(R, TOP);
+    return -1;
+}
+
+// What shows through the corners. Those four cells key their outside corner out
+// to nothing, so something has to be under them, and it should be the ground
+// the cliff is standing in rather than a fixed guess — grass behind a snowfield
+// cliff would read as a hole. Nearest neighbour that is not itself cliff.
+static const GroundCover* cliff_under_cover(const Tilemap* map, int x, int y) {
+    static const int NB[8][2] = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{-1,1},{1,-1},{-1,-1}};
+    for (int i = 0; i < 8; i++) {
+        int nx = x + NB[i][0], ny = y + NB[i][1];
+        if (!in_bounds(nx, ny)) continue;
+        if (cliff_art_cell(nx, ny, map->tiles[ny][nx]) >= 0) continue;
+        const GroundCover* c = tile_cover(map, nx, ny);
+        if (c) return c;
+    }
+    return nullptr;
+}
+
 static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
     if (!s_town0_tex) return cover->flat;  // sheet missing — keep the flat tile
     switch (cover->kind) {
@@ -4103,12 +4205,20 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // Base pass: grass background drawn here (before player) for all town tiles
             {
                 int tile_id = map->tiles[y][x];
-                const GroundCover* cover = tile_cover(map, x, y);
+                // A cliff draws as ground with its piece of the silhouette laid
+                // over: the corners of that art are keyed out, and what belongs
+                // behind them is the terrain the cliff stands in.
+                int cliff_art = cliff_art_cell(x, y, tile_id);
+                const GroundCover* cover = (cliff_art >= 0) ? cliff_under_cover(map, x, y)
+                                                            : tile_cover(map, x, y);
                 bool is_town = (tile_id >= TILE_TOWN0_BASE);
-                blit_tile(renderer, cover ? cover_variant(map, x, y, cover) : tile_id,
-                          screen_x, screen_y, draw_size);
+                if (cover)
+                    blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
+                else if (cliff_art < 0)
+                    blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
                 draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
-                if (is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                if (cliff_art >= 0)   blit_tile(renderer, cliff_art, screen_x, screen_y, draw_size);
+                else if (is_town)     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 
