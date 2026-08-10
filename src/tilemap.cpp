@@ -632,12 +632,23 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
             static const int waste_cliff[] = {0, TILE_CLIFF_WASTE_1, TILE_CLIFF_WASTE_2, TILE_CLIFF_WASTE_3, TILE_CLIFF_WASTE_4, TILE_CLIFF_WASTE_5};
             static const int plain_cliff[] = {0, TILE_CLIFF,         TILE_CLIFF_2,       TILE_CLIFF_3,       TILE_CLIFF_4,       TILE_CLIFF_5};
 
+            // Three steps rather than five, and the lowest of them is 3.
+            //
+            // A drop is drawn as many courses tall as the elevation it falls
+            // from, so a plateau of elevation 1 can only ever have a one-course
+            // face however grand the mountain it belongs to. And elevation 1 is
+            // the outermost band of every mountain, which is also its longest
+            // boundary: six of every ten drops in the world were a single tile,
+            // and a single tile shows the cap of a wall and none of the wall.
+            //
+            // Starting at 3 means the shortest drop anywhere is three courses,
+            // which is the height the drawn rock actually wants. Losing two
+            // steps also makes each remaining one wider, so the terraces
+            // between them survive the taller faces cutting into them.
             int elev = 0;
-            if      (smooth >= CLIFF_THRESHOLD + 16000) elev = 5;
-            else if (smooth >= CLIFF_THRESHOLD + 12000) elev = 4;
-            else if (smooth >= CLIFF_THRESHOLD +  8000) elev = 3;
-            else if (smooth >= CLIFF_THRESHOLD +  4000) elev = 2;
-            else if (smooth >= CLIFF_THRESHOLD)         elev = 1;
+            if      (smooth >= CLIFF_THRESHOLD + 13000) elev = 5;
+            else if (smooth >= CLIFF_THRESHOLD +  6500) elev = 4;
+            else if (smooth >= CLIFF_THRESHOLD)         elev = 3;
 
             if (elev > 0) {
                 if      (cur_biome == TILE_SNOW)      map->tiles[py][px] = snow_cliff[elev];
@@ -4021,6 +4032,21 @@ static const int CLIFF_ART_HIDDEN = -2;
 static const int CLIFF_HILL_COL = 30;   // solid face block, cols 30-32
 static const int CLIFF_HILL_TOP = 2;    // its top course; +1 fill, +2 foot
 
+// The ribbed wall, cut out of the big painted scene further along the sheet.
+// That scene is not a tileset — it is hand-drawn, and its outlines wander
+// across cell boundaries wherever they please — but the walls in it are built
+// from something that does tile. The two columns below repeat left to right,
+// and the middle course repeats downward as far as it is asked to, so a face of
+// any length and any height can be laid from six cells.
+//
+// Which is what a drop should look like: strata and vertical ribs, a wavy cap
+// where it meets the plateau and a wavy foot where it meets the ground, rather
+// than the flat slab the hill block gives.
+static const int CLIFF_WALL_COL = 44;   // and 45 — alternating, by world column
+static const int CLIFF_WALL_CAP = 1;    // top course
+static const int CLIFF_WALL_MID = 3;    // middle, repeats down
+static const int CLIFF_WALL_FOOT = 5;   // bottom course
+
 // Does this tile show rock face? Any south-face tile does, and so does a ring
 // tile with a plateau directly above it — at a step in the edge the side pass
 // overwrote the south face the earlier pass had already put there, so the tile
@@ -4069,15 +4095,16 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3])
     if (cliff_draws_face(map, x, y)) {
         auto is_face = [&](int nx, int ny) { return cliff_draws_face(map, nx, ny); };
         bool above = is_face(x, y - 1), below = is_face(x, y + 1);
-        bool lend  = !is_face(x - 1, y), rend = !is_face(x + 1, y);
-        int off = (lend && !rend) ? 0 : ((rend && !lend) ? 2 : 1);
-        if (!above && !below) {
-            out[n_out++] = sheet_cell(CLIFF_ART_COL + off, BOT);   // one course tall
-        } else {
-            int row = !above ? CLIFF_HILL_TOP
-                    : (!below ? CLIFF_HILL_TOP + 2 : CLIFF_HILL_TOP + 1);
-            out[n_out++] = sheet_cell(CLIFF_HILL_COL + off, row);
-        }
+        // The wall's two columns alternate on world position, not on where the
+        // run starts, so neighbouring drops line their ribs up with each other
+        // instead of each restarting the pattern.
+        int col = CLIFF_WALL_COL + (x & 1);
+        int row = !above ? CLIFF_WALL_CAP
+                : (!below ? CLIFF_WALL_FOOT : CLIFF_WALL_MID);
+        // A one-course drop has nowhere to put a foot, so it keeps the cap: a
+        // short wall reads better than a foot with no wall above it.
+        if (!above && !below) row = CLIFF_WALL_CAP;
+        out[n_out++] = sheet_cell(col, row);
         return n_out;
     }
 
