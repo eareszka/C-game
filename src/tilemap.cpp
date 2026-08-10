@@ -1758,6 +1758,20 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int E = cliff_elev(map->tiles[y][x]);
                 if (E == 0) continue;
 
+                // A corner goes at the foot of a face, and only there. The
+                // plateau's west edge runs as far south as its body does, and
+                // every row of that body was dropping a corner one tile below
+                // itself — onto the face tile the row beneath had just laid,
+                // because this loop runs upward. So an edge of any height came
+                // out as a column of corners with one face tile at the top of
+                // it. Nothing showed while faces and corners were the same
+                // flat brown; the drawn art made it plain.
+                //
+                // The face carries on below wherever the body does, so that is
+                // the test: only the last row of an edge puts a corner down.
+                bool face_continues = (y + 1 < MAP_HEIGHT)
+                                   && cliff_elev(map->tiles[y+1][x]) >= E;
+
                 // West face: cliff at (x,y) drops to lower ground at (x-1,y).
                 // Side tiles go at (x-1, y+d) for d in [0,E), corner at (x-1, y+E).
                 if (cliff_elev(map->tiles[y][x-1]) < E) {
@@ -1768,7 +1782,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         if (cliff_elev(map->tiles[ey][x-1]) >= E) { full = false; break; }
                         map->tiles[ey][x-1] = side_tile[E];
                     }
-                    if (full) {
+                    if (full && !face_continues) {
                         int cy = y + E;
                         if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x-1]) == 0)
                             map->tiles[cy][x-1] = corner_sw[E];
@@ -1784,7 +1798,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         if (cliff_elev(map->tiles[ey][x+1]) >= E) { full = false; break; }
                         map->tiles[ey][x+1] = side_tile_e[E];
                     }
-                    if (full) {
+                    if (full && !face_continues) {
                         int cy = y + E;
                         if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x+1]) == 0)
                             map->tiles[cy][x+1] = corner_se[E];
