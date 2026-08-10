@@ -94,16 +94,20 @@ enum TileId {
     TILE_DUNGEON_STONEHENGE   = 69,
     TILE_DUNGEON_LARGE_TREE   = 70,
     TILE_DEAD_TREE            = 71, // dead bare tree — wasteland biome, always 2-tile tall
+    // Bare trail worn through the wasteland. Its own tile so the biome edge
+    // system can see it as a region and give it a smoothed outline; walkable,
+    // and only ever found inside wasteland.
+    TILE_WASTE_TRAIL          = 72,
 
     // Tiles sampled from assets/tileset.png (256 cols × 256 rows = 65536 tiles).
     // Index within sheet = (tile_id - TILE_TOWN0_BASE).
     // col = index % TOWN0_SHEET_COLS,  row = index / TOWN0_SHEET_COLS.
-    TILE_TOWN0_BASE = 72,
-    TILE_TOWN0_END  = 72 + 256 * 256 - 1,
+    TILE_TOWN0_BASE = 73,
+    TILE_TOWN0_END  = TILE_TOWN0_BASE + 256 * 256 - 1,
 
     // Tiles sampled from assets/overworld_0.png (18 cols × 8 rows = 144 tiles).
-    TILE_OW0_BASE = 72 + 256 * 256,
-    TILE_OW0_END  = 72 + 256 * 256 + 18 * 8 - 1,
+    TILE_OW0_BASE = TILE_TOWN0_BASE + 256 * 256,
+    TILE_OW0_END  = TILE_OW0_BASE + 18 * 8 - 1,
 };
 
 #define TOWN0_SHEET_COLS 256

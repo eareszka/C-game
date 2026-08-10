@@ -22,6 +22,8 @@
 #endif
 
 static std::atomic<bool> s_gen_cancel{false};
+// Diagnostics for the wasteland trail router; a probe reads these.
+int s_trail_edges = 0, s_trail_unroutable = 0, s_trail_tooshort = 0;
 void tilemap_cancel_gen()       { s_gen_cancel = true; }
 void tilemap_reset_gen_cancel() { s_gen_cancel = false; }
 
@@ -163,6 +165,7 @@ static const TileStyle tile_styles[] =
     {  0,   0,   0,    0,   0,   0, glyph_dungeon }, // TILE_DUNGEON_STONEHENGE   (69)
     { 40,  20,   5, 200, 120,  50, glyph_dungeon_tree_trunk }, // TILE_DUNGEON_LARGE_TREE   (70)
     { 40,  30,  20, 100,  80,  55, glyph_dead_tree         }, // TILE_DEAD_TREE             (71)
+    { 62,  28,  14, 100,  60,  35, glyph_path              }, // TILE_WASTE_TRAIL           (72)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -184,7 +187,7 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 72; // TILE_DEAD_TREE + 1
+static const int TILE_CACHE_SIZE = 73; // TILE_WASTE_TRAIL + 1
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 static SDL_Texture* s_overworld0_tex     = nullptr;
@@ -385,11 +388,46 @@ static void paint_stream_brush(Tilemap* map, int ix, int iy, int brush_r,
 }
 
 // Generic short meander — same march algorithm as rivers, no branching.
+// A channel that can genuinely change direction.
+//
+// march_stream below advances one tile along a fixed primary axis every single
+// step and only offsets the other one, so whatever it draws is a function of
+// that axis: it can bend, but it can never doubleback, loop, or set off
+// somewhere new. Widening its jitter just makes a wigglier straight line, which
+// is exactly what lava looked like. This carries a heading and turns it
+// instead, so the channel is free to go anywhere.
+//
+// The turn is smoothed rather than drawn fresh each step: an unsmoothed one
+// would jitter about its heading and cancel out, where a persistent turn holds
+// through a dozen steps and comes out as a sweeping bend.
+static void march_wander(Tilemap* map, int sx, int sy, float angle,
+                         unsigned int seed, int guard_cx, int guard_cy, int guard_r,
+                         int brush_r, int max_steps, float turn_rate,
+                         int target, int place)
+{
+    float fx = (float)sx, fy = (float)sy, turn = 0.0f;
+    for (int i = 0; i < max_steps; i++) {
+        seed = seed * 1664525u + 1013904223u;
+        float kick = (float)((seed >> 16) % 2001u) / 1000.0f - 1.0f;   // -1 .. 1
+        turn = turn * 0.92f + kick * turn_rate;
+        angle += turn;
+        fx += cosf(angle);
+        fy += sinf(angle);
+        int ix = (int)fx, iy = (int)fy;
+        if (ix < 1 || iy < 1 || ix >= MAP_WIDTH - 1 || iy >= MAP_HEIGHT - 1) break;
+        paint_stream_brush(map, ix, iy, brush_r, guard_cx, guard_cy, guard_r, target, place);
+    }
+}
+
+// `trace`, when given, collects points along the path at intervals. Branches
+// start from one of those, which is what turns a scatter of separate streams
+// into a network that joins up.
 static void march_stream(Tilemap* map, int sx, int sy,
                          float dir_x, float dir_y, unsigned int seed,
                          int guard_cx, int guard_cy, int guard_r,
                          int brush_r, int max_steps, int jitter_range,
-                         int target, int place)
+                         int target, int place,
+                         std::vector<std::pair<int,int>>* trace = nullptr)
 {
     int rx = sx, ry = sy;
     int sign_x = (dir_x >= 0.0f) ? 1 : -1;
@@ -398,13 +436,22 @@ static void march_stream(Tilemap* map, int sx, int sy,
     float ratio = primary_x
         ? (fabsf(dir_x) > 0.0f ? fabsf(dir_y)/fabsf(dir_x) : 0.0f)
         : (fabsf(dir_y) > 0.0f ? fabsf(dir_x)/fabsf(dir_y) : 0.0f);
-    float acc = 0.0f, smooth_j = 0.0f;
+    float acc = 0.0f, smooth_j = 0.0f, drift = 0.0f;
     int steps = 0;
     while (steps++ < max_steps) {
         seed = seed * 1664525u + 1013904223u;
         float kick = (float)((int)(seed >> 16) % (2*jitter_range+1) - jitter_range);
         smooth_j = smooth_j * 0.97f + kick * 0.03f;
-        int jitter = (int)smooth_j;
+        // Integrate the bias instead of truncating it. Truncating threw the
+        // meander away: smoothing this heavily leaves a value whose spread is
+        // well under one tile, so the cast rounded it to zero nearly every step
+        // and the stream ran dead straight — jitter_range was doing nothing.
+        // Accumulating turns that sub-tile bias into a step once it adds up to
+        // a whole tile, which is what makes the path wander and keeps it smooth
+        // while it does.
+        drift += smooth_j;
+        int jitter = (int)drift;
+        drift -= (float)jitter;
         if (primary_x) {
             rx += sign_x;
             if (rx < 0 || rx >= MAP_WIDTH) break;
@@ -419,6 +466,10 @@ static void march_stream(Tilemap* map, int sx, int sy,
             if (rx < 1) rx = 1; if (rx >= MAP_WIDTH-1) rx = MAP_WIDTH-2;
         }
         paint_stream_brush(map, rx, ry, brush_r, guard_cx, guard_cy, guard_r, target, place);
+        // Only where the stream actually laid something down: a point out on
+        // bare grass is no use as a junction.
+        if (trace && (steps % 10) == 0 && in_bounds(rx, ry) && map->tiles[ry][rx] == place)
+            trace->push_back({ rx, ry });
     }
 }
 
@@ -1799,9 +1850,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             ls = ls * 1664525u + 1013904223u;
             float angle = (float)((ls >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
             ls = ls * 1664525u + 1013904223u;
-            int len = 15 + (int)((ls >> 16) % 55);
-            march_stream(map, lx, ly, cosf(angle), sinf(angle), ls,
-                         cx, cy, guard_r, 1, len, 5, TILE_WASTELAND, TILE_LAVA);
+            // Long enough for several bends to play out. At this turn rate the
+            // heading holds a curve for roughly a dozen steps, so a short
+            // channel would end mid-bend and read as a bent line.
+            int len = 140 + (int)((ls >> 16) % 260);
+            march_wander(map, lx, ly, angle, ls,
+                         cx, cy, guard_r, 1, len, 0.035f, TILE_WASTELAND, TILE_LAVA);
         }
         ls = ls ^ 0xB00B5u;
         for (int i = 0; i < 400; i++) {
@@ -1812,6 +1866,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             if (map->tiles[ly][lx] != TILE_WASTELAND || cliff_blocked[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
         }
+
     }
 
     GEN_STAGE(map, "before Dead trees scattered in wasteland");
@@ -2429,6 +2484,299 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
+    GEN_STAGE(map, "before Wasteland trails");
+    // --- Wasteland trails between dungeons ---
+    // Paths worn between the dungeon mouths of a wasteland, so the biome reads
+    // as somewhere people go rather than somewhere with routes drawn on it. A
+    // wasteland with fewer than two dungeons gets nothing: there is nothing to
+    // connect.
+    //
+    // Runs at the very end because dungeon entrances are the last thing placed.
+    // Everything the trail has to route around — cliffs, lava, towns — is
+    // already on the map by now.
+    //
+    // The dungeons of a region are joined by a minimum spanning tree, so every
+    // one is reachable and no pair is linked twice. A chain visiting them in
+    // turn would double back across the region; a tree branches the way tracks
+    // between places actually do.
+    {
+        const int LAVA_CLEARANCE = 3;      // tiles kept between trail and lava
+        const int ANCHOR_SEARCH  = 8;      // how far off a dungeon to find ground
+        const int DX4[4] = {1,-1,0,0}, DY4[4] = {0,0,1,-1};
+        std::vector<uint8_t> seen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<uint8_t> incomp((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<int> prev((size_t)MAP_WIDTH * MAP_HEIGHT, -1);
+        std::vector<int> comp, route, touched, path;
+        unsigned int ts = seed ^ 0x7A11D0u;
+
+        // Where a trail may not go: lava, and a margin around it. Shortest
+        // paths hug their obstacles, so without the margin the trail squeezes
+        // flush against the lava and looks like it is running over it.
+        std::vector<uint8_t> blocked((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                if (map->tiles[y][x] != TILE_LAVA) continue;
+                for (int dy = -LAVA_CLEARANCE; dy <= LAVA_CLEARANCE; dy++)
+                    for (int dx = -LAVA_CLEARANCE; dx <= LAVA_CLEARANCE; dx++) {
+                        int nx = x + dx, ny = y + dy;
+                        if (in_bounds(nx, ny)) blocked[(size_t)ny*MAP_WIDTH + nx] = 1;
+                    }
+            }
+
+        // Ground a trail can be laid on. Cliffs are excluded here rather than
+        // left to the brush: routing over ground that cannot be painted tears
+        // a hole in the trail, and mountains are to be gone around anyway.
+        auto is_region = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL) return false;
+            if (cliff_blocked[y][x]) return false;
+            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
+            return true;
+        };
+
+        for (int y0 = 0; y0 < MAP_HEIGHT && !s_gen_cancel; y0++) {
+            for (int x0 = 0; x0 < MAP_WIDTH; x0++) {
+                size_t i0 = (size_t)y0 * MAP_WIDTH + x0;
+                if (seen[i0] || !is_region(x0, y0)) continue;
+
+                comp.clear();
+                comp.push_back((int)i0);
+                seen[i0] = 1;
+                for (size_t h = 0; h < comp.size(); h++) {
+                    int qx = comp[h] % MAP_WIDTH, qy = comp[h] / MAP_WIDTH;
+                    for (int d = 0; d < 4; d++) {
+                        int nx = qx + DX4[d], ny = qy + DY4[d];
+                        if (!in_bounds(nx, ny)) continue;
+                        size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                        if (seen[ni] || !is_region(nx, ny)) continue;
+                        seen[ni] = 1;
+                        comp.push_back((int)ni);
+                    }
+                }
+                for (int c : comp) incomp[c] = 1;
+
+                // An entrance stamp overwrites the ground it sits on, so the
+                // dungeon tile itself is not part of the region. Anchor to the
+                // nearest walkable tile of this wasteland instead, and if there
+                // is none within reach the dungeon belongs to somewhere else.
+                std::vector<int> anchors;
+                for (int i = 0; i < map->num_dungeon_entrances; i++) {
+                    int ex = map->dungeon_entrances[i].x;
+                    int ey = map->dungeon_entrances[i].y;
+                    int best = -1, bestd = INT_MAX;
+                    for (int dy = -ANCHOR_SEARCH; dy <= ANCHOR_SEARCH; dy++)
+                        for (int dx = -ANCHOR_SEARCH; dx <= ANCHOR_SEARCH; dx++) {
+                            int nx = ex + dx, ny = ey + dy;
+                            if (!in_bounds(nx, ny)) continue;
+                            size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                            if (!incomp[ni]) continue;
+                            int dd = dx*dx + dy*dy;
+                            if (dd < bestd) { bestd = dd; best = (int)ni; }
+                        }
+                    if (best >= 0) anchors.push_back(best);
+                }
+
+                std::vector<std::pair<int,int>> edges;
+                if (anchors.size() >= 2) {
+                    // Minimum spanning tree over the dungeons, by Prim: grow
+                    // the tree one dungeon at a time, always taking the nearest
+                    // one still outside it.
+                    std::vector<bool> intree(anchors.size(), false);
+                    intree[0] = true;
+                    for (size_t added = 1; added < anchors.size(); added++) {
+                        int ba = -1, bb = -1; double bestd = 1e18;
+                        for (size_t a = 0; a < anchors.size(); a++) {
+                            if (!intree[a]) continue;
+                            int ax = anchors[a] % MAP_WIDTH, ay = anchors[a] / MAP_WIDTH;
+                            for (size_t b = 0; b < anchors.size(); b++) {
+                                if (intree[b]) continue;
+                                int bx = anchors[b] % MAP_WIDTH, by = anchors[b] / MAP_WIDTH;
+                                double dd = (double)(ax-bx)*(ax-bx) + (double)(ay-by)*(ay-by);
+                                if (dd < bestd) { bestd = dd; ba = (int)a; bb = (int)b; }
+                            }
+                        }
+                        if (bb < 0) break;
+                        intree[bb] = true;
+                        edges.push_back({ anchors[ba], anchors[bb] });
+                    }
+                } else if (anchors.size() == 1) {
+                    // A lone dungeon has nothing to join. Rather than leave the
+                    // wasteland bare, run its path out to the point furthest
+                    // away — a track leading somewhere from the mouth. Pairing
+                    // it with a dungeon in another wasteland is not an option:
+                    // a trail cannot leave the biome to get there.
+                    int a = anchors[0];
+                    int ax = a % MAP_WIDTH, ay = a / MAP_WIDTH;
+                    int pick = -1; long bestd = -1;
+                    for (int c : comp) {
+                        int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                        long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                        if (dd > bestd) { bestd = dd; pick = c; }
+                    }
+                    if (pick >= 0) edges.push_back({ a, pick });
+                }
+
+                if (!edges.empty()) {
+                    // Tiles of *this* wasteland. The smoothing and the paint
+                    // fallback below have to ask this rather than is_region:
+                    // is_region accepts any wasteland, so a point drifting
+                    // across a thin barrier into the neighbouring one passes
+                    // it, the fallback is skipped, and paint_trail then refuses
+                    // the tile for not belonging here — leaving a silent gap
+                    // that breaks the trail in two.
+                    auto in_this = [&](int x, int y) {
+                        return in_bounds(x, y) && incomp[(size_t)y * MAP_WIDTH + x];
+                    };
+                    auto paint_trail = [&](int ix, int iy) {
+                        // Radius one, so the stroke is three tiles at its
+                        // narrowest and only widens where it turns. Three is
+                        // the floor worth having: the nine-slice needs a row
+                        // down the middle with trail either side to put its
+                        // fill in, and at two wide every tile is a border.
+                        for (int by = -1; by <= 1; by++)
+                            for (int bx = -1; bx <= 1; bx++) {
+                                if (bx*bx + by*by > 1) continue;
+                                int px2 = ix + bx, py2 = iy + by;
+                                if (!in_bounds(px2, py2)) continue;
+                                size_t pi = (size_t)py2 * MAP_WIDTH + px2;
+                                // Never bleed into a neighbouring wasteland
+                                // across a thin barrier: that leaves a scrap of
+                                // trail somewhere it was not asked for.
+                                if (!incomp[pi]) continue;
+                                if (map->tiles[py2][px2] != TILE_WASTELAND) continue;
+                                map->tiles[py2][px2] = TILE_WASTE_TRAIL;
+                            }
+                    };
+
+                    for (auto& e : edges) {
+                        int from = e.first, to = e.second;
+                        s_trail_edges++;
+                        // Two dungeons close enough to share an anchor: there
+                        // is nothing to route, and they are already joined.
+                        if (from == to) { paint_trail(from % MAP_WIDTH, from / MAP_WIDTH); continue; }
+
+                        // Route through the region rather than straight at the
+                        // target: a straight run leaves the wasteland wherever
+                        // it bends and paints nothing out there. Try to keep
+                        // clear of lava first; if that walls the way off, take
+                        // the direct route rather than leave the pair unjoined.
+                        bool found = false;
+                        path.clear();
+                        for (int attempt = 0; attempt < 2 && !found; attempt++) {
+                            bool avoid = (attempt == 0);
+                            route.clear();
+                            route.push_back(from);
+                            prev[from] = from;
+                            touched.push_back(from);
+                            for (size_t h = 0; h < route.size() && !found; h++) {
+                                int qx = route[h] % MAP_WIDTH, qy = route[h] / MAP_WIDTH;
+                                // Vary which direction is tried first. Every
+                                // shortest path here is the same length, and a
+                                // fixed order always picks the same one: run
+                                // east as far as possible, then turn. That came
+                                // out looking like a circuit board.
+                                ts = ts * 1664525u + 1013904223u;
+                                int rot = (int)((ts >> 16) & 3u);
+                                for (int k = 0; k < 4; k++) {
+                                    int d = (k + rot) & 3;
+                                    int nx = qx + DX4[d], ny = qy + DY4[d];
+                                    if (!in_bounds(nx, ny)) continue;
+                                    int ni = ny * MAP_WIDTH + nx;
+                                    if (prev[ni] != -1 || !incomp[ni]) continue;
+                                    if (avoid && blocked[ni] && ni != to) continue;
+                                    prev[ni] = route[h];
+                                    touched.push_back(ni);
+                                    route.push_back(ni);
+                                    if (ni == to) { found = true; break; }
+                                }
+                            }
+                            if (found)
+                                for (int cur = to; cur != from; cur = prev[cur])
+                                    path.push_back(cur);
+                            for (int t2 : touched) prev[t2] = -1;
+                            touched.clear();
+                        }
+                        if (!found) { s_trail_unroutable++; continue; }
+                        std::reverse(path.begin(), path.end());
+                        // Short paths are drawn too. Skipping them used to be
+                        // the tidy option — the smoothing filter reads two
+                        // points either side and has nothing to work with — but
+                        // an unpainted link leaves the spanning tree in pieces
+                        // a tile or two apart. Both loops below already guard
+                        // their own bounds, so a short path simply passes
+                        // through them unsmoothed.
+
+                        // Smooth off the staircase, then drift the result
+                        // sideways by a slowly changing amount so no stretch
+                        // stays straight for long. A step that would leave the
+                        // region is refused: checking only at the end is too
+                        // late, because once a point has drifted out the later
+                        // passes carry its neighbours after it.
+                        std::vector<float> fxs(path.size()), fys(path.size());
+                        for (size_t i = 0; i < path.size(); i++) {
+                            fxs[i] = (float)(path[i] % MAP_WIDTH);
+                            fys[i] = (float)(path[i] / MAP_WIDTH);
+                        }
+                        for (int pass = 0; pass < 6; pass++) {
+                            std::vector<float> nx2 = fxs, ny2 = fys;
+                            for (size_t i = 2; i + 2 < path.size(); i++) {
+                                float sx2 = (fxs[i-2] + fxs[i-1]*2 + fxs[i]*3 + fxs[i+1]*2 + fxs[i+2]) / 9.0f;
+                                float sy2 = (fys[i-2] + fys[i-1]*2 + fys[i]*3 + fys[i+1]*2 + fys[i+2]) / 9.0f;
+                                if (in_this((int)sx2, (int)sy2)) {
+                                    nx2[i] = sx2; ny2[i] = sy2;
+                                }
+                            }
+                            fxs.swap(nx2); fys.swap(ny2);
+                        }
+                        float drift = 0.0f, dvel = 0.0f;
+                        for (size_t i = 1; i + 1 < path.size(); i++) {
+                            ts = ts * 1664525u + 1013904223u;
+                            float kick = (float)((ts >> 16) % 2001u) / 1000.0f - 1.0f;
+                            dvel = dvel * 0.94f + kick * 0.06f;
+                            drift += dvel;
+                            if (drift >  4.0f) drift =  4.0f;
+                            if (drift < -4.0f) drift = -4.0f;
+                            float tx2 = fxs[i+1] - fxs[i-1], ty2 = fys[i+1] - fys[i-1];
+                            float len2 = sqrtf(tx2*tx2 + ty2*ty2);
+                            if (len2 < 0.001f) continue;
+                            float px2 = fxs[i] - ty2 / len2 * drift;
+                            float py2 = fys[i] + tx2 / len2 * drift;
+                            int ix = (int)px2, iy = (int)py2;
+                            if (in_this(ix, iy) && !blocked[(size_t)iy*MAP_WIDTH+ix]) {
+                                fxs[i] = px2; fys[i] = py2;
+                            }
+                        }
+
+                        // Draw between consecutive centres rather than stamping
+                        // at each: smoothing and drift move points by a few
+                        // tiles, and where one is carried out of the region it
+                        // falls back to the routed original — a jump wide
+                        // enough that two brush marks no longer overlap.
+                        int lastx = -1, lasty = -1;
+                        for (size_t i = 0; i < path.size(); i++) {
+                            int ix = (int)fxs[i], iy = (int)fys[i];
+                            if (!in_this(ix, iy)) {
+                                ix = path[i] % MAP_WIDTH;
+                                iy = path[i] / MAP_WIDTH;
+                            }
+                            if (lastx < 0) {
+                                paint_trail(ix, iy);
+                            } else {
+                                int dxs = ix - lastx, dys = iy - lasty;
+                                int steps = (abs(dxs) > abs(dys)) ? abs(dxs) : abs(dys);
+                                if (steps < 1) steps = 1;
+                                for (int s = 1; s <= steps; s++)
+                                    paint_trail(lastx + dxs * s / steps,
+                                                lasty + dys * s / steps);
+                            }
+                            lastx = ix; lasty = iy;
+                        }
+                    }
+                }
+                for (int c : comp) incomp[c] = 0;
+            }
+        }
+    }
     // Last, after every pond, stream and town stamp has had its say.
     clear_overlays_near_liquid(map);
     GEN_STAGE(map, "final");
@@ -2603,51 +2951,97 @@ static void blit_tile(SDL_Renderer* renderer, int tile_id,
 }
 
 // ── Ground cover variants ───────────────────────────────────────────────────
-// Blocks of six 16px cells in assets/tileset.png, rows 2-3, three columns each
-// and one per biome: green grass at cols 18-20, the meadow's pale flowering
-// grass at 21-23, snow at 24-26. Every block shares a layout, numbered 1-6 in
-// reading order. 1 and 2 are a single clump that spans two tiles and must stay
-// together left to right; 3, 4 and 5 are lone tufts; 6 is plain. Purely a
-// draw-time choice: the map still stores TILE_GRASS, TILE_MEADOW or TILE_SNOW,
-// so collision, the minimap and worldgen are untouched.
+// Blocks of six 16px cells in assets/tileset.png, one per biome. Which cell a
+// tile draws is purely a draw-time choice: the map still stores TILE_GRASS,
+// TILE_SAND and the rest, so collision, the minimap and worldgen are untouched.
+//
+// The blocks do not all lay out the same way, so a cover says which kind it is
+// and the picker follows the matching rule:
+//
+//   TUFTS  rows 2-3, three columns — grass at 18-20, meadow at 21-23, snow at
+//          24-26. Cells 1 and 2 are one clump spanning two tiles and have to
+//          stay together left to right; 3, 4 and 5 are lone tufts; 6 is plain.
+//   DUNES  rows 0-1, cols 21-23 — cells 1 to 4 are one dune oval spread over a
+//          2x2 and have to stay square and aligned; 5 and 6 are open sand.
+//   ONE    a single cell that simply repeats, for water and lava.
 static constexpr int sheet_cell(int col, int row) {
     return TILE_TOWN0_BASE + row * TOWN0_SHEET_COLS + col;
 }
 
+enum CoverKind { COVER_TUFTS, COVER_DUNES, COVER_SCATTER, COVER_NINESLICE, COVER_ONE };
+
 struct GroundCover {
-    int clump_l, clump_r;         // 1, 2 — one clump spanning two tiles
-    int tuft_a, tuft_b, tuft_c;   // 3, 4, 5
-    int plain;                    // 6
-    int flat;                     // stand-in when the sheet failed to load
+    CoverKind kind;
+    int v[8];      // the shaped cells; what they mean depends on kind
+    int nv;        // how many of them this cover actually uses
+    int plain;     // the featureless cell, and what the biome's colour samples
+    int flat;      // stand-in tile when the sheet failed to load
 };
 
-static constexpr GroundCover COVER_GRASS = {
+static constexpr GroundCover cover_tufts(int clump_l, int clump_r, int tuft_a,
+                                         int tuft_b, int tuft_c, int plain, int flat) {
+    return { COVER_TUFTS, { clump_l, clump_r, tuft_a, tuft_b, tuft_c }, 5, plain, flat };
+}
+// Dune cells in reading order: top-left, top-right, bottom-left, bottom-right,
+// then the speckled open sand. `plain` is the bare cell.
+static constexpr GroundCover cover_dunes(int tl, int tr, int bl, int br,
+                                         int speckled, int plain, int flat) {
+    return { COVER_DUNES, { tl, tr, bl, br, speckled }, 5, plain, flat };
+}
+// Loose variants of one ground, no shape spanning more than a tile: pick per
+// tile and be done.
+static constexpr GroundCover cover_scatter(int a, int b, int plain, int flat) {
+    return { COVER_SCATTER, { a, b }, 2, plain, flat };
+}
+// A hand-drawn nine-slice: the eight border cells in reading order, with the
+// centre as the plain fill. The tile picks its cell from which of its four
+// neighbours are the same cover, so the border lands on the tile grid — square
+// and laid-by-hand, rather than the smoothed outline the coverage field draws.
+static constexpr GroundCover cover_nineslice(int tl, int t, int tr,
+                                             int l,  int c, int r,
+                                             int bl, int b, int br, int flat) {
+    return { COVER_NINESLICE, { tl, t, tr, l, r, bl, b, br }, 8, c, flat };
+}
+static constexpr GroundCover cover_single(int cell, int flat) {
+    return { COVER_ONE, { cell }, 0, cell, flat };
+}
+
+static constexpr GroundCover COVER_GRASS = cover_tufts(
     sheet_cell(18, 2), sheet_cell(19, 2),
     sheet_cell(20, 2), sheet_cell(18, 3), sheet_cell(19, 3),
-    sheet_cell(20, 3), TILE_GRASS,
-};
+    sheet_cell(20, 3), TILE_GRASS);
 // Same six roles three columns right: mint base, pink blossoms.
-static constexpr GroundCover COVER_MEADOW = {
+static constexpr GroundCover COVER_MEADOW = cover_tufts(
     sheet_cell(21, 2), sheet_cell(22, 2),
     sheet_cell(23, 2), sheet_cell(21, 3), sheet_cell(22, 3),
-    sheet_cell(23, 3), TILE_MEADOW,
-};
+    sheet_cell(23, 3), TILE_MEADOW);
 // Three further right: white base, gold detail. Pixel for pixel the grass
 // block's shapes recoloured, so the six roles line up exactly.
-static constexpr GroundCover COVER_SNOW = {
+static constexpr GroundCover COVER_SNOW = cover_tufts(
     sheet_cell(24, 2), sheet_cell(25, 2),
     sheet_cell(26, 2), sheet_cell(24, 3), sheet_cell(25, 3),
-    sheet_cell(26, 3), TILE_SNOW,
-};
-
-// A biome drawn from one cell rather than a six-cell block. Every role points
-// at the same cell, so the variant picker and the clump pairing resolve to it
-// whichever way they fall and neither needs a special case.
-static constexpr GroundCover cover_single(int cell, int flat) {
-    return { cell, cell, cell, cell, cell, cell, flat };
-}
+    sheet_cell(26, 3), TILE_SNOW);
+// Desert: the dune spans cols 21-22 over rows 0-1, with the two open sands
+// stacked in col 23.
+static constexpr GroundCover COVER_DESERT = cover_dunes(
+    sheet_cell(21, 0), sheet_cell(22, 0),
+    sheet_cell(21, 1), sheet_cell(22, 1),
+    sheet_cell(23, 0), sheet_cell(23, 1), TILE_SAND);
+// Wasteland: just the main cell at col 25 row 4. The two spotty variants either
+// side of it are drawn but unused — each carries a large light patch, and even
+// sparingly they read as blotches rather than as texture.
+static constexpr GroundCover COVER_WASTE = cover_single(sheet_cell(25, 4), TILE_WASTELAND);
+// The trail worn through it, drawn from the hand-cut nine-slice at cols 24-26
+// rows 5-7. Its borders come out of the art and sit on the tile grid, which is
+// the point: square corners that look laid down rather than eroded.
+static constexpr GroundCover COVER_TRAIL = cover_nineslice(
+    sheet_cell(24, 5), sheet_cell(25, 5), sheet_cell(26, 5),
+    sheet_cell(24, 6), sheet_cell(25, 6), sheet_cell(26, 6),
+    sheet_cell(24, 7), sheet_cell(25, 7), sheet_cell(26, 7), TILE_WASTE_TRAIL);
 // Water: one tile, carrying its own ripples, and it repeats seamlessly.
 static constexpr GroundCover COVER_WATER = cover_single(sheet_cell(14, 0), TILE_WATER);
+// Lava, one cell to its right, same idea: dark base with its own hot speckle.
+static constexpr GroundCover COVER_LAVA  = cover_single(sheet_cell(15, 0), TILE_LAVA);
 
 // ── Biome edge ──────────────────────────────────────────────────────────────
 // Where two biomes meet the join is one straight line along the tile grid,
@@ -2701,21 +3095,42 @@ static const float SHORE_JITTER  = 0.025f;
 //
 // The pale is tinted blue rather than pure white on purpose — snow is very near
 // white already, and an untinted rim would vanish along a snow coast.
+// Three independent questions, one flag each:
+//
+//   hard_edge  the boundary is a clean outline rather than two grounds
+//              stippled together, and it follows the smoothed field instead of
+//              the tile grid.
+//   own_edges  the biome's own art already draws its borders, so nothing is
+//              laid over them — no stipple, no outline. The wasteland trail is
+//              a nine-slice and would otherwise get a second border on top of
+//              the one it is drawn with.
+//   solid      you cannot walk into it, and collision reads that same outline
+//              so the edge you see is the edge you hit.
+//   shore      a band drawn alongside the outline, in the given colour.
+//
+// Water is all three. Lava is hard-edged and solid with no shallows — a pale
+// rim would read as surf, and molten rock has none. A wasteland trail is
+// hard-edged so it reads as a worn path, but it is ground you walk on, which is
+// why these cannot be one flag.
 #define MAX_BIOME_TILES 4
 struct GroundBiome {
     int tiles[MAX_BIOME_TILES];  // TileIds this biome paints, -1 padded
     const GroundCover* cover;    // sheet block, or null for biomes with no art yet
+    bool hard_edge;              // crisp outline, taken from the field
+    bool solid;                  // impassable, and collision follows that outline
+    bool own_edges;              // borders come from the art; add nothing
     uint8_t r, g, b;             // plain colour, filled in at load
-    int sr, sg, sb;              // shore colour, or -1 to fringe in ground colour
+    int sr, sg, sb;              // shore colour, or -1 for none
 };
 static GroundBiome s_biomes[] = {
-    { { TILE_GRASS,     -1, -1, -1 },                  &COVER_GRASS,  0,0,0,  -1,  -1,  -1 },
-    { { TILE_MEADOW,    -1, -1, -1 },                  &COVER_MEADOW, 0,0,0,  -1,  -1,  -1 },
-    { { TILE_SAND,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
-    { { TILE_WASTELAND, -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
-    { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   0,0,0,  -1,  -1,  -1 },
-    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  0,0,0, 220, 240, 255 },
-    { { TILE_LAVA,      -1, -1, -1 },                  nullptr,       0,0,0,  -1,  -1,  -1 },
+    { { TILE_GRASS,     -1, -1, -1 },                  &COVER_GRASS,  false, false, false, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_MEADOW,    -1, -1, -1 },                  &COVER_MEADOW, false, false, false, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_SAND,      -1, -1, -1 },                  &COVER_DESERT, false, false, false, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_WASTELAND, -1, -1, -1 },                  &COVER_WASTE,  false, false, false, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_WASTE_TRAIL, -1, -1, -1 },                &COVER_TRAIL,  false, false, true,  0,0,0,  -1,  -1,  -1 },
+    { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1 },
+    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255 },
+    { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1 },
 };
 static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
 
@@ -2905,9 +3320,7 @@ static inline bool cover_clump_raw(int x, int y) {
     return (cover_hash(x, y, 0x9e3779b9u) % 100u) < COVER_CLUMP_PCT;
 }
 
-static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
-    if (!s_town0_tex) return cover->flat;  // sheet missing — keep the flat tile
-
+static int tuft_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
     // Right half first: a start beside a start is suppressed, which is what
     // stops a run of raw starts from emitting a right half with no left half.
     // Both halves also have to sit on the same cover, or the pair straddles a
@@ -2917,18 +3330,111 @@ static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* co
     bool left_starts = x > 0 && pairs_with(x - 1)
                              && cover_clump_raw(x - 1, y)
                              && !(x > 1 && cover_clump_raw(x - 2, y));
-    if (left_starts) return cover->clump_r;
+    if (left_starts) return cover->v[1];
     if (cover_clump_raw(x, y) && !(x > 0 && cover_clump_raw(x - 1, y))
                               && pairs_with(x + 1))
-        return cover->clump_l;
+        return cover->v[0];
 
     // Of the tiles left over, ~53% plain and the rest split between the three
     // tufts, which comes out near the intended 45/40/15 plain/tuft/clump mix.
     unsigned int v = cover_hash(x, y, 0x85ebca6bu) % 100u;
     if (v < 53) return cover->plain;
-    if (v < 69) return cover->tuft_a;
-    if (v < 85) return cover->tuft_b;
-    return cover->tuft_c;
+    if (v < 69) return cover->v[2];
+    if (v < 85) return cover->v[3];
+    return cover->v[4];
+}
+
+// Raw chance a dune begins at this tile. A dune claims four tiles and starts
+// are suppressed where they would overlap, so the ground actually covered comes
+// out around three times this — 2 here leaves the desert mostly open sand.
+static const unsigned int COVER_DUNE_PCT = 2;
+static inline bool cover_dune_raw(int x, int y) {
+    return (cover_hash(x, y, 0xD0E5A17Du) % 100u) < COVER_DUNE_PCT;
+}
+
+// A dune is one oval spread across a 2x2, so unlike a tuft it has to stay
+// square and aligned — a stray quarter reads as a smear, not a dune.
+//
+// A start claims (x,y) and the three cells right and below, so two starts
+// within one tile of each other on both axes would overlap. Where they do, the
+// one earlier in reading order wins. That test is a pure function of the hash
+// field, so every tile reaches the same answer without depending on scan order.
+// It is slightly conservative — a start can be suppressed by a raw neighbour
+// that was itself suppressed — which costs a few dunes and no correctness.
+static bool cover_dune_start(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    if (!cover_dune_raw(x, y)) return false;
+    // All four cells have to be drawing this same cover, or the dune runs off
+    // the edge of the desert and leaves part of an oval on the grass. The
+    // origin included: this is asked of neighbouring tiles too, and one of
+    // those sitting on grass would otherwise anchor a dune it cannot draw.
+    if (tile_cover(map, x,     y)     != cover) return false;
+    if (tile_cover(map, x + 1, y)     != cover) return false;
+    if (tile_cover(map, x,     y + 1) != cover) return false;
+    if (tile_cover(map, x + 1, y + 1) != cover) return false;
+    for (int dy = -1; dy <= 1; dy++)
+        for (int dx = -1; dx <= 1; dx++) {
+            bool earlier = (dy < 0) || (dy == 0 && dx < 0);
+            if (earlier && cover_dune_raw(x + dx, y + dy)) return false;
+        }
+    return true;
+}
+
+static int dune_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    // At most one of these four can be a start — two starts that close would
+    // overlap, and the suppression above rules that out — so no tile is ever
+    // claimed by two dunes.
+    if (cover_dune_start(map, x,     y,     cover)) return cover->v[0];
+    if (cover_dune_start(map, x - 1, y,     cover)) return cover->v[1];
+    if (cover_dune_start(map, x,     y - 1, cover)) return cover->v[2];
+    if (cover_dune_start(map, x - 1, y - 1, cover)) return cover->v[3];
+
+    // Everything else is open sand, speckled or bare.
+    return (cover_hash(x, y, 0x5A4D0000u) % 100u) < 40u ? cover->v[4] : cover->plain;
+}
+
+// Mostly plain, with the loose variants sprinkled in and split evenly between
+// them. Kept sparse on purpose: these variants carry a large light patch each,
+// so even one tile in ten reads as a blotchy field rather than as texture.
+static const unsigned int COVER_SCATTER_PCT = 8;   // share of tiles that get a variant
+static int scatter_variant(int x, int y, const GroundCover* cover) {
+    unsigned int v = cover_hash(x, y, 0x5CA77E00u) % 100u;
+    if (v >= COVER_SCATTER_PCT || cover->nv <= 0) return cover->plain;
+    return cover->v[(int)v * cover->nv / (int)COVER_SCATTER_PCT];
+}
+
+// Pick the border cell from which sides face something else. Corners are tested
+// before edges, since a corner tile has two sides exposed and would otherwise
+// match an edge first.
+//
+// Two opposite sides exposed at once — a stretch only one tile wide — has no
+// cell in a nine-slice; that falls through to the single-edge tests and comes
+// out as one border with the other missing. Keeping trails wider than a tile is
+// what avoids it.
+static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    auto same = [&](int nx, int ny) { return tile_cover(map, nx, ny) == cover; };
+    bool n = same(x, y - 1), s = same(x, y + 1);
+    bool w = same(x - 1, y), e = same(x + 1, y);
+
+    if (!n && !w) return cover->v[0];
+    if (!n && !e) return cover->v[2];
+    if (!s && !w) return cover->v[5];
+    if (!s && !e) return cover->v[7];
+    if (!n) return cover->v[1];
+    if (!s) return cover->v[6];
+    if (!w) return cover->v[3];
+    if (!e) return cover->v[4];
+    return cover->plain;
+}
+
+static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    if (!s_town0_tex) return cover->flat;  // sheet missing — keep the flat tile
+    switch (cover->kind) {
+        case COVER_ONE:       return cover->plain;
+        case COVER_DUNES:     return dune_variant(map, x, y, cover);
+        case COVER_SCATTER:   return scatter_variant(x, y, cover);
+        case COVER_NINESLICE: return nineslice_variant(map, x, y, cover);
+        default:              return tuft_variant(map, x, y, cover);
+    }
 }
 
 // Which neighbouring biomes reach into this tile, and the neighbourhood shape
@@ -2971,7 +3477,10 @@ static void biome_fringe(const Tilemap* map, int x, int y, EdgeFringe* out) {
     }
 }
 
-static inline bool biome_is_liquid(int b) { return b >= 0 && s_biomes[b].sr >= 0; }
+static inline bool biome_hard_edge(int b) { return b >= 0 && s_biomes[b].hard_edge; }
+static inline bool biome_own_edges(int b) { return b >= 0 && s_biomes[b].own_edges; }
+static inline bool biome_solid(int b)     { return b >= 0 && s_biomes[b].solid; }
+static inline bool biome_has_shore(int b) { return b >= 0 && s_biomes[b].sr >= 0; }
 
 // What gets laid over a tile at its borders, in order. Kept apart from the
 // drawing so the decision can be inspected without a renderer.
@@ -3015,15 +3524,25 @@ static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out)
         int other = fr.biome[i], cfg = fr.config[i];
         const GroundBiome& o = s_biomes[other];
 
-        if (!biome_is_liquid(mine) && !biome_is_liquid(other)) {
+        // One of the pair draws its own border, so leave the join alone rather
+        // than laying a second one over the top of it.
+        if (biome_own_edges(mine) || biome_own_edges(other)) continue;
+
+        if (!biome_hard_edge(mine) && !biome_hard_edge(other)) {
             push_layer(out, MASK_FRINGE, cfg, fr.variant, o.r, o.g, o.b);
             continue;
         }
-        const GroundBiome& liquid = biome_is_liquid(other) ? o : s_biomes[mine];
         push_layer(out, MASK_FILL, cfg, fr.variant, o.r, o.g, o.b);
-        push_layer(out, biome_is_liquid(other) ? MASK_SHORE_OUT : MASK_SHORE_IN,
-                   cfg, fr.variant,
-                   (uint8_t)liquid.sr, (uint8_t)liquid.sg, (uint8_t)liquid.sb);
+
+        // Shallows only where the liquid in question has them. Lava is a liquid
+        // with no shore colour, so it takes the outline and nothing more.
+        bool other_hard = biome_hard_edge(other);
+        int shore_of = other_hard ? other : mine;
+        if (biome_has_shore(shore_of)) {
+            const GroundBiome& s = s_biomes[shore_of];
+            push_layer(out, other_hard ? MASK_SHORE_OUT : MASK_SHORE_IN,
+                       cfg, fr.variant, (uint8_t)s.sr, (uint8_t)s.sg, (uint8_t)s.sb);
+        }
     }
 }
 
@@ -3599,6 +4118,7 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_SAND:
         case TILE_SNOW:
         case TILE_WASTELAND:
+        case TILE_WASTE_TRAIL:
         case TILE_MEADOW:
         // Elevated terrain top surfaces — walkable plateau; cliff FACE tiles are not listed here
         case TILE_CLIFF:        case TILE_CLIFF_2:      case TILE_CLIFF_3:
@@ -3656,7 +4176,7 @@ static int field_owner_at(const Tilemap* map, int tx, int ty, float px, float py
     // hugging the drawn line rather than wandering off it.
     int owner = mine;
     for (int i = 0; i < fr.count; i++) {
-        if (!biome_is_liquid(mine) && !biome_is_liquid(fr.biome[i])) continue;
+        if (!biome_hard_edge(mine) && !biome_hard_edge(fr.biome[i])) continue;
         if (edge_coverage(fr.config[i], ax, ay) >= 0.5f) owner = fr.biome[i];
     }
     return owner;
@@ -3668,19 +4188,19 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     int ty = (int)(py / TILE_SIZE);
     if (!in_bounds(tx, ty)) return true;
 
-    // Water is drawn along the smoothed field rather than the tile grid, so its
-    // collision reads that same field. Without this the shore you can see and
-    // the shore you can walk to disagree by up to half a tile wherever the
-    // outline rounds a corner — visibly, since the waterline is a hard edge.
-    // Everything else keeps the tile-grid answer.
+    // Solid ground cover — water and lava — is drawn along the smoothed field
+    // rather than the tile grid, so their collision reads that same field.
+    // Without this the edge you can see and the edge you can walk to disagree
+    // by up to half a tile wherever the outline rounds a corner, which is very
+    // visible against a hard edge. Everything else keeps the tile-grid answer.
     int mine  = biome_at(map, tx, ty);
     int owner = field_owner_at(map, tx, ty, px, py);
-    bool mine_is_water = biome_is_liquid(mine);
+    bool mine_is_solid = biome_solid(mine);
 
-    if (biome_is_liquid(owner)) return true;
-    // A water tile whose pixel the field gave to the land is standable; asking
+    if (biome_solid(owner)) return true;
+    // A solid tile whose pixel the field gave to walkable ground is standable; asking
     // tilemap_is_walkable here would call the whole tile solid and undo that.
-    if (!mine_is_water && !tilemap_is_walkable(map, tx, ty)) return true;
+    if (!mine_is_solid && !tilemap_is_walkable(map, tx, ty)) return true;
 
     // Trees, rocks, and gold ore live in the overlay — they're also solid.
     int ov = map->overlay[ty][tx];
