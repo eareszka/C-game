@@ -4013,39 +4013,29 @@ static bool cliff_ring_outward(int t, int* dx, int* dy) {
 // wall is a tile further out than the drawn edge.
 static const int CLIFF_ART_HIDDEN = -2;
 
-// Two blocks of art, and they do different jobs.
+// The mountain set, drawn as one worked example on the sheet and read back out
+// of it here. Two kinds of piece:
 //
-//   cols 27-29, rows 0-4   the rim: an outline with nothing inside it. The
-//                          middle of the block is keyed out entirely, so a
-//                          plateau tile draws its own ground and then wears as
-//                          many of these as it has open sides. That is what
-//                          being hollow buys — a tile at a step in the edge is
-//                          exposed north and west at once, and two opaque
-//                          cells could not both be on it.
-//   cols 30-32, rows 2-4   the hill: solid rock, for the face below a plateau.
-//                          Nine-sliced, so a face of any height and length has
-//                          a top course, a fill and a rounded foot.
+//   the rim    a hollow outline with nothing inside, worn by a plateau tile on
+//              every side of it that falls away. Hollow is what lets a tile at
+//              a step in the edge wear two of them at once, north and west,
+//              which no pair of opaque cells could manage.
+//   the face   solid rock, below the plateau: a capped top course, a fill that
+//              repeats down as far as the drop goes, and a rounded foot. Each
+//              of the three comes in a left, a middle and a right, so a run of
+//              any length closes off at both ends.
 //
-// The one-tile-tall face — every elevation-1 cliff, so most of them — is the
-// rim block's own bottom row, which is drawn with both a top edge and a
-// rounded foot in the one cell.
-static const int CLIFF_HILL_COL = 30;   // solid face block, cols 30-32
-static const int CLIFF_HILL_TOP = 2;    // its top course; +1 fill, +2 foot
-
-// The ribbed wall, cut out of the big painted scene further along the sheet.
-// That scene is not a tileset — it is hand-drawn, and its outlines wander
-// across cell boundaries wherever they please — but the walls in it are built
-// from something that does tile. The two columns below repeat left to right,
-// and the middle course repeats downward as far as it is asked to, so a face of
-// any length and any height can be laid from six cells.
-//
-// Which is what a drop should look like: strata and vertical ribs, a wavy cap
-// where it meets the plateau and a wavy foot where it meets the ground, rather
-// than the flat slab the hill block gives.
-static const int CLIFF_WALL_COL = 44;   // and 45 — alternating, by world column
-static const int CLIFF_WALL_CAP = 1;    // top course
-static const int CLIFF_WALL_MID = 3;    // middle, repeats down
-static const int CLIFF_WALL_FOOT = 5;   // bottom course
+// The plateau's surface is not drawn at all — it is the ground of whichever
+// biome the cliff belongs to, with the rim laid round its edge.
+static const int RIM_W_COL   = 27;   // west rim, and the north-west corner
+static const int RIM_E_COL   = 35;   // east rim, and the north-east corner
+static const int RIM_N_COL   = 28;   // north rim
+static const int RIM_N_ROW   = 2;
+static const int RIM_SIDE_ROW = 3;   // +0..2, three variants down the side
+static const int FACE_COL    = 27;   // +0 left end, +1 middle, +2 right end
+static const int FACE_CAP    = 0;    // top course
+static const int FACE_FILL   = 1;    // repeats downward
+static const int FACE_FOOT   = 6;    // rounded foot
 
 // Does this tile show rock face? Any south-face tile does, and so does a ring
 // tile with a plateau directly above it — at a step in the edge the side pass
@@ -4065,11 +4055,11 @@ static bool cliff_draws_face(const Tilemap* map, int x, int y) {
 // 0 for a tile that is not cliff, or CLIFF_ART_HIDDEN for the ring.
 static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3]) {
     if (!s_town0_tex) return 0;
+    // Three variants down each side, picked per tile so a long flank does not
+    // repeat one notch into a rhythm.
     auto band = [&](int col) {
-        return sheet_cell(col, CLIFF_ART_ROW + 1 + (int)(cover_hash(x, y, 0xC11FF000u) % 3u));
+        return sheet_cell(col, RIM_SIDE_ROW + (int)(cover_hash(x, y, 0xC11FF000u) % 3u));
     };
-    const int L = CLIFF_ART_COL, M = CLIFF_ART_COL + 1, R = CLIFF_ART_COL + 2;
-    const int TOP = CLIFF_ART_ROW, BOT = CLIFF_ART_ROW + 4;
     int n_out = 0;
 
     // The plateau surface: its own ground, with a rim along every side that
@@ -4082,11 +4072,11 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3])
         };
         bool n = drops(x, y - 1), w = drops(x - 1, y), e = drops(x + 1, y);
         bool north_done = false;
-        if (n && w) { out[n_out++] = sheet_cell(L, TOP); north_done = true; }
-        if (n && e) { out[n_out++] = sheet_cell(R, TOP); north_done = true; }
-        if (n && !north_done) out[n_out++] = sheet_cell(M, TOP);
-        if (w && !(n && w)) out[n_out++] = band(L);
-        if (e && !(n && e)) out[n_out++] = band(R);
+        if (n && w) { out[n_out++] = sheet_cell(RIM_W_COL, RIM_N_ROW); north_done = true; }
+        if (n && e) { out[n_out++] = sheet_cell(RIM_E_COL, RIM_N_ROW); north_done = true; }
+        if (n && !north_done) out[n_out++] = sheet_cell(RIM_N_COL, RIM_N_ROW);
+        if (w && !(n && w)) out[n_out++] = band(RIM_W_COL);
+        if (e && !(n && e)) out[n_out++] = band(RIM_E_COL);
         return n_out;
     }
 
@@ -4095,16 +4085,16 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3])
     if (cliff_draws_face(map, x, y)) {
         auto is_face = [&](int nx, int ny) { return cliff_draws_face(map, nx, ny); };
         bool above = is_face(x, y - 1), below = is_face(x, y + 1);
-        // The wall's two columns alternate on world position, not on where the
-        // run starts, so neighbouring drops line their ribs up with each other
-        // instead of each restarting the pattern.
-        int col = CLIFF_WALL_COL + (x & 1);
-        int row = !above ? CLIFF_WALL_CAP
-                : (!below ? CLIFF_WALL_FOOT : CLIFF_WALL_MID);
-        // A one-course drop has nowhere to put a foot, so it keeps the cap: a
-        // short wall reads better than a foot with no wall above it.
-        if (!above && !below) row = CLIFF_WALL_CAP;
-        out[n_out++] = sheet_cell(col, row);
+        bool lend  = !is_face(x - 1, y), rend = !is_face(x + 1, y);
+        // Left end, middle, right end — the ends carry the outline that closes
+        // the wall off, so a run of any length is bounded.
+        int off = (lend && !rend) ? 0 : ((rend && !lend) ? 2 : 1);
+        // Capped where the drop begins, footed where it lands, fill between.
+        // A single course has nowhere to put a foot and keeps its cap; two
+        // courses are cap and foot with no fill.
+        int row = !above ? FACE_CAP : (!below ? FACE_FOOT : FACE_FILL);
+        if (!above && !below) row = FACE_CAP;
+        out[n_out++] = sheet_cell(FACE_COL + off, row);
         return n_out;
     }
 
