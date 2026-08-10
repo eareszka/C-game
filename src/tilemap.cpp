@@ -4020,10 +4020,11 @@ static const int CLIFF_ART_HIDDEN = -2;
 //              every side of it that falls away. Hollow is what lets a tile at
 //              a step in the edge wear two of them at once, north and west,
 //              which no pair of opaque cells could manage.
-//   the face   solid rock, below the plateau: a capped top course, a fill that
-//              repeats down as far as the drop goes, and a rounded foot. Each
-//              of the three comes in a left, a middle and a right, so a run of
-//              any length closes off at both ends.
+//   the face   solid rock, below the plateau, for a drop of two courses or
+//              more: a capped top course, a fill that repeats down as far as
+//              the drop goes, and a foot from its own three cells. Each of the
+//              three comes in a left, a middle and a right, so a run of any
+//              length closes off at both ends.
 //
 // The plateau's surface is not drawn at all — it is the ground of whichever
 // biome the cliff belongs to, with the rim laid round its edge.
@@ -4032,10 +4033,10 @@ static const int RIM_E_COL   = 35;   // east rim, and the north-east corner
 static const int RIM_N_COL   = 28;   // north rim
 static const int RIM_N_ROW   = 2;
 static const int RIM_SIDE_ROW = 3;   // +0..2, three variants down the side
-static const int FACE_COL    = 27;   // +0 left end, +1 middle, +2 right end
-static const int FACE_CAP    = 0;    // top course
-static const int FACE_FILL   = 1;    // repeats downward
-static const int FACE_FOOT   = 6;    // rounded foot
+static const int FACE_COL      = 27;  // +0 left end, +1 middle, +2 right end
+static const int FACE_CAP      = 0;   // top course
+static const int FACE_FILL     = 1;   // repeats downward
+static const int FACE_FOOT_COL = 30;  // the foot is its own three cells, on row 0
 
 // Does this tile show rock face? Any south-face tile does, and so does a ring
 // tile with a plateau directly above it — at a step in the edge the side pass
@@ -4091,10 +4092,12 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3])
         int off = (lend && !rend) ? 0 : ((rend && !lend) ? 2 : 1);
         // Capped where the drop begins, footed where it lands, fill between.
         // A single course has nowhere to put a foot and keeps its cap; two
-        // courses are cap and foot with no fill.
-        int row = !above ? FACE_CAP : (!below ? FACE_FOOT : FACE_FILL);
-        if (!above && !below) row = FACE_CAP;
-        out[n_out++] = sheet_cell(FACE_COL + off, row);
+        // courses are cap and foot with no fill. The foot is drawn from its own
+        // three cells rather than another row of the first block.
+        bool foot = above && !below;
+        int col = (foot ? FACE_FOOT_COL : FACE_COL) + off;
+        int row = foot ? 0 : (!above ? FACE_CAP : FACE_FILL);
+        out[n_out++] = sheet_cell(col, row);
         return n_out;
     }
 
