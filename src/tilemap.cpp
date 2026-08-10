@@ -2634,25 +2634,30 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         std::vector<uint8_t> incomp((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<uint8_t> nearedge((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<int> prev((size_t)MAP_WIDTH * MAP_HEIGHT, -1);
+        // How many tiles of lava the route has crossed to reach this one, so a
+        // crossing can be cut off once it is longer than a bridge should be.
+        std::vector<uint8_t> runlen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        // And how much ground it still owes before it may cross again. Two
+        // crossings back to back meet at a corner and fuse into one L-shaped
+        // deck, which is neither three wide nor going one way.
+        std::vector<uint8_t> cool((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<int> comp, route, touched, path, rimq;
         unsigned int ts = seed ^ 0x7A11D0u;
 
-        // Ground a trail can be laid on. Cliffs are excluded here rather than
-        // left to the brush: routing over ground that cannot be painted tears
-        // a hole in the trail, and mountains are to be gone around anyway.
+        // A bridge is a straight run and nothing else: one direction, three
+        // tiles wide, and short. So lava is not ground the route wanders over —
+        // it is a gap the route may step across in one move, in a straight line
+        // and only where the crossing is brief. Anything wider is gone around.
         //
-        // Lava counts as ground. A trail crosses it on a bridge rather than
-        // going round, so a channel is something to be spanned and not an
-        // obstacle — and it is not a border either, which matters twice over:
-        // a wasteland cut in two by a channel is one region again, so its
-        // dungeons are joined to each other rather than each stranded on its
-        // own side, and the clearance the route keeps from the biome's border
-        // is no longer measured from the lava.
-        // The citadel's moat is the one lava a trail may not cross. Bridging it
-        // would hand over the way in that the ring exists to withhold, so lava
-        // anywhere the moat can reach is an obstacle again rather than
-        // something to span — which also leaves the ground inside the ring a
-        // region of its own, with no route out of it.
+        // Letting the route treat lava as ordinary ground, which is what it did
+        // before, gave crossings that curved with the trail and sprawled wider
+        // than the trail at every turn, because the brush was sweeping a
+        // wandering line over a channel rather than laying a span across it.
+        const int BRIDGE_MAX = 10;   // longest crossing, in tiles of lava
+        const int BRIDGE_GAP = 4;    // ground a route must cover between crossings
+
+        // The citadel's moat is the one lava no bridge may span. Crossing it
+        // would hand over the way in that the ring exists to withhold.
         const CastlePlacement& citadel = map->castles[2];
         int moat_cx = citadel.x + CASTLE_W / 2, moat_cy = citadel.y + CASTLE_H / 2;
         auto in_moat = [&](int x, int y) {
@@ -2660,18 +2665,44 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int dx = x - moat_cx, dy = y - moat_cy;
             return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
         };
+        auto is_lava = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
+        };
+        // Lava a bridge is allowed to cross.
+        auto spannable = [&](int x, int y) {
+            return is_lava(x, y) && !in_moat(x, y);
+        };
+
+        // Ground a trail can be laid on. Cliffs are excluded here rather than
+        // left to the brush: routing over ground that cannot be painted tears
+        // a hole in the trail, and mountains are to be gone around anyway.
         auto is_region = [&](int x, int y) {
             int t = map->tiles[y][x];
-            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL
-                && t != TILE_LAVA && t != TILE_WASTE_BRIDGE) return false;
-            if ((t == TILE_LAVA || t == TILE_WASTE_BRIDGE) && in_moat(x, y)) return false;
+            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL) return false;
             if (cliff_blocked[y][x]) return false;
             if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
             return true;
         };
-        auto is_lava = [&](int x, int y) {
-            int t = map->tiles[y][x];
-            return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
+
+        // Is there a crossing from ground at (x,y) straight out along d — over
+        // nothing but spannable lava, landing on ground no more than
+        // BRIDGE_MAX tiles away? Returns where it lands, or -1.
+        //
+        // Used to work out what belongs to the same wasteland, where all that
+        // matters is whether a route could get across. The route itself does
+        // not step this way; it walks the channel a tile at a time, so that
+        // crossing costs what it is worth.
+        auto span_from = [&](int x, int y, int d) {
+            int nx = x + DX4[d], ny = y + DY4[d];
+            if (!in_bounds(nx, ny) || !spannable(nx, ny)) return -1;
+            for (int k = 1; k <= BRIDGE_MAX; k++) {
+                nx += DX4[d]; ny += DY4[d];
+                if (!in_bounds(nx, ny)) return -1;
+                if (spannable(nx, ny)) continue;
+                return is_region(nx, ny) ? ny * MAP_WIDTH + nx : -1;
+            }
+            return -1;
         };
 
         for (int y0 = 0; y0 < MAP_HEIGHT && !s_gen_cancel; y0++) {
@@ -2684,6 +2715,19 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 seen[i0] = 1;
                 for (size_t h = 0; h < comp.size(); h++) {
                     int qx = comp[h] % MAP_WIDTH, qy = comp[h] / MAP_WIDTH;
+                    // Ground across a bridgeable channel belongs to the same
+                    // wasteland: it is somewhere a trail can get to, so the
+                    // dungeons either side of a narrow channel are joined to
+                    // each other rather than each getting a trail of its own.
+                    // Across a channel too wide to bridge they are not, and the
+                    // two sides are two regions — which is right, since there
+                    // is no way between them.
+                    for (int d = 0; d < 4; d++) {
+                        int sp = span_from(qx, qy, d);
+                        if (sp < 0 || seen[sp]) continue;
+                        seen[sp] = 1;
+                        comp.push_back(sp);
+                    }
                     for (int d = 0; d < 4; d++) {
                         int nx = qx + DX4[d], ny = qy + DY4[d];
                         if (!in_bounds(nx, ny)) continue;
@@ -2828,6 +2872,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     // With the drift clamped to two tiles and a radius-one
                     // brush, a route three tiles in leaves the painted trail
                     // clear of the border at worst.
+                    //
+                    // Lava is not the border for this purpose, whatever the
+                    // routing graph thinks of it. The margin exists to keep the
+                    // trail off the edge of the biome, and a channel running
+                    // through the middle of one is not that — treating it as
+                    // border would push the route six tiles clear of every
+                    // shore and leave it unable to reach a crossing at all.
                     rimq.clear();
                     for (int c : comp) {
                         int qx = c % MAP_WIDTH, qy = c / MAP_WIDTH;
@@ -2835,7 +2886,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         for (int dy = -1; dy <= 1 && !onrim; dy++)
                             for (int dx = -1; dx <= 1; dx++) {
                                 int nx = qx + dx, ny = qy + dy;
-                                if (!in_this(nx, ny)) { onrim = true; break; }
+                                if (in_this(nx, ny)) continue;
+                                if (in_bounds(nx, ny) && is_lava(nx, ny)) continue;
+                                onrim = true; break;
                             }
                         if (onrim) { nearedge[c] = 1; rimq.push_back(c); }
                     }
@@ -2871,14 +2924,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 // across a thin barrier: that leaves a scrap of
                                 // trail somewhere it was not asked for.
                                 if (!incomp[pi]) continue;
-                                int t = map->tiles[py2][px2];
-                                // Lava the stroke crosses is decked over. The
-                                // brush is what decides how wide a bridge is,
-                                // so it is exactly as wide as the trail either
-                                // side of it and needs no separate handling.
-                                if (t == TILE_LAVA)           map->tiles[py2][px2] = TILE_WASTE_BRIDGE;
-                                else if (t == TILE_WASTELAND) map->tiles[py2][px2] = TILE_WASTE_TRAIL;
-                                else continue;
+                                if (map->tiles[py2][px2] != TILE_WASTELAND) continue;
+                                map->tiles[py2][px2] = TILE_WASTE_TRAIL;
                                 // Nothing grows on a trail. Trees, dead trees,
                                 // rocks and ore are all scattered long before
                                 // the route through them is known, so they are
@@ -2887,6 +2934,28 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 // beside water are swept afterwards.
                                 map->overlay[py2][px2] = 0;
                             }
+                    };
+
+                    // One tile's worth of bridge: the three across the span, and
+                    // nothing else. The trail brush cannot do this — it is a
+                    // diamond swept along a line that bends, so it would round
+                    // the bridge's corners off and widen its mouth wherever the
+                    // trail turned to meet it. Here the deck is laid square
+                    // across the direction of travel and only over lava, so a
+                    // crossing is three wide from end to end whatever the trail
+                    // either side of it is doing.
+                    //
+                    // `axis` is 0 for a span running east-west, 1 north-south.
+                    auto paint_span = [&](int ix, int iy, int axis) {
+                        for (int k = -1; k <= 1; k++) {
+                            int px2 = ix + (axis == 1 ? k : 0);
+                            int py2 = iy + (axis == 0 ? k : 0);
+                            if (!in_bounds(px2, py2)) continue;
+                            if (map->tiles[py2][px2] != TILE_LAVA) continue;
+                            if (in_moat(px2, py2)) continue;
+                            map->tiles[py2][px2]   = TILE_WASTE_BRIDGE;
+                            map->overlay[py2][px2] = 0;
+                        }
                     };
 
                     for (auto& e : edges) {
@@ -2933,24 +3002,67 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 // out looking like a circuit board.
                                 ts = ts * 1664525u + 1013904223u;
                                 int rot = (int)((ts >> 16) & 3u);
-                                for (int k = 0; k < 4; k++) {
-                                    int d = (k + rot) & 3;
+                                // Once out over lava there is only one way to
+                                // go: on in the same direction, until ground.
+                                // The direction is not remembered anywhere — it
+                                // is where this tile was entered from, which is
+                                // what prev already says.
+                                //
+                                // Crossing tile by tile rather than in one jump
+                                // is what keeps a bridge from being a shortcut.
+                                // A span counted as a single step cost the same
+                                // as one pace whatever its length, so the search
+                                // took every crossing it could find and the
+                                // wasteland came out stitched with bridges.
+                                // Stepped over, ten tiles of lava cost ten paces
+                                // and a trail only crosses where crossing is
+                                // genuinely the shorter way.
+                                bool on_lava = is_lava(qx, qy);
+                                int fixed_d = -1;
+                                if (on_lava) {
+                                    int p = prev[route[h]];
+                                    int ddx = qx - p % MAP_WIDTH, ddy = qy - p / MAP_WIDTH;
+                                    for (int d = 0; d < 4; d++)
+                                        if (DX4[d] == ddx && DY4[d] == ddy) fixed_d = d;
+                                }
+                                for (int k = 0; k < 4 && !found; k++) {
+                                    int d = on_lava ? fixed_d : ((k + rot) & 3);
+                                    if (d < 0) break;
                                     int nx = qx + DX4[d], ny = qy + DY4[d];
-                                    if (!in_bounds(nx, ny)) continue;
-                                    int ni = ny * MAP_WIDTH + nx;
-                                    if (prev[ni] != -1 || !incomp[ni]) continue;
-                                    if (nearedge[ni] && nearedge[ni] <= margin
-                                        && ni != to && !near_end(nx, ny)) continue;
-                                    prev[ni] = route[h];
-                                    touched.push_back(ni);
-                                    route.push_back(ni);
-                                    if (ni == to) { found = true; break; }
+                                    if (in_bounds(nx, ny)) {
+                                        int ni = ny * MAP_WIDTH + nx;
+                                        int run = on_lava ? runlen[route[h]] : 0;
+                                        bool ok = false;
+                                        if (incomp[ni]) {
+                                            ok = true;                 // ground, either side
+                                        } else if (spannable(nx, ny) && run < BRIDGE_MAX
+                                                   && (on_lava || cool[route[h]] == 0)) {
+                                            ok = true;                 // another tile of channel
+                                        }
+                                        if (ok && prev[ni] == -1 &&
+                                            !(nearedge[ni] && nearedge[ni] <= margin
+                                              && ni != to && !near_end(nx, ny))) {
+                                            prev[ni] = route[h];
+                                            runlen[ni] = incomp[ni] ? 0 : (uint8_t)(run + 1);
+                                            // Landing from a crossing starts the
+                                            // debt; walking pays it off a tile
+                                            // at a time.
+                                            cool[ni] = incomp[ni]
+                                                ? (on_lava ? (uint8_t)BRIDGE_GAP
+                                                           : (uint8_t)(cool[route[h]] ? cool[route[h]] - 1 : 0))
+                                                : 0;
+                                            touched.push_back(ni);
+                                            route.push_back(ni);
+                                            if (ni == to) { found = true; break; }
+                                        }
+                                    }
+                                    if (on_lava) break;   // the one direction, and no other
                                 }
                             }
                             if (found)
                                 for (int cur = to; cur != from; cur = prev[cur])
                                     path.push_back(cur);
-                            for (int t2 : touched) prev[t2] = -1;
+                            for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
                             touched.clear();
                         }
                         if (!found) { s_trail_unroutable++; continue; }
@@ -2974,9 +3086,38 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                             fxs[i] = (float)(path[i] % MAP_WIDTH);
                             fys[i] = (float)(path[i] / MAP_WIDTH);
                         }
+
+                        // Which points are on a bridge, and which way it runs:
+                        // -1 for ground, 0 for a span going east-west, 1 for
+                        // north-south. Taken from the tile rather than
+                        // remembered from the search, so it does not matter how
+                        // the path was put together.
+                        //
+                        // These points are pinned. Everything below moves the
+                        // line about to take the ruled edge off it, and a bridge
+                        // is the one part that has to stay ruled — the point of
+                        // it is that it goes one way only. The ground either
+                        // side of a span is pinned too, or the smoothing pulls
+                        // the approach off the end of the deck.
+                        std::vector<int8_t> span(path.size(), -1);
+                        for (size_t i = 0; i < path.size(); i++) {
+                            int px2 = path[i] % MAP_WIDTH, py2 = path[i] / MAP_WIDTH;
+                            if (!is_lava(px2, py2)) continue;
+                            size_t j = (i > 0) ? i - 1 : i + 1;
+                            if (j >= path.size()) { span[i] = 0; continue; }
+                            span[i] = (path[j] / MAP_WIDTH == py2) ? 0 : 1;
+                        }
+                        std::vector<uint8_t> pinned(path.size(), 0);
+                        for (size_t i = 0; i < path.size(); i++) {
+                            if (span[i] < 0) continue;
+                            pinned[i] = 1;
+                            if (i > 0) pinned[i-1] = 1;
+                            if (i + 1 < path.size()) pinned[i+1] = 1;
+                        }
                         for (int pass = 0; pass < 6; pass++) {
                             std::vector<float> nx2 = fxs, ny2 = fys;
                             for (size_t i = 2; i + 2 < path.size(); i++) {
+                                if (pinned[i]) continue;
                                 float sx2 = (fxs[i-2] + fxs[i-1]*2 + fxs[i]*3 + fxs[i+1]*2 + fxs[i+2]) / 9.0f;
                                 float sy2 = (fys[i-2] + fys[i-1]*2 + fys[i]*3 + fys[i+1]*2 + fys[i+2]) / 9.0f;
                                 if (in_this((int)sx2, (int)sy2)) {
@@ -2987,6 +3128,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         }
                         float drift = 0.0f, dvel = 0.0f;
                         for (size_t i = 1; i + 1 < path.size(); i++) {
+                            // A pinned point takes no drift, and the wander is
+                            // wound back to nothing so it leaves the far end of
+                            // a bridge as straight as it met the near one.
+                            if (pinned[i]) { drift = 0.0f; dvel = 0.0f; continue; }
                             ts = ts * 1664525u + 1013904223u;
                             float kick = (float)((ts >> 16) % 2001u) / 1000.0f - 1.0f;
                             // Pull the wander back toward the centreline as it
@@ -3050,6 +3195,15 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         // enough that two brush marks no longer overlap.
                         int lastx = -1, lasty = -1;
                         for (size_t i = 0; i < path.size(); i++) {
+                            // A span point is laid where the route put it, deck
+                            // only, and takes no part in the joining-up below:
+                            // interpolating onto or off a bridge would step
+                            // diagonally across the deck and cut its corners.
+                            if (span[i] >= 0) {
+                                paint_span(path[i] % MAP_WIDTH, path[i] / MAP_WIDTH, span[i]);
+                                lastx = -1;
+                                continue;
+                            }
                             int ix = (int)fxs[i], iy = (int)fys[i];
                             if (!in_this(ix, iy)) {
                                 ix = path[i] % MAP_WIDTH;
