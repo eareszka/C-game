@@ -691,42 +691,75 @@ static const int CLIFF_FACE_SIDE = 1;
 // not a ribbon. Run the other way round it fills in the notches and pockets of
 // the same size. Both are wanted, in that order: a landform should be broad,
 // and its outline simple.
+//
+// The window is a disk, and that is not a detail. It was a square, because a
+// square is what a pair of running sums gives you for nothing, and a square
+// window leaves square country: shrink-then-grow with one flattens every
+// boundary onto the axes and the diagonal, so a plateau comes out with a
+// straight top, a straight side and a mitred corner, and no amount of noise
+// upstream survives it. Every landform in the world was a rounded rectangle.
+// A disk costs one lookup per row of the window instead of one per tile, which
+// is nothing, and leaves an outline that curves.
+static const int CLIFF_MORPH_RMAX = 8;
+
+// Half-width of the disk on each row of the window, and how many tiles it holds.
+static inline const int* cliff_disk(int r, int* area)
+{
+    static int w[CLIFF_MORPH_RMAX * 2 + 1];
+    static int cached_r = -1, cached_area = 0;
+    if (r != cached_r) {
+        cached_r = r;
+        cached_area = 0;
+        for (int dy = -r; dy <= r; dy++) {
+            int hw = (int)(sqrtf((float)(r*r - dy*dy)) + 0.5f);
+            w[dy + r] = hw;
+            cached_area += 2 * hw + 1;
+        }
+    }
+    *area = cached_area;
+    return w;
+}
+
+static int cliff_disk_area(int r) { int a; cliff_disk(r, &a); return a; }
+
 static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
 {
+    int area;
+    const int* w = cliff_disk(r, &area);
     const int win = 2*r + 1;
-    static unsigned char hrow[2*8 + 1][MAP_WIDTH];
-    static int vacc[MAP_WIDTH];
-    for (int x = x_lo; x < x_hi; x++) vacc[x] = 0;
 
+    // A prefix sum along each row of the window, so the disk's span on that row
+    // is one subtraction. Rows are kept in a ring the height of the window.
+    static int prefix[CLIFF_MORPH_RMAX * 2 + 1][MAP_WIDTH + 1];
     auto build = [&](int y) {
-        unsigned char* dst = hrow[y % win];
+        int* dst = prefix[((y % win) + win) % win];
         int acc = 0;
-        for (int x = x_lo; x < x_lo + r && x < x_hi; x++) acc += (s_cliff_elev[y][x] != 0);
+        dst[x_lo] = 0;
         for (int x = x_lo; x < x_hi; x++) {
-            int add = x + r, sub = x - r - 1;
-            if (add < x_hi)  acc += (s_cliff_elev[y][add] != 0);
-            if (sub >= x_lo) acc -= (s_cliff_elev[y][sub] != 0);
-            dst[x] = (unsigned char)acc;
+            acc += (s_cliff_elev[y][x] != 0);
+            dst[x + 1] = acc;
         }
     };
-    for (int y = y_lo; y < y_lo + r && y < y_hi; y++) {
-        build(y);
-        const unsigned char* sr = hrow[y % win];
-        for (int x = x_lo; x < x_hi; x++) vacc[x] += sr[x];
-    }
+    auto span = [&](int y, int x, int hw) {
+        const int* p = prefix[((y % win) + win) % win];
+        int a = x - hw, b = x + hw + 1;
+        if (a < x_lo) a = x_lo;
+        if (b > x_hi) b = x_hi;
+        return (a < b) ? p[b] - p[a] : 0;
+    };
+
+    for (int y = y_lo; y < y_lo + r && y < y_hi; y++) build(y);
     for (int y = y_lo; y < y_hi; y++) {
-        int sub = y - r - 1, add = y + r;
-        if (sub >= y_lo) {
-            const unsigned char* sr = hrow[sub % win];
-            for (int x = x_lo; x < x_hi; x++) vacc[x] -= sr[x];
+        if (y + r < y_hi) build(y + r);
+        for (int x = x_lo; x < x_hi; x++) {
+            int acc = 0;
+            for (int dy = -r; dy <= r; dy++) {
+                int sy = y + dy;
+                if (sy < y_lo || sy >= y_hi) continue;
+                acc += span(sy, x, w[dy + r]);
+            }
+            s_cliff_scratch[y][x] = (acc >= need) ? 1 : 0;
         }
-        if (add < y_hi) {
-            build(add);
-            const unsigned char* sr = hrow[add % win];
-            for (int x = x_lo; x < x_hi; x++) vacc[x] += sr[x];
-        }
-        for (int x = x_lo; x < x_hi; x++)
-            s_cliff_scratch[y][x] = (vacc[x] >= need) ? 1 : 0;
     }
     for (int y = y_lo; y < y_hi; y++)
         for (int x = x_lo; x < x_hi; x++)
@@ -838,7 +871,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 for (int px = x_lo; px < x_hi; px++)
                     s_cliff_elev[py][px] = (s_cliff_mask[py][px] >= L - 1) ? 1 : 0;
             const int r = CLIFF_TERRACE;
-            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, (2*r + 1) * (2*r + 1));
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, cliff_disk_area(r));
             for (int py = y_lo; py < y_hi; py++)
                 for (int px = x_lo; px < x_hi; px++)
                     if (s_cliff_elev[py][px] &&
@@ -854,7 +887,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         // Round this level off into a landform: shrink then grow deletes every
         // ribbon and spur, grow then shrink closes every notch and pocket.
         {
-            const int r = CLIFF_CHUNK_R, full = (2*r + 1) * (2*r + 1);
+            const int r = CLIFF_CHUNK_R, full = cliff_disk_area(r);
             cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
             cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
             cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
@@ -4232,22 +4265,48 @@ static inline bool cliff_face_at(int x, int y, int L) {
     return in_bounds(x, y) && (s_cliff_face[y][x] & (1 << (L - 1))) != 0;
 }
 
-// The four corners of a tile, as the four bits the set is indexed by. A corner
-// counts as covered when at least two of the four tiles meeting there are.
-static int cliff_face_code(int x, int y, int L) {
-    auto n = [&](int cx, int cy) {
-        return (cliff_face_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_face_at(cx, cy-1, L) ? 1 : 0)
-             + (cliff_face_at(cx-1, cy,   L) ? 1 : 0) + (cliff_face_at(cx, cy,   L) ? 1 : 0);
-    };
-    return (n(x,   y  ) >= 2 ? 1 : 0) | (n(x+1, y  ) >= 2 ? 2 : 0)
-         | (n(x,   y+1) >= 2 ? 4 : 0) | (n(x+1, y+1) >= 2 ? 8 : 0);
-}
-
 // The same, over the heights themselves rather than over the band below them.
 static inline bool cliff_high_at(int x, int y, int L) {
     return in_bounds(x, y) && s_cliff_elev[y][x] >= L;
 }
 
+// The four corners of a tile, as the four bits the set is indexed by.
+//
+// A corner is covered when three of the four tiles meeting there are face, or
+// when two are and the corner also touches the height the face belongs to.
+//
+// The plain "two of four" this started as covers a corner half a tile outside
+// the mask on every side, so the band drawn is always the mask plus a whole
+// tile: a one-tile flank came out two tiles wide, against the one the reference
+// draws, and the front came out at three against its two. Nothing upstream can
+// fix that — a mask cannot be less than one tile wide. Asking for three instead
+// takes that tile back off, and the extra clause puts it back on just the one
+// edge where it is wanted, the one against the height, so the rock still tucks
+// under the plateau's lip instead of standing off it with a strip of grass
+// between. Flank and front then come out at one tile and two, measured.
+//
+// It also takes the stray lozenge out at the root. Two face tiles touching only
+// corner to corner used to qualify, and drew a scrap of brown in open grass
+// that three passes of filtering never found because nothing was wrong with the
+// mask. Two diagonal tiles are two, not three, and out in the open they touch
+// no height either, so they no longer draw. cliff_rock_code() still refuses
+// them belt-and-braces, which costs nothing.
+static int cliff_face_code(int x, int y, int L) {
+    auto covered = [&](int cx, int cy) {
+        int nf = (cliff_face_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_face_at(cx, cy-1, L) ? 1 : 0)
+               + (cliff_face_at(cx-1, cy,   L) ? 1 : 0) + (cliff_face_at(cx, cy,   L) ? 1 : 0);
+        if (nf >= 3) return true;
+        if (nf < 2)  return false;
+        return cliff_high_at(cx-1, cy-1, L) || cliff_high_at(cx, cy-1, L)
+            || cliff_high_at(cx-1, cy,   L) || cliff_high_at(cx, cy,   L);
+    };
+    return (covered(x,   y  ) ? 1 : 0) | (covered(x+1, y  ) ? 2 : 0)
+         | (covered(x,   y+1) ? 4 : 0) | (covered(x+1, y+1) ? 8 : 0);
+}
+
+// The outline of the height itself. Two of four here, not three: this line
+// belongs on the highland's own edge, so it wants the half-tile of spread that
+// the band does not.
 static int cliff_high_code(int x, int y, int L) {
     auto n = [&](int cx, int cy) {
         return (cliff_high_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_high_at(cx, cy-1, L) ? 1 : 0)

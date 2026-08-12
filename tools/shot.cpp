@@ -27,6 +27,38 @@ int main(int argc, char** argv)
     if (SDL_Init(SDL_INIT_VIDEO) != 0) { printf("SDL_Init: %s\n", SDL_GetError()); return 1; }
     IMG_Init(IMG_INIT_PNG);
 
+    // SHOT_MASK=1 draws the whole world one pixel to the tile instead of a
+    // window of it. The shape of a landform is a question about hundreds of
+    // tiles at once, and a 44-tile window cannot answer it — every boundary
+    // looks straight through a slot that narrow.
+    if (getenv("SHOT_MASK")) {
+        SDL_Surface* m = SDL_CreateRGBSurfaceWithFormat(0, MAP_WIDTH, MAP_HEIGHT, 32,
+                                                        SDL_PIXELFORMAT_RGBA32);
+        SDL_Renderer* mr = SDL_CreateSoftwareRenderer(m);
+        tilemap_init_tile_cache(mr);
+        tilemap_build_overworld_phase1(&g_map, seed);
+        tilemap_build_overworld_phase2(&g_map, seed);
+        uint32_t* px = (uint32_t*)m->pixels;
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int t = g_map.tiles[y][x];
+                int lv = 0;
+                if (t == TILE_CLIFF || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) lv = 1;
+                if (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2) lv = 2;
+                if (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) lv = 3;
+                uint32_t c = 0xFF201810u;
+                if (lv == 1) c = 0xFF4090F0u;
+                if (lv == 2) c = 0xFF40F0F0u;
+                if (lv == 3) c = 0xFFFFFFFFu;
+                else if (!lv && tilemap_face_at(x, y)) c = 0xFF3050A0u;
+                px[y * (m->pitch / 4) + x] = c;
+            }
+        IMG_SavePNG(m, out);
+        printf("wrote %s (%dx%d, one pixel to the tile) seed %u\n", out,
+               MAP_WIDTH, MAP_HEIGHT, seed);
+        return 0;
+    }
+
     int W = tw * TILE_SIZE, H = th * TILE_SIZE;
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_Renderer* ren = SDL_CreateSoftwareRenderer(surf);
