@@ -1,0 +1,76 @@
+// Offscreen overworld screenshot: builds a world and saves a PNG of a window
+// onto it, without opening a window. Used to iterate on cliff art.
+//
+//   shot.exe <seed> <out.png> [tile_x tile_y] [tiles_w tiles_h]
+//
+// With no tile_x/tile_y it hunts for the densest patch of cliff face in the
+// world and centres on that, which is what you want nine times out of ten.
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <cstdio>
+#include <cstdlib>
+#include "tilemap.h"
+#include "camera.h"
+
+static Tilemap g_map;
+
+int main(int argc, char** argv)
+{
+    unsigned seed = (argc > 1) ? (unsigned)strtoul(argv[1], nullptr, 10) : 387u;
+    const char* out = (argc > 2) ? argv[2] : "shot.png";
+    int want_x = (argc > 4) ? atoi(argv[3]) : -1;
+    int want_y = (argc > 4) ? atoi(argv[4]) : -1;
+    int tw = (argc > 6) ? atoi(argv[5]) : 44;
+    int th = (argc > 6) ? atoi(argv[6]) : 30;
+
+    SDL_SetMainReady();
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) { printf("SDL_Init: %s\n", SDL_GetError()); return 1; }
+    IMG_Init(IMG_INIT_PNG);
+
+    int W = tw * TILE_SIZE, H = th * TILE_SIZE;
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Renderer* ren = SDL_CreateSoftwareRenderer(surf);
+    if (!ren) { printf("renderer: %s\n", SDL_GetError()); return 1; }
+
+    tilemap_init_tile_cache(ren);
+    tilemap_build_overworld_phase1(&g_map, seed);
+    tilemap_build_overworld_phase2(&g_map, seed);
+
+    if (want_x < 0) {
+        // Densest block of cliff top, on a coarse grid. `kind` picks which
+        // family to hunt for so the snow and wasteland sets can be looked at
+        // without knowing where in a 3000-tile world they landed.
+        const char* kind = getenv("SHOT_KIND");
+        int lo = TILE_CLIFF, hi = TILE_CLIFF_3;
+        if (kind && kind[0] == 's') { lo = TILE_CLIFF_SNOW_1;  hi = TILE_CLIFF_SNOW_3; }
+        if (kind && kind[0] == 'w') { lo = TILE_CLIFF_WASTE_1; hi = TILE_CLIFF_WASTE_3; }
+        int best = -1, bx = MAP_WIDTH / 2, by = MAP_HEIGHT / 2;
+        for (int y = 0; y + th < MAP_HEIGHT; y += th / 2)
+        for (int x = 0; x + tw < MAP_WIDTH;  x += tw / 2) {
+            int n = 0;
+            for (int j = y; j < y + th; j += 2)
+            for (int i = x; i < x + tw; i += 2) {
+                int t = g_map.tiles[j][i];
+                if (t >= lo && t <= hi) n++;
+            }
+            if (n > best) { best = n; bx = x; by = y; }
+        }
+        want_x = bx; want_y = by;
+        printf("centred on tile %d,%d (%d cliff samples)\n", bx, by, best);
+    }
+
+    Camera cam;
+    cam.x = (float)(want_x * TILE_SIZE);
+    cam.y = (float)(want_y * TILE_SIZE);
+    cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
+
+    SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
+    SDL_RenderClear(ren);
+    tilemap_draw_base(&g_map, &cam, ren, 0);
+    tilemap_draw_depth(&g_map, &cam, ren, 0);
+    SDL_RenderPresent(ren);
+
+    if (IMG_SavePNG(surf, out) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+    printf("wrote %s (%dx%d) seed %u at %d,%d\n", out, W, H, seed, want_x, want_y);
+    return 0;
+}

@@ -6,3 +6,7 @@ game
 game_asan
 game_dbg
 tile_editor
+
+# Python bytecode from the tile generators
+__pycache__/
+*.pyc

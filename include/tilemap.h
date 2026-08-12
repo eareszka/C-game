@@ -269,4 +269,6 @@ bool minimap_click_to_world(int screen_w, int screen_h, int mx, int my,
 void tilemap_cancel_gen();
 void tilemap_reset_gen_cancel();
 
+bool tilemap_face_at(int x, int y);
+
 #endif

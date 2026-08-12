@@ -586,77 +586,454 @@ static void generate_delta_river(Tilemap* map, int sx, int sy,
 // Outside is handled by phase2 on a background thread.
 #define PHASE_RADIUS 500
 
+// How high a plateau can stand, and the shortest wall a mountain may show where
+// it meets open country. Generation and the drawing both work from these, and
+// have to agree: the drawing reads a wall's depth back out of the elevations
+// rather than off the tile ids, so a wall cut deeper than it expects would be
+// left half unpainted.
+static const int CLIFF_MAX_ELEV = 5;
+static const int CLIFF_WALL_MIN = 3;
+
+// The south wall is the only part of a plateau the art paints — its other three
+// sides are a rim on the plateau's own edge tiles — so this id is the whole
+// question of "is there rock here", and the passes that run after the wall is
+// laid have to leave it alone.
+static inline bool cliff_is_south_face(int t) {
+    return t >= TILE_CLIFF_EDGE_1 && t <= TILE_CLIFF_EDGE_5;
+}
+
+// The elevation the contour asks for, before it is cleaned up, and one scratch
+// grid for the cleanup. Both are the size of the map and neither outlives
+// generation, but generation runs once and off the main thread, so they live
+// here rather than on a stack that has to carry them.
+static unsigned char s_cliff_elev[MAP_HEIGHT][MAP_WIDTH];
+static unsigned char s_cliff_scratch[MAP_HEIGHT][MAP_WIDTH];
+static unsigned char s_cliff_mask[MAP_HEIGHT][MAP_WIDTH];
+// Which levels' faces cover a tile, one bit per level. Worked out once, when
+// the world is built, because every later pass and every frame drawn wants it
+// and none of them can afford to walk the neighbourhood again.
+static unsigned char s_cliff_face[MAP_HEIGHT][MAP_WIDTH];
+
+// Round the contour off until nothing on it is thinner than the art can draw.
+//
+// The set paints a drop that faces south and nothing else: a drop facing east
+// or west is a rim, a few pixels of outline on the plateau's own edge tile.
+// That is fine for an outline that runs mostly east and west, and it is fine
+// for a long straight flank, but a one-tile tongue of plateau poking south is
+// two west/east faces with a tile of surface between them — a slot of bare
+// grass cut into the middle of a wall, with a hairline around it and no rock
+// anywhere. The same shape inverted is a one-tile slot of low ground driven up
+// into a terrace. Both are everywhere in a contour read straight off noise,
+// and together they are what broke the walls into chains of short blocks.
+//
+// A majority filter answers exactly that and nothing more. Each tile takes the
+// median of the elevations around it, which leaves any feature at least as wide
+// as the window untouched and deletes anything thinner — a tongue is a minority
+// of its own neighbourhood, so is a slot. The outline stays where the noise put
+// it; only what the art cannot draw is rounded away. Snapping the contour to a
+// lattice does the same job by making every feature a multiple of the block,
+// but it also makes every mountain a stack of the same rounded octagon.
+//
+// The masks are nested — elev >= 4 lies inside elev >= 3 — and a majority
+// filter preserves that, so filtering each level on its own and counting how
+// many survive gives back a consistent height field.
+// A plateau has to fit on a screen or two, or all the player ever sees of it
+// is a band of rock crossing the view — which reads as a line drawn on the
+// grass, not as ground that is higher. The window is about 50 tiles across, so
+// these are sized to land between roughly twenty and sixty.
+static const int CLIFF_HIGH_G   = 56;   // how far apart the plateau country lies
+static const int CLIFF_ROUGH_G  = 9;    // and the scale of the bites out of its edge
+static const float CLIFF_ROUGH_AMP = 0.55f;  // how deep they bite
+static const int CLIFF_CHUNK_R  = 3;    // no feature of a plateau is thinner than this
+static const int CLIFF_HIGH_MIN = 120;  // tiles below which a plateau is not worth having
+static const int CLIFF_TERRACE  = 5;    // how far a level sits inside the one below
+static const int CLIFF_FACE_MIN = 6;    // tiles below which a piece of face is litter    // how far a level sits inside the one below it
+static const int CLIFF_LEVELS   = 3;    // besides the ground itself
+static const float CLIFF_PEAK_LIFT = 9000.0f; // how much the range gathers to its peak
+
+// How much of the eligible ground each level covers. Each is a good deal
+// smaller than the one below, so the levels read as a hill rather than as a
+// wedding cake, and the top one is rare enough to be worth climbing.
+static const float CLIFF_LEVEL_PCT[CLIFF_LEVELS + 1] = { 0.0f, 0.22f, 0.10f, 0.035f };
+
+// How far the face of each level hangs below its front edge, in tiles, against
+// the single tile it shows at the flanks and the rear.
+//
+// The contrast is the whole point. At one tile in front and one at the sides,
+// which is where this started, a plateau wears a border of even width all the
+// way round and reads as a shape someone outlined in brown. Three or four times
+// as deep at the front and the same landform reads as ground with a height to
+// it: you are looking at the face of the cliff from in front, and at its lip
+// from behind.
+static const int CLIFF_FACE_D[CLIFF_LEVELS + 1] = { 0, 2, 3, 4 };
+
+// And how far it reaches out to either side. Two, not one.
+//
+// One is enough to show the lip of a cliff, but not enough to draw it: where a
+// plateau's edge runs diagonally its flank is a line of single tiles stepping
+// down, and the tile set cannot join those up. A cell is drawn as rock when two
+// of the four cells meeting at a corner are, so along a one-tile diagonal only
+// the shared corners qualify and the flank comes out as a row of separate
+// lozenges lying in the grass — the stray brown that three passes of filtering
+// never found, because there was nothing wrong with the mask. At two the
+// diagonal is thick enough to draw as one piece.
+static const int CLIFF_FACE_SIDE = 2;
+
+// Grow or shrink the plateau mask. `need` is how many of the (2r+1)^2 tiles
+// around a tile must be plateau for it to be one afterwards: the whole window
+// shrinks the mask, a single tile grows it.
+//
+// Run as shrink-then-grow, anything thinner than the window disappears and what
+// is left keeps its size — which is how a plateau is made to be a plateau and
+// not a ribbon. Run the other way round it fills in the notches and pockets of
+// the same size. Both are wanted, in that order: a landform should be broad,
+// and its outline simple.
+static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
+{
+    const int win = 2*r + 1;
+    static unsigned char hrow[2*8 + 1][MAP_WIDTH];
+    static int vacc[MAP_WIDTH];
+    for (int x = x_lo; x < x_hi; x++) vacc[x] = 0;
+
+    auto build = [&](int y) {
+        unsigned char* dst = hrow[y % win];
+        int acc = 0;
+        for (int x = x_lo; x < x_lo + r && x < x_hi; x++) acc += (s_cliff_elev[y][x] != 0);
+        for (int x = x_lo; x < x_hi; x++) {
+            int add = x + r, sub = x - r - 1;
+            if (add < x_hi)  acc += (s_cliff_elev[y][add] != 0);
+            if (sub >= x_lo) acc -= (s_cliff_elev[y][sub] != 0);
+            dst[x] = (unsigned char)acc;
+        }
+    };
+    for (int y = y_lo; y < y_lo + r && y < y_hi; y++) {
+        build(y);
+        const unsigned char* sr = hrow[y % win];
+        for (int x = x_lo; x < x_hi; x++) vacc[x] += sr[x];
+    }
+    for (int y = y_lo; y < y_hi; y++) {
+        int sub = y - r - 1, add = y + r;
+        if (sub >= y_lo) {
+            const unsigned char* sr = hrow[sub % win];
+            for (int x = x_lo; x < x_hi; x++) vacc[x] -= sr[x];
+        }
+        if (add < y_hi) {
+            build(add);
+            const unsigned char* sr = hrow[add % win];
+            for (int x = x_lo; x < x_hi; x++) vacc[x] += sr[x];
+        }
+        for (int x = x_lo; x < x_hi; x++)
+            s_cliff_scratch[y][x] = (vacc[x] >= need) ? 1 : 0;
+    }
+    for (int y = y_lo; y < y_hi; y++)
+        for (int x = x_lo; x < x_hi; x++)
+            s_cliff_elev[y][x] = s_cliff_scratch[y][x];
+}
+
+// Smooth value noise, with the two axes scaled apart. Sampling on a grid longer
+// across than down stretches the field the same way, and a stretched field has
+// level sets that run east-west — which is the whole trick the ridges rest on.
+//
+// Smoothstepped rather than straight bilinear: the linear form creases along
+// every grid line, and a crease in the field is a kink in the ridge drawn from
+// it.
+static float cliff_value_noise(int px, int py, int gw, int gh, int s)
+{
+    int gx = px / gw, gy = py / gh;
+    float fx = (float)(px % gw) / gw;
+    float fy = (float)(py % gh) / gh;
+    fx = fx * fx * (3.0f - 2.0f * fx);
+    fy = fy * fy * (3.0f - 2.0f * fy);
+    float n00 = (float)tile_noise(gx,   gy,   s), n10 = (float)tile_noise(gx+1, gy,   s);
+    float n01 = (float)tile_noise(gx,   gy+1, s), n11 = (float)tile_noise(gx+1, gy+1, s);
+    float top = n00 + fx * (n10 - n00);
+    float bot = n01 + fx * (n11 - n01);
+    return top + fy * (bot - top);
+}
+
+
 static void place_cliffs(Tilemap* map, unsigned int seed,
                          int cx, int cy, int hw,
                          int min_r2, int max_r2)
 {
-    const int CLIFF_GRID      = 64;
-    const int CLIFF_THRESHOLD = 30000;
-    // Derive bounding box from max radius so we don't walk all 9M tiles.
     int max_r = (int)sqrtf((float)max_r2) + 1;
-    int y_lo = (cy - max_r > 1)           ? cy - max_r : 1;
+    int y_lo = (cy - max_r > 1)            ? cy - max_r : 1;
     int y_hi = (cy + max_r < MAP_HEIGHT-1) ? cy + max_r : MAP_HEIGHT - 1;
-    int x_lo = (cx - max_r > 1)           ? cx - max_r : 1;
+    int x_lo = (cx - max_r > 1)            ? cx - max_r : 1;
     int x_hi = (cx + max_r < MAP_WIDTH-1)  ? cx + max_r : MAP_WIDTH  - 1;
-    for (int py = y_lo; py < y_hi; py++) {
+
+    for (int py = y_lo; py < y_hi; py++)
         for (int px = x_lo; px < x_hi; px++) {
-            int ddx = px - cx, ddy = py - cy;
-            int r2  = ddx*ddx + ddy*ddy;
-            if (r2 < min_r2 || r2 >= max_r2) continue;
-            int cur_biome = map->tiles[py][px];
-            if (cur_biome != TILE_GRASS && cur_biome != TILE_SNOW &&
-                cur_biome != TILE_WASTELAND && cur_biome != TILE_SAND &&
-                cur_biome != TILE_MEADOW) continue;
-            if (cliff_blocked[py][px]) continue;
-            if (r2 <= hw*hw) continue;
+            s_cliff_elev[py][px] = 0;
+            s_cliff_face[py][px] = 0;
+        }
 
-            int gx = px / CLIFF_GRID,  gy = py / CLIFF_GRID;
-            float fx = (float)(px % CLIFF_GRID) / CLIFF_GRID;
-            float fy = (float)(py % CLIFF_GRID) / CLIFF_GRID;
+    auto eligible = [&](int px, int py) {
+        int ddx = px - cx, ddy = py - cy;
+        int r2  = ddx*ddx + ddy*ddy;
+        if (r2 < min_r2 || r2 >= max_r2 || r2 <= hw*hw) return false;
+        if (cliff_blocked[py][px]) return false;
+        int b = map->tiles[py][px];
+        return b == TILE_GRASS || b == TILE_SNOW || b == TILE_WASTELAND;
+    };
+    auto field = [&](int px, int py) {
+        float base  = cliff_value_noise(px, py, CLIFF_HIGH_G,  CLIFF_HIGH_G,
+                                        (int)seed ^ 0xC11F);
+        float rough = cliff_value_noise(px, py, CLIFF_ROUGH_G, CLIFF_ROUGH_G,
+                                        (int)seed ^ 0x5EED);
+        float proj = (((float)px - s_cliff_ref_x) * s_cliff_dir_x +
+                      ((float)py - s_cliff_ref_y) * s_cliff_dir_y) / s_cliff_dir_len;
+        if (proj < 0.0f) proj = 0.0f;
+        if (proj > 1.0f) proj = 1.0f;
+        return base + CLIFF_ROUGH_AMP * (rough - 16384.0f) + proj * CLIFF_PEAK_LIFT;
+    };
 
-            int n00 = tile_noise(gx,   gy,   (int)seed ^ 0xC11F);
-            int n10 = tile_noise(gx+1, gy,   (int)seed ^ 0xC11F);
-            int n01 = tile_noise(gx,   gy+1, (int)seed ^ 0xC11F);
-            int n11 = tile_noise(gx+1, gy+1, (int)seed ^ 0xC11F);
-
-            float top  = n00 + fx * (n10 - n00);
-            float bot  = n01 + fx * (n11 - n01);
-            int smooth = (int)(top + fy * (bot - top));
-
-            float proj = (((float)px - s_cliff_ref_x) * s_cliff_dir_x + ((float)py - s_cliff_ref_y) * s_cliff_dir_y) / s_cliff_dir_len;
-            if (proj < 0.0f) proj = 0.0f;
-            if (proj > 1.0f) proj = 1.0f;
-            smooth += (int)(proj * 20000);
-
-            static const int snow_cliff[]  = {0, TILE_CLIFF_SNOW_1,  TILE_CLIFF_SNOW_2,  TILE_CLIFF_SNOW_3,  TILE_CLIFF_SNOW_4,  TILE_CLIFF_SNOW_5};
-            static const int waste_cliff[] = {0, TILE_CLIFF_WASTE_1, TILE_CLIFF_WASTE_2, TILE_CLIFF_WASTE_3, TILE_CLIFF_WASTE_4, TILE_CLIFF_WASTE_5};
-            static const int plain_cliff[] = {0, TILE_CLIFF,         TILE_CLIFF_2,       TILE_CLIFF_3,       TILE_CLIFF_4,       TILE_CLIFF_5};
-
-            // Three steps rather than five, and the lowest of them is 3.
-            //
-            // A drop is drawn as many courses tall as the elevation it falls
-            // from, so a plateau of elevation 1 can only ever have a one-course
-            // face however grand the mountain it belongs to. And elevation 1 is
-            // the outermost band of every mountain, which is also its longest
-            // boundary: six of every ten drops in the world were a single tile,
-            // and a single tile shows the cap of a wall and none of the wall.
-            //
-            // Starting at 3 means the shortest drop anywhere is three courses,
-            // which is the height the drawn rock actually wants. Losing two
-            // steps also makes each remaining one wider, so the terraces
-            // between them survive the taller faces cutting into them.
-            int elev = 0;
-            if      (smooth >= CLIFF_THRESHOLD + 13000) elev = 5;
-            else if (smooth >= CLIFF_THRESHOLD +  6500) elev = 4;
-            else if (smooth >= CLIFF_THRESHOLD)         elev = 3;
-
-            if (elev > 0) {
-                if      (cur_biome == TILE_SNOW)      map->tiles[py][px] = snow_cliff[elev];
-                else if (cur_biome == TILE_WASTELAND) map->tiles[py][px] = waste_cliff[elev];
-                else                                  map->tiles[py][px] = plain_cliff[elev];
-            }
+    // Where to cut the field for each level is measured rather than guessed: a
+    // fixed cut gives a different amount of mountain on every seed.
+    float cut[CLIFF_LEVELS + 1];
+    {
+        static float samp[1 << 17];
+        const int CAPS = (int)(sizeof samp / sizeof *samp);
+        int ns = 0;
+        for (int py = y_lo; py < y_hi && ns < CAPS; py += 8)
+            for (int px = x_lo; px < x_hi && ns < CAPS; px += 8)
+                if (eligible(px, py)) samp[ns++] = field(px, py);
+        if (ns < 64) return;
+        std::sort(samp, samp + ns);
+        for (int L = 1; L <= CLIFF_LEVELS; L++) {
+            int k = (int)(ns * (1.0f - CLIFF_LEVEL_PCT[L]));
+            if (k < 0) k = 0;
+            if (k >= ns) k = ns - 1;
+            cut[L] = samp[k];
         }
     }
+
+    // Each level in turn, built out of the one below it.
+    //
+    // Thresholding one field at three heights would nest the levels — they
+    // cannot help but nest — but says nothing about how far apart the edges
+    // land, and where the field climbs steeply they land on top of each other:
+    // three faces stacked into one cliff with no terrace between, which is what
+    // made every earlier attempt read as a single wall. Requiring a level to sit
+    // CLIFF_TERRACE inside the one below puts a floor under every terrace, so a
+    // hill comes down in steps you can see and walk along.
+    //
+    // Three grids, and they must stay three: s_cliff_elev is whichever level is
+    // being worked on, s_cliff_scratch is the morphology's own workspace, and
+    // s_cliff_mask is the height built up so far. Keeping the height in the
+    // scratch grid — which is what this did at first — has every morphology
+    // call overwrite it, and the world comes out flat.
+    for (int py = y_lo; py < y_hi; py++)
+        for (int px = x_lo; px < x_hi; px++)
+            s_cliff_mask[py][px] = 0;
+
+    for (int L = 1; L <= CLIFF_LEVELS; L++) {
+        if (L > 1) {
+            // shrink the level below by a terrace, then keep the part of this
+            // level's threshold that falls inside what is left
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    s_cliff_elev[py][px] = (s_cliff_mask[py][px] >= L - 1) ? 1 : 0;
+            const int r = CLIFF_TERRACE;
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, (2*r + 1) * (2*r + 1));
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    if (s_cliff_elev[py][px] &&
+                        !(eligible(px, py) && field(px, py) > cut[L]))
+                        s_cliff_elev[py][px] = 0;
+        } else {
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    s_cliff_elev[py][px] =
+                        (eligible(px, py) && field(px, py) > cut[L]) ? 1 : 0;
+        }
+
+        // Round this level off into a landform: shrink then grow deletes every
+        // ribbon and spur, grow then shrink closes every notch and pocket.
+        {
+            const int r = CLIFF_CHUNK_R, full = (2*r + 1) * (2*r + 1);
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
+        }
+
+        // scraps of a level are not worth a face
+        {
+            static int cells[1 << 20];
+            const int CAP = (int)(sizeof cells / sizeof *cells);
+            const unsigned char UNSET = 255;
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    if (s_cliff_elev[py][px]) s_cliff_elev[py][px] = UNSET;
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++) {
+                    if (s_cliff_elev[py][px] != UNSET) continue;
+                    int n = 0, head = 0;
+                    cells[n++] = py * MAP_WIDTH + px;
+                    s_cliff_elev[py][px] = 1;
+                    while (head < n) {
+                        int v = cells[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                        for (int dy = -1; dy <= 1; dy++)
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = vx + dx, ny = vy + dy;
+                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (s_cliff_elev[ny][nx] != UNSET) continue;
+                                s_cliff_elev[ny][nx] = 1;
+                                if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
+                            }
+                    }
+                    if (n < CLIFF_HIGH_MIN)
+                        for (int i = 0; i < n; i++)
+                            s_cliff_elev[cells[i] / MAP_WIDTH][cells[i] % MAP_WIDTH] = 0;
+                }
+        }
+
+        for (int py = y_lo; py < y_hi; py++)
+            for (int px = x_lo; px < x_hi; px++)
+                if (s_cliff_elev[py][px]) s_cliff_mask[py][px] = (unsigned char)L;
+    }
+    for (int py = y_lo; py < y_hi; py++)
+        for (int px = x_lo; px < x_hi; px++)
+            s_cliff_elev[py][px] = s_cliff_mask[py][px];
+
+    // Morphology grows as well as shrinks, and it does not know about rivers,
+    // towns or the keep-out around the start. A plateau grown onto one of those
+    // never gets a tile written for it below, so it is a plateau that cannot be
+    // seen — and an invisible plateau still casts a face, which is a lump of
+    // rock sitting in open grass with nothing above it. Take that ground back
+    // before anything is derived from the heights.
+    for (int py = y_lo; py < y_hi; py++)
+        for (int px = x_lo; px < x_hi; px++)
+            if (s_cliff_elev[py][px] && !eligible(px, py))
+                s_cliff_elev[py][px] = 0;
+
+    // Reclaiming that ground can cut a plateau into pieces, and a piece of a
+    // dozen tiles is not a landform — but it still casts a face, which is a
+    // brown fragment lying in open grass with nothing to belong to. Sweep the
+    // levels again now that the map has had its final say.
+    {
+        static int cells[1 << 20];
+        const int CAP = (int)(sizeof cells / sizeof *cells);
+        for (int L = CLIFF_LEVELS; L >= 1; L--) {
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    s_cliff_scratch[py][px] = (s_cliff_elev[py][px] >= L) ? 1 : 0;
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++) {
+                    if (s_cliff_scratch[py][px] != 1) continue;
+                    int n = 0, head = 0;
+                    cells[n++] = py * MAP_WIDTH + px;
+                    s_cliff_scratch[py][px] = 2;
+                    while (head < n) {
+                        int v = cells[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                        for (int dy = -1; dy <= 1; dy++)
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = vx + dx, ny = vy + dy;
+                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (s_cliff_scratch[ny][nx] != 1) continue;
+                                s_cliff_scratch[ny][nx] = 2;
+                                if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
+                            }
+                    }
+                    if (n < CLIFF_HIGH_MIN)
+                        for (int i = 0; i < n; i++) {
+                            int vy = cells[i] / MAP_WIDTH, vx = cells[i] % MAP_WIDTH;
+                            s_cliff_elev[vy][vx] = (unsigned char)(L - 1);
+                        }
+                }
+        }
+    }
+
+    // The face of each level: the ground below and beside its edge, and never
+    // above it. Deep in front, one tile at the flanks — the whole point being
+    // that a cliff faces somewhere. A skirt of equal width all the way round is
+    // a brown outline drawn around a green shape, which is what this looked
+    // like when the face wrapped the sides as thickly as the front.
+    for (int L = 1; L <= CLIFF_LEVELS; L++) {
+        int D = CLIFF_FACE_D[L];
+        for (int y = y_lo; y < y_hi; y++)
+            for (int x = x_lo; x < x_hi; x++) {
+                if (s_cliff_elev[y][x] >= L) continue;
+                if (y + 1 < MAP_HEIGHT && s_cliff_elev[y+1][x] >= L) continue;  // its far side
+                // The face is the plateau's own outline, pushed outward —
+                // further downhill than anywhere else, but never let go of.
+                //
+                // Testing the four directions separately leaves a notch at every
+                // corner: the tile diagonally off a corner has no plateau
+                // directly above it and none directly beside it either, so it
+                // failed both tests and the wall stopped dead at each turn.
+                // Sweeping a block over the plateau instead — one tile out to
+                // the sides and the rear, CLIFF_FACE_D down the front — covers
+                // the diagonals by construction, and the wrap closes.
+                bool hit = false;
+                for (int dy = -1; dy <= D && !hit; dy++)
+                    for (int dx = -CLIFF_FACE_SIDE; dx <= CLIFF_FACE_SIDE; dx++) {
+                        int sx = x - dx, sy = y - dy;
+                        if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
+                        if (s_cliff_elev[sy][sx] >= L) { hit = true; break; }
+                    }
+                if (hit) s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
+            }
+    }
+
+    // A face of one or two tiles is a speck of brown, not a cliff.
+    //
+    // The sweep is clipped by the plateau it belongs to, so where an edge turns
+    // sharply the only ground left outside it can be a single tile — drawn, at
+    // that size, as a little brown lozenge sitting on the grass. It is honestly
+    // derived and it does border higher ground, so no check on where the brown
+    // comes from will ever catch it; it simply reads as litter. Walk the face
+    // regions and rub out the ones too small to be seen as the side of anything.
+    {
+        static int cells[1 << 20];
+        const int CAP = (int)(sizeof cells / sizeof *cells);
+        for (int L = 1; L <= CLIFF_LEVELS; L++) {
+            unsigned char bit = (unsigned char)(1 << (L - 1));
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++)
+                    s_cliff_scratch[py][px] = (s_cliff_face[py][px] & bit) ? 1 : 0;
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++) {
+                    if (s_cliff_scratch[py][px] != 1) continue;
+                    int n = 0, head = 0;
+                    cells[n++] = py * MAP_WIDTH + px;
+                    s_cliff_scratch[py][px] = 2;
+                    while (head < n) {
+                        int v = cells[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                        for (int dy = -1; dy <= 1; dy++)
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = vx + dx, ny = vy + dy;
+                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (s_cliff_scratch[ny][nx] != 1) continue;
+                                s_cliff_scratch[ny][nx] = 2;
+                                if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
+                            }
+                    }
+                    if (n < CLIFF_FACE_MIN)
+                        for (int i = 0; i < n; i++)
+                            s_cliff_face[cells[i] / MAP_WIDTH][cells[i] % MAP_WIDTH] &=
+                                (unsigned char)~bit;
+                }
+        }
+    }
+
+    // A plateau's top is the biome's own ground; all that is written here is
+    // how high it stands. The face is not written to the map at all — it is
+    // drawn over whatever ground it falls on, which is the terrace below.
+    static const int snow_c[]  = {0, TILE_CLIFF_SNOW_1,  TILE_CLIFF_SNOW_2,  TILE_CLIFF_SNOW_3};
+    static const int waste_c[] = {0, TILE_CLIFF_WASTE_1, TILE_CLIFF_WASTE_2, TILE_CLIFF_WASTE_3};
+    static const int plain_c[] = {0, TILE_CLIFF,         TILE_CLIFF_2,       TILE_CLIFF_3};
+    for (int py = y_lo; py < y_hi; py++)
+        for (int px = x_lo; px < x_hi; px++) {
+            int L = s_cliff_elev[py][px];
+            if (L <= 0) continue;
+            if (L > CLIFF_LEVELS) L = CLIFF_LEVELS;
+            int b = map->tiles[py][px];
+            if      (b == TILE_SNOW)      map->tiles[py][px] = snow_c[L];
+            else if (b == TILE_WASTELAND) map->tiles[py][px] = waste_c[L];
+            else                          map->tiles[py][px] = plain_c[L];
+        }
 }
 
 // Stamp a town blueprint onto the map at tile position (tx, ty).
@@ -1686,223 +2063,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // and selects the matching cliff variant (snow/wasteland/plain) directly.
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
 
-    GEN_STAGE(map, "before Cliff edge pass");
-    // --- Cliff edge pass (bottom-to-top so each drop level gets its own edge) ---
-    // For each tile, if the tile directly south is at lower elevation, place a
-    // south-facing edge tile there showing the dirt face of the cliff.
-    auto cliff_elev = [](int t) -> int {
-        switch (t) {
-            case TILE_CLIFF:        case TILE_CLIFF_SNOW_1: case TILE_CLIFF_WASTE_1: return 1;
-            case TILE_CLIFF_2:      case TILE_CLIFF_SNOW_2: case TILE_CLIFF_WASTE_2: return 2;
-            case TILE_CLIFF_3:      case TILE_CLIFF_SNOW_3: case TILE_CLIFF_WASTE_3: return 3;
-            case TILE_CLIFF_4:      case TILE_CLIFF_SNOW_4: case TILE_CLIFF_WASTE_4: return 4;
-            case TILE_CLIFF_5:      case TILE_CLIFF_SNOW_5: case TILE_CLIFF_WASTE_5: return 5;
-            default:                return 0;
-        }
-    };
-    static const int edge_tile[] = {
-        0,                  // unused (no drop from elev 0)
-        TILE_CLIFF_EDGE_1,  // drop from elev 1
-        TILE_CLIFF_EDGE_2,  // drop from elev 2
-        TILE_CLIFF_EDGE_3,  // drop from elev 3
-        TILE_CLIFF_EDGE_4,  // drop from elev 4
-        TILE_CLIFF_EDGE_5,  // drop from elev 5
-    };
-    for (int y = MAP_HEIGHT - 2; y >= 0; y--) {
-        for (int x = 0; x < MAP_WIDTH; x++) {
-            int elev_here  = cliff_elev(map->tiles[y][x]);
-            int elev_below = cliff_elev(map->tiles[y+1][x]);
-            if (elev_here <= elev_below) continue;
-            // Only require connectivity at cliff→grass drops to suppress stray specks.
-            // Between elevation layers the lower layer is always wide, so no check needed.
-            if (elev_below == 0) {
-                bool connected = (x > 0            && cliff_elev(map->tiles[y][x-1]) >= elev_here)
-                              || (x < MAP_WIDTH - 1 && cliff_elev(map->tiles[y][x+1]) >= elev_here)
-                              || (y > 0             && cliff_elev(map->tiles[y-1][x]) >= elev_here);
-                if (!connected) continue;
-            }
-            for (int d = 1; d <= elev_here; d++) {
-                int ey = y + d;
-                if (ey >= MAP_HEIGHT) break;
-                if (cliff_elev(map->tiles[ey][x]) >= elev_here) break;
-                map->tiles[ey][x] = edge_tile[elev_here];
-            }
-        }
-    }
-
-    GEN_STAGE(map, "before Cliff side/corner pass");
-    // --- Cliff side/corner pass ---
-    // East/west faces and outer (convex) corners.
-    // Run bottom-to-top so higher-elevation cliffs overwrite lower-elevation placements
-    // at shared positions, mirroring the south-face pass ordering.
-    {
-        // West and east faces are mirrors of each other in the art, and the
-        // north rim is a different thing again, so each gets its own tile.
-        static const int side_tile[] = {
-            0,
-            TILE_CLIFF_SIDE_1, TILE_CLIFF_SIDE_2, TILE_CLIFF_SIDE_3,
-            TILE_CLIFF_SIDE_4, TILE_CLIFF_SIDE_5,
-        };
-        static const int side_tile_e[] = {
-            0,
-            TILE_CLIFF_SIDE_E_1, TILE_CLIFF_SIDE_E_2, TILE_CLIFF_SIDE_E_3,
-            TILE_CLIFF_SIDE_E_4, TILE_CLIFF_SIDE_E_5,
-        };
-        static const int back_tile[] = {
-            0,
-            TILE_CLIFF_BACK_1, TILE_CLIFF_BACK_2, TILE_CLIFF_BACK_3,
-            TILE_CLIFF_BACK_4, TILE_CLIFF_BACK_5,
-        };
-        static const int corner_sw[] = {
-            0,
-            TILE_CLIFF_CORNER_SW_1, TILE_CLIFF_CORNER_SW_2, TILE_CLIFF_CORNER_SW_3,
-            TILE_CLIFF_CORNER_SW_4, TILE_CLIFF_CORNER_SW_5,
-        };
-        static const int corner_se[] = {
-            0,
-            TILE_CLIFF_CORNER_SE_1, TILE_CLIFF_CORNER_SE_2, TILE_CLIFF_CORNER_SE_3,
-            TILE_CLIFF_CORNER_SE_4, TILE_CLIFF_CORNER_SE_5,
-        };
-
-        for (int y = MAP_HEIGHT - 2; y >= 0; y--) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
-                int E = cliff_elev(map->tiles[y][x]);
-                if (E == 0) continue;
-
-                // A corner goes at the foot of a face, and only there. The
-                // plateau's west edge runs as far south as its body does, and
-                // every row of that body was dropping a corner one tile below
-                // itself — onto the face tile the row beneath had just laid,
-                // because this loop runs upward. So an edge of any height came
-                // out as a column of corners with one face tile at the top of
-                // it. Nothing showed while faces and corners were the same
-                // flat brown; the drawn art made it plain.
-                //
-                // The face carries on below wherever the body does, so that is
-                // the test: only the last row of an edge puts a corner down.
-                bool face_continues = (y + 1 < MAP_HEIGHT)
-                                   && cliff_elev(map->tiles[y+1][x]) >= E;
-
-                // West face: cliff at (x,y) drops to lower ground at (x-1,y).
-                // Side tiles go at (x-1, y+d) for d in [0,E), corner at (x-1, y+E).
-                if (cliff_elev(map->tiles[y][x-1]) < E) {
-                    bool full = true;
-                    for (int d = 0; d < E; d++) {
-                        int ey = y + d;
-                        if (ey >= MAP_HEIGHT)             { full = false; break; }
-                        if (cliff_elev(map->tiles[ey][x-1]) >= E) { full = false; break; }
-                        map->tiles[ey][x-1] = side_tile[E];
-                    }
-                    if (full && !face_continues) {
-                        int cy = y + E;
-                        if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x-1]) == 0)
-                            map->tiles[cy][x-1] = corner_sw[E];
-                    }
-                }
-
-                // East face: cliff at (x,y) drops to lower ground at (x+1,y).
-                if (cliff_elev(map->tiles[y][x+1]) < E) {
-                    bool full = true;
-                    for (int d = 0; d < E; d++) {
-                        int ey = y + d;
-                        if (ey >= MAP_HEIGHT)             { full = false; break; }
-                        if (cliff_elev(map->tiles[ey][x+1]) >= E) { full = false; break; }
-                        map->tiles[ey][x+1] = side_tile_e[E];
-                    }
-                    if (full && !face_continues) {
-                        int cy = y + E;
-                        if (cy < MAP_HEIGHT && cliff_elev(map->tiles[cy][x+1]) == 0)
-                            map->tiles[cy][x+1] = corner_se[E];
-                    }
-                }
-            }
-        }
-
-        // North/back face: one side tile at (x, y-1) per northward layer drop.
-        // Run top-to-bottom so higher-elevation cliffs overwrite lower ones.
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 0; x < MAP_WIDTH; x++) {
-                int E = cliff_elev(map->tiles[y][x]);
-                if (E == 0) continue;
-                if (cliff_elev(map->tiles[y-1][x]) >= E) continue;
-                map->tiles[y-1][x] = back_tile[E];
-            }
-        }
-
-        // Inner (concave) back corners: placed at (x-1, y-1) and (x+1, y-1) when a
-        // cliff drops both west/east AND north simultaneously.  These fill the gap
-        // where the north back-face meets the west or east side-face from the inside.
-        static const int corner_nw[] = {
-            0,
-            TILE_CLIFF_CORNER_NW_1, TILE_CLIFF_CORNER_NW_2, TILE_CLIFF_CORNER_NW_3,
-            TILE_CLIFF_CORNER_NW_4, TILE_CLIFF_CORNER_NW_5,
-        };
-        static const int corner_ne[] = {
-            0,
-            TILE_CLIFF_CORNER_NE_1, TILE_CLIFF_CORNER_NE_2, TILE_CLIFF_CORNER_NE_3,
-            TILE_CLIFF_CORNER_NE_4, TILE_CLIFF_CORNER_NE_5,
-        };
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
-                int E = cliff_elev(map->tiles[y][x]);
-                if (E == 0) continue;
-
-                bool drops_west  = cliff_elev(map->tiles[y][x-1]) < E;
-                bool drops_east  = cliff_elev(map->tiles[y][x+1]) < E;
-                bool drops_north = cliff_elev(map->tiles[y-1][x]) < E;
-
-                if (drops_west && drops_north) {
-                    int px = x - 1, py = y - 1;
-                    if (cliff_elev(map->tiles[py][px]) < E)
-                        map->tiles[py][px] = corner_nw[E];
-                }
-                if (drops_east && drops_north) {
-                    int px = x + 1, py = y - 1;
-                    if (cliff_elev(map->tiles[py][px]) < E)
-                        map->tiles[py][px] = corner_ne[E];
-                }
-            }
-        }
-    }
-
-    GEN_STAGE(map, "before Trees");
-    // --- Trees ---
-    if (s_gen_cancel) return;
-    // TILE_GRASS = spotty dense forest (coarse cluster noise → dense patches + clearings)
-    // TILE_MEADOW = open plains (~5% trees)
-    {
-        const int FG = 20; // forest cluster grid size
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
-                int t = map->tiles[y][x];
-                if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SNOW) continue;
-                int ddx = x - cx, ddy = y - cy;
-                if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-                int n = tile_noise(x, y, (int)seed ^ 7);
-                if (t == TILE_MEADOW) {
-                    if (n > 32400) map->overlay[y][x] = TILE_TREE;
-                } else if (t == TILE_SNOW) {
-                    // Thin brush: only inside forest clusters, sparser than temperate forest
-                    int gx = x/FG, gy = y/FG;
-                    float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
-                    float top = tile_noise(gx,gy,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy,(int)seed^0xF05)-tile_noise(gx,gy,(int)seed^0xF05));
-                    float bot = tile_noise(gx,gy+1,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF05)-tile_noise(gx,gy+1,(int)seed^0xF05));
-                    int cluster = (int)(top + fy*(bot-top));
-                    if (cluster > 20000 && n > 16000)
-                        map->overlay[y][x] = TILE_TREE;
-                } else {
-                    int gx = x/FG, gy = y/FG;
-                    float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
-                    float top = tile_noise(gx,gy,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy,(int)seed^0xF04)-tile_noise(gx,gy,(int)seed^0xF04));
-                    float bot = tile_noise(gx,gy+1,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF04)-tile_noise(gx,gy+1,(int)seed^0xF04));
-                    int cluster = (int)(top + fy*(bot-top));
-                    if (n > ((cluster > 16000) ? 5000 : 32400))
-                        map->overlay[y][x] = TILE_TREE;
-                }
-            }
-        }
-    }
-
     GEN_STAGE(map, "before Rocks");
     // --- Rocks (after cliffs for same reason) ---
     {
@@ -1920,6 +2080,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     GEN_STAGE(map, "before Rocks at elevation");
     // --- Rocks at elevation (density scales with cliff level) ---
+    //
+    // Off again. This came back while mountains were thin ridges, where a crest
+    // two tiles wide had nothing but the overlay to tell it from the field it
+    // ran through. A highland is acres wide again and reads by its band and its
+    // outline, so the rock has nothing to add and forty percent coverage of it
+    // buries the surface — which is what had it switched off the first time.
+#if 0
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
@@ -1938,9 +2105,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
     }
+#endif
 
     GEN_STAGE(map, "before Gold ore at high elevation");
     // --- Gold ore at high elevation (cliff 3+) for all biomes ---
+#if 0
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
@@ -1957,6 +2126,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
     }
+#endif
 
     GEN_STAGE(map, "before Lava streams and pools inside wasteland");
     // --- Lava streams and pools inside wasteland ---
@@ -3533,6 +3703,7 @@ static constexpr GroundCover COVER_GRASS = cover_tufts(
     sheet_cell(18, 2), sheet_cell(19, 2),
     sheet_cell(20, 2), sheet_cell(18, 3), sheet_cell(19, 3),
     sheet_cell(20, 3), TILE_GRASS);
+
 // Same six roles three columns right: mint base, pink blossoms.
 static constexpr GroundCover COVER_MEADOW = cover_tufts(
     sheet_cell(21, 2), sheet_cell(22, 2),
@@ -3554,6 +3725,18 @@ static constexpr GroundCover COVER_DESERT = cover_dunes(
 // side of it are drawn but unused — each carries a large light patch, and even
 // sparingly they read as blotches rather than as texture.
 static constexpr GroundCover COVER_WASTE = cover_single(sheet_cell(25, 4), TILE_WASTELAND);
+
+// A ladder of covers, one shade paler per storey, used to live here for grass,
+// snow and waste alike. It was there because a plateau whose top draws exactly
+// what the country around it draws was held to be invisible — and it did work,
+// but by making height read as a change of biome. The reference settles the
+// question the other way: the plateau there is pixel for pixel the same grass
+// as the field below it, and what says it is high is the band of rock on its
+// edge and the beaded line along its back. Those now carry it, so the ladder
+// is gone; cliff_top_cover() hands back the plain cover for the biome.
+//
+// The cells it drew from are still in the sheet at rows 12-14.
+
 // The trail worn through it, drawn from the hand-cut nine-slice at cols 24-26
 // rows 5-7. Its borders come out of the art and sit on the tile grid, which is
 // the point: square corners that look laid down rather than eroded.
@@ -3950,25 +4133,6 @@ static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover
 }
 
 // ── Cliff art ───────────────────────────────────────────────────────────────
-// Hand-drawn at cols 27-29, rows 0-4 of the sheet, as one closed silhouette:
-//
-//     NW   back   NE          row 0
-//     W    top    E           rows 1-3, three variants of the same band
-//     SW   south  SE          row 4
-//
-// The three middle rows are the same band drawn three times over, so a long
-// face or a wide plateau picks between them per tile instead of repeating one
-// cell into a visible stripe.
-//
-// It lines up with where generation already puts each piece: the plateau body
-// takes the middle, and the rim tiles it lays around the body — back face one
-// row north, side faces down each flank, south face below, corners on the
-// diagonals — take the eight around it. So there is nothing to work out at
-// draw time beyond which row a middle cell should use; the tile id already
-// says which of the nine it is.
-static const int CLIFF_ART_COL = 27;   // leftmost column of the block
-static const int CLIFF_ART_ROW = 0;    // topmost row
-
 // Which layer a plateau tile is, or 0 for anything that is not plateau surface.
 static int cliff_body_elev(int t) {
     switch (t) {
@@ -3986,6 +4150,21 @@ static bool cliff_is_face_tile(int t) {
         || (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_BACK_5);
 }
 
+// How high the plateau a ring tile belongs to stands, or 0 for anything that is
+// not ring. The ring around a plateau is its own skirt and reads as a drop from
+// inside it; the ring around a taller one is not a drop at all, whatever the
+// tile beneath it used to be.
+static int cliff_ring_elev(int t) {
+    if (t >= TILE_CLIFF_SIDE_1      && t <= TILE_CLIFF_SIDE_5)      return t - TILE_CLIFF_SIDE_1      + 1;
+    if (t >= TILE_CLIFF_SIDE_E_1    && t <= TILE_CLIFF_SIDE_E_5)    return t - TILE_CLIFF_SIDE_E_1    + 1;
+    if (t >= TILE_CLIFF_BACK_1      && t <= TILE_CLIFF_BACK_5)      return t - TILE_CLIFF_BACK_1      + 1;
+    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) return t - TILE_CLIFF_CORNER_SW_1 + 1;
+    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) return t - TILE_CLIFF_CORNER_SE_1 + 1;
+    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) return t - TILE_CLIFF_CORNER_NW_1 + 1;
+    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) return t - TILE_CLIFF_CORNER_NE_1 + 1;
+    return 0;
+}
+
 // Which way is away from the plateau a ring tile belongs to. The tile's own
 // role says it: a west face has its plateau to the east, a back face has it to
 // the south, and so on. What lies that way is what the ring tile is level with.
@@ -4001,113 +4180,149 @@ static bool cliff_ring_outward(int t, int* dx, int* dy) {
 }
 
 // Returned instead of a cell for the ring of tiles around a plateau that
-// generation fills with side, back and corner faces. The art puts the rim on
-// the plateau's own edge tiles rather than on the ground beside it — the side
-// and back cells are four-fifths white, so they are surface with a rim along
-// one side, not a face. Drawing them out here made every plateau read a tile
-// wider than it is and pushed a white notch into the south face wherever the
-// edge stepped.
+// generation fills with side, back and corner faces. The art puts the whole
+// outline on the plateau's own edge tiles, so there is nothing left for the
+// ring to draw: giving it anything made every plateau read a tile wider than
+// it is.
 //
 // The ring still exists and is still impassable, so a cliff is walled as it
 // always was; it just draws as the ground it stands in. Which does mean the
 // wall is a tile further out than the drawn edge.
 static const int CLIFF_ART_HIDDEN = -2;
 
-// The mountain set, drawn as one worked example on the sheet and read back out
-// of it here. Two kinds of piece:
+// The mountain set — see tools/gen_cliff_tiles.py, which draws it.
 //
-//   the rim    a hollow outline with nothing inside, worn by a plateau tile on
-//              every side of it that falls away. Hollow is what lets a tile at
-//              a step in the edge wear two of them at once, north and west,
-//              which no pair of opaque cells could manage.
-//   the face   solid rock, below the plateau, for a drop of two courses or
-//              more: a capped top course, a fill that repeats down as far as
-//              the drop goes, and a foot from its own three cells. Each of the
-//              three comes in a left, a middle and a right, so a run of any
-//              length closes off at both ends.
+// Two marching-squares sets: a cell's shape is decided by which of its four
+// corners the mask covers, so its edges meet its neighbours' by construction
+// and the sixteen between them cover every way a boundary can cross a tile.
 //
-// The plateau's surface is not drawn at all — it is the ground of whichever
-// biome the cliff belongs to, with the rim laid round its edge.
-static const int RIM_W_COL   = 27;   // west rim, and the north-west corner
-static const int RIM_E_COL   = 35;   // east rim, and the north-east corner
-static const int RIM_N_COL   = 28;   // north rim
-static const int RIM_N_ROW   = 2;
-static const int RIM_SIDE_ROW = 3;   // +0..2, three variants down the side
-static const int FACE_COL      = 27;  // +0 left end, +1 middle, +2 right end
-static const int FACE_CAP      = 0;   // top course
-static const int FACE_FILL     = 1;   // repeats downward
-static const int FACE_FOOT_COL = 30;  // the foot is its own three cells, on row 0
+//   ROCK   the band of rock that hangs off a highland's edge — brown, split
+//          top to bottom by black clefts, with brown teeth standing through
+//          the black at its lip and foot and a scatter of grains fallen below.
+//   EDGE   the beaded line along the top of a highland, drawn only where the
+//          band does not already cover it, which in practice is its north side.
+//
+// A case is not one cell but 256. The art is generated from noise that wraps
+// on a 256x256 pixel torus — sixteen cells by sixteen — so a cell also has to
+// know where in that torus it lies, and a tile picks its cell by position as
+// well as by case. That is what lets the grain be ragged at a scale of two or
+// three pixels without any seam showing: neighbouring tiles are two windows
+// onto one continuous field rather than two stamps butted together. It also
+// means the band does not repeat inside 256 pixels, which matters — at 64 the
+// repeat was obvious along any face longer than a few tiles.
+//
+// Both sets are keyed out everywhere they do not draw, so the ground
+// underneath — the highland's own biome on top of it, open country below —
+// shows through.
+static const int CLIFF_ROCK_ROW0  = 16;
+static const int CLIFF_EDGE_ROW0  = 32;
+static const int CLIFF_SCREE_ROW0 = 48;  // grains spilled below a foot
+static const int CLIFF_SCREE_STEPS = 2;  // how many tiles below they reach
+static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 
-// Does this tile show rock face? Any south-face tile does, and so does a ring
-// tile with a plateau directly above it — at a step in the edge the side pass
-// overwrote the south face the earlier pass had already put there, so the tile
-// carries a side-face id while being, in every visible sense, the face of the
-// plateau above. Without this the outline broke at every step, which is most of
-// them: the terrain steps far more often than it runs straight.
-static bool cliff_draws_face(const Tilemap* map, int x, int y) {
-    if (!in_bounds(x, y)) return false;
-    int t = map->tiles[y][x];
-    if (t >= TILE_CLIFF_EDGE_1 && t <= TILE_CLIFF_EDGE_5) return true;
-    return cliff_is_face_tile(t) && in_bounds(x, y - 1)
-        && cliff_body_elev(map->tiles[y - 1][x]) > 0;
+static inline int cliff_cell(int row0, int code, int x, int y) {
+    int col = (y & (CLIFF_BLOCK - 1)) * CLIFF_BLOCK + (x & (CLIFF_BLOCK - 1));
+    return sheet_cell(col, row0 + code);
 }
 
-// Up to three cells to draw over the tile's ground, in order. Returns how many,
-// 0 for a tile that is not cliff, or CLIFF_ART_HIDDEN for the ring.
-static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[3]) {
-    if (!s_town0_tex) return 0;
-    // Three variants down each side, picked per tile so a long flank does not
-    // repeat one notch into a rhythm.
-    auto band = [&](int col) {
-        return sheet_cell(col, RIM_SIDE_ROW + (int)(cover_hash(x, y, 0xC11FF000u) % 3u));
+static inline bool cliff_face_at(int x, int y, int L) {
+    return in_bounds(x, y) && (s_cliff_face[y][x] & (1 << (L - 1))) != 0;
+}
+
+// The four corners of a tile, as the four bits the set is indexed by. A corner
+// counts as covered when at least two of the four tiles meeting there are.
+static int cliff_face_code(int x, int y, int L) {
+    auto n = [&](int cx, int cy) {
+        return (cliff_face_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_face_at(cx, cy-1, L) ? 1 : 0)
+             + (cliff_face_at(cx-1, cy,   L) ? 1 : 0) + (cliff_face_at(cx, cy,   L) ? 1 : 0);
     };
+    return (n(x,   y  ) >= 2 ? 1 : 0) | (n(x+1, y  ) >= 2 ? 2 : 0)
+         | (n(x,   y+1) >= 2 ? 4 : 0) | (n(x+1, y+1) >= 2 ? 8 : 0);
+}
+
+// The same, over the heights themselves rather than over the band below them.
+static inline bool cliff_high_at(int x, int y, int L) {
+    return in_bounds(x, y) && s_cliff_elev[y][x] >= L;
+}
+
+static int cliff_high_code(int x, int y, int L) {
+    auto n = [&](int cx, int cy) {
+        return (cliff_high_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_high_at(cx, cy-1, L) ? 1 : 0)
+             + (cliff_high_at(cx-1, cy,   L) ? 1 : 0) + (cliff_high_at(cx, cy,   L) ? 1 : 0);
+    };
+    return (n(x,   y  ) >= 2 ? 1 : 0) | (n(x+1, y  ) >= 2 ? 2 : 0)
+         | (n(x,   y+1) >= 2 ? 4 : 0) | (n(x+1, y+1) >= 2 ? 8 : 0);
+}
+
+// The case of rock a tile draws at level L, or 0 for none.
+//
+// A tile draws rock when its corners are covered, and a corner counts as
+// covered when two of the four tiles meeting there are face. That is what
+// rounds the silhouette off — but it also means a tile holding no face at all
+// draws one whenever two face tiles touch it corner to corner, and a pair of
+// those, back to back, is the little brown lozenge that kept appearing in open
+// grass. No amount of tidying the face mask reaches it, because the mask is
+// not what is wrong: nothing is drawn there that the mask asked for. So refuse
+// it here — a tile with no face of its own and none orthogonally beside it
+// draws nothing, whatever its corners say.
+static int cliff_rock_code(int x, int y, int L) {
+    if (!cliff_face_at(x, y, L) &&
+        !cliff_face_at(x - 1, y, L) && !cliff_face_at(x + 1, y, L) &&
+        !cliff_face_at(x, y - 1, L) && !cliff_face_at(x, y + 1, L)) return 0;
+    return cliff_face_code(x, y, L);
+}
+
+// Up to six cells to draw over the tile's ground, in order.
+//
+// One pass per level, lowest first, so where a hill comes down in steps the
+// taller face is drawn over the shorter one and reads as being in front of it.
+// Each level draws its beaded outline first and its band of rock second, so
+// that where the two meet the rock wins.
+static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[6]) {
+    if (!s_town0_tex) return 0;
+    (void)map; (void)t;
     int n_out = 0;
-
-    // The plateau surface: its own ground, with a rim along every side that
-    // falls away. The corner cells carry both of their sides, so they stand in
-    // for the pair rather than adding to it.
-    int E = cliff_body_elev(t);
-    if (E > 0) {
-        auto drops = [&](int nx, int ny) {
-            return !in_bounds(nx, ny) || cliff_body_elev(map->tiles[ny][nx]) < E;
-        };
-        bool n = drops(x, y - 1), w = drops(x - 1, y), e = drops(x + 1, y);
-        bool north_done = false;
-        if (n && w) { out[n_out++] = sheet_cell(RIM_W_COL, RIM_N_ROW); north_done = true; }
-        if (n && e) { out[n_out++] = sheet_cell(RIM_E_COL, RIM_N_ROW); north_done = true; }
-        if (n && !north_done) out[n_out++] = sheet_cell(RIM_N_COL, RIM_N_ROW);
-        if (w && !(n && w)) out[n_out++] = band(RIM_W_COL);
-        if (e && !(n && e)) out[n_out++] = band(RIM_E_COL);
-        return n_out;
+    for (int L = 1; L <= CLIFF_LEVELS && n_out < 6; L++) {
+        // The edge of the height itself, beaded, wherever the band below is
+        // not going to cover it — in practice its north side, since that is
+        // the one side a face is never cast on. Without it a plateau seen from
+        // behind is grass meeting identical grass with nothing to say where
+        // one stops, which is the whole reason the reference draws the line.
+        int hc = cliff_high_code(x, y, L);
+        if (hc && hc != 15) {
+            bool shadowed = false;
+            for (int dy = -1; dy <= 1 && !shadowed; dy++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if (cliff_face_at(x + dx, y + dy, L)) { shadowed = true; break; }
+            if (!shadowed) out[n_out++] = cliff_cell(CLIFF_EDGE_ROW0, hc, x, y);
+        }
+        if (n_out >= 6) break;
+        int c = cliff_rock_code(x, y, L);
+        if (c) { out[n_out++] = cliff_cell(CLIFF_ROCK_ROW0, c, x, y); continue; }
+        // Clear of the rock, but not far below it: the grains spilled off the
+        // foot of the face above. In the reference they fall a tile or two out
+        // onto open ground, which is further than the band's own cells can
+        // reach, so they are a set of their own.
+        for (int s = 0; s < CLIFF_SCREE_STEPS; s++)
+            if (cliff_rock_code(x, y - 1 - s, L)) {
+                out[n_out++] = cliff_cell(CLIFF_SCREE_ROW0 + s, 0, x, y);
+                break;
+            }
     }
-
-    // The face below a plateau. Where it sits in its own run decides the cell:
-    // which course down, and which end along.
-    if (cliff_draws_face(map, x, y)) {
-        auto is_face = [&](int nx, int ny) { return cliff_draws_face(map, nx, ny); };
-        bool above = is_face(x, y - 1), below = is_face(x, y + 1);
-        bool lend  = !is_face(x - 1, y), rend = !is_face(x + 1, y);
-        // Left end, middle, right end — the ends carry the outline that closes
-        // the wall off, so a run of any length is bounded.
-        int off = (lend && !rend) ? 0 : ((rend && !lend) ? 2 : 1);
-        // Capped where the drop begins, footed where it lands, fill between.
-        // A single course has nowhere to put a foot and keeps its cap; two
-        // courses are cap and foot with no fill. The foot is drawn from its own
-        // three cells rather than another row of the first block.
-        bool foot = above && !below;
-        int col = (foot ? FACE_FOOT_COL : FACE_COL) + off;
-        int row = foot ? 0 : (!above ? FACE_CAP : FACE_FILL);
-        out[n_out++] = sheet_cell(col, row);
-        return n_out;
-    }
-
-    if (cliff_is_face_tile(t)) return CLIFF_ART_HIDDEN;
-    return 0;
+    return n_out;
 }
 
 // The ground a plateau's surface is made of. Each of the three cliff families
 // belongs to a biome and that is the whole point of having three: the rim is
 // drawn over grass, snow or waste rather than over a colour of its own.
+//
+// Every level of a family draws the *same* ground, deliberately. The tinted
+// per-level covers this used to return said "you are one storey up" by making
+// the grass yellower, and the reference says the opposite as plainly as it can:
+// the top of the plateau there is pixel for pixel the grass at the bottom of
+// it. What tells you the ground is high is the band of rock hanging off its
+// edge and the beaded line along its back — not a change of colour, which at
+// this size reads as a different biome rather than as a different height.
 static const GroundCover* cliff_top_cover(int t) {
     if (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  return &COVER_SNOW;
     if (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) return &COVER_WASTE;
@@ -4122,6 +4337,8 @@ static const GroundCover* cliff_top_cover(int t) {
 // plateau, so that is asked first. Where two plateaus sit against each other
 // the ground on that side is the lower one's surface, and taking the nearest
 // non-cliff neighbour instead ran a strip of grass down between them.
+static const int CLIFF_GROUND_REACH = 8;   // how far to hunt for ground
+
 static const GroundCover* cliff_under_cover(const Tilemap* map, int x, int y) {
     int ox, oy;
     if (cliff_ring_outward(map->tiles[y][x], &ox, &oy)) {
@@ -4134,16 +4351,37 @@ static const GroundCover* cliff_under_cover(const Tilemap* map, int x, int y) {
             }
         }
     }
-    static const int NB[8][2] = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{-1,1},{1,-1},{-1,-1}};
-    for (int i = 0; i < 8; i++) {
-        int nx = x + NB[i][0], ny = y + NB[i][1];
-        if (!in_bounds(nx, ny)) continue;
-        int q = map->tiles[ny][nx];
-        if (cliff_body_elev(q) > 0 || cliff_is_face_tile(q)) continue;
-        const GroundCover* c = tile_cover(map, nx, ny);
-        if (c) return c;
+    // Otherwise the nearest ground of any kind. Rings outward rather than
+    // asking the eight touching tiles alone: a tall wall, or the courses
+    // orphaned under one where a drop swallowed the terrace it landed on, can
+    // sit further than a tile from anything that is not cliff, and answering
+    // nullptr there left the tile unpainted, showing whatever the frame
+    // already had in that spot.
+    //
+    // Failing all ground, the nearest plateau surface. A ring tile can end up
+    // walled in by plateau on every side — the back pass writes over the tile
+    // north of a body whenever that tile is lower, which inside a mountain can
+    // punch a hole in the surface — and there the surface is exactly what
+    // should show.
+    const GroundCover* surface = nullptr;
+    for (int r = 1; r <= CLIFF_GROUND_REACH; r++) {
+        for (int dy = -r; dy <= r; dy++) {
+            for (int dx = -r; dx <= r; dx++) {
+                if (dx > -r && dx < r && dy > -r && dy < r) continue;  // inner rings already done
+                int nx = x + dx, ny = y + dy;
+                if (!in_bounds(nx, ny)) continue;
+                int q = map->tiles[ny][nx];
+                if (cliff_body_elev(q) > 0) {
+                    if (!surface) surface = cliff_top_cover(q);
+                    continue;
+                }
+                if (cliff_is_face_tile(q)) continue;
+                const GroundCover* c = tile_cover(map, nx, ny);
+                if (c) return c;
+            }
+        }
     }
-    return nullptr;
+    return surface;
 }
 
 static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
@@ -4361,11 +4599,16 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // A cliff draws as ground with its piece of the silhouette laid
                 // over: the corners of that art are keyed out, and what belongs
                 // behind them is the terrain the cliff stands in.
-                int layers[3];
+                int layers[6];
                 int n_layers = cliff_art_layers(map, x, y, tile_id, layers);
                 bool is_ring  = (n_layers == CLIFF_ART_HIDDEN);
                 bool is_body  = (cliff_body_elev(tile_id) > 0);
-                bool is_cliff = is_ring || is_body || n_layers > 0;
+                // Open ground can carry one piece of cliff art — the arch over a
+                // one-tile tip, which lands on the cell above the tip. It keeps
+                // its own cover: it is still the field it always was, with a
+                // piece of outline laid over the bottom of it.
+                bool is_cliff = is_ring || is_body
+                             || (n_layers > 0 && cliff_is_face_tile(tile_id));
                 if (is_ring) n_layers = 0;
                 // A plateau's surface is its biome's ground; the ring takes the
                 // ground it is level with; everything else its own cover.
@@ -4846,8 +5089,20 @@ void tilemap_update(float /*dt*/) {
     }
 }
 
+// Whether a cliff face is drawn over this tile. Exposed so a probe can check
+// the one rule the terrain must never break: every brown tile belongs to the
+// edge of something raised.
+bool tilemap_face_at(int x, int y) {
+    return in_bounds(x, y) && s_cliff_face[y][x] != 0;
+}
+
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
     if (!in_bounds(tile_x, tile_y)) return false;
+
+    // A cliff face is not a tile any more — it is drawn over whatever terrace
+    // it falls on — so the ground beneath one still reads as walkable grass and
+    // has to be refused here instead.
+    if (s_cliff_face[tile_y][tile_x]) return false;
 
     switch (map->tiles[tile_y][tile_x]) {
         case TILE_GRASS:
