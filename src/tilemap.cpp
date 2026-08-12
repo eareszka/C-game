@@ -667,17 +667,20 @@ static const float CLIFF_LEVEL_PCT[CLIFF_LEVELS + 1] = { 0.0f, 0.22f, 0.10f, 0.0
 // from behind.
 static const int CLIFF_FACE_D[CLIFF_LEVELS + 1] = { 0, 2, 3, 4 };
 
-// And how far it reaches out to either side. Two, not one.
+// And how far it reaches out to either side. One.
 //
-// One is enough to show the lip of a cliff, but not enough to draw it: where a
-// plateau's edge runs diagonally its flank is a line of single tiles stepping
-// down, and the tile set cannot join those up. A cell is drawn as rock when two
-// of the four cells meeting at a corner are, so along a one-tile diagonal only
-// the shared corners qualify and the flank comes out as a row of separate
-// lozenges lying in the grass — the stray brown that three passes of filtering
-// never found, because there was nothing wrong with the mask. At two the
-// diagonal is thick enough to draw as one piece.
-static const int CLIFF_FACE_SIDE = 2;
+// This was two, to keep a flank that runs diagonally from breaking up: a cell
+// draws as rock when two of the four cells meeting at a corner are, so a
+// one-tile diagonal qualifies only at its shared corners and used to come out
+// as a row of lozenges in the grass. Two tiles was thick enough to draw as one
+// piece — and far too thick to look like the reference, where the band down a
+// plateau's side is about a tile and the depth in front of it is the whole
+// point of the shape. What lets one tile work now is that the art is no longer
+// clipped to the marching-squares polygon: the silhouette is pushed outward by
+// its own grain and by a tooth on every column of rock, which is a couple of
+// pixels of overlap in every direction, and that is enough to close a diagonal
+// that the polygon alone leaves as beads.
+static const int CLIFF_FACE_SIDE = 1;
 
 // Grow or shrink the plateau mask. `need` is how many of the (2r+1)^2 tiles
 // around a tile must be plateau for it to be one afterwards: the whole window
@@ -4283,19 +4286,21 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[6])
     (void)map; (void)t;
     int n_out = 0;
     for (int L = 1; L <= CLIFF_LEVELS && n_out < 6; L++) {
-        // The edge of the height itself, beaded, wherever the band below is
-        // not going to cover it — in practice its north side, since that is
-        // the one side a face is never cast on. Without it a plateau seen from
-        // behind is grass meeting identical grass with nothing to say where
-        // one stops, which is the whole reason the reference draws the line.
+        // The outline of the height itself, drawn all the way round it and
+        // then drawn over by the band, which comes next in this list. Without
+        // it a plateau seen from behind is grass meeting identical grass with
+        // nothing to say where one stops, which is the whole reason the
+        // reference draws the line.
+        //
+        // All the way round, and unbroken: an earlier pass blanked the line on
+        // any tile within one of the band, so that it stopped short of the
+        // rock rather than running under it. That is the same picture wherever
+        // the band is solid — and wherever it is not, it left the north edge
+        // of a level ending in mid-air a tile or two before the corner. The
+        // reference's outline has no such gaps; it runs until the rock covers
+        // it. Letting the rock cover it is how to get that.
         int hc = cliff_high_code(x, y, L);
-        if (hc && hc != 15) {
-            bool shadowed = false;
-            for (int dy = -1; dy <= 1 && !shadowed; dy++)
-                for (int dx = -1; dx <= 1; dx++)
-                    if (cliff_face_at(x + dx, y + dy, L)) { shadowed = true; break; }
-            if (!shadowed) out[n_out++] = cliff_cell(CLIFF_EDGE_ROW0, hc, x, y);
-        }
+        if (hc && hc != 15) out[n_out++] = cliff_cell(CLIFF_EDGE_ROW0, hc, x, y);
         if (n_out >= 6) break;
         int c = cliff_rock_code(x, y, L);
         if (c) { out[n_out++] = cliff_cell(CLIFF_ROCK_ROW0, c, x, y); continue; }

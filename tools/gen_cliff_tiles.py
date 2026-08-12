@@ -99,8 +99,6 @@ L_GRIT   = lattice(2.7, 6, 122)   # grain that roughens their walls
 L_PINCH  = lattice( 5,  4.5, 123) # where a cleft closes up and the rock joins
 L_DROP   = lattice( 6, 13, 124)   # how wide each cleft runs, or whether at all
 L_SCREE  = lattice(2.7, 2.7, 131) # which grains below the foot survive
-L_BEAD   = lattice( 2,  2, 141)   # gaps in the beaded outline
-L_BWAVE  = lattice( 9,  9, 142)   # and its slow wander
 
 # Measured off the reference: inside the mass the ink is 35% of the pixels, in
 # veins 2-3px across, separated by 3-6px of brown — so one vein every six.
@@ -115,8 +113,7 @@ TOOTH_RELIEF = 0.30   # how far a column of brown stands proud of its neighbours
 TOOTH_PIVOT  = 0.40   # where along a column the silhouette is left alone
 SCREE_DENSITY = 0.62  # how thickly grains lie just below the foot
 SCREE_FALLOFF = 0.055 # and how fast they thin out going away from it
-BEAD_WANDER  = 0.40   # how far the beaded line strays from the tile boundary
-BEAD_KEEP    = 0.26   # above which a pixel of it survives rather than breaking
+BEAD_WANDER  = 0.52   # how far the highland's outline strays from the polygon
 
 
 def cleft_dist(px, py):
@@ -350,14 +347,17 @@ def edge_cell(case, bx, by):
     if not high.any() or high.all():
         return img
 
-    # A pixel of ink just inside the edge, bitten here and there. Only here and
-    # there: the reference's line is broken, but barely — perhaps a pixel in
-    # six is missing. Taking out half of it, which is what "beaded" sounds like
-    # it should mean, turns a contour into a dotted rule, and a dotted rule
-    # laid along a plateau's north edge reads as litter dropped in the grass.
+    # One unbroken pixel of ink just inside the edge.
+    #
+    # Unbroken is measured, not assumed: tools/bead_stats.py on the reference
+    # finds the line present in 221 of 224 columns, with three gaps of a single
+    # pixel between them. It looks beaded because it is one pixel wide and
+    # climbs in steps, not because anything is missing from it. Breaking it on
+    # purpose — which is what the first pass did, at about one column in four —
+    # gives a dotted rule, and a dotted rule lying along a plateau's north edge
+    # reads as litter dropped in the grass rather than as the edge of anything.
     rim = high & ~erode(high, 1)
-    keep = (noise(L_BEAD, px, py) + 0.30 * signed(L_BWAVE, px, py)) > BEAD_KEEP
-    img[crop(rim & keep)] = INK
+    img[crop(rim)] = INK
     return img
 
 
