@@ -991,24 +991,40 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
                 if (s_cliff_elev[y][x] >= L) continue;
+                // Nothing north of the height, ever. The sweep below starts at
+                // the height's own row rather than a tile above it, so a face
+                // can no longer climb over the back of what it belongs to and
+                // stand outside the outline — which is what put a cap of rock
+                // on the north of every small landform.
                 if (y + 1 < MAP_HEIGHT && s_cliff_elev[y+1][x] >= L) continue;  // its far side
-                // The face is the plateau's own outline, pushed outward —
-                // further downhill than anywhere else, but never let go of.
+                // The face is the plateau's own outline, pushed downhill: deep
+                // where the drop faces you, one tile where it runs away to the
+                // side, and tapering between the two.
                 //
-                // Testing the four directions separately leaves a notch at every
-                // corner: the tile diagonally off a corner has no plateau
-                // directly above it and none directly beside it either, so it
-                // failed both tests and the wall stopped dead at each turn.
-                // Sweeping a block over the plateau instead — one tile out to
-                // the sides and the rear, CLIFF_FACE_D down the front — covers
-                // the diagonals by construction, and the wrap closes.
+                // The taper is the point. Testing the four directions
+                // separately leaves a notch at every corner — the tile
+                // diagonally off a corner has no plateau directly above it and
+                // none directly beside it either — so this used to sweep a
+                // plain block instead, CLIFF_FACE_D deep and CLIFF_FACE_SIDE
+                // wide at every depth. That closes the corner and then some: at
+                // the far west and far east of a hill, where the outline turns
+                // from facing south to facing sideways, both parts of the block
+                // fire at once and the band swells to the depth of the front
+                // just where it should be thinning to the width of the flank.
+                // Every hill wore a lump at each shoulder.
+                //
+                // Narrowing the sweep as it goes deeper keeps the corner closed
+                // — the first row down is still full width — and lets the band
+                // come to a point at each end, which is what the reference does.
                 bool hit = false;
-                for (int dy = -1; dy <= D && !hit; dy++)
-                    for (int dx = -CLIFF_FACE_SIDE; dx <= CLIFF_FACE_SIDE; dx++) {
+                for (int dy = 0; dy <= D && !hit; dy++) {
+                    int w = (dy <= 1) ? CLIFF_FACE_SIDE : 0;
+                    for (int dx = -w; dx <= w; dx++) {
                         int sx = x - dx, sy = y - dy;
                         if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
                         if (s_cliff_elev[sy][sx] >= L) { hit = true; break; }
                     }
+                }
                 if (hit) s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
             }
     }
