@@ -4320,16 +4320,24 @@ static int cliff_face_code(int x, int y, int L) {
          | (covered(x,   y+1) ? 4 : 0) | (covered(x+1, y+1) ? 8 : 0);
 }
 
-// The outline of the height itself. Two of four here, not three: this line
-// belongs on the highland's own edge, so it wants the half-tile of spread that
-// the band does not.
+// The outline of the height itself. Three of four, the same as the band.
+//
+// It was two, on the reasoning that this line belongs on the height's own edge
+// and so wants the half-tile of spread the band does not. That is half a tile
+// out one way while the band's inner edge is half a tile out the other, and a
+// whole tile between them is the difference between an outline that marks the
+// lip of a drop and one that runs along the foot of it: on a flank the line
+// came out beyond the rock, a hairline in the grass with a thread of green
+// between it and the cliff. Matching the rules puts the two nominally on the
+// same curve, and drawing both from one field (see boundary_field in
+// tools/gen_cliff_tiles.py) puts them on it pixel for pixel.
 static int cliff_high_code(int x, int y, int L) {
     auto n = [&](int cx, int cy) {
         return (cliff_high_at(cx-1, cy-1, L) ? 1 : 0) + (cliff_high_at(cx, cy-1, L) ? 1 : 0)
              + (cliff_high_at(cx-1, cy,   L) ? 1 : 0) + (cliff_high_at(cx, cy,   L) ? 1 : 0);
     };
-    return (n(x,   y  ) >= 2 ? 1 : 0) | (n(x+1, y  ) >= 2 ? 2 : 0)
-         | (n(x,   y+1) >= 2 ? 4 : 0) | (n(x+1, y+1) >= 2 ? 8 : 0);
+    return (n(x,   y  ) >= 3 ? 1 : 0) | (n(x+1, y  ) >= 3 ? 2 : 0)
+         | (n(x,   y+1) >= 3 ? 4 : 0) | (n(x+1, y+1) >= 3 ? 8 : 0);
 }
 
 // The case of rock a tile draws at level L, or 0 for none.

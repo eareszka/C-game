@@ -111,9 +111,9 @@ CLEFT_REACH  = 4.0    # over how many pixels that opening happens
 CLEFT_SWAY   = (5.5, 2.6, 1.0)   # how far each octave shifts a vein sideways
 TOOTH_RELIEF = 0.30   # how far a column of brown stands proud of its neighbours
 TOOTH_PIVOT  = 0.40   # where along a column the silhouette is left alone
+JAG_SCALE    = 0.36   # how far any cliff boundary strays from the polygon
 SCREE_DENSITY = 0.62  # how thickly grains lie just below the foot
 SCREE_FALLOFF = 0.055 # and how fast they thin out going away from it
-BEAD_WANDER  = 0.52   # how far the highland's outline strays from the polygon
 
 
 def cleft_dist(px, py):
@@ -178,12 +178,9 @@ def depth_in(mask, limit):
     return d
 
 
-# The band wants its roughness weighted well away from the finest octave: at a
-# three-pixel wavelength it stops reading as teeth and starts reading as fur.
-# The beaded line wants the opposite — it is one pixel wide and its whole job
-# is to not look ruled, so it lives on the short wavelengths.
+# Weighted well away from the finest octave: at a three-pixel wavelength the
+# boundary stops reading as teeth and starts reading as fur.
 JAG_ROCK = (0.52, 0.38, 0.10)
-JAG_BEAD = (0.22, 0.42, 0.36)
 
 
 def jag(px, py, scale, mix=JAG_ROCK):
@@ -218,6 +215,32 @@ def padded_grid(bx, by):
     return lx, ly, lx + bx * CELL, ly + by * CELL
 
 
+def boundary_field(case, lx, ly, px, py, vein, sign=1.0):
+    """Where a boundary of the cliff system falls, in this cell.
+
+    One function for both the band and the outline of the height above it, and
+    that is the point rather than a tidiness. The two are one line in the world
+    — the lip of the drop — so anything that moves one has to move the other by
+    the same amount, or a thread of grass opens between them and the outline
+    reads as a hairline lying alongside the cliff.
+
+    Hence `sign`, which is the whole subtlety. Along their shared edge the two
+    coverages are complements: in the last tile of a height the outline's blend
+    is `u` where the band's is `1 - u`. Their gradients point opposite ways, so
+    adding the same displacement to both fields moves the two edges *apart* by
+    twice it — which is what drawing them from one field, the obvious fix, still
+    got wrong. Subtracting it from the one and adding it to the other moves both
+    the same way in the world, and the edges stay welded however far the grain
+    throws them. The outline passes -1.
+    """
+    u = (lx + 0.5) / CELL
+    v = (ly + 0.5) / CELL
+    tooth = np.clip(blur3(vein) / 3.0, 0.0, 1.0)
+    return (corner_blend(case, u, v) - 0.5
+            + sign * (jag(px, py, JAG_SCALE)
+                      + TOOTH_RELIEF * (tooth - TOOTH_PIVOT)))
+
+
 def erode(mask, radius):
     """True only where every pixel within `radius` (chebyshev-ish disk) is set."""
     out = mask.copy()
@@ -243,8 +266,6 @@ def rock_cell(case, bx, by):
         return img
 
     lx, ly, px, py = padded_grid(bx, by)
-    u = (lx + 0.5) / CELL
-    v = (ly + 0.5) / CELL
 
     # Rock wherever coverage, pushed about either way by the grain, clears
     # half — and pushed out again along the middle of every brown column.
@@ -256,13 +277,7 @@ def rock_cell(case, bx, by):
     # clefts gets both for free, and gets them lined up, which is the part that
     # reads as rock rather than as a torn edge.
     vein, stripe = cleft_dist(px, py)
-    # Blurred before it drives the silhouette: taken raw it varies pixel to
-    # pixel and the teeth come out as single-pixel hairs along the lip.
-    tooth = np.clip(blur3(vein) / 3.0, 0.0, 1.0)
-    field = (corner_blend(case, u, v) - 0.5
-             + jag(px, py, 0.36)
-             + TOOTH_RELIEF * (tooth - TOOTH_PIVOT))
-    rock = field > 0.0
+    rock = boundary_field(case, lx, ly, px, py, vein) > 0.0
     if not rock.any():
         return img
 
@@ -327,23 +342,19 @@ def scree_cell(step, bx, by):
 
 
 def edge_cell(case, bx, by):
-    """One cell of the beaded line along a highland edge the band misses."""
+    """One cell of the outline along the edge of a height."""
     img = np.zeros((CELL, CELL, 3), dtype=np.uint8)
     img[:, :] = KEY
     if case == 0 or case == 15:
         return img
 
     lx, ly, px, py = padded_grid(bx, by)
-    u = (lx + 0.5) / CELL
-    v = (ly + 0.5) / CELL
 
-    # The same field, calmer: a highland's own edge only wanders, it is not
-    # broken up the way the rock below it is. It has to wander a good deal
-    # though — at a small amplitude the line simply traces the marching-squares
-    # polygon, and a plateau ends up outlined in straight dashes that stop and
-    # turn on tile boundaries, which is the one thing that gives the grid away.
-    field = corner_blend(case, u, v) - 0.5 + jag(px, py, BEAD_WANDER, JAG_BEAD)
-    high = field > 0.0
+    # Exactly the field the band is cut from, mirrored — see boundary_field.
+    # The height's edge and the top of the rock hanging off it are one line in
+    # the world, so they had better be one line here.
+    vein, _ = cleft_dist(px, py)
+    high = boundary_field(case, lx, ly, px, py, vein, -1.0) > 0.0
     if not high.any() or high.all():
         return img
 
