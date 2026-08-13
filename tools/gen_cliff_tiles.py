@@ -83,12 +83,19 @@ BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
 #
 # Facing runs from +1 where the drop is square on to you to -1 where it is the
 # back of the hill, and it is what decides how much of the wall there is to see:
-# all of it at the front, an edge at the flank, nothing at the rear. A flank
-# proper is 0, and the classes are spaced so that it lands on the widest bank
-# and the two narrow ones are spent turning the corner into the rear.
+# all of it at the front, an edge at the flank, the least the set can draw at
+# the rear. A flank proper is 0, and the classes are spaced so that it lands on
+# the widest bank and the two narrow ones are spent turning the corner into the
+# rear.
+#
+# The last class reaches to -1 rather than stopping at -0.55, so that no part of
+# a landform's edge draws the bare line and nothing else. The reference wraps
+# its rock the whole way round; stopping short of that drew terraces as contour
+# lines on a map. See CLIFF_BANK_FACING in tilemap.cpp, which decides this and
+# which this has to agree with.
 BANK_FRONT  = len(BANK_REACH) + 1
 BANK_R      = 3
-BANK_FACING = (0.35, -0.05, -0.30, -0.55)
+BANK_FACING = (0.35, -0.05, -0.30, -1.00)
 
 KEY   = (255,   0,   0)   # the sheet's colour key
 BROWN = (136, 112,   0)   # straight off the reference
@@ -154,8 +161,29 @@ CLEFT_SWAY   = (5.5, 2.6, 1.0)   # how far each octave shifts a vein sideways
 TOOTH_RELIEF = 0.30   # how far a column of brown stands proud of its neighbours
 TOOTH_PIVOT  = 0.40   # where along a column the silhouette is left alone
 JAG_SCALE    = 0.36   # how far any cliff boundary strays from the polygon
-SCREE_DENSITY = 0.62  # how thickly grains lie just below the foot
-SCREE_FALLOFF = 0.055 # and how fast they thin out going away from it
+# How thickly grains lie just below the foot, and how fast they thin out going
+# away from it, per pixel.
+#
+# The falloff was 0.055, which fades the spill to nothing eleven pixels down —
+# two thirds of the first tile — so the second tile of it, which the cell set
+# has a row for and the game blits every frame, came out completely empty:
+# scree_cell's threshold there is 0.62 - 0.055 * 17, negative before the noise
+# is even consulted. The reference spills a tile or two and the docstring below
+# says a tile or two; one tile was what was drawn.
+#
+# Stretching the falloff to reach two tiles at the old density is not the fix,
+# though, and it is worth saying why. The grains are laid on one diagonal of a
+# three-pixel lattice, and the density is the share of that lattice the noise
+# lets through: at 0.62 most of it comes through, so at the old reach the runs
+# were short enough to read as grains and at twice the reach they joined into
+# continuous dashes — a ruled diagonal hatch lying under every cliff, which is
+# the tile grid showing in another guise. Below about a third, consecutive
+# lattice cells rarely both survive and the drift breaks back up into specks.
+#
+# So: a third of the lattice at the foot, thinning to nothing thirty pixels
+# down, which is two tiles less a little.
+SCREE_DENSITY = 0.30
+SCREE_FALLOFF = 0.010
 
 
 def cleft_dist(px, py):
@@ -419,7 +447,10 @@ def edge_cell(case, bx, by, reach=None):
     # the world, so they had better be one line here.
     u = (lx + 0.5) / CELL
     v = (ly + 0.5) / CELL
-    vein, stripe = cleft_dist(px, py)
+    # The vein distance is wanted only for the grain that displaces the boundary;
+    # which stripe it belongs to is not, now that the bank is inked by depth
+    # rather than by where the clefts cross it.
+    vein, _ = cleft_dist(px, py)
     shift = grain_shift(px, py, vein)
     field = corner_blend(case, u, v) - 0.5 - shift
     high = field > 0.0
@@ -467,25 +498,34 @@ def edge_cell(case, bx, by, reach=None):
         # two-pixel bank is nothing to see.
         margin = 0.5 + 1.5 * noise(L_PINCH, py, px)
         room = np.maximum(0.5 + shift - margin / CELL, BANK_FLOOR / CELL)
-        rock = ~high & (-field < np.minimum(far / CELL, room))
+        lim = np.minimum(far / CELL, room)
+        rock = ~high & (-field < lim)
         if rock.any():
             # The ink a bank carries is not the ink the band carries, and it
-            # took two passes to see why. The band holds a pixel back from every
-            # edge and flares its clefts where they reach daylight, which is
-            # what puts the heavy black along the top and the foot of a face.
+            # took three passes to see how. The band holds a pixel back from
+            # every edge and flares its clefts where they reach daylight, which
+            # is what puts the heavy black along the top and the foot of a face.
             # A bank is seven pixels across at its widest and every pixel of it
             # is an edge, so both fire everywhere at once: it came out 94% ink
             # at three pixels and 66% at eight, which is the outline drawn heavy
             # and not rock at all.
             #
-            # The reference says where the black in a flank actually goes. Down
-            # its west side the rock runs x=16..23 with the four pixels nearest
-            # the height inked and the four against the grass bare brown — no
-            # rim on the outer edge, and no flare. So: one pixel against the
-            # line, the clefts, and nothing else.
-            width = cleft_width(stripe, px, py)
-            inner = rock & ~erode(~high, 1)
-            ink = rock & (inner | (vein < width))
+            # Dropping the flare and the rim and keeping one pixel against the
+            # line plus the clefts was the second pass, and it is still wrong,
+            # because both of those are FIXED widths against a bank that is not.
+            # The narrower the bank the larger the share of it they take:
+            # measured off the sheet, three pixels of bank came out 83% ink,
+            # five 69%, seven 62%, against 52% for the band. A rear face drawn
+            # that way reads as the outline gone heavy, which is exactly what it
+            # was, and a flight of terraces read as contour lines on a map.
+            #
+            # So take the share the reference takes, not a fixed width. Down its
+            # west flank the rock runs x=16..23 with the four pixels nearest the
+            # height inked and the four against the grass bare brown — half and
+            # half, dark side against the drop. Cutting at half the bank's own
+            # depth gives that at every width, and inherits the wander in `far`
+            # so the boundary between the two is not a ruled line.
+            ink = rock & (-field < 0.5 * lim)
             img[crop(rock & ~ink)] = BROWN
             img[crop(ink)] = INK
 
@@ -683,6 +723,17 @@ def main():
     need = (HAZE_ROW0 + NCASE) * CELL
     if sheet.shape[0] < need:
         raise SystemExit('sheet is only %d px tall, need %d' % (sheet.shape[0], need))
+    # The banks are stamped one set of sixteen rows after another from BANK_ROW0,
+    # and the height mask sits at a fixed row after them. Add a fourth reach and
+    # the two land on each other: the bank set is stamped into the mask's rows
+    # and the mask is then stamped back over it, so the banks come out white and
+    # nothing anywhere says why. Nothing else catches it — `need` is measured
+    # from HAZE_ROW0, which does not move.
+    if BANK_ROW0 + NCASE * len(BANK_REACH) > HAZE_ROW0:
+        raise SystemExit('%d bank classes run from row %d into the height mask '
+                         'at %d; move HAZE_ROW0 (and CLIFF_HAZE_ROW0 in '
+                         'tilemap.cpp) past them'
+                         % (len(BANK_REACH), BANK_ROW0, HAZE_ROW0))
 
     stamp(sheet, ROCK_ROW0, rock_cell)
     stamp(sheet, EDGE_ROW0, edge_cell)

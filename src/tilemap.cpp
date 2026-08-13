@@ -586,16 +586,8 @@ static void generate_delta_river(Tilemap* map, int sx, int sy,
 // Outside is handled by phase2 on a background thread.
 #define PHASE_RADIUS 500
 
-// How high a plateau can stand, and the shortest wall a mountain may show where
-// it meets open country. Generation and the drawing both work from these, and
-// have to agree: the drawing reads a wall's depth back out of the elevations
-// rather than off the tile ids, so a wall cut deeper than it expects would be
-// left half unpainted.
-static const int CLIFF_MAX_ELEV = 5;
-static const int CLIFF_WALL_MIN = 3;
-
-// The south wall is the only part of a plateau the art paints — its other three
-// sides are a rim on the plateau's own edge tiles — so this id is the whole
+// The south wall was once the only part of a plateau the art painted — its other
+// three sides a rim on the plateau's own edge tiles — so this id was the whole
 // question of "is there rock here", and the passes that run after the wall is
 // laid have to leave it alone.
 static inline bool cliff_is_south_face(int t) {
@@ -630,25 +622,57 @@ static unsigned char s_cliff_face[MAP_HEIGHT][MAP_WIDTH];
 // into a terrace. Both are everywhere in a contour read straight off noise,
 // and together they are what broke the walls into chains of short blocks.
 //
-// A majority filter answers exactly that and nothing more. Each tile takes the
-// median of the elevations around it, which leaves any feature at least as wide
-// as the window untouched and deletes anything thinner — a tongue is a minority
-// of its own neighbourhood, so is a slot. The outline stays where the noise put
-// it; only what the art cannot draw is rounded away. Snapping the contour to a
-// lattice does the same job by making every feature a multiple of the block,
-// but it also makes every mountain a stack of the same rounded octagon.
+// A majority filter answered exactly that and nothing more, and for a while it
+// was what did: each tile took the median of the elevations around it, which
+// leaves any feature at least as wide as the window and deletes anything
+// thinner — a tongue is a minority of its own neighbourhood, so is a slot.
 //
-// The masks are nested — elev >= 4 lies inside elev >= 3 — and a majority
-// filter preserves that, so filtering each level on its own and counting how
-// many survive gives back a consistent height field.
+// It is not what does any more. An opening followed by a closing, both with a
+// disk, says the same thing about feature size and says it in two halves that
+// can be reasoned about separately: the opening deletes the tongues, the
+// closing fills the slots, and the radius is the one number that sets both. See
+// cliff_morph() and the four calls to it in place_cliffs(). Nothing in this
+// file computes a median or a majority of anything.
+//
+// The nesting the levels rely on — elev >= 3 lying inside elev >= 2 — does not
+// come from the filter either, whichever filter it is. It is put there on
+// purpose by eroding the level below by CLIFF_TERRACE before the next level is
+// cut out of what is left.
 // A plateau has to fit on a screen or two, or all the player ever sees of it
 // is a band of rock crossing the view — which reads as a line drawn on the
 // grass, not as ground that is higher. The window is about 50 tiles across, so
 // these are sized to land between roughly twenty and sixty.
 static const int CLIFF_HIGH_G   = 56;   // how far apart the plateau country lies
 static const int CLIFF_ROUGH_G  = 9;    // and the scale of the bites out of its edge
-static const float CLIFF_ROUGH_AMP = 0.55f;  // how deep they bite
-static const int CLIFF_CHUNK_R  = 3;    // no feature of a plateau is thinner than this
+static const float CLIFF_ROUGH_AMP = 1.00f;  // how deep they bite
+
+// And a third octave, finer again, which is what stops a flank being a ruled
+// line. The two above shape the landform and the bites out of it, and both are
+// wider than the morphology below can preserve detail at, so between the bites
+// the edge ran dead straight for twenty tiles at a time — the reference's
+// flanks step every three or four, and wander a tile either way while they do.
+//
+// Sized against what survives. The contour lands where the field crosses its
+// cut, so an octave displaces the edge by roughly its own amplitude over the
+// total gradient: at four tiles and 0.15 that is a tile and a half of wander
+// every four tiles, which is the scale the reference works at. Much more and
+// the octave stops being a texture on the edge and starts deciding where the
+// edge is, which breaks landforms into archipelagos.
+static const int CLIFF_GRAIN_G  = 6;
+static const float CLIFF_GRAIN_AMP = 0.30f;
+
+// No feature of a plateau is thinner than this.
+//
+// Three, and now two. The morphology is an opening and then a closing with a
+// disk of this radius: the opening deletes every spur thinner than the disk and
+// the closing fills every notch of the same size, so the radius is a floor on
+// how small a thing the outline is allowed to say. At three that floor was six
+// tiles across, which swallowed every inset, offset and one-tile protrusion the
+// reference's flanks are made of, and the grain octave above would have been
+// swallowed with them. Two leaves the floor at four, which is where the
+// reference's own detail sits, and is still wide enough that a plateau comes
+// out a landform rather than a ribbon.
+static const int CLIFF_CHUNK_R  = 3;
 static const int CLIFF_HIGH_MIN = 120;  // tiles below which a plateau is not worth having
 static const int CLIFF_TERRACE  = 5;    // how far a level sits inside the one below
 static const int CLIFF_FACE_MIN = 6;    // tiles below which a piece of face is litter    // how far a level sits inside the one below it
@@ -700,10 +724,29 @@ static const int CLIFF_FACE_SIDE = 1;
 // tile edge and stops square, which puts a brown brick on every shoulder. So
 // the band is masked only where it is deep enough to be worth a tile, and the
 // rest of the way round the edge carries a bank instead — rock hung off the
-// outline itself, in the cell the outline is already drawn in, as many pixels
-// wide as the facing warrants and none where the facing has gone.
+// outline itself, in the cell the outline is already drawn in, and as many
+// pixels wide as the facing warrants.
+//
+// As many, but never none, and never so few that they stop being rock.
+//
+// The ladder used to run out at -0.55 and everything below drew the bare line,
+// which is the whole back of every landform: on a window of seed 99 approached
+// from the north, 95.8% of the cliff drawn in it was hairline with no rock on
+// it anywhere, and a flight of terraces came out as contour lines on a map. The
+// reference wraps its rock the whole way round, shallower at the back than at
+// the front and much, but never nothing.
+//
+// The narrow classes cannot carry that, and this is the part that is not
+// obvious: a bank is inked one pixel against the line and then wherever a cleft
+// crosses it, and both of those are fixed widths, so the narrower the bank the
+// more of it is black. Measured off the sheet — three pixels of bank is 83%
+// ink, five is 69%, seven is 62%, against 52% for the band itself. At three the
+// rear read as the outline drawn heavy, which is what those classes are for:
+// they exist to land the bank back into the line as the edge turns away, not to
+// be the edge. So the rear takes five, the flanks seven, and the two narrow
+// classes are no longer reached from anywhere.
 static const int   CLIFF_BANK_R = 3;     // tiles either way the facing is read over
-static const float CLIFF_BANK_FACING[] = { 0.35f, -0.05f, -0.30f, -0.55f };
+static const float CLIFF_BANK_FACING[] = { 0.35f, -0.05f, -1.00f, -1.00f };
 static const int   CLIFF_BANK_N = (int)(sizeof CLIFF_BANK_FACING / sizeof *CLIFF_BANK_FACING);
 static const int   CLIFF_BANK_FRONT = CLIFF_BANK_N;   // the whole masked band
 
@@ -759,6 +802,21 @@ static int cliff_bank(int x, int y, int L) {
 static const int CLIFF_MORPH_RMAX = 8;
 
 // Half-width of the disk on each row of the window, and how many tiles it holds.
+//
+// The radius is taken to the edge of the outermost tile rather than to its
+// centre — r + 1/2 — and that half tile is the difference between a disk and a
+// plus sign. Measured on the circle through the tile centres, the top and
+// bottom rows of the window come out sqrt(r*r - r*r) = 0 half-widths wide,
+// which is one tile: a spike standing off a block. Opening with a spike does
+// not round a corner, it planes the boundary onto the axes, which is the very
+// thing the note above says a square window did.
+//
+// It shows up worst at the small radii, where there is least disk to be wrong
+// about. At r=2 the old rule gave half-widths 0,2,2,2,0 — a five-by-three
+// block with a pip on each end — and the share of the mask's boundary running
+// as a 45-degree staircase fell to 5.7%, against 14.0% at r=3. Rounding out to
+// 1,2,2,2,1 is an actual disk and keeps the diagonals a plateau's outline is
+// mostly made of.
 static inline const int* cliff_disk(int r, int* area)
 {
     static int w[CLIFF_MORPH_RMAX * 2 + 1];
@@ -766,8 +824,10 @@ static inline const int* cliff_disk(int r, int* area)
     if (r != cached_r) {
         cached_r = r;
         cached_area = 0;
+        float rr = (float)r + 0.5f;
         for (int dy = -r; dy <= r; dy++) {
-            int hw = (int)(sqrtf((float)(r*r - dy*dy)) + 0.5f);
+            float d2 = rr * rr - (float)(dy * dy);
+            int hw = (d2 > 0.0f) ? (int)sqrtf(d2) : 0;
             w[dy + r] = hw;
             cached_area += 2 * hw + 1;
         }
@@ -873,11 +933,14 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                                         (int)seed ^ 0xC11F);
         float rough = cliff_value_noise(px, py, CLIFF_ROUGH_G, CLIFF_ROUGH_G,
                                         (int)seed ^ 0x5EED);
+        float grain = cliff_value_noise(px, py, CLIFF_GRAIN_G, CLIFF_GRAIN_G,
+                                        (int)seed ^ 0x9A17);
         float proj = (((float)px - s_cliff_ref_x) * s_cliff_dir_x +
                       ((float)py - s_cliff_ref_y) * s_cliff_dir_y) / s_cliff_dir_len;
         if (proj < 0.0f) proj = 0.0f;
         if (proj > 1.0f) proj = 1.0f;
-        return base + CLIFF_ROUGH_AMP * (rough - 16384.0f) + proj * CLIFF_PEAK_LIFT;
+        return base + CLIFF_ROUGH_AMP * (rough - 16384.0f)
+                    + CLIFF_GRAIN_AMP * (grain - 16384.0f) + proj * CLIFF_PEAK_LIFT;
     };
 
     // Where to cut the field for each level is measured rather than guessed: a
@@ -942,6 +1005,18 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
 
         // Round this level off into a landform: shrink then grow deletes every
         // ribbon and spur, grow then shrink closes every notch and pocket.
+        //
+        // Stepping the corners is the disk's own job and wants no pass of its
+        // own. One was tried — clear a set tile with two clear neighbours at a
+        // corner, set a clear tile with two set ones — on the reasoning that a
+        // grid turns through ninety degrees in one tile and a landform should
+        // not. It does nothing useful and one bad thing: on a clean right angle
+        // it takes a single tile off, which the three-of-four corner rule the
+        // art is drawn by cannot see at all, and on an edge that already steps
+        // it alternates cut and fill along the diagonal and leaves a comb.
+        // Measured, it took the share of the boundary running as a 45-degree
+        // staircase down rather than up. What actually rounds a corner is the
+        // shape of the window, which is why cliff_disk() is a disk.
         {
             const int r = CLIFF_CHUNK_R, full = cliff_disk_area(r);
             cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
