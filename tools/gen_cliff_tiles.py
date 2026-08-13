@@ -24,6 +24,16 @@ lines up across every seam by construction.  A tile therefore needs an index
 of (marching-squares case, position in the 4x4 torus block) — 16 x 16 cells,
 laid out one case per sheet row.
 
+The band is only half the picture, because a band is a mask swept in whole
+tiles and the least it can draw is a tile of rock.  Down a flank the reference
+draws eight pixels, and where the edge turns away north it draws none at all —
+neither fits in a mask.  So the band is masked only where the drop is deep
+enough to be worth a tile, and everywhere else the outline carries a *bank*:
+three, five or seven pixels of the same rock hung off the line itself, cut from
+the line's own field so the two cannot come apart.  Which of the two a tile gets
+is decided by how far its edge has turned from facing you — see cliff_facing()
+in tilemap.cpp, and BANK_FACING below, which has to agree with it.
+
 Run from the repo root:  python tools/gen_cliff_tiles.py [--preview out.png]
 """
 import argparse
@@ -46,7 +56,39 @@ ROCK_ROW0  = 16      # sheet row of case 0 of the band
 EDGE_ROW0  = 32      # ... and of the beaded outline
 SCREE_ROW0 = 48      # ... and of the spill of grains below a foot
 SCREE_STEPS = 2      # how many tiles below the rock the spill reaches
+BANK_ROW0  = 64      # ... and of the narrow bank the band thins to at a flank
+HAZE_ROW0  = 112     # ... and of the mask that pales the ground on top of it
 NCASE      = 16
+
+# How far the rock reaches out from the outline on a bank, in pixels, class by
+# class, and how far that far edge wanders.
+#
+# Seven is what the reference asks for and what there is room to draw. It draws
+# eight down its west flank (the rock at x=16..23, y=101..116) and its strictly
+# north-south stretches measure two to four across; what this drew there was the
+# band, sixteen, a whole tile, and it reads as a second cliff standing alongside
+# the first rather than as the side of the first one. Room, because a bank hangs
+# off the outline and the outline wanders six pixels inside its own cell: eight
+# is more than is left over half the time, and what will not fit is cropped
+# against the tile. The narrower classes are there to land the bank into the
+# line rather than to be looked at on their own — five is two clefts wide and
+# three is one, which is the least that still reads as rock and not as a line
+# drawn heavy.
+BANK_REACH = (3.0, 5.0, 7.0)
+BANK_RAG   = 1.6
+BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
+
+# The facing at which each class starts, widest first, and how far the facing is
+# measured over.
+#
+# Facing runs from +1 where the drop is square on to you to -1 where it is the
+# back of the hill, and it is what decides how much of the wall there is to see:
+# all of it at the front, an edge at the flank, nothing at the rear. A flank
+# proper is 0, and the classes are spaced so that it lands on the widest bank
+# and the two narrow ones are spent turning the corner into the rear.
+BANK_FRONT  = len(BANK_REACH) + 1
+BANK_R      = 3
+BANK_FACING = (0.35, -0.05, -0.30, -0.55)
 
 KEY   = (255,   0,   0)   # the sheet's colour key
 BROWN = (136, 112,   0)   # straight off the reference
@@ -235,10 +277,13 @@ def boundary_field(case, lx, ly, px, py, vein, sign=1.0):
     """
     u = (lx + 0.5) / CELL
     v = (ly + 0.5) / CELL
+    return corner_blend(case, u, v) - 0.5 + sign * grain_shift(px, py, vein)
+
+
+def grain_shift(px, py, vein):
+    """How far the grain throws a boundary off its polygon, in field units."""
     tooth = np.clip(blur3(vein) / 3.0, 0.0, 1.0)
-    return (corner_blend(case, u, v) - 0.5
-            + sign * (jag(px, py, JAG_SCALE)
-                      + TOOTH_RELIEF * (tooth - TOOTH_PIVOT)))
+    return jag(px, py, JAG_SCALE) + TOOTH_RELIEF * (tooth - TOOTH_PIVOT)
 
 
 def erode(mask, radius):
@@ -341,8 +386,27 @@ def scree_cell(step, bx, by):
     return img
 
 
-def edge_cell(case, bx, by):
-    """One cell of the outline along the edge of a height."""
+def edge_cell(case, bx, by, reach=None):
+    """One cell of the outline along the edge of a height.
+
+    `reach` hangs a bank of rock off it, that many pixels of it, on the low
+    side. That is the whole of a cliff where its drop runs away from you —
+    where the band proper has stopped, because the mask it is cut from has run
+    out — and it is drawn here rather than there for two reasons.
+
+    It cannot be a narrowed band cell. Narrowing means gating cells, and the
+    band's cells only join up because every one of them is drawn: a cell whose
+    neighbour is missing spills its mass to the tile edge and stops square, and
+    a plateau ends up with a brown brick at each shoulder. Whatever is dropped
+    has to be dropped from the mask, before the cases are taken off it.
+
+    And it belongs to the line. A bank is the last few pixels of a wall seen
+    along its length, so it is the line thickening rather than a band lying
+    beside it — which is exactly what the reference draws, its outline running
+    down the west flank at x=16 with the rock filling east of it as far as x=23
+    and the same line carrying on north with nothing beside it at all. Cutting
+    it from the field the line is cut from is what welds the two.
+    """
     img = np.zeros((CELL, CELL, 3), dtype=np.uint8)
     img[:, :] = KEY
     if case == 0 or case == 15:
@@ -353,10 +417,77 @@ def edge_cell(case, bx, by):
     # Exactly the field the band is cut from, mirrored — see boundary_field.
     # The height's edge and the top of the rock hanging off it are one line in
     # the world, so they had better be one line here.
-    vein, _ = cleft_dist(px, py)
-    high = boundary_field(case, lx, ly, px, py, vein, -1.0) > 0.0
+    u = (lx + 0.5) / CELL
+    v = (ly + 0.5) / CELL
+    vein, stripe = cleft_dist(px, py)
+    shift = grain_shift(px, py, vein)
+    field = corner_blend(case, u, v) - 0.5 - shift
+    high = field > 0.0
     if not high.any() or high.all():
         return img
+
+    if reach is not None:
+        # How far outside the edge a pixel is allowed to be, as a value of the
+        # field rather than as a distance measured in it.
+        #
+        # A distance would want the field's gradient to scale by, and the
+        # gradient is the one thing about a bilinear that does *not* survive a
+        # seam. Two cells share the two corners along their edge, so they agree
+        # on the field there exactly — that is what the whole scheme rests on —
+        # but the derivative across the edge is taken from the corners they do
+        # not share, and disagrees. Measured, that put the bank's far edge in
+        # two different places either side of every horizontal seam and drew the
+        # tile grid: the rate at which the picture changes across a row boundary
+        # went from level with its surroundings to 1.4 times them.
+        #
+        # A flat cut in field units has no such term. On the cases a flank is
+        # actually made of — a covered pair, where the blend runs 0 to 1 straight
+        # across the cell — one pixel is one sixteenth of the field and the cut
+        # is in pixels after all. On the corner cases it is not, and the bank
+        # widens and narrows through a corner, which is no bad thing.
+        far = reach + jag(px, py, BANK_RAG, (0.30, 0.45, 0.25))
+        # And it has to stop short of the cell.
+        #
+        # A bank hangs off the outline, and the grain throws the outline about
+        # by six pixels inside its own cell — so on the half of a flank where it
+        # has wandered outward there is no room left to hang seven pixels of
+        # rock in, and nothing outside this cell will draw the rest. The first
+        # pass simply ran off the edge and was cropped, which is where the long
+        # dead-straight sides came from: the bank was showing the tile grid.
+        #
+        # Room runs out at blend zero, which the field puts at 0.5 + grain, so
+        # keep a pixel or two inside that, and let the edge it stops at wander
+        # because the margin does.
+        #
+        # Never below BANK_FLOOR, though. Letting it pinch to nothing left a
+        # tile of bare line between the bank above and the band below at the
+        # shoulders, which reads as the rock breaking rather than as the drop
+        # turning away. Two pixels always draw; where there is genuinely no room
+        # for them the crop takes one back, and one pixel of tile edge on a
+        # two-pixel bank is nothing to see.
+        margin = 0.5 + 1.5 * noise(L_PINCH, py, px)
+        room = np.maximum(0.5 + shift - margin / CELL, BANK_FLOOR / CELL)
+        rock = ~high & (-field < np.minimum(far / CELL, room))
+        if rock.any():
+            # The ink a bank carries is not the ink the band carries, and it
+            # took two passes to see why. The band holds a pixel back from every
+            # edge and flares its clefts where they reach daylight, which is
+            # what puts the heavy black along the top and the foot of a face.
+            # A bank is seven pixels across at its widest and every pixel of it
+            # is an edge, so both fire everywhere at once: it came out 94% ink
+            # at three pixels and 66% at eight, which is the outline drawn heavy
+            # and not rock at all.
+            #
+            # The reference says where the black in a flank actually goes. Down
+            # its west side the rock runs x=16..23 with the four pixels nearest
+            # the height inked and the four against the grass bare brown — no
+            # rim on the outer edge, and no flare. So: one pixel against the
+            # line, the clefts, and nothing else.
+            width = cleft_width(stripe, px, py)
+            inner = rock & ~erode(~high, 1)
+            ink = rock & (inner | (vein < width))
+            img[crop(rock & ~ink)] = BROWN
+            img[crop(ink)] = INK
 
     # One unbroken pixel of ink just inside the edge.
     #
@@ -369,6 +500,33 @@ def edge_cell(case, bx, by):
     # reads as litter dropped in the grass rather than as the edge of anything.
     rim = high & ~erode(high, 1)
     img[crop(rim)] = INK
+    return img
+
+
+def haze_cell(case, bx, by):
+    """Where the height's own surface lies in this cell, as a solid mask.
+
+    The game lays a pale wash over the ground a plateau stands on, one step
+    paler for each storey up, and the wash has to stop where the outline does.
+    A tile-sized quad will not do it: the height is a mask in whole tiles but
+    the outline wanders six pixels either side of it, so a quad leaves a ragged
+    pale fringe outside the line on one stretch and dark ground inside it on the
+    next — the tile grid, showing in the colour.
+
+    So the wash is cut from the same field the outline is, and lands on the same
+    pixels. Case 15 fills the cell, which is what a tile well inside a plateau
+    wants, so the caller has no special case to write.
+    """
+    img = np.zeros((CELL, CELL, 3), dtype=np.uint8)
+    img[:, :] = KEY
+    if case == 0:
+        return img
+    lx, ly, px, py = padded_grid(bx, by)
+    u = (lx + 0.5) / CELL
+    v = (ly + 0.5) / CELL
+    vein, _ = cleft_dist(px, py)
+    high = corner_blend(case, u, v) - 0.5 - grain_shift(px, py, vein) > 0.0
+    img[crop(high)] = (255, 255, 255)
     return img
 
 
@@ -404,7 +562,8 @@ def preview(path, sheet):
     high = blob > 0.55
 
     # The band: below and beside the highland, never above it — the same sweep
-    # place_cliffs() does, at CLIFF_FACE_D = 2.
+    # place_cliffs() does, at CLIFF_FACE_D = 2 and CLIFF_FACE_SIDE = 1, narrowing
+    # with depth so it comes to a point at each shoulder.
     face = np.zeros((H, W), dtype=bool)
     for y in range(H):
         for x in range(W):
@@ -412,22 +571,71 @@ def preview(path, sheet):
                 continue
             if y + 1 < H and high[y + 1, x]:
                 continue
-            for dy in range(-1, 3):
-                for dx in range(-2, 3):
+            for dy in range(0, 3):
+                w = 1 if dy <= 1 else 0
+                for dx in range(-w, w + 1):
                     sx, sy = x - dx, y - dy
                     if 0 <= sx < W and 0 <= sy < H and high[sy, sx]:
                         face[y, x] = True
 
-    def code(m, x, y):
-        def n(cx, cy):
-            t = 0
-            for ox, oy in ((-1, -1), (0, -1), (-1, 0), (0, 0)):
-                px, py = cx + ox, cy + oy
-                if 0 <= px < W and 0 <= py < H and m[py, px]:
-                    t += 1
-            return t
-        return ((1 if n(x, y) >= 2 else 0) | (2 if n(x + 1, y) >= 2 else 0)
-              | (4 if n(x, y + 1) >= 2 else 0) | (8 if n(x + 1, y + 1) >= 2 else 0))
+    def at(m, x, y):
+        return 0 <= x < W and 0 <= y < H and m[y, x]
+
+    def facing(x, y):
+        """Which way the height's edge faces here: +1 square on to you, -1 the
+        back of the hill. The centroid of the height over a window points into
+        it, so the outward normal is the other way — see cliff_facing()."""
+        n = sy = sx = 0
+        for dy in range(-BANK_R, BANK_R + 1):
+            for dx in range(-BANK_R, BANK_R + 1):
+                if at(high, x + dx, y + dy):
+                    n += 1
+                    sy += dy
+                    sx += dx
+        if n == 0:
+            return -1.0
+        cy, cx = sy / float(n), sx / float(n)
+        m = np.hypot(cx, cy)
+        return -1.0 if m < 0.05 else -cy / m
+
+    def bank(x, y):
+        for k, lo in enumerate(BANK_FACING):
+            if facing(x, y) >= lo:
+                return len(BANK_FACING) - k
+        return 0
+
+    # The band is only masked where the wall it draws is deep enough to want a
+    # tile of its own; the rest of the way round, the bank off the outline is
+    # the whole of it. Cut here rather than when drawing, because the cases are
+    # taken off this mask and every one of them has to be drawn for them to
+    # join up.
+    for y in range(H):
+        for x in range(W):
+            if face[y, x] and bank(x, y) < BANK_FRONT:
+                face[y, x] = False
+
+    def face_code(x, y):
+        def covered(cx, cy):
+            box = ((-1, -1), (0, -1), (-1, 0), (0, 0))
+            nf = sum(1 for ox, oy in box if at(face, cx + ox, cy + oy))
+            if nf >= 3:
+                return True
+            return nf >= 2 and any(at(high, cx + ox, cy + oy) for ox, oy in box)
+        return ((1 if covered(x, y) else 0) | (2 if covered(x + 1, y) else 0)
+              | (4 if covered(x, y + 1) else 0) | (8 if covered(x + 1, y + 1) else 0))
+
+    def high_code(x, y):
+        def covered(cx, cy):
+            box = ((-1, -1), (0, -1), (-1, 0), (0, 0))
+            return sum(1 for ox, oy in box if at(high, cx + ox, cy + oy)) >= 3
+        return ((1 if covered(x, y) else 0) | (2 if covered(x + 1, y) else 0)
+              | (4 if covered(x, y + 1) else 0) | (8 if covered(x + 1, y + 1) else 0))
+
+    def rock_code(x, y):
+        if not (at(face, x, y) or at(face, x - 1, y) or at(face, x + 1, y)
+                or at(face, x, y - 1) or at(face, x, y + 1)):
+            return 0
+        return face_code(x, y)
 
     GRASS = (168, 240, 188)
     out = np.zeros((H * CELL, W * CELL, 3), dtype=np.uint8)
@@ -442,24 +650,21 @@ def preview(path, sheet):
 
     for y in range(H):
         for x in range(W):
-            for row0, m, want in ((EDGE_ROW0, high, 'edge'), (ROCK_ROW0, face, 'rock')):
-                c = code(m, x, y)
-                if not c:
-                    continue
-                if want == 'rock' and not (face[y, x]
-                        or (x and face[y, x - 1]) or (x + 1 < W and face[y, x + 1])
-                        or (y and face[y - 1, x]) or (y + 1 < H and face[y + 1, x])):
-                    continue
-                if want == 'edge':
-                    near = face[max(0, y - 1):y + 2, max(0, x - 1):x + 2].any()
-                    if near:
-                        continue
-                put(row0 + c, x, y)
-            if not code(face, x, y):
-                for step in range(2):
-                    if y - 1 - step >= 0 and code(face, x, y - 1 - step):
-                        put(SCREE_ROW0 + step, x, y)
-                        break
+            hc = high_code(x, y)
+            if hc and hc != 15:
+                # The widest bank at the front too, under the band — the mask
+                # has holes the facing knows nothing about, and a hole in it
+                # with the bare line running through is the cliff breaking.
+                b = min(bank(x, y), BANK_FRONT - 1)
+                put((BANK_ROW0 + (b - 1) * NCASE if b else EDGE_ROW0) + hc, x, y)
+            c = rock_code(x, y)
+            if c:
+                put(ROCK_ROW0 + c, x, y)
+                continue
+            for step in range(SCREE_STEPS):
+                if y - 1 - step >= 0 and rock_code(x, y - 1 - step):
+                    put(SCREE_ROW0 + step, x, y)
+                    break
     Image.fromarray(out).save(path)
     print('preview ->', path)
 
@@ -475,22 +680,29 @@ def main():
 
     img = Image.open(a.sheet).convert('RGB')
     sheet = np.array(img)
-    need = (SCREE_ROW0 + SCREE_STEPS) * CELL
+    need = (HAZE_ROW0 + NCASE) * CELL
     if sheet.shape[0] < need:
         raise SystemExit('sheet is only %d px tall, need %d' % (sheet.shape[0], need))
 
     stamp(sheet, ROCK_ROW0, rock_cell)
     stamp(sheet, EDGE_ROW0, edge_cell)
     stamp(sheet, SCREE_ROW0, scree_cell, SCREE_STEPS)
+    for k, reach in enumerate(BANK_REACH):
+        stamp(sheet, BANK_ROW0 + k * NCASE,
+              lambda case, bx, by, r=reach: edge_cell(case, bx, by, r))
+    stamp(sheet, HAZE_ROW0, haze_cell)
 
     if a.preview:
         preview(a.preview, sheet)
     if not a.no_write:
         Image.fromarray(sheet).save(a.sheet)
-        print('wrote %s: band rows %d-%d, outline %d-%d, spill %d-%d'
+        print('wrote %s: band rows %d-%d, outline %d-%d, spill %d-%d, banks %d-%d, '
+              'height mask %d-%d'
               % (a.sheet, ROCK_ROW0, ROCK_ROW0 + NCASE - 1,
                  EDGE_ROW0, EDGE_ROW0 + NCASE - 1,
-                 SCREE_ROW0, SCREE_ROW0 + SCREE_STEPS - 1))
+                 SCREE_ROW0, SCREE_ROW0 + SCREE_STEPS - 1,
+                 BANK_ROW0, BANK_ROW0 + NCASE * len(BANK_REACH) - 1,
+                 HAZE_ROW0, HAZE_ROW0 + NCASE - 1))
 
 
 if __name__ == '__main__':

@@ -259,12 +259,18 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
 
     if (dx != 0.0f || dy != 0.0f) {
         OWCollCtx ctx = { map, resources };
-        float nx = ow->x + dx * ow->speed * dt;
-        float ny = ow->y + dy * ow->speed * dt;
-        float px = ow->x, py = ow->y;
-        if (noclip || can_occupy(&ctx, nx, ow->y, ow_solid)) ow->x = nx;
-        if (noclip || can_occupy(&ctx, ow->x, ny, ow_solid)) ow->y = ny;
-        if (ow->x == px && ow->y == py) player->is_moving = 0;
+        if (noclip) {
+            ow->x += dx * ow->speed * dt;
+            ow->y += dy * ow->speed * dt;
+        } else {
+            // Asked before the move rather than after it, so that a player who
+            // is somewhere they cannot be gets out by walking, which is the
+            // only thing they will think to try.
+            unwedge_feet(&ctx, &ow->x, &ow->y, ow_solid);
+            if (!move_feet(&ctx, &ow->x, &ow->y,
+                           dx * ow->speed * dt, dy * ow->speed * dt, ow_solid))
+                player->is_moving = 0;
+        }
     }
 
     // Dungeon entrance detection
