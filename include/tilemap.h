@@ -194,7 +194,7 @@ typedef struct {
 // site, a mouth in the face and one on each storey's top — and on a world with
 // many small landforms that is a few hundred records before the ordinary rolls
 // begin. The array carries both, so it needs room for both.
-#define MAX_DUNGEON_ENTRANCES 1024
+#define MAX_DUNGEON_ENTRANCES 2048
 
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];

@@ -3554,18 +3554,30 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // landform rather than from each mouth — see cave_anchor_x in
         // include/tilemap.h and the branch in src/main.cpp.
 
-        // How close an ordinary dungeon may come to a mountain. Sixteen tiles is
-        // about "a cliff dominates this view".
-        const int CLIFF_KEEP_OUT = 16;
-        auto near_highland = [&](int ex, int ey, int sz) -> bool {
-            int x0 = ex - CLIFF_KEEP_OUT,      y0 = ey - CLIFF_KEEP_OUT;
-            int x1 = ex + sz + CLIFF_KEEP_OUT, y1 = ey + sz + CLIFF_KEEP_OUT;
-            if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
-            if (x1 > MAP_WIDTH)  x1 = MAP_WIDTH;
-            if (y1 > MAP_HEIGHT) y1 = MAP_HEIGHT;
-            for (int py = y0; py < y1; py++)
-                for (int px = x0; px < x1; px++)
+        // Whether an entrance would sit in a hill rather than beside one.
+        //
+        // This was a sixteen-tile keep-out, and it was doing far more than the
+        // job it was added for. Highland is about eight percent of the map, so a
+        // sixteen-tile skirt round every scrap of it reserved something like a
+        // quarter of the world: every one of six hundred hills became the centre
+        // of a zone where nothing could spawn, while only eighty of them had a
+        // cave. That is what made the place read as barren.
+        //
+        // What the rule is actually for is narrower. An entrance must not end up
+        // inside the hill, and must not end up behind the wall hanging off it —
+        // the band is never written to the map, so ground under a face still
+        // reads TILE_GRASS and passes every test door_ok makes. Ask those two
+        // questions and nothing else: s_cliff_elev for the hill itself, and
+        // tilemap_face_at, which is the low face bits and answers exactly "is a
+        // wall drawn on this tile". A graveyard may stand at the foot of a cliff
+        // again; it just may not stand in one.
+        auto hits_cliff = [&](int ex, int ey, int sz) -> bool {
+            for (int py = ey; py < ey + sz; py++)
+                for (int px = ex; px < ex + sz; px++) {
+                    if (px < 0 || py < 0 || px >= MAP_WIDTH || py >= MAP_HEIGHT) continue;
                     if (s_cliff_elev[py][px]) return true;
+                    if (tilemap_face_at(px, py)) return true;
+                }
             return false;
         };
 
@@ -3641,7 +3653,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                            ^ ((unsigned int)ay * 0x85EBCA6Bu);
             h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12;
             int pct = (int)((h >> 8) % 100u);
-            int want = (top_lvl >= 3) ? 100 : (top_lvl == 2) ? 33 : 5;
+            int want = (top_lvl >= 3) ? 100 : 50;
             if (pct >= want && !holds_castle) return false;
 
             int first = m->num_dungeon_entrances;
@@ -3771,13 +3783,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 DungeonEntranceType ent_type = pick_entrance_type(biome, is_mtn, es, ent_size);
                 int sz = ent_size + 1; // 1 = small, 2 = large
 
-                // Nothing ordinary within reach of a mountain. The cliff is the
-                // cave's territory now: a graveyard at the foot of a wall reads
-                // as clutter against it, and an entrance placed there used to
-                // end up buried behind the band, since door_ok tests tile ids
-                // and the band is never written to the map. The roll simply
-                // fails and the cell tries somewhere else.
-                if (near_highland(ex, ey, sz)) continue;
+                // In a hill, not beside one. See hits_cliff.
+                if (hits_cliff(ex, ey, sz)) continue;
 
                 if (!door_ok(ex, ey, sz)) continue;
 

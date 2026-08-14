@@ -237,8 +237,11 @@ int main(int argc, char** argv)
                 for (int c = 0; c < s; c++)
                     if (!tilemap_is_walkable(&g_map, e.x + c, e.y + r)) unreachable++;
         }
-        printf("  dungeons: %d total, %d on mountain (cliff>=3)\n",
-               g_map.num_dungeon_entrances, n_mtn);
+        printf("  dungeons: %d total of %d capacity%s, %d on mountain (cliff>=3)\n",
+               g_map.num_dungeon_entrances, MAX_DUNGEON_ENTRANCES,
+               g_map.num_dungeon_entrances >= MAX_DUNGEON_ENTRANCES
+                   ? "   <-- FULL, mountains silently lost caves" : "",
+               n_mtn);
         printf("  caves: %d systems, %d mouths, %.1f per system"
                "   [bad_face %d  bad_top %d  unwalkable %d  no_approach %d]\n",
                sys, mouths, sys ? (double)mouths / sys : 0.0,
@@ -308,7 +311,7 @@ int main(int argc, char** argv)
             static uint8_t dseen[DMAP_H][DMAP_W];
             static int dq[DMAP_H * DMAP_W];
             int tested = 0, broken = 0, portals_total = 0, short_portals = 0, mouths_total = 0;
-            for (int s = 0; s < sys && tested < 12; s++) {
+            for (int s = 0; s < sys && tested < 60; s++) {
                 int n_mouth = 0; float diff = 0.0f;
                 for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
                     const DungeonEntrance& e = g_map.dungeon_entrances[i];
@@ -359,19 +362,22 @@ int main(int argc, char** argv)
         for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
             const DungeonEntrance& e = g_map.dungeon_entrances[i];
             if (e.cave_anchor_x >= 0) continue;          // mouths are meant to be there
+            // Overlap, not proximity: standing beside a cliff is fine now, being
+            // inside one or behind its wall is not.
             int s2 = e.size + 1, hit = 0;
-            for (int py = e.y - 16; py < e.y + s2 + 16 && !hit; py++)
-                for (int px = e.x - 16; px < e.x + s2 + 16 && !hit; px++) {
+            for (int py = e.y; py < e.y + s2 && !hit; py++)
+                for (int px = e.x; px < e.x + s2 && !hit; px++) {
                     if (px < 0 || py < 0 || px >= MAP_WIDTH || py >= MAP_HEIGHT) continue;
                     int t = g_map.tiles[py][px];
                     if (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1 ||
                         t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2 ||
                         t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) hit = 1;
+                    if (tilemap_face_at(px, py)) hit = 1;
                 }
             too_near += hit;
         }
-        printf("  ordinary dungeons within 16 tiles of highland: %d%s\n",
-               too_near, too_near ? "   <-- keep-out leaking" : "");
+        printf("  ordinary dungeons overlapping a hill or its wall: %d%s\n",
+               too_near, too_near ? "   <-- collision test leaking" : "");
         for (int t = 0; t < 9; t++)
             if (flat[t] || mtn[t])
                 printf("     %-14s flat %4d   mountain %3d\n", ENT_NAME[t], flat[t], mtn[t]);
