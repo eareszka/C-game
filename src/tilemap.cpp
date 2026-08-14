@@ -186,6 +186,12 @@ static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_style
 
 // Shared between phase1 and phase2 — computed once after rivers are placed.
 static bool  cliff_blocked[MAP_HEIGHT][MAP_WIDTH];
+// Snow dilated by the biome fixup's reach: whether a row has snow within
+// SNOW_BUFFER columns, before the second axis is folded in. Map-sized and it
+// does not outlive the pass that fills it, but generation runs once and off the
+// main thread, so it lives here rather than on a stack that has to carry it —
+// the same reason as the cliff grids above.
+static unsigned char s_biome_near[MAP_HEIGHT][MAP_WIDTH];
 static float s_cliff_dir_x, s_cliff_dir_y, s_cliff_dir_len;
 static float s_cliff_ref_x, s_cliff_ref_y;
 
@@ -299,17 +305,6 @@ static int tile_noise(int x, int y, int seed) {
     return (int)((n >> 16) & 0x7FFF);
 }
 
-// Place `count` tiles of `type` on GRASS cells, seeded RNG
-static void scatter(Tilemap* map, int type, int count, unsigned int seed) {
-    for (int i = 0; i < count; i++) {
-        seed = seed * 1664525u + 1013904223u;
-        int x = 1 + (int)((seed >> 16) % (MAP_WIDTH  - 2));
-        seed = seed * 1664525u + 1013904223u;
-        int y = 1 + (int)((seed >> 16) % (MAP_HEIGHT - 2));
-        if (map->tiles[y][x] == TILE_GRASS)
-            map->tiles[y][x] = type;
-    }
-}
 
 // Paints a filled circle brush at (ix, iy), skipping the guard zone.
 static void paint_river_brush(Tilemap* map, int ix, int iy, int brush_r,
@@ -934,30 +929,44 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
             dst[x + 1] = acc;
         }
     };
-    auto span = [&](int y, int x, int hw) {
-        const int* p = prefix[((y % win) + win) % win];
-        int a = x - hw, b = x + hw + 1;
-        if (a < x_lo) a = x_lo;
-        if (b > x_hi) b = x_hi;
-        return (a < b) ? p[b] - p[a] : 0;
-    };
+    // The window's rows, resolved once per row of the map instead of once per
+    // tile. Which slot of the ring a row lives in costs two integer divisions
+    // to work out, and asking that question again for every one of the window's
+    // rows at every one of nine million tiles was the better part of what this
+    // function spent its time on — three seconds of a five second world build,
+    // across the eighteen times place_cliffs() calls it. The arithmetic below is
+    // otherwise the same subtraction it always was.
+    const int* rowp [CLIFF_MORPH_RMAX * 2 + 1];
+    int        rowhw[CLIFF_MORPH_RMAX * 2 + 1];
 
     for (int y = y_lo; y < y_lo + r && y < y_hi; y++) build(y);
     for (int y = y_lo; y < y_hi; y++) {
         if (y + r < y_hi) build(y + r);
+
+        int nrows = 0;
+        for (int dy = -r; dy <= r; dy++) {
+            int sy = y + dy;
+            if (sy < y_lo || sy >= y_hi) continue;
+            rowp [nrows] = prefix[((sy % win) + win) % win];
+            rowhw[nrows] = w[dy + r];
+            nrows++;
+        }
+
         for (int x = x_lo; x < x_hi; x++) {
             int acc = 0;
-            for (int dy = -r; dy <= r; dy++) {
-                int sy = y + dy;
-                if (sy < y_lo || sy >= y_hi) continue;
-                acc += span(sy, x, w[dy + r]);
+            for (int i = 0; i < nrows; i++) {
+                int hw = rowhw[i];
+                int a = x - hw, b = x + hw + 1;
+                if (a < x_lo) a = x_lo;
+                if (b > x_hi) b = x_hi;
+                if (a < b) acc += rowp[i][b] - rowp[i][a];
             }
             s_cliff_scratch[y][x] = (acc >= need) ? 1 : 0;
         }
     }
     for (int y = y_lo; y < y_hi; y++)
-        for (int x = x_lo; x < x_hi; x++)
-            s_cliff_elev[y][x] = s_cliff_scratch[y][x];
+        memcpy(&s_cliff_elev[y][x_lo], &s_cliff_scratch[y][x_lo],
+               (size_t)(x_hi - x_lo) * sizeof s_cliff_elev[0][0]);
 }
 
 // Round the south edge of one component into a wall, not a coastline.
@@ -1030,6 +1039,105 @@ static void cliff_smooth_south(const int* cells, int n, int y_lo, int y_hi)
     }
 }
 
+// The five biomes the majority vote is taken over, and a tile's place in that
+// list. Order is load-bearing: ties are broken towards the earlier entry, so
+// this is the order the old inner loop searched in and it has to stay that way.
+static const int BIOME_TILES[] = {
+    TILE_GRASS, TILE_SAND, TILE_SNOW, TILE_WASTELAND, TILE_MEADOW
+};
+static const int NB = (int)(sizeof(BIOME_TILES) / sizeof(BIOME_TILES[0]));
+
+static inline int biome_index(int t) {
+    switch (t) {
+        case TILE_GRASS:     return 0;
+        case TILE_SAND:      return 1;
+        case TILE_SNOW:      return 2;
+        case TILE_WASTELAND: return 3;
+        case TILE_MEADOW:    return 4;
+        default:             return -1;
+    }
+}
+
+// Dissolve biome patches too small to read, by giving every biome tile the
+// commonest biome in the 7x7 around it, `passes` times over. Returns false if
+// generation was cancelled part way.
+//
+// One function where there were two identical copies of the loop, differing
+// only in how many passes they ran.
+//
+// The window is carried rather than gathered. Counting all forty-nine cells per
+// tile, which is what this did, is a hundred and fifty operations to answer a
+// question whose answer at the next tile along differs by two columns of seven
+// — and at seventeen passes over nine million tiles that came to a fifth of the
+// whole world build, twice. Instead each column keeps a running count over the
+// rows in the window, and a running total slides along the row: a tile costs
+// ten operations and a row costs two rows of column updates.
+//
+// The one thing that must not be lost is that this is a *sequential* filter.
+// Each tile is decided from a window that already contains the new values of
+// the tiles behind it — the pass reads and writes one grid. Gathering the
+// counts from a copy of the grid instead is the obvious way to make this fast
+// and it is a different filter: it would give a different world from the same
+// seed. Hence the write-back below, which pushes every change straight into the
+// column count and the running total, so both describe the grid as it is now
+// rather than as it was when the row began.
+static bool biome_majority_smooth(Tilemap* map, int passes)
+{
+    const int R = 3;                       // 7x7 window
+    static int colcnt[MAP_WIDTH][NB];      // per column, counts over the window's rows
+    static_assert(NB == 5, "colcnt and the count arrays below are sized for five biomes");
+
+    for (int pass = 0; pass < passes; pass++) {
+        if (s_gen_cancel) return false;
+
+        memset(colcnt, 0, sizeof colcnt);
+        for (int yy = 0; yy <= 2 * R; yy++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int b = biome_index(map->tiles[yy][x]);
+                if (b >= 0) colcnt[x][b]++;
+            }
+
+        for (int y = R; y < MAP_HEIGHT - R; y++) {
+            if (y > R) {
+                // The window drops the row above it and gains the row below.
+                for (int x = 0; x < MAP_WIDTH; x++) {
+                    int o = biome_index(map->tiles[y - R - 1][x]);
+                    if (o >= 0) colcnt[x][o]--;
+                    int n = biome_index(map->tiles[y + R][x]);
+                    if (n >= 0) colcnt[x][n]++;
+                }
+            }
+
+            int total[NB] = { 0, 0, 0, 0, 0 };
+            for (int c = 0; c <= 2 * R; c++)
+                for (int b = 0; b < NB; b++) total[b] += colcnt[c][b];
+
+            for (int x = R; x < MAP_WIDTH - R; x++) {
+                if (x > R)
+                    for (int b = 0; b < NB; b++) {
+                        total[b] -= colcnt[x - R - 1][b];
+                        total[b] += colcnt[x + R][b];
+                    }
+
+                int cur = map->tiles[y][x];
+                int cb  = biome_index(cur);
+                if (cb < 0) continue;
+
+                int best = 0;
+                for (int b = 1; b < NB; b++)
+                    if (total[b] > total[best]) best = b;
+
+                if (best != cb) {
+                    map->tiles[y][x] = BIOME_TILES[best];
+                    colcnt[x][cb]--;  colcnt[x][best]++;
+                    total[cb]--;      total[best]++;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 // Smooth value noise, with the two axes scaled apart. Sampling on a grid longer
 // across than down stretches the field the same way, and a stretched field has
 // level sets that run east-west — which is the whole trick the ridges rest on.
@@ -1094,6 +1202,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // Where to cut the field for each level is measured rather than guessed: a
     // fixed cut gives a different amount of mountain on every seed.
     float cut[CLIFF_LEVELS + 1];
+    GEN_STAGE(map, "cliff: choose cut levels");
     {
         static float samp[1 << 17];
         const int CAPS = (int)(sizeof samp / sizeof *samp);
@@ -1130,6 +1239,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         for (int px = x_lo; px < x_hi; px++)
             s_cliff_mask[py][px] = 0;
 
+    GEN_STAGE(map, "cliff: morphology per level");
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         if (L > 1) {
             // shrink the level below by a terrace, then keep the part of this
@@ -1229,6 +1339,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // dozen tiles is not a landform — but it still casts a face, which is a
     // brown fragment lying in open grass with nothing to belong to. Sweep the
     // levels again now that the map has had its final say.
+    GEN_STAGE(map, "cliff: rub out small regions");
     {
         static int cells[1 << 20];
         const int CAP = (int)(sizeof cells / sizeof *cells);
@@ -1267,6 +1378,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // that a cliff faces somewhere. A skirt of equal width all the way round is
     // a brown outline drawn around a green shape, which is what this looked
     // like when the face wrapped the sides as thickly as the front.
+    GEN_STAGE(map, "cliff: face sweep");
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
@@ -1325,6 +1437,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // CLIFF_FACE_D / CLIFF_TAPER_SLOPE tiles of edge no matter how sharply the
     // contour turns underneath it. See CLIFF_TAPER_SLOPE for what that replaced
     // and why a rung of facing could not do it.
+    GEN_STAGE(map, "cliff: taper ramp");
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         unsigned char bit  = (unsigned char)(1 << (L - 1));
         // The sweep runs dy from 0 to CLIFF_FACE_D inclusive, so a front is
@@ -1406,6 +1519,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // The drawing bits only. The ground's own bits are worked out from the art
     // in the pass below and are thrown away first, so cleaning them here would
     // be cleaning something nothing reads.
+    GEN_STAGE(map, "cliff: rub out small faces");
     {
         static int cells[1 << 20];
         const int CAP = (int)(sizeof cells / sizeof *cells);
@@ -1459,6 +1573,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // It decides only whether the exact question is worth asking, and it is the
     // coarse answer tilemap_is_walkable() gives to whoever has nothing but a
     // tile to go on.
+    GEN_STAGE(map, "cliff: close the ground");
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         unsigned char bit = (unsigned char)(1 << (L - 1));
         for (int y = y_lo; y < y_hi; y++)
@@ -2320,39 +2435,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     GEN_STAGE(map, "before Biome smoothing");
     // --- Biome smoothing: eliminate tiny isolated patches ---
     if (s_gen_cancel) return;
-    // 3 passes of 5x5 majority vote. Only biome tiles (grass/sand/snow/waste/meadow)
-    // participate; structural tiles (water, cliff, rock, river) are left alone.
-    {
-        static const int BIOME_TILES[] = {
-            TILE_GRASS, TILE_SAND, TILE_SNOW, TILE_WASTELAND, TILE_MEADOW
-        };
-        static const int NB = (int)(sizeof(BIOME_TILES)/sizeof(BIOME_TILES[0]));
-        auto is_biome = [](int t) {
-            return t == TILE_GRASS || t == TILE_SAND || t == TILE_SNOW
-                || t == TILE_WASTELAND || t == TILE_MEADOW;
-        };
-        const int R = 3; // 5x5 window (radius 2)
-        for (int pass = 0; pass < 7; pass++) {
-            if (s_gen_cancel) return;
-            for (int y = R; y < MAP_HEIGHT - R; y++) {
-                for (int x = R; x < MAP_WIDTH - R; x++) {
-                    int cur = map->tiles[y][x];
-                    if (!is_biome(cur)) continue;
-                    int counts[5] = {0,0,0,0,0};
-                    for (int dy2 = -R; dy2 <= R; dy2++)
-                        for (int dx2 = -R; dx2 <= R; dx2++) {
-                            int t = map->tiles[y+dy2][x+dx2];
-                            for (int b = 0; b < NB; b++)
-                                if (t == BIOME_TILES[b]) { counts[b]++; break; }
-                        }
-                    int best = 0;
-                    for (int b = 1; b < NB; b++)
-                        if (counts[b] > counts[best]) best = b;
-                    map->tiles[y][x] = BIOME_TILES[best];
-                }
-            }
-        }
-    }
+    // 7 passes of the 7x7 majority vote. Only biome tiles participate;
+    // structural tiles (water, cliff, rock, river) are left alone.
+    if (!biome_majority_smooth(map, 7)) return;
 
     GEN_STAGE(map, "before Biome adjacency fixup");
     // --- Biome adjacency fixup ---
@@ -2360,18 +2445,56 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Rule 2: TILE_SNOW can only be adjacent to TILE_GRASS or TILE_MEADOW (among biome tiles).
     // Any SAND within SNOW_BUFFER tiles of snow is converted to TILE_MEADOW,
     // creating a wide meadow/forest transition zone between the two biomes.
+    //
+    // "Is there snow within fifty tiles" asked once for the whole map rather
+    // than once per tile of desert. It used to be a 101x101 box scan per sand
+    // tile — ten thousand reads to answer a question whose answer at the tile
+    // next door differs by two columns of it — and it cost a fifth of the whole
+    // build.
+    //
+    // The same answer, not a near one. Two things make the hoist exact. The
+    // loop only ever writes MEADOW, and MEADOW is not SNOW, so nothing it does
+    // can change the answer for a tile it has not reached yet; the predicate is
+    // constant across the pass. And a Chebyshev reach is a square, so the
+    // dilation separates into a pass along each axis, which is what turns
+    // O(map * radius^2) into O(map).
     {
         const int SNOW_BUFFER = 50;
-        for (int y = SNOW_BUFFER; y < MAP_HEIGHT - SNOW_BUFFER; y++) {
+
+        // Along each row first: snow anywhere in [x-B, x+B]. Clamped at the map
+        // edge, which the result never depends on — the apply loop below reads
+        // only the interior, exactly as the box scan did.
+        static int pre[MAP_WIDTH + 1];
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            pre[0] = 0;
+            for (int x = 0; x < MAP_WIDTH; x++)
+                pre[x + 1] = pre[x] + (map->tiles[y][x] == TILE_SNOW ? 1 : 0);
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int a = x - SNOW_BUFFER; if (a < 0) a = 0;
+                int b = x + SNOW_BUFFER; if (b > MAP_WIDTH - 1) b = MAP_WIDTH - 1;
+                s_biome_near[y][x] = (unsigned char)(pre[b + 1] - pre[a] > 0);
+            }
+        }
+
+        // Then down the columns, as a window that gains a row and loses a row
+        // rather than a per-column prefix sum: both are O(map), but this one
+        // touches two whole rows in order instead of striding a column at a
+        // time, and the row walk is the one the cache likes.
+        static int colcount[MAP_WIDTH];
+        memset(colcount, 0, sizeof(colcount));
+        for (int y = 0; y < MAP_HEIGHT + SNOW_BUFFER; y++) {
+            int add = y, drop = y - 2 * SNOW_BUFFER - 1;
+            if (add  < MAP_HEIGHT)
+                for (int x = 0; x < MAP_WIDTH; x++) colcount[x] += s_biome_near[add][x];
+            if (drop >= 0)
+                for (int x = 0; x < MAP_WIDTH; x++) colcount[x] -= s_biome_near[drop][x];
+
+            int cy = y - SNOW_BUFFER;   // the row the window is now centred on
+            if (cy < SNOW_BUFFER || cy >= MAP_HEIGHT - SNOW_BUFFER) continue;
             if (s_gen_cancel) return;
             for (int x = SNOW_BUFFER; x < MAP_WIDTH - SNOW_BUFFER; x++) {
-                if (map->tiles[y][x] != TILE_SAND) continue;
-                bool near_snow = false;
-                for (int dy2 = -SNOW_BUFFER; dy2 <= SNOW_BUFFER && !near_snow; dy2++)
-                    for (int dx2 = -SNOW_BUFFER; dx2 <= SNOW_BUFFER && !near_snow; dx2++)
-                        if (map->tiles[y+dy2][x+dx2] == TILE_SNOW) near_snow = true;
-                if (near_snow)
-                    map->tiles[y][x] = TILE_MEADOW;
+                if (map->tiles[cy][x] != TILE_SAND) continue;
+                if (colcount[x] > 0) map->tiles[cy][x] = TILE_MEADOW;
             }
         }
     }
@@ -2380,37 +2503,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // --- Post-fixup biome smoothing ---
     // Re-run majority vote after the adjacency fixup to dissolve thin strips of desert
     // or snow that were left orphaned when their neighbors were converted to meadow.
-    {
-        static const int BIOME_TILES[] = {
-            TILE_GRASS, TILE_SAND, TILE_SNOW, TILE_WASTELAND, TILE_MEADOW
-        };
-        static const int NB = (int)(sizeof(BIOME_TILES)/sizeof(BIOME_TILES[0]));
-        auto is_biome = [](int t) {
-            return t == TILE_GRASS || t == TILE_SAND || t == TILE_SNOW
-                || t == TILE_WASTELAND || t == TILE_MEADOW;
-        };
-        const int R = 3;
-        for (int pass = 0; pass < 10; pass++) {
-            if (s_gen_cancel) return;
-            for (int y = R; y < MAP_HEIGHT - R; y++) {
-                for (int x = R; x < MAP_WIDTH - R; x++) {
-                    int cur = map->tiles[y][x];
-                    if (!is_biome(cur)) continue;
-                    int counts[5] = {0,0,0,0,0};
-                    for (int dy2 = -R; dy2 <= R; dy2++)
-                        for (int dx2 = -R; dx2 <= R; dx2++) {
-                            int t = map->tiles[y+dy2][x+dx2];
-                            for (int b = 0; b < NB; b++)
-                                if (t == BIOME_TILES[b]) { counts[b]++; break; }
-                        }
-                    int best = 0;
-                    for (int b = 1; b < NB; b++)
-                        if (counts[b] > counts[best]) best = b;
-                    map->tiles[y][x] = BIOME_TILES[best];
-                }
-            }
-        }
-    }
+    if (!biome_majority_smooth(map, 10)) return;
 
     GEN_STAGE(map, "before Minimum biome patch enforcement");
     // --- Minimum biome patch enforcement ---
@@ -3033,37 +3126,46 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
 
-        // -- Castle 1: mountain — nearest elevation-5 footprint to cliff peak --
-        // Collects all elevation-5 tiles, sorts by distance from cliff_peak,
-        // then walks the sorted list — O(N log N) on just the elev-5 tiles rather
-        // than O((W+H)^2) ring expansion over the whole map.
+        // -- Castle 1: mountain — nearest top-level footprint to cliff peak --
+        // Collects all top-level plateau tiles, sorts by distance from
+        // cliff_peak, then walks the sorted list — O(N log N) on just those
+        // tiles rather than O((W+H)^2) ring expansion over the whole map.
+        //
+        // The top level is CLIFF_LEVELS, which is three. This asked for
+        // elevation five, and elevation five is not a thing the world has: the
+        // single site that writes a cliff body clamps its level to CLIFF_LEVELS,
+        // so ids 4 and 5 of each family are never written and the list this
+        // sorted was empty on every seed. The castle has therefore never once
+        // placed, and map->castles[1] has always kept the {-1,-1} that phase1
+        // leaves in it. Asking for the highest ground that exists is what makes
+        // the feature do what its comment in include/castles.h says.
         {
             float px = map->cliff_peak_x / TILE_SIZE;
             float py = map->cliff_peak_y / TILE_SIZE;
 
-            std::vector<std::pair<float,std::pair<int,int>>> elev5_tiles;
+            auto is_top_level = [](int t) {
+                return t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3;
+            };
+
+            std::vector<std::pair<float,std::pair<int,int>>> top_tiles;
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 for (int x = 0; x < MAP_WIDTH; x++) {
-                    int t = map->tiles[y][x];
-                    if (t != TILE_CLIFF_5 && t != TILE_CLIFF_SNOW_5 && t != TILE_CLIFF_WASTE_5) continue;
+                    if (!is_top_level(map->tiles[y][x])) continue;
                     float dx = x - px, dy2 = y - py;
-                    elev5_tiles.push_back({ dx*dx + dy2*dy2, {x, y} });
+                    top_tiles.push_back({ dx*dx + dy2*dy2, {x, y} });
                 }
             }
-            std::sort(elev5_tiles.begin(), elev5_tiles.end());
+            std::sort(top_tiles.begin(), top_tiles.end());
 
-            for (auto& entry : elev5_tiles) {
+            for (auto& entry : top_tiles) {
                 int tx = entry.second.first  - CASTLE_W / 2;
                 int ty = entry.second.second - CASTLE_H / 2;
                 if (tx < 0 || ty < 0 || tx + CASTLE_W > MAP_WIDTH || ty + CASTLE_H > MAP_HEIGHT) continue;
-                bool all_flat_elev5 = true;
-                for (int cdy = 0; cdy < CASTLE_H && all_flat_elev5; cdy++)
-                    for (int cdx = 0; cdx < CASTLE_W && all_flat_elev5; cdx++) {
-                        int bt = map->tiles[ty+cdy][tx+cdx];
-                        if (bt != TILE_CLIFF_5 && bt != TILE_CLIFF_SNOW_5 && bt != TILE_CLIFF_WASTE_5)
-                            all_flat_elev5 = false;
-                    }
-                if (!all_flat_elev5) continue;
+                bool all_flat = true;
+                for (int cdy = 0; cdy < CASTLE_H && all_flat; cdy++)
+                    for (int cdx = 0; cdx < CASTLE_W && all_flat; cdx++)
+                        if (!is_top_level(map->tiles[ty+cdy][tx+cdx])) all_flat = false;
+                if (!all_flat) continue;
                 stamp_castle_blueprint(map, 1, tx, ty);
                 break;
             }
@@ -4033,25 +4135,6 @@ static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
     }
 }
 
-static void draw_glyph_only(SDL_Renderer* renderer, const uint8_t* glyph,
-                             uint8_t fr, uint8_t fg_col, uint8_t fb,
-                             int screen_x, int screen_y, int draw_size) {
-    const int scale = draw_size / 8;
-    if (scale < 1) return;
-    SDL_SetRenderDrawColor(renderer, fr, fg_col, fb, 255);
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8; col++) {
-            if (glyph[row] & (0x80u >> col)) {
-                SDL_Rect px = {
-                    screen_x + col * scale,
-                    screen_y + row * scale,
-                    scale, scale
-                };
-                SDL_RenderFillRect(renderer, &px);
-            }
-        }
-    }
-}
 
 // Paint one tile type into an SDL_Surface using the same bg+glyph logic as draw_tile_ascii.
 // Works on any SDL2 backend — no render-to-texture needed.
@@ -4072,24 +4155,6 @@ static SDL_Surface* make_tile_surf(const TileStyle* s) {
     return surf;
 }
 
-static SDL_Surface* make_glyph_surf(uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
-                                    uint8_t fg_r, uint8_t fg_g, uint8_t fg_b,
-                                    const uint8_t* glyph) {
-    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(
-        0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
-    if (!surf) return nullptr;
-    SDL_FillRect(surf, NULL, SDL_MapRGB(surf->format, bg_r, bg_g, bg_b));
-    const int scale = TILE_SIZE / 8;
-    for (int row = 0; row < 8; row++) {
-        for (int col = 0; col < 8; col++) {
-            if (glyph[row] & (0x80u >> col)) {
-                SDL_Rect px = { col * scale, row * scale, scale, scale };
-                SDL_FillRect(surf, &px, SDL_MapRGB(surf->format, fg_r, fg_g, fg_b));
-            }
-        }
-    }
-    return surf;
-}
 
 // Defined with the rest of the ground-cover code, but needs the sheet surface
 // while init still has it loaded.
@@ -4683,34 +4748,7 @@ static bool cliff_is_face_tile(int t) {
         || (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_BACK_5);
 }
 
-// How high the plateau a ring tile belongs to stands, or 0 for anything that is
-// not ring. The ring around a plateau is its own skirt and reads as a drop from
-// inside it; the ring around a taller one is not a drop at all, whatever the
-// tile beneath it used to be.
-static int cliff_ring_elev(int t) {
-    if (t >= TILE_CLIFF_SIDE_1      && t <= TILE_CLIFF_SIDE_5)      return t - TILE_CLIFF_SIDE_1      + 1;
-    if (t >= TILE_CLIFF_SIDE_E_1    && t <= TILE_CLIFF_SIDE_E_5)    return t - TILE_CLIFF_SIDE_E_1    + 1;
-    if (t >= TILE_CLIFF_BACK_1      && t <= TILE_CLIFF_BACK_5)      return t - TILE_CLIFF_BACK_1      + 1;
-    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) return t - TILE_CLIFF_CORNER_SW_1 + 1;
-    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) return t - TILE_CLIFF_CORNER_SE_1 + 1;
-    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) return t - TILE_CLIFF_CORNER_NW_1 + 1;
-    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) return t - TILE_CLIFF_CORNER_NE_1 + 1;
-    return 0;
-}
 
-// Which way is away from the plateau a ring tile belongs to. The tile's own
-// role says it: a west face has its plateau to the east, a back face has it to
-// the south, and so on. What lies that way is what the ring tile is level with.
-static bool cliff_ring_outward(int t, int* dx, int* dy) {
-    if (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_SIDE_5)   { *dx = -1; *dy =  0; return true; }
-    if (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_SIDE_E_5) { *dx =  1; *dy =  0; return true; }
-    if (t >= TILE_CLIFF_BACK_1   && t <= TILE_CLIFF_BACK_5)   { *dx =  0; *dy = -1; return true; }
-    if (t >= TILE_CLIFF_CORNER_NW_1 && t <= TILE_CLIFF_CORNER_NW_5) { *dx = -1; *dy = -1; return true; }
-    if (t >= TILE_CLIFF_CORNER_NE_1 && t <= TILE_CLIFF_CORNER_NE_5) { *dx =  1; *dy = -1; return true; }
-    if (t >= TILE_CLIFF_CORNER_SW_1 && t <= TILE_CLIFF_CORNER_SW_5) { *dx = -1; *dy =  1; return true; }
-    if (t >= TILE_CLIFF_CORNER_SE_1 && t <= TILE_CLIFF_CORNER_SE_5) { *dx =  1; *dy =  1; return true; }
-    return false;
-}
 
 // Returned instead of a cell for the ring of tiles around a plateau that
 // generation fills with side, back and corner faces. The art puts the whole
@@ -5102,52 +5140,7 @@ static const GroundCover* cliff_top_cover(int t) {
 // plateau, so that is asked first. Where two plateaus sit against each other
 // the ground on that side is the lower one's surface, and taking the nearest
 // non-cliff neighbour instead ran a strip of grass down between them.
-static const int CLIFF_GROUND_REACH = 8;   // how far to hunt for ground
 
-static const GroundCover* cliff_under_cover(const Tilemap* map, int x, int y) {
-    int ox, oy;
-    if (cliff_ring_outward(map->tiles[y][x], &ox, &oy)) {
-        int nx = x + ox, ny = y + oy;
-        if (in_bounds(nx, ny)) {
-            int q = map->tiles[ny][nx];
-            if (cliff_body_elev(q) == 0 && !cliff_is_face_tile(q)) {
-                const GroundCover* c = tile_cover(map, nx, ny);
-                if (c) return c;
-            }
-        }
-    }
-    // Otherwise the nearest ground of any kind. Rings outward rather than
-    // asking the eight touching tiles alone: a tall wall, or the courses
-    // orphaned under one where a drop swallowed the terrace it landed on, can
-    // sit further than a tile from anything that is not cliff, and answering
-    // nullptr there left the tile unpainted, showing whatever the frame
-    // already had in that spot.
-    //
-    // Failing all ground, the nearest plateau surface. A ring tile can end up
-    // walled in by plateau on every side — the back pass writes over the tile
-    // north of a body whenever that tile is lower, which inside a mountain can
-    // punch a hole in the surface — and there the surface is exactly what
-    // should show.
-    const GroundCover* surface = nullptr;
-    for (int r = 1; r <= CLIFF_GROUND_REACH; r++) {
-        for (int dy = -r; dy <= r; dy++) {
-            for (int dx = -r; dx <= r; dx++) {
-                if (dx > -r && dx < r && dy > -r && dy < r) continue;  // inner rings already done
-                int nx = x + dx, ny = y + dy;
-                if (!in_bounds(nx, ny)) continue;
-                int q = map->tiles[ny][nx];
-                if (cliff_body_elev(q) > 0) {
-                    if (!surface) surface = cliff_top_cover(q);
-                    continue;
-                }
-                if (cliff_is_face_tile(q)) continue;
-                const GroundCover* c = tile_cover(map, nx, ny);
-                if (c) return c;
-            }
-        }
-    }
-    return surface;
-}
 
 static int cover_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
     if (!s_town0_tex) return cover->flat;  // sheet missing — keep the flat tile
@@ -5375,11 +5368,18 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 bool is_cliff = is_ring || is_body
                              || (n_layers > 0 && cliff_is_face_tile(tile_id));
                 if (is_ring) n_layers = 0;
-                // A plateau's surface is its biome's ground; the ring takes the
-                // ground it is level with; everything else its own cover.
+                // A plateau's surface is its biome's ground; everything else its
+                // own cover.
+                //
+                // There used to be a third arm here, for a cliff that is not a
+                // plateau body — a ring, or a face written into the map as a
+                // tile — which hunted outward for the ground it was level with.
+                // Neither can happen any more. A ring needs cliff_art_layers()
+                // to answer CLIFF_ART_HIDDEN and it only ever answers 0 to 6,
+                // and a face has not been a tile since the band became something
+                // drawn over whatever it lands on. is_cliff is still read below.
                 const GroundCover* cover = is_body ? cliff_top_cover(tile_id)
-                                         : (is_cliff ? cliff_under_cover(map, x, y)
-                                                     : tile_cover(map, x, y));
+                                                   : tile_cover(map, x, y);
                 bool is_town = (tile_id >= TILE_TOWN0_BASE);
                 if (cover)
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
