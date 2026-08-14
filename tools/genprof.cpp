@@ -28,6 +28,7 @@
 #include <string>
 #include <algorithm>
 #include "tilemap.h"
+#include "dungeon.h"
 
 static Tilemap g_map;
 
@@ -295,6 +296,62 @@ int main(int argc, char** argv)
             }
             printf("  castle1 mountain (%d tiles): cave %s\n", comp,
                    found ? "YES" : "NO   <-- castle unreachable by cave");
+        }
+
+        // Do the mouths actually connect? Generate each system's interior the
+        // way main.cpp does — same seed from the shared anchor, same portal
+        // count — and flood the floor from portal 0. Every portal must be
+        // reachable, or a mouth is a way in that leads nowhere and the mountain
+        // is not a route through.
+        {
+            static DungeonMap dm;
+            static uint8_t dseen[DMAP_H][DMAP_W];
+            static int dq[DMAP_H * DMAP_W];
+            int tested = 0, broken = 0, portals_total = 0, short_portals = 0, mouths_total = 0;
+            for (int s = 0; s < sys && tested < 12; s++) {
+                int n_mouth = 0; float diff = 0.0f;
+                for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+                    const DungeonEntrance& e = g_map.dungeon_entrances[i];
+                    if (e.cave_anchor_x != seen_ax[s] || e.cave_anchor_y != seen_ay[s]) continue;
+                    if (!n_mouth) diff = e.difficulty;
+                    n_mouth++;
+                }
+                if (n_mouth < 2) continue;
+                if (n_mouth > DMAP_MAX_PORTALS) n_mouth = DMAP_MAX_PORTALS;
+                unsigned dseed = seed
+                    ^ ((unsigned)seen_ax[s] * 73856093u)
+                    ^ ((unsigned)seen_ay[s] * 19349663u);
+                dm.want_portals = n_mouth;
+                dungeon_generate(&dm, DUNGEON_ENT_CAVE, diff, dseed);
+                tested++;
+                portals_total += dm.num_portals;
+                mouths_total  += n_mouth;
+                // A mouth with no portal is a way in with no way back out.
+                if (dm.num_portals < n_mouth) short_portals++;
+
+                memset(dseen, 0, sizeof dseen);
+                int n2 = 0, hd = 0;
+                dq[n2++] = dm.portals[0].ty * DMAP_W + dm.portals[0].tx;
+                dseen[dm.portals[0].ty][dm.portals[0].tx] = 1;
+                while (hd < n2) {
+                    int v = dq[hd++], vy = v / DMAP_W, vx = v % DMAP_W;
+                    const int DX[4] = {1,-1,0,0}, DY[4] = {0,0,1,-1};
+                    for (int d = 0; d < 4; d++) {
+                        int nx = vx + DX[d], ny = vy + DY[d];
+                        if (nx < 0 || ny < 0 || nx >= DMAP_W || ny >= DMAP_H) continue;
+                        if (dseen[ny][nx] || dm.tiles[ny][nx] == DNG_WALL) continue;
+                        dseen[ny][nx] = 1; dq[n2++] = ny * DMAP_W + nx;
+                    }
+                }
+                for (int p = 0; p < dm.num_portals; p++)
+                    if (!dseen[dm.portals[p].ty][dm.portals[p].tx]) { broken++; break; }
+            }
+            printf("  cave interiors: %d tested, %.2f portals vs %.2f mouths, "
+                   "%d short of a portal, %d unreachable%s\n",
+                   tested, tested ? (double)portals_total / tested : 0.0,
+                   tested ? (double)mouths_total / tested : 0.0,
+                   short_portals, broken,
+                   (broken || short_portals) ? "   <-- A MOUTH DOES NOT CONNECT" : "");
         }
 
         // And nothing ordinary may sit within 16 tiles of highland.

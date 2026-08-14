@@ -1374,21 +1374,32 @@ static void decorate_stonehenge(DungeonMap* dmap, uint32_t* rng) {
 // Carves a 3×3 floor area around each portal so the player never spawns
 // inside or immediately adjacent to a wall.
 static void clear_portal_surroundings(DungeonMap* dmap) {
-    int px[2] = { dmap->entry_x, dmap->exit_x  };
-    int py[2] = { dmap->entry_y, dmap->exit_y  };
-    for (int p = 0; p < 2; p++) {
+    // Every layout writes entry_x/exit_x and only the cave fills the portal
+    // array, so adopt the pair here rather than at each of the half-dozen call
+    // sites. Getting this wrong is silent: an unfilled array means the loop
+    // below does nothing and every non-cave dungeon loses the pocket of floor
+    // around its stairs.
+    if (dmap->num_portals == 0) {
+        dmap->portals[0] = { dmap->entry_x, dmap->entry_y, -1, -1 };
+        dmap->portals[1] = { dmap->exit_x,  dmap->exit_y,  -1, -1 };
+        dmap->num_portals = 2;
+    }
+    // Every portal, not just the pair: a cave's extra mouths need the same
+    // pocket of floor around them or the player lands facing a wall.
+    for (int p = 0; p < dmap->num_portals; p++) {
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
-                int tx = px[p] + dx, ty = py[p] + dy;
+                int tx = dmap->portals[p].tx + dx, ty = dmap->portals[p].ty + dy;
                 if (tx < 0 || tx >= DMAP_W || ty < 0 || ty >= DMAP_H) continue;
                 if (dmap->tiles[ty][tx] == DNG_WALL)
                     dmap->tiles[ty][tx] = DNG_FLOOR;
             }
         }
     }
-    // Restore portal tiles in case they were adjacent to each other.
-    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
-    dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
+    // Restore portal tiles in case they were adjacent to each other. Portal 0
+    // is the entry; the rest are exits.
+    for (int p = 0; p < dmap->num_portals; p++)
+        dmap->tiles[dmap->portals[p].ty][dmap->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
 }
 
 // ── CELLULAR AUTOMATA: cave and tree interior generation ──────────────────
@@ -1646,6 +1657,43 @@ static void carve_cave_ca(DungeonMap* dmap, uint32_t* rng) {
 
     dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
     dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
+
+    // Extra ways out, one per chamber, for a cave that a mountain wants more
+    // than two mouths on. The chambers are already spread along the spine and
+    // ca_ensure_connectivity has already guaranteed every floor island is
+    // reachable from the entry, so a portal dropped in one is reachable from
+    // all the others by construction — which is the whole reason to put them
+    // here rather than anywhere else on the map.
+    dmap->portals[0] = { dmap->entry_x, dmap->entry_y, -1, -1 };
+    dmap->portals[1] = { dmap->exit_x,  dmap->exit_y,  -1, -1 };
+    dmap->num_portals = 2;
+    for (int i = 1; i < num_ch && dmap->num_portals < dmap->want_portals &&
+                    dmap->num_portals < DMAP_MAX_PORTALS; i++) {
+        int px = ch_x[i], py = ch_y[i];
+        // The CA eats a chamber now and then. Walk out in rings for the nearest
+        // floor, as the entry does — a mouth whose portal was skipped is a way
+        // into the mountain with no way back out of it, which is worse than a
+        // portal a few tiles off its chamber's centre.
+        if (dmap->tiles[py][px] == DNG_WALL) {
+            bool found = false;
+            for (int r = 1; r < 20 && !found; r++)
+                for (int dy = -r; dy <= r && !found; dy++)
+                    for (int dx = -r; dx <= r && !found; dx++) {
+                        if (abs(dx) != r && abs(dy) != r) continue;
+                        int tx = ch_x[i] + dx, ty = ch_y[i] + dy;
+                        if (tx < 1 || tx >= DMAP_W-1 || ty < 1 || ty >= DMAP_H-1) continue;
+                        if (dmap->tiles[ty][tx] == DNG_WALL) continue;
+                        px = tx; py = ty; found = true;
+                    }
+            if (!found) continue;
+        }
+        bool taken = false;
+        for (int p = 0; p < dmap->num_portals; p++)
+            if (dmap->portals[p].tx == px && dmap->portals[p].ty == py) taken = true;
+        if (taken) continue;
+        dmap->tiles[py][px] = DNG_EXIT;
+        dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
+    }
 }
 
 // ── LARGE TREE CA generator ───────────────────────────────────────────────
@@ -1867,6 +1915,12 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     memset(dmap->visible,  0,        sizeof(dmap->visible));
     dmap->type       = type;
     dmap->difficulty = difficulty;
+    // The map is reused between visits, so the portal count has to be cleared
+    // or the last dungeon's extra mouths survive into this one. want_portals is
+    // set by the caller before it gets here and only a cave asks for more.
+    dmap->num_portals = 0;
+    if (dmap->want_portals < 2)                 dmap->want_portals = 2;
+    if (dmap->want_portals > DMAP_MAX_PORTALS)  dmap->want_portals = DMAP_MAX_PORTALS;
 
     uint32_t rng = seed ^ ((uint32_t)type * 0xBEEF1234u);
 

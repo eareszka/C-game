@@ -572,6 +572,25 @@ int main(int argc, char *argv[])
                             }
                         }
 
+                        // A cave system: gather every mouth of this mountain, in
+                        // array order so the mapping is the same whichever one
+                        // you walked into, and ask the interior for that many
+                        // ways out.
+                        int cave_mouth[DMAP_MAX_PORTALS];
+                        int n_cave_mouth = 0, my_mouth = -1;
+                        dmap.want_portals = 2;
+                        if (cur_ent && cur_ent->cave_anchor_x >= 0) {
+                            for (int i = 0; i < map->num_dungeon_entrances &&
+                                            n_cave_mouth < DMAP_MAX_PORTALS; i++) {
+                                DungeonEntrance* e = &map->dungeon_entrances[i];
+                                if (e->cave_anchor_x != cur_ent->cave_anchor_x ||
+                                    e->cave_anchor_y != cur_ent->cave_anchor_y) continue;
+                                if (e == cur_ent) my_mouth = n_cave_mouth;
+                                cave_mouth[n_cave_mouth++] = i;
+                            }
+                            if (n_cave_mouth >= 2) dmap.want_portals = n_cave_mouth;
+                        }
+
                         // SM connected to LG: generate at the larger scale.
                         DungeonEntranceType gen_type = ow.dungeon_type;
                         if (cur_ent && cur_ent->partner_idx >= 0) {
@@ -589,16 +608,44 @@ int main(int argc, char *argv[])
                                 SDL_memcpy(dmap.explored, exp_it->second.data(), DMAP_H * DMAP_W);
                         }
 
-                        if (!isnan(connect_angle)) {
+                        if (n_cave_mouth >= 2) {
+                            // A cave keeps all its ways out and each one leads to
+                            // its own mouth. Orienting is a two-mouth idea — it
+                            // aligns the underground direction with the bearing
+                            // between a pair — and there is no single bearing
+                            // when there are four, so it is skipped.
+                            for (int p = 0; p < dmap.num_portals; p++) {
+                                int mi = cave_mouth[p < n_cave_mouth ? p : 0];
+                                dmap.portals[p].ow_x = map->dungeon_entrances[mi].x;
+                                dmap.portals[p].ow_y = map->dungeon_entrances[mi].y;
+                            }
+                        } else if (!isnan(connect_angle)) {
                             // Connected: orient portals so the underground direction
                             // matches the overworld direction between the two entrances.
                             dungeon_orient_portals(&dmap, connect_angle);
+                            dmap.portals[0] = { dmap.entry_x, dmap.entry_y,
+                                                dng_entry_portal_x, dng_entry_portal_y };
+                            dmap.portals[1] = { dmap.exit_x,  dmap.exit_y,
+                                                dng_exit_portal_x,  dng_exit_portal_y };
                         } else {
                             // Solo: remove the exit tile; the entry tile is the only way out.
                             dmap.tiles[dmap.exit_y][dmap.exit_x] = DNG_FLOOR;
+                            dmap.portals[0] = { dmap.entry_x, dmap.entry_y,
+                                                dng_entry_portal_x, dng_entry_portal_y };
+                            dmap.portals[1] = { dmap.exit_x,  dmap.exit_y,
+                                                dng_exit_portal_x,  dng_exit_portal_y };
                         }
 
                         dungeon_player_init(&dplayer, &player, &dmap, from_exit);
+                        // Come in by the mouth you actually used. Otherwise every
+                        // way into a mountain drops you at the same chamber and
+                        // the cave stops being a route through it.
+                        if (n_cave_mouth >= 2 && my_mouth >= 0 &&
+                            my_mouth < dmap.num_portals) {
+                            dplayer.x = (float)(dmap.portals[my_mouth].tx * DMAP_TILE);
+                            dplayer.y = (float)(dmap.portals[my_mouth].ty * DMAP_TILE
+                                                + DMAP_TILE / 2 - 24);
+                        }
                         num_chasers = 0;
                         for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
                             DungeonSpawner& sp = dmap.spawners[si];
@@ -946,8 +993,25 @@ int main(int argc, char *argv[])
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
-                        ow.x = (float)(dng_entry_portal_x * TILE_SIZE);
-                        ow.y = (float)(dng_entry_portal_y * TILE_SIZE);
+                        // Leave by the portal you are standing on. A cave has one
+                        // per mouth, so which one you are on is the whole question,
+                        // and the old pair of destinations could only answer it for
+                        // two. Falls back to the pair when a portal carries no
+                        // destination of its own.
+                        int land_x = dng_entry_portal_x, land_y = dng_entry_portal_y;
+                        {
+                            float pcx = dplayer.x + (HB_X1 + HB_X2) * 0.5f;
+                            float pcy = dplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
+                            int ptx = (int)(pcx / DMAP_TILE), pty = (int)(pcy / DMAP_TILE);
+                            for (int pi = 0; pi < dmap.num_portals; pi++)
+                                if (dmap.portals[pi].tx == ptx && dmap.portals[pi].ty == pty &&
+                                    dmap.portals[pi].ow_x >= 0) {
+                                    land_x = dmap.portals[pi].ow_x;
+                                    land_y = dmap.portals[pi].ow_y;
+                                }
+                        }
+                        ow.x = (float)(land_x * TILE_SIZE);
+                        ow.y = (float)(land_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
                     }
                 }
@@ -964,8 +1028,25 @@ int main(int argc, char *argv[])
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
-                        ow.x = (float)(dng_exit_portal_x * TILE_SIZE);
-                        ow.y = (float)(dng_exit_portal_y * TILE_SIZE);
+                        // Leave by the portal you are standing on. A cave has one
+                        // per mouth, so which one you are on is the whole question,
+                        // and the old pair of destinations could only answer it for
+                        // two. Falls back to the pair when a portal carries no
+                        // destination of its own.
+                        int land_x = dng_exit_portal_x, land_y = dng_exit_portal_y;
+                        {
+                            float pcx = dplayer.x + (HB_X1 + HB_X2) * 0.5f;
+                            float pcy = dplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
+                            int ptx = (int)(pcx / DMAP_TILE), pty = (int)(pcy / DMAP_TILE);
+                            for (int pi = 0; pi < dmap.num_portals; pi++)
+                                if (dmap.portals[pi].tx == ptx && dmap.portals[pi].ty == pty &&
+                                    dmap.portals[pi].ow_x >= 0) {
+                                    land_x = dmap.portals[pi].ow_x;
+                                    land_y = dmap.portals[pi].ow_y;
+                                }
+                        }
+                        ow.x = (float)(land_x * TILE_SIZE);
+                        ow.y = (float)(land_y * TILE_SIZE);
                         state = STATE_OVERWORLD;
                     }
                 }

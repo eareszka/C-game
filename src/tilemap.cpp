@@ -3501,6 +3501,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 }
             }
             for (int i = 0; i < near_from && i < map->num_dungeon_entrances; i++) {
+                // A cave system is one dungeon with several ways in, so its
+                // mouths do not each reserve a dungeon's worth of map. Counting
+                // them separately is what emptied the world: two hundred mouths
+                // times a 130-tile exclusion is most of the land, and ordinary
+                // dungeons fell from about 290 to 170. They are still kept clear
+                // by the sixteen-tile cliff keep-out, which every mouth sits
+                // inside by construction.
+                if (map->dungeon_entrances[i].cave_anchor_x >= 0) continue;
                 int ddx = map->dungeon_entrances[i].x - ex;
                 int ddy = map->dungeon_entrances[i].y - ey;
                 if (ddx*ddx + ddy*ddy < MIN_DIST * MIN_DIST) return false;

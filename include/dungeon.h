@@ -37,10 +37,30 @@ struct DungeonLoot {
     bool collected;
 };
 
+// A cave under a mountain has one mouth in the south wall and one on the top of
+// each storey, so it needs more ways out than the two a paired dungeon wants.
+#define DMAP_MAX_PORTALS 6
+
+// Where a portal is underground, and which overworld tile it lets out at.
+// The destination used to live in four loop-local ints in main.cpp, which is
+// exactly as many as two portals need and not one more.
+struct DungeonPortal {
+    int tx, ty;       // tile in the dungeon
+    int ow_x, ow_y;   // overworld tile it returns you to
+};
+
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
     uint8_t visible[DMAP_H][DMAP_W];   // 1=currently in FOV (wall-blocked), reset each frame
+    // Portal 0 is the entry and keeps the DNG_ENTRY tile; every other portal
+    // keeps DNG_EXIT. Holding to that means no new tile id, no new palette
+    // entry, and none of the five render switches have to learn anything.
+    // entry_x/exit_x stay as the names the layout generators write, and are
+    // copied into portals 0 and 1 once the layout is done.
+    DungeonPortal portals[DMAP_MAX_PORTALS];
+    int num_portals;
+    int want_portals;                  // asked for before generating; 2 unless a cave
     int entry_x, entry_y;
     int exit_x,  exit_y;
     DungeonEntranceType type;
