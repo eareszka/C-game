@@ -135,6 +135,191 @@ int main(int argc, char** argv)
                best >= 16 ? "   (fits a castle)" : "   <-- too small for 16x16");
     }
 
+    // Landforms by how many storeys they carry. This is what the cave roll is
+    // taken against, so the shape of this table decides whether "5% of
+    // one-storey mountains" is a handful of caves or a hundred.
+    {
+        static uint8_t seen[MAP_HEIGHT][MAP_WIDTH];
+        static int q[MAP_HEIGHT * MAP_WIDTH];
+        memset(seen, 0, sizeof seen);
+        auto lvl_at = [&](int x, int y) {
+            int t = g_map.tiles[y][x];
+            if (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) return 1;
+            if (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2) return 2;
+            if (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) return 3;
+            return 0;
+        };
+        int by_top[4] = {0,0,0,0}, area_top[4] = {0,0,0,0};
+        for (int y0 = 0; y0 < MAP_HEIGHT; y0++)
+            for (int x0 = 0; x0 < MAP_WIDTH; x0++) {
+                if (seen[y0][x0] || !lvl_at(x0, y0)) continue;
+                int n = 0, head = 0, top = 0;
+                q[n++] = y0 * MAP_WIDTH + x0; seen[y0][x0] = 1;
+                while (head < n) {
+                    int v = q[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                    int L = lvl_at(vx, vy); if (L > top) top = L;
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int px = vx + dx, py = vy + dy;
+                            if (px < 0 || py < 0 || px >= MAP_WIDTH || py >= MAP_HEIGHT) continue;
+                            if (seen[py][px] || !lvl_at(px, py)) continue;
+                            seen[py][px] = 1; q[n++] = py * MAP_WIDTH + px;
+                        }
+                }
+                if (top >= 1 && top <= 3) { by_top[top]++; area_top[top] += n; }
+            }
+        printf("  landforms: 1-storey %d (avg %d tiles), 2-storey %d (avg %d), 3-storey %d (avg %d)\n",
+               by_top[1], by_top[1] ? area_top[1]/by_top[1] : 0,
+               by_top[2], by_top[2] ? area_top[2]/by_top[2] : 0,
+               by_top[3], by_top[3] ? area_top[3]/by_top[3] : 0);
+        printf("  would roll caves: 3-storey %d + 2-storey ~%.1f + 1-storey ~%.1f = ~%.1f\n",
+               by_top[3], by_top[2] * 0.33, by_top[1] * 0.05,
+               by_top[3] + by_top[2] * 0.33 + by_top[1] * 0.05);
+    }
+
+    // Dungeon entrances by archetype, split by whether they landed on mountain
+    // ground. "Mountain" is what tilemap.cpp calls cliff_level_of() >= 3, i.e.
+    // the top storey only — level 1 and 2 plateaus count as flat ground here.
+    {
+        static const char* ENT_NAME[9] = {
+            "cave", "ruins", "graveyard_sm", "graveyard_lg", "oasis",
+            "pyramid", "stonehenge", "large_tree", "?"
+        };
+        int flat[9] = {0}, mtn[9] = {0}, n_mtn = 0;
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            int t = (int)g_map.dungeon_entrances[i].type;
+            if (t < 0 || t > 7) t = 8;
+            bool is_mtn = g_map.dungeon_entrances[i].cliff_level >= 3;
+            if (is_mtn) { mtn[t]++; n_mtn++; } else flat[t]++;
+        }
+        // Cave systems: mouths sharing one anchor are one cave. Also check each
+        // mouth is where it claims to be — a 2x2 should have band drawn on the
+        // tile north of it and none south, which is what "cut into the foot of
+        // a south wall" means; a 1x1 should sit on a plateau top.
+        int sys = 0, mouths = 0, bad_face = 0, bad_top = 0, unreachable = 0, no_approach = 0;
+        int first_mouth_x = -1, first_mouth_y = -1;
+        int seen_ax[512], seen_ay[512];
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = g_map.dungeon_entrances[i];
+            if (e.cave_anchor_x < 0) continue;
+            mouths++;
+            bool known = false;
+            for (int s = 0; s < sys; s++)
+                if (seen_ax[s] == e.cave_anchor_x && seen_ay[s] == e.cave_anchor_y) known = true;
+            if (!known && sys < 512) { seen_ax[sys] = e.cave_anchor_x; seen_ay[sys] = e.cave_anchor_y; sys++; }
+
+            int s = e.size + 1;
+            if (e.size == 1) {          // the 2x2 in the wall
+                // Mountain above it — either more wall, or the plateau itself
+                // where the wall is only as deep as the mouth is tall.
+                int above = g_map.tiles[e.y - 1][e.x];
+                bool up = tilemap_face_at(e.x, e.y - 1) ||
+                          (above == TILE_CLIFF || above == TILE_CLIFF_SNOW_1 ||
+                           above == TILE_CLIFF_WASTE_1 || above == TILE_CLIFF_2 ||
+                           above == TILE_CLIFF_3);
+                if (!up) bad_face++;
+                if (tilemap_face_at(e.x, e.y + s)) bad_face++;   // open below
+                // The one that decides whether the cave can be entered at all:
+                // you walk in from the south, so the row under the mouth has to
+                // be crossable. A mouth one row shy of the foot is walkable
+                // itself and still sealed by the rock beneath it.
+                for (int c = 0; c < s; c++)
+                    if (!tilemap_is_walkable(&g_map, e.x + c, e.y + s)) no_approach++;
+                if (first_mouth_x < 0) { first_mouth_x = e.x; first_mouth_y = e.y; }
+            } else {                     // a 1x1 on a top
+                int t = g_map.tiles[e.y][e.x];
+                (void)t;                 // the tile is the mouth now; level came from placement
+                if (e.cliff_level < 1) bad_top++;
+            }
+            // The mouth itself must be crossable, or it cannot be stood on.
+            for (int r = 0; r < s; r++)
+                for (int c = 0; c < s; c++)
+                    if (!tilemap_is_walkable(&g_map, e.x + c, e.y + r)) unreachable++;
+        }
+        printf("  dungeons: %d total, %d on mountain (cliff>=3)\n",
+               g_map.num_dungeon_entrances, n_mtn);
+        printf("  caves: %d systems, %d mouths, %.1f per system"
+               "   [bad_face %d  bad_top %d  unwalkable %d  no_approach %d]\n",
+               sys, mouths, sys ? (double)mouths / sys : 0.0,
+               bad_face, bad_top, unreachable, no_approach);
+        if (first_mouth_x >= 0)
+            printf("  first cave mouth at %d,%d\n", first_mouth_x, first_mouth_y);
+
+        // Castle 1 must be on a mountain that has a cave, because the cave is
+        // how the player gets up to it. Proxy: a mouth within 100 tiles. The
+        // castle's own footprint is placeholder tiles, so it is a hole in the
+        // level map and cannot be flood-filled from directly.
+        // Exact, not a distance proxy: flood the landform the castle stands on
+        // and ask whether any cave system's anchor is a tile of it. The anchor
+        // is the landform's own canonical top-left, so membership is the whole
+        // question. Seed from a highland tile just outside the castle footprint,
+        // because the footprint itself is placeholder tiles and reads as a hole.
+        if (g_map.castles[1].x >= 0) {
+            static uint8_t cseen[MAP_HEIGHT][MAP_WIDTH];
+            static int cq[MAP_HEIGHT * MAP_WIDTH];
+            memset(cseen, 0, sizeof cseen);
+            auto is_hi = [&](int x, int y) {
+                int t = g_map.tiles[y][x];
+                return t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1 ||
+                       t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2 ||
+                       t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3;
+            };
+            int sx0 = -1, sy0 = -1;
+            for (int d = -1; d <= 16 && sx0 < 0; d++)
+                for (int p = 0; p < 4 && sx0 < 0; p++) {
+                    int qx = g_map.castles[1].x + (p == 0 ? d : p == 1 ? d : p == 2 ? -1 : 16);
+                    int qy = g_map.castles[1].y + (p == 0 ? -1 : p == 1 ? 16 : d);
+                    if (qx < 0 || qy < 0 || qx >= MAP_WIDTH || qy >= MAP_HEIGHT) continue;
+                    if (is_hi(qx, qy)) { sx0 = qx; sy0 = qy; }
+                }
+            int found = 0, comp = 0;
+            if (sx0 >= 0) {
+                int n2 = 0, hd = 0;
+                cq[n2++] = sy0 * MAP_WIDTH + sx0; cseen[sy0][sx0] = 1;
+                while (hd < n2) {
+                    int v = cq[hd++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int px = vx + dx, py = vy + dy;
+                            if (px < 0 || py < 0 || px >= MAP_WIDTH || py >= MAP_HEIGHT) continue;
+                            if (cseen[py][px] || !is_hi(px, py)) continue;
+                            cseen[py][px] = 1; cq[n2++] = py * MAP_WIDTH + px;
+                        }
+                }
+                comp = n2;
+                for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+                    const DungeonEntrance& e = g_map.dungeon_entrances[i];
+                    if (e.cave_anchor_x < 0) continue;
+                    if (cseen[e.cave_anchor_y][e.cave_anchor_x]) { found = 1; break; }
+                }
+            }
+            printf("  castle1 mountain (%d tiles): cave %s\n", comp,
+                   found ? "YES" : "NO   <-- castle unreachable by cave");
+        }
+
+        // And nothing ordinary may sit within 16 tiles of highland.
+        int too_near = 0;
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = g_map.dungeon_entrances[i];
+            if (e.cave_anchor_x >= 0) continue;          // mouths are meant to be there
+            int s2 = e.size + 1, hit = 0;
+            for (int py = e.y - 16; py < e.y + s2 + 16 && !hit; py++)
+                for (int px = e.x - 16; px < e.x + s2 + 16 && !hit; px++) {
+                    if (px < 0 || py < 0 || px >= MAP_WIDTH || py >= MAP_HEIGHT) continue;
+                    int t = g_map.tiles[py][px];
+                    if (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1 ||
+                        t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2 ||
+                        t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) hit = 1;
+                }
+            too_near += hit;
+        }
+        printf("  ordinary dungeons within 16 tiles of highland: %d%s\n",
+               too_near, too_near ? "   <-- keep-out leaking" : "");
+        for (int t = 0; t < 9; t++)
+            if (flat[t] || mtn[t])
+                printf("     %-14s flat %4d   mountain %3d\n", ENT_NAME[t], flat[t], mtn[t]);
+    }
+
     static const char* CASTLE_NAME[3] = { "ocean", "mountain", "lava" };
     printf("  castles:");
     for (int i = 0; i < 3; i++) {

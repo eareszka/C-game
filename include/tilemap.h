@@ -154,6 +154,15 @@ typedef struct {
     float difficulty;          // 0.0–1.0: straight average of dist_norm and elev_norm
     int gravestones_spawned;   // GRAVEYARD_SM only: 0 until resource nodes are spawned
     int partner_idx;           // index into dungeon_entrances[] of connected partner, or -1
+    // A cave system's mouths all carry the same anchor — the top-left of the
+    // landform they were cut into — and the interior is seeded from it rather
+    // than from each mouth's own position, which is what makes every mouth of
+    // one mountain open the same cave. -1,-1 on everything else.
+    //
+    // The struct is built with positional aggregate initialisers in three
+    // places, so a field added here silently zero-inits at any site not updated
+    // with it — and 0,0 is a legal tile. All three sites set these explicitly.
+    int cave_anchor_x, cave_anchor_y;
 } DungeonEntrance;
 
 typedef struct {
@@ -179,13 +188,21 @@ typedef struct {
     int type; // 0=ocean, 1=mountain, 2=lava, 3=dungeon (placed via dungeon diving)
 } CastlePlacement;
 
+// The placement pass aims for TARGET *ordinary* entrances and the array used to
+// be exactly that many, so it ran to capacity with nothing spare. Cave systems
+// are placed first and separately — a mountain spends up to four records on one
+// site, a mouth in the face and one on each storey's top — and on a world with
+// many small landforms that is a few hundred records before the ordinary rolls
+// begin. The array carries both, so it needs room for both.
+#define MAX_DUNGEON_ENTRANCES 1024
+
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
     int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
     uint8_t coll[MAP_HEIGHT][MAP_WIDTH];        // solid collision footprint from editor _coll layer
     uint8_t depth_layer[MAP_HEIGHT][MAP_WIDTH]; // Y-sorted tiles drawn after the player
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
-    DungeonEntrance dungeon_entrances[300];
+    DungeonEntrance dungeon_entrances[MAX_DUNGEON_ENTRANCES];
     int num_dungeon_entrances;
     TownPlacement    towns[3];         // filled during phase2
     VillagePlacement villages[15];     // filled during phase2

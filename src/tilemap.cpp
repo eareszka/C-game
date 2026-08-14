@@ -1983,7 +1983,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
         float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
                                (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
         float difficulty = ((dist / max_dist) + 3.0f / 5.0f) * 0.5f;
-        map->dungeon_entrances[0] = { fcx, fcy, 0, DUNGEON_ENT_CAVE, 3, difficulty, 0, -1 };
+        map->dungeon_entrances[0] = { fcx, fcy, 0, DUNGEON_ENT_CAVE, 3, difficulty, 0, -1, -1, -1 };
         map->num_dungeon_entrances = 1;
     }
 
@@ -1999,7 +1999,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
         float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
                                (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
         float difficulty = ((dist / max_dist) + 0.0f / 5.0f) * 0.5f;
-        map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1 };
+        map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1, -1, -1 };
         map->num_dungeon_entrances = 2;
     }
 
@@ -3464,7 +3464,16 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
 
         // Returns true if a sz×sz stamp at (ex,ey) is valid ground, outside hub, far from others.
-        auto door_ok = [&](int ex, int ey, int sz) -> bool {
+        // `min_lvl` is the lowest plateau storey whose top may carry a door, and
+        // `near_from` is the first entrance index the MIN_DIST test applies to.
+        //
+        // Both exist for the cave systems and both default to today's behaviour.
+        // A cave's mouths sit on the tops of levels 1 and 2 as well as 3, and
+        // they sit on one mountain a few tiles apart — so against each other
+        // MIN_DIST is exactly the wrong question, while against every entrance
+        // placed before the system started it is still the right one. Passing
+        // the index the system began at says that in one number.
+        auto door_ok_ex = [&](int ex, int ey, int sz, int min_lvl, int near_from) -> bool {
             if (ex < MARGIN || ey < MARGIN ||
                 ex + sz + MARGIN > MAP_WIDTH ||
                 ey + sz + MARGIN > MAP_HEIGHT)
@@ -3480,8 +3489,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     } else if (base == TILE_BLUEPRINT || base == TILE_CASTLE_PLACEHOLDER) {
                         return false; // towns and castles don't
                     } else {
-                        // Allow flat biome tiles and cliff tops at level ≥ 3 (mountain)
-                        bool cliff_top = (cliff_level_of(base) >= 3);
+                        // Allow flat biome tiles and cliff tops at or above min_lvl
+                        int blvl = cliff_level_of(base);
+                        bool cliff_top = (blvl >= min_lvl && blvl > 0);
                         if (!cliff_top &&
                             base != TILE_GRASS     && base != TILE_MEADOW &&
                             base != TILE_SAND      && base != TILE_SNOW   &&
@@ -3490,7 +3500,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     }
                 }
             }
-            for (int i = 0; i < map->num_dungeon_entrances; i++) {
+            for (int i = 0; i < near_from && i < map->num_dungeon_entrances; i++) {
                 int ddx = map->dungeon_entrances[i].x - ex;
                 int ddy = map->dungeon_entrances[i].y - ey;
                 if (ddx*ddx + ddy*ddy < MIN_DIST * MIN_DIST) return false;
@@ -3523,9 +3533,217 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
             return true;
         };
+        // Every ordinary entrance: level-3 tops only, and MIN_DIST against all.
+        auto door_ok = [&](int ex, int ey, int sz) -> bool {
+            return door_ok_ex(ex, ey, sz, 3, map->num_dungeon_entrances);
+        };
+
+        // ── Cave systems ────────────────────────────────────────────────────
+        //
+        // A mountain gets one cave, with a mouth cut into the foot of its
+        // level-1 south wall and another on the top of each storey it has. All
+        // of them open the same interior, because the seed is taken from the
+        // landform rather than from each mouth — see cave_anchor_x in
+        // include/tilemap.h and the branch in src/main.cpp.
+
+        // How close an ordinary dungeon may come to a mountain. Sixteen tiles is
+        // about "a cliff dominates this view".
+        const int CLIFF_KEEP_OUT = 16;
+        auto near_highland = [&](int ex, int ey, int sz) -> bool {
+            int x0 = ex - CLIFF_KEEP_OUT,      y0 = ey - CLIFF_KEEP_OUT;
+            int x1 = ex + sz + CLIFF_KEEP_OUT, y1 = ey + sz + CLIFF_KEEP_OUT;
+            if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+            if (x1 > MAP_WIDTH)  x1 = MAP_WIDTH;
+            if (y1 > MAP_HEIGHT) y1 = MAP_HEIGHT;
+            for (int py = y0; py < y1; py++)
+                for (int px = x0; px < x1; px++)
+                    if (s_cliff_elev[py][px]) return true;
+            return false;
+        };
+
+        // Which landforms already carry a cave. s_cliff_scratch is dead by this
+        // point in generation — the last pass to touch it was inside
+        // place_cliffs — so it is free to mark up, and marking the landform's
+        // own tiles is what makes "one system per mountain" true by
+        // construction rather than by a distance test.
+        for (int py = 0; py < MAP_HEIGHT; py++)
+            for (int px = 0; px < MAP_WIDTH; px++)
+                s_cliff_scratch[py][px] = 0;
+
+        static int cave_cells[1 << 20];
+        const int CAVE_CAP = (int)(sizeof cave_cells / sizeof *cave_cells);
+
+        // The foot of the south wall below a lip: the last row still carrying
+        // rock. Bounded by the deepest a face can hang plus a margin, so this is
+        // a short walk and not a search.
+        auto face_foot = [&](int fx, int fy, int L) -> int {
+            int foot = -1;
+            for (int d = 0; d <= CLIFF_FACE_D[L] + 2; d++) {
+                int ty = fy + d;
+                if (ty >= MAP_HEIGHT) break;
+                if (cliff_rock_code(fx, ty, L)) foot = ty;
+            }
+            return foot;
+        };
+
+        // Cut a cave system into the mountain nearest (sx,sy), if there is one
+        // worth cutting. Returns whether it placed anything.
+        // Take one landform, decide whether it carries a cave, and cut the
+        // mouths if it does. (bx,by) is any unvisited highland tile of it.
+        auto cave_place = [&](Tilemap* m, int bx, int by) -> bool {
+            // Walk the whole landform. Eight-connected, as the region cleanups
+            // in place_cliffs are, so "one mountain" means the same thing here
+            // as it does there. Marking every cell is what makes one system per
+            // mountain true by construction rather than by a distance test.
+            int n = 0, head = 0, top_lvl = 0, ax = bx, ay = by;
+            bool holds_castle = false;
+            // The castle stamps map->tiles but never s_cliff_elev, so its
+            // footprint is still part of the landform as far as this walk is
+            // concerned — which is what lets the mountain be recognised as the
+            // one the castle stands on.
+            int c1x = m->castles[1].x, c1y = m->castles[1].y;
+            cave_cells[n++] = by * MAP_WIDTH + bx;
+            s_cliff_scratch[by][bx] = 1;
+            while (head < n) {
+                int v = cave_cells[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                if (s_cliff_elev[vy][vx] > top_lvl) top_lvl = s_cliff_elev[vy][vx];
+                if (vy < ay || (vy == ay && vx < ax)) { ax = vx; ay = vy; }
+                if (c1x >= 0 && vx >= c1x && vx < c1x + CASTLE_W &&
+                                vy >= c1y && vy < c1y + CASTLE_H) holds_castle = true;
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int px = vx + dx, py = vy + dy;
+                        if (!in_bounds(px, py)) continue;
+                        if (!s_cliff_elev[py][px] || s_cliff_scratch[py][px]) continue;
+                        s_cliff_scratch[py][px] = 1;
+                        if (n < CAVE_CAP) cave_cells[n++] = py * MAP_WIDTH + px;
+                    }
+            }
+            // Whether this mountain has a cave, by how many storeys it carries:
+            // every three-storey mountain, a third of the two-storey ones, one
+            // in twenty of the single-storey bumps. Hashed off the world seed
+            // and the landform's own anchor rather than drawn from the placement
+            // RNG, so the answer is the same however the rolls around it fall,
+            // and the same on every rebuild of the seed.
+            //
+            // And the mountain holding castle 1 always has one, whatever it
+            // rolled: the cave is how the player gets up to the castle.
+            unsigned int h = (unsigned int)seed
+                           ^ ((unsigned int)ax * 0x9E3779B9u)
+                           ^ ((unsigned int)ay * 0x85EBCA6Bu);
+            h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12;
+            int pct = (int)((h >> 8) % 100u);
+            int want = (top_lvl >= 3) ? 100 : (top_lvl == 2) ? 33 : 5;
+            if (pct >= want && !holds_castle) return false;
+
+            int first = m->num_dungeon_entrances;
+
+            // The way in: a 2x2 cut into the foot of a level-1 south wall.
+            // Square-on only — cliff_bank is the same test the taper seeds
+            // with, and it is what distinguishes a wall you look into from a
+            // flank the band merely wrapped around a corner.
+            int mx = -1, my = -1;
+            for (int i = 0; i < n && mx < 0; i++) {
+                int lx = cave_cells[i] % MAP_WIDTH, ly = cave_cells[i] / MAP_WIDTH;
+                if (s_cliff_elev[ly][lx] != 1) continue;          // level-1 rim only
+                if (ly + 1 >= MAP_HEIGHT || s_cliff_elev[ly+1][lx] >= 1) continue;
+                if (cliff_bank(lx, ly + 1, 1) < CLIFF_BANK_FRONT) continue;
+                if (lx + 1 >= MAP_WIDTH) continue;
+
+                // The mouth is two tiles wide, so it has two feet, and the band
+                // is rarely the same depth in both columns. Take the lower of
+                // them: below that row the wall has ended in *both* columns, so
+                // the mouth can be walked into. Anchoring on one column's foot
+                // instead leaves rock under the other half of the opening —
+                // a mouth you can stand in and cannot reach.
+                int fa = face_foot(lx,     ly + 1, 1);
+                int fb = face_foot(lx + 1, ly + 1, 1);
+                if (fa < 0 || fb < 0) continue;
+                int foot = fa > fb ? fa : fb;
+                if ((fa > fb ? fa - fb : fb - fa) > 1) continue;   // too ragged to cut squarely
+                if (foot - 1 <= ly) continue;                      // needs a row of wall to sit in
+
+                // Cut into rock, not hung below it: the top row of the opening
+                // has to be wall in both columns.
+                if (!cliff_rock_code(lx, foot - 1, 1) || !cliff_rock_code(lx + 1, foot - 1, 1))
+                    continue;
+
+                // And you must be able to walk up to it. The row under the
+                // opening is asked the same question the player's feet ask, and
+                // asked rather than derived: the foot of the band is where rock
+                // stops being *drawn*, while what stops the player is the low
+                // face mask, and the two do not agree tile-for-tile at every
+                // bend. Deriving it from the art left roughly one mouth in
+                // three walled off — walkable in itself, sealed from below.
+                if (foot + 1 >= MAP_HEIGHT) continue;
+                if (!tilemap_is_walkable(map, lx,     foot + 1)) continue;
+                if (!tilemap_is_walkable(map, lx + 1, foot + 1)) continue;
+
+                if (!door_ok_ex(lx, foot - 1, 2, 1, first)) continue;
+                mx = lx; my = foot - 1;
+            }
+            if (mx < 0) return false;   // no south wall to put a mouth in
+
+            float fdx = (float)(mx - MAP_WIDTH / 2), fdy = (float)(my - MAP_HEIGHT / 2);
+            float mdist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
+                                (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
+            // One difficulty for the whole system: the mouths open the same
+            // cave, and difficulty is carried into its loot.
+            float cave_diff = ((sqrtf(fdx*fdx + fdy*fdy) / mdist) + (float)top_lvl / 5.0f) * 0.5f;
+
+            // Stamping a mouth: the tile, and then the cliff's own collision
+            // bits cleared off it. The band is solid per pixel and is tested
+            // before the tile id is ever looked at, so without this the player
+            // is walled out of the mouth they are standing in.
+            auto stamp_mouth = [&](int tx, int ty, int size, int lvl) {
+                int s = size + 1;
+                for (int r = 0; r < s; r++)
+                    for (int c = 0; c < s; c++) {
+                        m->tiles[ty + r][tx + c]   = TILE_DUNGEON_CAVE;
+                        m->overlay[ty + r][tx + c] = 0;
+                        s_cliff_face[ty + r][tx + c] &=
+                            (unsigned char)~((1 << CLIFF_LEVELS) - 1);
+                    }
+                m->dungeon_entrances[m->num_dungeon_entrances++] = {
+                    tx, ty, size, DUNGEON_ENT_CAVE, lvl, cave_diff, 0, -1, ax, ay
+                };
+            };
+
+            stamp_mouth(mx, my, 1, 1);
+
+            // And one on the top of every storey the mountain has.
+            for (int L = 1; L <= top_lvl; L++) {
+                for (int i = 0; i < n; i++) {
+                    int tx = cave_cells[i] % MAP_WIDTH, ty = cave_cells[i] / MAP_WIDTH;
+                    if (cliff_level_of(m->tiles[ty][tx]) != L) continue;
+                    if (tilemap_face_at(tx, ty)) continue;
+                    if (!door_ok_ex(tx, ty, 1, 1, first)) continue;
+                    stamp_mouth(tx, ty, 0, L);
+                    break;
+                }
+            }
+            return true;
+        };
+
+        // Every mountain, once, before any ordinary dungeon is rolled. Placing
+        // the caves first is what lets the rolls keep MIN_DIST away from the
+        // mouths rather than the other way round.
+        for (int py = 0; py < MAP_HEIGHT; py++)
+            for (int px = 0; px < MAP_WIDTH; px++) {
+                if (s_cliff_scratch[py][px] || !s_cliff_elev[py][px]) continue;
+                if (map->num_dungeon_entrances + 4 > MAX_DUNGEON_ENTRANCES) continue;
+                cave_place(map, px, py);
+            }
+
+        // The ordinary rolls get their own budget. num_dungeon_entrances counts
+        // the cave mouths too by now, so testing it against TARGET directly
+        // would let a world full of mountains spend the whole allowance on
+        // caves and leave no graveyards anywhere.
+        const int ordinary_first = map->num_dungeon_entrances;
 
         for (int ci : cells) {
-            if (map->num_dungeon_entrances >= TARGET) break;
+            if (map->num_dungeon_entrances - ordinary_first >= TARGET) break;
+            if (map->num_dungeon_entrances >= MAX_DUNGEON_ENTRANCES) break;
             int cellx = (ci % GW) * CELL;
             int celly = (ci / GW) * CELL;
             for (int attempt = 0; attempt < 12; attempt++) {
@@ -3544,6 +3762,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 es = es * 1664525u + 1013904223u;
                 DungeonEntranceType ent_type = pick_entrance_type(biome, is_mtn, es, ent_size);
                 int sz = ent_size + 1; // 1 = small, 2 = large
+
+                // Nothing ordinary within reach of a mountain. The cliff is the
+                // cave's territory now: a graveyard at the foot of a wall reads
+                // as clutter against it, and an entrance placed there used to
+                // end up buried behind the band, since door_ok tests tile ids
+                // and the band is never written to the map. The roll simply
+                // fails and the cell tries somewhere else.
+                if (near_highland(ex, ey, sz)) continue;
 
                 if (!door_ok(ex, ey, sz)) continue;
 
@@ -3568,7 +3794,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 }
                 stamp_dungeon_surround(map, ent_type, ex, ey, sz);
                 map->dungeon_entrances[map->num_dungeon_entrances++] = {
-                    ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1
+                    ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1
                 };
                 break;
             }
@@ -5632,6 +5858,13 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 for (int li = 0; li < n_layers; li++)
                     blit_tile(renderer, layers[li], screen_x, screen_y, draw_size);
                 if (!is_cliff && is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                // A cave mouth is cut into a wall, so it has to be painted over
+                // the wall. Every other tile is drawn before the cliff layers,
+                // which is right for ground the band falls across and wrong for
+                // the one hole that is supposed to show through it.
+                if (tile_id == TILE_DUNGEON ||
+                    (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE))
+                    blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 

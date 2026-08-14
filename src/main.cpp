@@ -525,6 +525,20 @@ int main(int argc, char *argv[])
                                 ^ ((unsigned int)cur_ent->y * 19349663u);
                         }
 
+                        // A cave system's mouths anchor to the mountain instead
+                        // of to themselves, which is the whole of "one cave,
+                        // several ways in": the mouth in the south wall and the
+                        // ones on each storey's top all hash to the same seed,
+                        // so they generate the same interior — and the fog of
+                        // war cache is keyed by seed, so the map you uncovered
+                        // coming in one way is still uncovered coming in
+                        // another.
+                        if (cur_ent && cur_ent->cave_anchor_x >= 0) {
+                            dng_seed = map_seed
+                                ^ ((unsigned int)cur_ent->cave_anchor_x * 73856093u)
+                                ^ ((unsigned int)cur_ent->cave_anchor_y * 19349663u);
+                        }
+
                         // Fixed cave at tile (1498, 1572) — same layout every seed.
                         if (cur_ent && cur_ent->x == 1498 && cur_ent->y == 1572)
                             dng_seed = 0xCA4E5EEDu;
