@@ -670,7 +670,26 @@ static const float CLIFF_GRAIN_AMP = 0.30f;
 static const int CLIFF_CHUNK_R  = 3;
 static const int CLIFF_HIGH_MIN = 120;  // tiles below which a plateau is not worth having
 static const int CLIFF_TERRACE  = 5;    // how far a level sits inside the one below
-static const int CLIFF_FACE_MIN = 6;    // tiles below which a piece of face is litter    // how far a level sits inside the one below it
+static const int CLIFF_FACE_MIN = 6;    // tiles below which a piece of face is litter
+
+// The narrowest a limb of highland may be, in tiles, measured as the shorter of
+// the runs through it.
+//
+// The opening at CLIFF_CHUNK_R already guarantees nothing narrower than seven
+// tiles — but only up to the moment it runs. cliff_smooth_south() then moves a
+// component's south edge by up to CLIFF_SOUTH_SMOOTH_MAX rows a column at a
+// time with no shape guard at all, and the eligibility reclaim bites arbitrary
+// pieces out afterwards. Both can leave a limb one or two tiles wide, and one
+// tile of highland still carries a one-tile flank on each side, so it draws
+// three tiles of rock: a pillar standing in the grass with no landform under it.
+//
+// Two, and deliberately not three. Three would agree with CLIFF_CHUNK_R and is
+// tempting for that reason, but the disk earns its width by being applied as an
+// opening — it takes a limb off and puts the rest back. This is a plain test
+// that deletes what it touches, so at three it trims real spurs off real hills,
+// and the shapes being chased here are all one and two wide. Leaving the odd
+// borderline stump is the cheaper mistake.
+static const int CLIFF_LIMB_MIN = 2;
 static const int CLIFF_LEVELS   = 3;    // besides the ground itself
 static const float CLIFF_PEAK_LIFT = 9000.0f; // how much the range gathers to its peak
 
@@ -1334,6 +1353,142 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         for (int px = x_lo; px < x_hi; px++)
             if (s_cliff_elev[py][px] && !eligible(px, py))
                 s_cliff_elev[py][px] = 0;
+
+    // Fill every hole a level closes around.
+    //
+    // This is the one shape the band has no vocabulary for. Rock hangs off a
+    // south, west or east edge and never a north one, because the art is drawn
+    // as if seen from in front — and the sweep enforces that by refusing any
+    // tile with height directly to its south. Around a hole that refusal
+    // protects exactly one row. Every other tile on the rim has high ground to
+    // its *north*, which is the canonical front-of-a-cliff arrangement, so the
+    // sweep claims it and hangs a full-depth band inward. The result is a ring
+    // of rock closed on all four sides, heaviest across the top, which reads as
+    // a crater and not as a landform.
+    //
+    // The invariant that stops it is worth more than any threshold: if no low
+    // region is ever enclosed, no north-facing wall can be drawn at all. So
+    // there is no size test here. The morphology's closing already fills
+    // anything under seven tiles across, and everything left is either a dip in
+    // the noise that the closing could not reach or a bite taken out by the
+    // reclaim above — both of which read the same way and neither of which is a
+    // shape the reference draws.
+    //
+    // Eligible ground only, and that is not a detail. The plateau top write at
+    // the end of this function has an unconditional else: any tile with a level
+    // becomes TILE_CLIFF whatever it used to be. Filling a hole punched by the
+    // reclaim would therefore pave over the river or pond that caused it and cut
+    // the water in half. What that leaves is a hollow around a pond that the
+    // fill cannot close; the face sweep is taught to leave those alone instead,
+    // further down.
+    //
+    // Reachability by raster sweep rather than a queue: the low ground is most
+    // of the map, so a frontier queue would want nine million entries, and the
+    // existing ones here are capped at a million and drop the overflow. Two
+    // sweeps carry a mark along any path monotone in x and y, and the loop runs
+    // until a pass changes nothing, so a region that doubles back still fills.
+    GEN_STAGE(map, "cliff: fill enclosed holes");
+    for (int L = 1; L <= CLIFF_LEVELS; L++) {
+        for (int py = y_lo; py < y_hi; py++)
+            for (int px = x_lo; px < x_hi; px++)
+                s_cliff_scratch[py][px] = 0;
+
+        // Seed from the window's own border: low ground there is outside by
+        // definition, and the border is the only thing "outside" can mean.
+        for (int px = x_lo; px < x_hi; px++) {
+            if (s_cliff_elev[y_lo][px]     < L) s_cliff_scratch[y_lo][px]     = 1;
+            if (s_cliff_elev[y_hi - 1][px] < L) s_cliff_scratch[y_hi - 1][px] = 1;
+        }
+        for (int py = y_lo; py < y_hi; py++) {
+            if (s_cliff_elev[py][x_lo]     < L) s_cliff_scratch[py][x_lo]     = 1;
+            if (s_cliff_elev[py][x_hi - 1] < L) s_cliff_scratch[py][x_hi - 1] = 1;
+        }
+
+        // Four-connected, because the high regions are flood-filled eight-
+        // connected above. Complementary connectivity is what stops a diagonal
+        // chain of rock counting as a wall from one side and a gap from the
+        // other.
+        bool moved = true;
+        while (moved) {
+            moved = false;
+            for (int py = y_lo; py < y_hi; py++)
+                for (int px = x_lo; px < x_hi; px++) {
+                    if (s_cliff_scratch[py][px] || s_cliff_elev[py][px] >= L) continue;
+                    if ((px > x_lo && s_cliff_scratch[py][px - 1]) ||
+                        (py > y_lo && s_cliff_scratch[py - 1][px])) {
+                        s_cliff_scratch[py][px] = 1; moved = true;
+                    }
+                }
+            for (int py = y_hi - 1; py >= y_lo; py--)
+                for (int px = x_hi - 1; px >= x_lo; px--) {
+                    if (s_cliff_scratch[py][px] || s_cliff_elev[py][px] >= L) continue;
+                    if ((px + 1 < x_hi && s_cliff_scratch[py][px + 1]) ||
+                        (py + 1 < y_hi && s_cliff_scratch[py + 1][px])) {
+                        s_cliff_scratch[py][px] = 1; moved = true;
+                    }
+                }
+        }
+
+        for (int py = y_lo; py < y_hi; py++)
+            for (int px = x_lo; px < x_hi; px++)
+                if (s_cliff_elev[py][px] < L && !s_cliff_scratch[py][px] && eligible(px, py))
+                    s_cliff_elev[py][px] = (unsigned char)L;
+    }
+
+    // And cut off anything too thin to be a landform. See CLIFF_LIMB_MIN for
+    // where one- and two-tile limbs come from, given that the opening earlier
+    // forbids them.
+    //
+    // min(run_h, run_v) <= n is the same statement as run_h <= n or run_v <= n,
+    // so neither run has to be kept: one pass marks the tiles failing across,
+    // another marks the tiles failing down, and the marks are the union. That is
+    // one byte grid instead of two, and the grid is the scratch the fill above
+    // has finished with.
+    //
+    // Levels run high to low, as the region cleanup below does, so a spire thin
+    // at level 3 is demoted to 2 and tested again — a needle loses its storeys
+    // one at a time rather than surviving as a shorter needle. Within a level
+    // the test is decided from the mask as it stands and applied once: iterating
+    // to a fixed point eats inward from every edge and rounds off the landforms
+    // this is meant to leave alone.
+    GEN_STAGE(map, "cliff: cut thin limbs");
+    for (int L = CLIFF_LEVELS; L >= 1; L--) {
+        for (int py = y_lo; py < y_hi; py++)
+            for (int px = x_lo; px < x_hi; px++)
+                s_cliff_scratch[py][px] = 0;
+
+        static int run_a[MAP_WIDTH > MAP_HEIGHT ? MAP_WIDTH : MAP_HEIGHT];
+        static int run_b[MAP_WIDTH > MAP_HEIGHT ? MAP_WIDTH : MAP_HEIGHT];
+
+        for (int py = y_lo; py < y_hi; py++) {
+            int acc = 0;
+            for (int px = x_lo; px < x_hi; px++)
+                run_a[px] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
+            acc = 0;
+            for (int px = x_hi - 1; px >= x_lo; px--)
+                run_b[px] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
+            for (int px = x_lo; px < x_hi; px++)
+                if (s_cliff_elev[py][px] >= L && run_a[px] + run_b[px] - 1 <= CLIFF_LIMB_MIN)
+                    s_cliff_scratch[py][px] = 1;
+        }
+
+        for (int px = x_lo; px < x_hi; px++) {
+            int acc = 0;
+            for (int py = y_lo; py < y_hi; py++)
+                run_a[py] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
+            acc = 0;
+            for (int py = y_hi - 1; py >= y_lo; py--)
+                run_b[py] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
+            for (int py = y_lo; py < y_hi; py++)
+                if (s_cliff_elev[py][px] >= L && run_a[py] + run_b[py] - 1 <= CLIFF_LIMB_MIN)
+                    s_cliff_scratch[py][px] = 1;
+        }
+
+        for (int py = y_lo; py < y_hi; py++)
+            for (int px = x_lo; px < x_hi; px++)
+                if (s_cliff_scratch[py][px] && s_cliff_elev[py][px] >= L)
+                    s_cliff_elev[py][px] = (unsigned char)(L - 1);
+    }
 
     // Reclaiming that ground can cut a plateau into pieces, and a piece of a
     // dozen tiles is not a landform — but it still casts a face, which is a
