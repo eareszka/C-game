@@ -61,6 +61,12 @@ struct DungeonMap {
     DungeonPortal portals[DMAP_MAX_PORTALS];
     int num_portals;
     int want_portals;                  // asked for before generating; 2 unless a cave
+    // Where this cave's mouths sit on the mountain, as offsets in overworld
+    // tiles from their own centroid. Set before generating, alongside
+    // want_portals, and used to lay the chambers out in the same arrangement —
+    // so a mouth on the south face opens into the south of the cave and one on
+    // a north top into the north of it. Zero for anything that is not a cave.
+    int want_ox[DMAP_MAX_PORTALS], want_oy[DMAP_MAX_PORTALS];
     int entry_x, entry_y;
     int exit_x,  exit_y;
     DungeonEntranceType type;

@@ -311,6 +311,8 @@ int main(int argc, char** argv)
             static uint8_t dseen[DMAP_H][DMAP_W];
             static int dq[DMAP_H * DMAP_W];
             int tested = 0, broken = 0, portals_total = 0, short_portals = 0, mouths_total = 0;
+            long area_by_mouth[8] = {0}; int area_n[8] = {0};
+            double angle_err = 0.0; int angle_n = 0;
             for (int s = 0; s < sys && tested < 60; s++) {
                 int n_mouth = 0; float diff = 0.0f;
                 for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
@@ -325,6 +327,19 @@ int main(int argc, char** argv)
                     ^ ((unsigned)seen_ax[s] * 73856093u)
                     ^ ((unsigned)seen_ay[s] * 19349663u);
                 dm.want_portals = n_mouth;
+                // Feed the carve the mouths' arrangement, exactly as main.cpp
+                // does, or the star it builds will not be the one the game gets.
+                int mox[DMAP_MAX_PORTALS], moy[DMAP_MAX_PORTALS], k = 0, ssx = 0, ssy = 0;
+                for (int i = 0; i < g_map.num_dungeon_entrances && k < n_mouth; i++) {
+                    const DungeonEntrance& e = g_map.dungeon_entrances[i];
+                    if (e.cave_anchor_x != seen_ax[s] || e.cave_anchor_y != seen_ay[s]) continue;
+                    mox[k] = e.x; moy[k] = e.y; ssx += e.x; ssy += e.y; k++;
+                }
+                ssx /= k; ssy /= k;
+                for (int m = 0; m < k; m++) {
+                    dm.want_ox[m] = mox[m] - ssx;
+                    dm.want_oy[m] = moy[m] - ssy;
+                }
                 dungeon_generate(&dm, DUNGEON_ENT_CAVE, diff, dseed);
                 tested++;
                 portals_total += dm.num_portals;
@@ -348,6 +363,32 @@ int main(int argc, char** argv)
                 }
                 for (int p = 0; p < dm.num_portals; p++)
                     if (!dseen[dm.portals[p].ty][dm.portals[p].tx]) { broken++; break; }
+
+                // Does the cave grow with the mountain? Floor tiles by mouth
+                // count; a constant average across the groups would mean
+                // want_portals never reached the carve.
+                int floor_n = 0;
+                for (int ty = 0; ty < DMAP_H; ty++)
+                    for (int tx = 0; tx < DMAP_W; tx++)
+                        if (dm.tiles[ty][tx] != DNG_WALL) floor_n++;
+                if (n_mouth < 8) { area_by_mouth[n_mouth] += floor_n; area_n[n_mouth]++; }
+
+                // And does the inside face the way the outside does? Compare each
+                // mouth's bearing from the mouths' centroid with its portal's
+                // bearing from the portals' centroid. Near zero means the star is
+                // wired; near 90 means the old spine is still in charge.
+                if (k >= 2 && dm.num_portals >= 2) {
+                    float pcx = 0, pcy = 0;
+                    for (int p = 0; p < dm.num_portals; p++) { pcx += dm.portals[p].tx; pcy += dm.portals[p].ty; }
+                    pcx /= dm.num_portals; pcy /= dm.num_portals;
+                    for (int m = 0; m < k && m < dm.num_portals; m++) {
+                        float ax2 = atan2f((float)dm.want_oy[m], (float)dm.want_ox[m]);
+                        float bx2 = atan2f(dm.portals[m].ty - pcy, dm.portals[m].tx - pcx);
+                        float d = fabsf(ax2 - bx2);
+                        while (d > 3.14159265f) d = 6.28318531f - d;
+                        angle_err += d * 57.2957795f; angle_n++;
+                    }
+                }
             }
             printf("  cave interiors: %d tested, %.2f portals vs %.2f mouths, "
                    "%d short of a portal, %d unreachable%s\n",
@@ -355,6 +396,13 @@ int main(int argc, char** argv)
                    tested ? (double)mouths_total / tested : 0.0,
                    short_portals, broken,
                    (broken || short_portals) ? "   <-- A MOUTH DOES NOT CONNECT" : "");
+            printf("  cave floor by mouths:");
+            for (int m = 2; m < 8; m++)
+                if (area_n[m]) printf("  %d->%ld", m, area_by_mouth[m] / area_n[m]);
+            printf("\n  mouth-to-portal bearing error: %.1f deg%s\n",
+                   angle_n ? angle_err / angle_n : 0.0,
+                   (angle_n && angle_err / angle_n > 45.0)
+                       ? "   <-- inside does not match outside" : "");
         }
 
         // And nothing ordinary may sit within 16 tiles of highland.

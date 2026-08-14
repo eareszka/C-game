@@ -1573,24 +1573,91 @@ static void paint_cave_blob(DungeonMap* dmap, int cx, int cy, int base_r, uint32
 // with 2-tile corridors; CA then smooths the blobs into organic chambers.
 static void carve_cave_ca(DungeonMap* dmap, uint32_t* rng) {
     int cx = DMAP_W/2, cy = DMAP_H/2;
-    const int CAVE_R = 64;   // half-side → 128×128 tile region (matches tree)
 
-    // ── Place seed chambers along a winding spine inside the 128×128 box ──
+    // As big as the mountain it is in. Sixteen tiles of half-side per mouth, so
+    // a two-mouth hill gets a 64x64 cave and a four-mouth mountain the 128x128
+    // one every cave used to get regardless. At the six-mouth ceiling the box is
+    // 192, still inside the 768x512 grid this is centred on.
+    int want = dmap->want_portals;
+    if (want < 2) want = 2;
+    if (want > DMAP_MAX_PORTALS) want = DMAP_MAX_PORTALS;
+    const int CAVE_R = 16 * want;
+    const int MARGIN = CAVE_R / 6;              // 10 at the old size
     const int MAX_CH = 10;
-    int num_ch = 6 + (int)(rng_next(rng) % 4);   // 6–9 chambers
+
     int ch_x[MAX_CH], ch_y[MAX_CH], ch_r[MAX_CH];
+    int num_ch = want + 2 + (int)(rng_next(rng) % 3);
+    if (num_ch > MAX_CH) num_ch = MAX_CH;
+    if (num_ch < want + 1) num_ch = want + 1;   // portal i needs chamber i
 
-    // Keep seeds 10 tiles from the box edge so blobs don't spill outside.
-    int x0 = cx - CAVE_R + 10, x1 = cx + CAVE_R - 10;
-    int sy = cy + (int)(rng_next(rng) % 41) - 20;
+    // Radius scales with the box: at 64x64 the old 8-14 would merge every
+    // chamber into a single blob. This reproduces 8-14 exactly at 128x128.
+    for (int i = 0; i < num_ch; i++)
+        ch_r[i] = CAVE_R/8 + (int)(rng_next(rng) % (CAVE_R/10 + 1));
 
+    // ── Lay the chambers out the way the mouths are laid out ──
+    //
+    // Chamber 0 is a hub at the centre and chamber 1+i is the one mouth i opens
+    // into, placed in that mouth's own direction from the mouths' centroid and
+    // at a radius proportional to its distance. So the cave's shape echoes the
+    // mountain's: walk in at the south face and you are in the south of the
+    // cave, and the way out onto a north top is at the north of it.
+    //
+    // This used to be a west-to-east spine, which told you nothing — a mouth in
+    // the south wall and one on a north top both landed somewhere on the same
+    // line.
+    float mx = 0.0f, my = 0.0f;
+    for (int i = 0; i < want; i++) { mx += dmap->want_ox[i]; my += dmap->want_oy[i]; }
+    mx /= want; my /= want;
+    float far = 0.0f;
+    for (int i = 0; i < want; i++) {
+        float dx = dmap->want_ox[i] - mx, dy = dmap->want_oy[i] - my;
+        float d = sqrtf(dx*dx + dy*dy);
+        if (d > far) far = d;
+    }
+
+    bool star = (far > 0.5f);
+    if (star) {
+        int reach = CAVE_R - MARGIN;
+        ch_x[0] = cx; ch_y[0] = cy;
+        for (int i = 0; i < want && 1 + i < num_ch; i++) {
+            float dx = dmap->want_ox[i] - mx, dy = dmap->want_oy[i] - my;
+            float d  = sqrtf(dx*dx + dy*dy);
+            // Keep every chamber off the hub even when two mouths nearly
+            // coincide, or their blobs merge and the two ways out become one.
+            float t  = 0.45f + 0.55f * (d / far);
+            float ux = (d > 0.001f) ? dx / d : 1.0f;
+            float uy = (d > 0.001f) ? dy / d : 0.0f;
+            ch_x[1+i] = cx + (int)(ux * reach * t);
+            ch_y[1+i] = cy + (int)(uy * reach * t);
+        }
+        // Anything left over is filler, scattered inside the box.
+        for (int i = want + 1; i < num_ch; i++) {
+            ch_x[i] = cx - reach + (int)(rng_next(rng) % (unsigned)(2*reach + 1));
+            ch_y[i] = cy - reach + (int)(rng_next(rng) % (unsigned)(2*reach + 1));
+        }
+    } else {
+        // Degenerate offsets — every mouth in the same place, which the placement
+        // pass should never produce. Fall back to the old winding spine rather
+        // than dividing by a zero-length direction.
+        int x0 = cx - CAVE_R + MARGIN, x1 = cx + CAVE_R - MARGIN;
+        int jit = CAVE_R / 3;
+        int sy = cy + (int)(rng_next(rng) % (unsigned)(2*jit + 1)) - jit;
+        for (int i = 0; i < num_ch; i++) {
+            ch_x[i] = x0 + i * (x1 - x0) / (num_ch - 1);
+            sy += (int)(rng_next(rng) % (unsigned)(2*jit + 1)) - jit;
+            if (sy < cy - CAVE_R + MARGIN) sy = cy - CAVE_R + MARGIN;
+            if (sy > cy + CAVE_R - MARGIN) sy = cy + CAVE_R - MARGIN;
+            ch_y[i] = sy;
+        }
+    }
+
+    // Keep every chamber inside the grid whatever the arithmetic produced.
     for (int i = 0; i < num_ch; i++) {
-        ch_x[i] = x0 + i * (x1 - x0) / (num_ch - 1);
-        sy += (int)(rng_next(rng) % 41) - 20;
-        if (sy < cy - CAVE_R + 10) sy = cy - CAVE_R + 10;
-        if (sy > cy + CAVE_R - 10) sy = cy + CAVE_R - 10;
-        ch_y[i] = sy;
-        ch_r[i] = 8 + (int)(rng_next(rng) % 7);  // radius 8–14
+        if (ch_x[i] < 2) ch_x[i] = 2;
+        if (ch_y[i] < 2) ch_y[i] = 2;
+        if (ch_x[i] > DMAP_W - 3) ch_x[i] = DMAP_W - 3;
+        if (ch_y[i] > DMAP_H - 3) ch_y[i] = DMAP_H - 3;
     }
 
     // Carve irregular blob seeds.
@@ -1603,10 +1670,13 @@ static void carve_cave_ca(DungeonMap* dmap, uint32_t* rng) {
             if (dmap->tiles[y][x] == DNG_WALL && rng_next(rng) % 100 < 22)
                 dmap->tiles[y][x] = DNG_FLOOR;
 
-    // Carve 2-wide L-shaped corridors between consecutive chambers.
+    // Carve 2-wide L-shaped corridors. A star joins every chamber to the hub,
+    // which is what makes it a star and not a chain; the spine fallback joins
+    // consecutive ones as it always did.
     for (int i = 0; i+1 < num_ch; i++) {
-        int ax = ch_x[i], ay = ch_y[i];
-        int bx = ch_x[i+1], by = ch_y[i+1];
+        int a = star ? 0 : i, b = i + 1;
+        int ax = ch_x[a], ay = ch_y[a];
+        int bx = ch_x[b], by = ch_y[b];
         int x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax;
         int y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
         // Horizontal leg at ay.
@@ -1624,76 +1694,84 @@ static void carve_cave_ca(DungeonMap* dmap, uint32_t* rng) {
     // 4 CA smoothing passes — smooths circle edges without merging distant chambers.
     for (int i = 0; i < 4; i++) ca_step(dmap, 5);
 
-    // Entry at first chamber.
-    dmap->entry_x = ch_x[0]; dmap->entry_y = ch_y[0];
-    if (dmap->tiles[ch_y[0]][ch_x[0]] == DNG_WALL) {
-        for (int r = 1; r < 20; r++) {
-            bool found = false;
-            for (int dy = -r; dy <= r && !found; dy++)
-                for (int dx = -r; dx <= r && !found; dx++) {
+    // ── Portals: one per mouth, at the chamber that mouth opens into ──
+    //
+    // In a star, chamber 1+i belongs to mouth i by construction, so there is
+    // nothing to match up: bind them by index and the inside comes out arranged
+    // like the outside. The spine fallback has no such correspondence, so it
+    // keeps the old behaviour of entry at the first chamber and exit at the
+    // farthest tile from it.
+    //
+    // The CA eats a chamber now and then, so each portal rings outward for the
+    // nearest floor. A mouth whose portal was dropped is a way into the mountain
+    // with no way back out of it, which is worse than a portal a few tiles off
+    // its chamber's centre.
+    auto solid_spot = [&](int& px, int& py) -> bool {
+        if (dmap->tiles[py][px] != DNG_WALL) return true;
+        for (int r = 1; r < 24; r++)
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++) {
                     if (abs(dx) != r && abs(dy) != r) continue;
-                    int tx = ch_x[0]+dx, ty = ch_y[0]+dy;
-                    if (tx<1||tx>=DMAP_W-1||ty<1||ty>=DMAP_H-1) continue;
-                    if (dmap->tiles[ty][tx] != DNG_WALL) {
-                        dmap->entry_x = tx; dmap->entry_y = ty; found = true;
-                    }
+                    int tx = px + dx, ty = py + dy;
+                    if (tx < 1 || tx >= DMAP_W-1 || ty < 1 || ty >= DMAP_H-1) continue;
+                    if (dmap->tiles[ty][tx] == DNG_WALL) continue;
+                    px = tx; py = ty; return true;
                 }
-            if (found) break;
+        return false;
+    };
+
+    dmap->num_portals = 0;
+    if (star) {
+        for (int i = 0; i < want && 1 + i < num_ch; i++) {
+            int px = ch_x[1+i], py = ch_y[1+i];
+            if (!solid_spot(px, py)) continue;
+            bool taken = false;
+            for (int q = 0; q < dmap->num_portals; q++)
+                if (dmap->portals[q].tx == px && dmap->portals[q].ty == py) taken = true;
+            if (taken) continue;
+            dmap->tiles[py][px] = DNG_FLOOR;
+            dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
         }
     }
-    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_FLOOR;
+    if (dmap->num_portals < 2) {
+        // Either the fallback spine, or a star that lost chambers to the CA.
+        int ex = ch_x[0], ey = ch_y[0];
+        solid_spot(ex, ey);
+        dmap->num_portals = 0;
+        dmap->tiles[ey][ex] = DNG_FLOOR;
+        dmap->portals[dmap->num_portals++] = { ex, ey, -1, -1 };
+        for (int i = 1; i < num_ch && dmap->num_portals < want; i++) {
+            int px = ch_x[i], py = ch_y[i];
+            if (!solid_spot(px, py)) continue;
+            bool taken = false;
+            for (int q = 0; q < dmap->num_portals; q++)
+                if (dmap->portals[q].tx == px && dmap->portals[q].ty == py) taken = true;
+            if (taken) continue;
+            dmap->tiles[py][px] = DNG_FLOOR;
+            dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
+        }
+    }
 
+    // entry_x/exit_x stay the names the rest of the file reads.
+    dmap->entry_x = dmap->portals[0].tx; dmap->entry_y = dmap->portals[0].ty;
     ca_ensure_connectivity(dmap, dmap->entry_x, dmap->entry_y);
 
-    // Exit: farthest walkable tile from entry by Manhattan distance.
-    int best = -1;
-    dmap->exit_x = dmap->entry_x; dmap->exit_y = dmap->entry_y;
-    for (int ty = 1; ty < DMAP_H-1; ty++)
-        for (int tx = 1; tx < DMAP_W-1; tx++) {
-            if (dmap->tiles[ty][tx] == DNG_WALL) continue;
-            int d = abs(tx - dmap->entry_x) + abs(ty - dmap->entry_y);
-            if (d > best) { best = d; dmap->exit_x = tx; dmap->exit_y = ty; }
-        }
-
-    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
-    dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
-
-    // Extra ways out, one per chamber, for a cave that a mountain wants more
-    // than two mouths on. The chambers are already spread along the spine and
-    // ca_ensure_connectivity has already guaranteed every floor island is
-    // reachable from the entry, so a portal dropped in one is reachable from
-    // all the others by construction — which is the whole reason to put them
-    // here rather than anywhere else on the map.
-    dmap->portals[0] = { dmap->entry_x, dmap->entry_y, -1, -1 };
-    dmap->portals[1] = { dmap->exit_x,  dmap->exit_y,  -1, -1 };
-    dmap->num_portals = 2;
-    for (int i = 1; i < num_ch && dmap->num_portals < dmap->want_portals &&
-                    dmap->num_portals < DMAP_MAX_PORTALS; i++) {
-        int px = ch_x[i], py = ch_y[i];
-        // The CA eats a chamber now and then. Walk out in rings for the nearest
-        // floor, as the entry does — a mouth whose portal was skipped is a way
-        // into the mountain with no way back out of it, which is worse than a
-        // portal a few tiles off its chamber's centre.
-        if (dmap->tiles[py][px] == DNG_WALL) {
-            bool found = false;
-            for (int r = 1; r < 20 && !found; r++)
-                for (int dy = -r; dy <= r && !found; dy++)
-                    for (int dx = -r; dx <= r && !found; dx++) {
-                        if (abs(dx) != r && abs(dy) != r) continue;
-                        int tx = ch_x[i] + dx, ty = ch_y[i] + dy;
-                        if (tx < 1 || tx >= DMAP_W-1 || ty < 1 || ty >= DMAP_H-1) continue;
-                        if (dmap->tiles[ty][tx] == DNG_WALL) continue;
-                        px = tx; py = ty; found = true;
-                    }
-            if (!found) continue;
-        }
-        bool taken = false;
-        for (int p = 0; p < dmap->num_portals; p++)
-            if (dmap->portals[p].tx == px && dmap->portals[p].ty == py) taken = true;
-        if (taken) continue;
-        dmap->tiles[py][px] = DNG_EXIT;
-        dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
+    if (dmap->num_portals < 2) {
+        // One chamber survived. Fall back to the farthest walkable tile so the
+        // cave still has a second way out rather than none.
+        int best = -1, bx = dmap->entry_x, by = dmap->entry_y;
+        for (int ty = 1; ty < DMAP_H-1; ty++)
+            for (int tx = 1; tx < DMAP_W-1; tx++) {
+                if (dmap->tiles[ty][tx] == DNG_WALL) continue;
+                int d = abs(tx - dmap->entry_x) + abs(ty - dmap->entry_y);
+                if (d > best) { best = d; bx = tx; by = ty; }
+            }
+        dmap->portals[dmap->num_portals++] = { bx, by, -1, -1 };
     }
+    dmap->exit_x = dmap->portals[1].tx; dmap->exit_y = dmap->portals[1].ty;
+
+    for (int p = 0; p < dmap->num_portals; p++)
+        dmap->tiles[dmap->portals[p].ty][dmap->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
 }
 
 // ── LARGE TREE CA generator ───────────────────────────────────────────────
@@ -1792,11 +1870,16 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
                     int tx = gx + dx, ty = gy + dy;
                     if (tx < 1 || tx >= DMAP_W - 1 || ty < 1 || ty >= DMAP_H - 1) continue;
                     if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
-                    // Keep clear of portals
-                    int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
-                    int dxx = tx - dmap->exit_x,  dxy = ty - dmap->exit_y;
-                    if (dex*dex + dey*dey < STEP*STEP) continue;
-                    if (dxx*dxx + dxy*dxy < STEP*STEP) continue;
+                    // Keep clear of every portal, not just the pair — a cave's
+                    // extra mouths would otherwise have something waiting on
+                    // them the moment you stepped out.
+                    bool near_portal = false;
+                    for (int q = 0; q < dmap->num_portals && !near_portal; q++) {
+                        int pdx = tx - dmap->portals[q].tx;
+                        int pdy = ty - dmap->portals[q].ty;
+                        if (pdx*pdx + pdy*pdy < STEP*STEP) near_portal = true;
+                    }
+                    if (near_portal) continue;
                     int d2 = dx*dx + dy*dy;
                     if (d2 < best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
                 }

@@ -588,7 +588,24 @@ int main(int argc, char *argv[])
                                 if (e == cur_ent) my_mouth = n_cave_mouth;
                                 cave_mouth[n_cave_mouth++] = i;
                             }
-                            if (n_cave_mouth >= 2) dmap.want_portals = n_cave_mouth;
+                            if (n_cave_mouth >= 2) {
+                                dmap.want_portals = n_cave_mouth;
+                                // Hand the carve the shape of the mountain: each
+                                // mouth's offset from where the mouths average
+                                // out. It lays the chambers out to match, so the
+                                // south-face mouth opens into the south of the
+                                // cave and a north top into the north of it.
+                                int sx = 0, sy = 0;
+                                for (int m = 0; m < n_cave_mouth; m++) {
+                                    sx += map->dungeon_entrances[cave_mouth[m]].x;
+                                    sy += map->dungeon_entrances[cave_mouth[m]].y;
+                                }
+                                sx /= n_cave_mouth; sy /= n_cave_mouth;
+                                for (int m = 0; m < n_cave_mouth; m++) {
+                                    dmap.want_ox[m] = map->dungeon_entrances[cave_mouth[m]].x - sx;
+                                    dmap.want_oy[m] = map->dungeon_entrances[cave_mouth[m]].y - sy;
+                                }
+                            }
                         }
 
                         // SM connected to LG: generate at the larger scale.
