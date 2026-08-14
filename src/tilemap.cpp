@@ -2515,6 +2515,64 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // and selects the matching cliff variant (snow/wasteland/plain) directly.
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
 
+    GEN_STAGE(map, "before Trees");
+    // --- Trees ---
+    if (s_gen_cancel) return;
+    // TILE_GRASS = spotty dense forest (coarse cluster noise → dense patches + clearings)
+    // TILE_MEADOW = open plains (~5% trees)
+    //
+    // Taken back out by 171cb26 along with the rock and the ore, and restored
+    // here as it was but for the one test below, which it now needs and did not
+    // then.
+    //
+    // A plateau's top looks after itself: it is written as TILE_CLIFF/_2/_3, or
+    // its snow and wasteland families, and none of those are among the three
+    // tiles this grows on. The face is the part that changed underneath it. When
+    // this was written the drop was a tile in its own right, TILE_CLIFF_EDGE_*,
+    // so growing on grass alone kept trees off it. The band is not written to the
+    // map at all any more — it is drawn over whatever ground it lands on, and
+    // that ground is still grass — so the old test puts a tree in the middle of
+    // a wall, which is what it did on the south bend of every cliff.
+    //
+    // tilemap_face_at is the low bits of the face mask: every tile any part of
+    // the cliff could close, which is more than the tiles the band draws from.
+    // More is what is wanted. The ground under the sweep is shut to the player
+    // whether or not rock is drawn on it, so a tree standing there is one nobody
+    // can reach.
+    {
+        const int FG = 20; // forest cluster grid size
+        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
+            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+                int t = map->tiles[y][x];
+                if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SNOW) continue;
+                if (tilemap_face_at(x, y)) continue;
+                int ddx = x - cx, ddy = y - cy;
+                if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+                int n = tile_noise(x, y, (int)seed ^ 7);
+                if (t == TILE_MEADOW) {
+                    if (n > 32400) map->overlay[y][x] = TILE_TREE;
+                } else if (t == TILE_SNOW) {
+                    // Thin brush: only inside forest clusters, sparser than temperate forest
+                    int gx = x/FG, gy = y/FG;
+                    float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
+                    float top = tile_noise(gx,gy,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy,(int)seed^0xF05)-tile_noise(gx,gy,(int)seed^0xF05));
+                    float bot = tile_noise(gx,gy+1,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF05)-tile_noise(gx,gy+1,(int)seed^0xF05));
+                    int cluster = (int)(top + fy*(bot-top));
+                    if (cluster > 20000 && n > 16000)
+                        map->overlay[y][x] = TILE_TREE;
+                } else {
+                    int gx = x/FG, gy = y/FG;
+                    float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
+                    float top = tile_noise(gx,gy,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy,(int)seed^0xF04)-tile_noise(gx,gy,(int)seed^0xF04));
+                    float bot = tile_noise(gx,gy+1,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF04)-tile_noise(gx,gy+1,(int)seed^0xF04));
+                    int cluster = (int)(top + fy*(bot-top));
+                    if (n > ((cluster > 16000) ? 5000 : 32400))
+                        map->overlay[y][x] = TILE_TREE;
+                }
+            }
+        }
+    }
+
     GEN_STAGE(map, "before Rocks");
     // --- Rocks (after cliffs for same reason) ---
     {
@@ -2526,6 +2584,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int y = 1 + (int)((s >> 16) % (MAP_HEIGHT - 2));
             int ddx = x - cx, ddy = y - cy;
             if (ddx*ddx + ddy*ddy <= hw*hw) continue;
+            // Off the face for the same reason the trees are: the ground a band
+            // is drawn over is still grass, so without this a boulder sits in
+            // the middle of a wall.
+            if (tilemap_face_at(x, y)) continue;
             if (map->tiles[y][x] == TILE_GRASS && map->overlay[y][x] == 0) map->overlay[y][x] = TILE_ROCK;
         }
     }
@@ -2561,7 +2623,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     GEN_STAGE(map, "before Gold ore at high elevation");
     // --- Gold ore at high elevation (cliff 3+) for all biomes ---
-#if 0
+    //
+    // Back on. This went off with the rock overlay when the cliffs were redrawn,
+    // and unlike the rock it had no reason to: ore is two to five percent of the
+    // tops it appears on, so it dots a plateau rather than carpeting it, and it
+    // is the only source of HARVEST_ORE in the world. Switching it off did not
+    // thin out a texture, it deleted a resource.
     {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
@@ -2571,6 +2638,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 else if (t == TILE_CLIFF_4 || t == TILE_CLIFF_SNOW_4 || t == TILE_CLIFF_WASTE_4) threshold = 31784; // ~3%
                 else if (t == TILE_CLIFF_5 || t == TILE_CLIFF_SNOW_5 || t == TILE_CLIFF_WASTE_5) threshold = 31129; // ~5%
                 else continue;
+                // High ground is not the same as ground with nothing drawn on
+                // it. A level's band is drawn over the tops of every level below
+                // it, so a tile that is a level-2 plateau by its own id can be
+                // under the wall of the level-3 plateau behind it — and an ore
+                // put there is embedded in the rock, which is where it appeared
+                // on the bend of seed 463.
+                if (tilemap_face_at(x, y)) continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
                 if (tile_noise(x, y, (int)seed ^ 0x4E1DA9) > threshold)
@@ -2578,7 +2652,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
     }
-#endif
 
     GEN_STAGE(map, "before Lava streams and pools inside wasteland");
     // --- Lava streams and pools inside wasteland ---
@@ -2618,7 +2691,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
                 if (map->tiles[y][x] != TILE_WASTELAND) continue;
+                // cliff_blocked is the keep-away-from-water mask despite the
+                // name; tilemap_face_at is the one that answers "is a wall drawn
+                // over this tile".
                 if (cliff_blocked[y][x]) continue;
+                if (tilemap_face_at(x, y)) continue;
                 if (map->overlay[y][x] != 0) continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
