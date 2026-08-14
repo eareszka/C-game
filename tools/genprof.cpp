@@ -103,11 +103,63 @@ int main(int argc, char** argv)
     // Castles 0-2 are placed during phase2 and keep {-1,-1} when their pass
     // finds nowhere to stand. Worth printing: castle 1 spent the project so far
     // never placing at all, and nothing said so.
+    // Why the mountain castle did or did not place. It wants a 16x16 block that
+    // is all top-level plateau with no cliff drawn over any of it, so the
+    // question is simply how big the largest such block in the world is.
+    // Largest-square dynamic programming, one row of state at a time.
+    for (int L = 3; L >= 1; L--) {
+        static int prev[MAP_WIDTH], cur[MAP_WIDTH];
+        int best = 0, bx = -1, by = -1;
+        int open_tiles = 0;
+        for (int x = 0; x < MAP_WIDTH; x++) prev[x] = 0;
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int t = g_map.tiles[y][x];
+                bool lvl = (L == 3 && (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3))
+                        || (L == 2 && (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2))
+                        || (L == 1 && (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1));
+                bool open_ = lvl && !tilemap_face_at(x, y);
+                if (open_) open_tiles++;
+                if (!open_ || x == 0 || y == 0) { cur[x] = open_ ? 1 : 0; }
+                else {
+                    int a = prev[x], b = cur[x-1], c = prev[x-1];
+                    int m = a < b ? a : b; if (c < m) m = c;
+                    cur[x] = m + 1;
+                }
+                if (cur[x] > best) { best = cur[x]; bx = x; by = y; }
+            }
+            for (int x = 0; x < MAP_WIDTH; x++) prev[x] = cur[x];
+        }
+        printf("  level %d: open %d tiles, largest open square %dx%d at %d,%d%s\n",
+               L, open_tiles, best, best, bx, by,
+               best >= 16 ? "   (fits a castle)" : "   <-- too small for 16x16");
+    }
+
     static const char* CASTLE_NAME[3] = { "ocean", "mountain", "lava" };
     printf("  castles:");
     for (int i = 0; i < 3; i++) {
-        if (g_map.castles[i].x < 0) printf("  %s=none", CASTLE_NAME[i]);
-        else printf("  %s=%d,%d", CASTLE_NAME[i], g_map.castles[i].x, g_map.castles[i].y);
+        if (g_map.castles[i].x < 0) { printf("  %s=none", CASTLE_NAME[i]); continue; }
+        printf("  %s=%d,%d", CASTLE_NAME[i], g_map.castles[i].x, g_map.castles[i].y);
+        if (i != 1) continue;
+        // Which storey the mountain castle ended up on. Its own footprint is
+        // placeholder tiles by now, so read the ring just outside it.
+        int seen[6] = {0,0,0,0,0,0};
+        int x0 = g_map.castles[i].x, y0 = g_map.castles[i].y;
+        for (int d = -1; d <= 16; d++) {
+            const int pts[4][2] = { {x0+d,y0-1}, {x0+d,y0+16}, {x0-1,y0+d}, {x0+16,y0+d} };
+            for (int p = 0; p < 4; p++) {
+                int qx = pts[p][0], qy = pts[p][1];
+                if (qx < 0 || qy < 0 || qx >= MAP_WIDTH || qy >= MAP_HEIGHT) continue;
+                int t = g_map.tiles[qy][qx], lv = 0;
+                if (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) lv = 1;
+                if (t == TILE_CLIFF_2 || t == TILE_CLIFF_SNOW_2 || t == TILE_CLIFF_WASTE_2) lv = 2;
+                if (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) lv = 3;
+                seen[lv]++;
+            }
+        }
+        int top = 0;
+        for (int l = 1; l <= 3; l++) if (seen[l] > seen[top]) top = l;
+        printf("(L%d)", top);
     }
     printf("\n\n");
 
