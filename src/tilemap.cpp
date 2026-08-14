@@ -710,6 +710,26 @@ static const int CLIFF_FACE_D[CLIFF_LEVELS + 1] = { 0, 2, 3, 4 };
 // that the polygon alone leaves as beads.
 static const int CLIFF_FACE_SIDE = 1;
 
+// How deep the tile one bucket short of square-on is still allowed to sweep.
+//
+// Without this the wall has exactly one drawn depth, CLIFF_FACE_D, and
+// exactly one threshold: short of CLIFF_BANK_FRONT a tile gets none of that
+// and falls straight to the outline's hung bank, eleven pixels at its
+// widest against a front thirty-odd deep. The gap between them is most of a
+// tile, crossed in a single step right where the wall is turning from facing
+// you to facing away — which is the one place the reference does not cross
+// it in a single step. Its own corners — e.g. the plateau shoulder running
+// SW from about (9960,10390) in assets/mother1.png — carry a short run of
+// the same full-weight band, bent to follow the turn, before it thins to the
+// flank's hung bank. That is a second stair, not a ramp: one more tile of
+// the band the front is cut from, shallower than the front's own.
+//
+// One row and not more. CLIFF_FACE_D is only two rows deep at the lowest
+// level, so a shoulder swept as deep as the front would not be a step down
+// from it at all; one row is shorter than every level's front by
+// construction and is still a whole tile of band rather than a hung bank.
+static const int CLIFF_SHOULDER_D = 0;
+
 // Which way the height's edge faces at a tile: +1 where the drop is square on
 // to you, 0 where it runs north to south beside you, -1 where it is the back of
 // the hill. The centroid of the height over a window points into it, so the
@@ -785,6 +805,23 @@ static int cliff_bank(int x, int y, int L) {
     for (int k = 0; k < CLIFF_BANK_N; k++)
         if (s >= CLIFF_BANK_FACING[k]) return CLIFF_BANK_N - k;
     return 0;
+}
+
+// The same sweep place_cliffs() runs out to CLIFF_FACE_D, capped instead at
+// CLIFF_SHOULDER_D — whether a tile qualifies for the corner's second stair.
+// A free function rather than a call to that sweep with a smaller depth: the
+// sweep stops at its first hit, and duplicating its dozen lines here is
+// simpler than threading one more parameter through it for a single caller.
+static bool cliff_face_shallow(int x, int y, int L) {
+    for (int dy = 0; dy <= CLIFF_SHOULDER_D; dy++) {
+        int w = (dy <= 1) ? CLIFF_FACE_SIDE : 0;
+        for (int dx = -w; dx <= w; dx++) {
+            int sx = x - dx, sy = y - dy;
+            if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
+            if (s_cliff_elev[sy][sx] >= L) return true;
+        }
+    }
+    return false;
 }
 
 // Grow or shrink the plateau mask. `need` is how many of the (2r+1)^2 tiles
@@ -886,6 +923,76 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
     for (int y = y_lo; y < y_hi; y++)
         for (int x = x_lo; x < x_hi; x++)
             s_cliff_elev[y][x] = s_cliff_scratch[y][x];
+}
+
+// Round the south edge of one component into a wall, not a coastline.
+//
+// cliff_morph()'s opening and closing is a disk, on purpose — the whole
+// point of a disk is that it treats every direction alike. But the
+// reference does not: measured against assets/mother1.png at matched scale,
+// the edge facing the player holds within a tile or two of level for a long
+// run before it steps, while cliff_morph() leaves it wandering at close to
+// tile scale on every side, because an isotropic filter cannot know which
+// side of a landform the player is going to be standing on. Straightening
+// only the south edge, after the disk has already run, is what a direction
+// the disk cannot see needs.
+//
+// Per component, not per column of the whole window: two landforms with a
+// strip of grass between them would otherwise get smoothed into each
+// other's business the moment their bounding boxes overlapped in x.
+//
+// bot[x] is the southmost row this component reaches in column x. Averaging
+// it over a run of neighbouring columns and writing the average back —
+// growing where the average sits south of the tile, cutting where it sits
+// north — moves the outward edge toward a straight line without ever
+// touching the row the component starts at, which is the edge the reference
+// leaves rough.
+static const int CLIFF_SOUTH_SMOOTH_R   = 12; // how far along the edge the average reaches
+static const int CLIFF_SOUTH_SMOOTH_MAX = 10; // how far a tile is allowed to move to get there
+
+static void cliff_smooth_south(const int* cells, int n, int y_lo, int y_hi)
+{
+    static int bot[MAP_WIDTH];
+    static int smooth[MAP_WIDTH];
+
+    int cx_lo = MAP_WIDTH, cx_hi = -1;
+    for (int i = 0; i < n; i++) {
+        int x = cells[i] % MAP_WIDTH;
+        if (x < cx_lo) cx_lo = x;
+        if (x > cx_hi) cx_hi = x;
+    }
+    if (cx_lo > cx_hi) return;
+    for (int x = cx_lo; x <= cx_hi; x++) bot[x] = -1;
+    for (int i = 0; i < n; i++) {
+        int y = cells[i] / MAP_WIDTH, x = cells[i] % MAP_WIDTH;
+        if (y > bot[x]) bot[x] = y;
+    }
+
+    const int r = CLIFF_SOUTH_SMOOTH_R;
+    for (int x = cx_lo; x <= cx_hi; x++) {
+        if (bot[x] < 0) { smooth[x] = -1; continue; }
+        int sum = 0, cnt = 0;
+        for (int dx = -r; dx <= r; dx++) {
+            int sx = x + dx;
+            if (sx < cx_lo || sx > cx_hi || bot[sx] < 0) continue;
+            sum += bot[sx]; cnt++;
+        }
+        smooth[x] = cnt ? sum / cnt : bot[x];
+    }
+
+    for (int x = cx_lo; x <= cx_hi; x++) {
+        if (bot[x] < 0 || smooth[x] < 0) continue;
+        int delta = smooth[x] - bot[x];
+        if (delta >  CLIFF_SOUTH_SMOOTH_MAX) delta =  CLIFF_SOUTH_SMOOTH_MAX;
+        if (delta < -CLIFF_SOUTH_SMOOTH_MAX) delta = -CLIFF_SOUTH_SMOOTH_MAX;
+        int target = bot[x] + delta;
+        if (target > bot[x])
+            for (int y = bot[x] + 1; y <= target && y < y_hi; y++)
+                s_cliff_elev[y][x] = 1;
+        else if (target < bot[x])
+            for (int y = target + 1; y <= bot[x] && y >= y_lo; y++)
+                s_cliff_elev[y][x] = 0;
+    }
 }
 
 // Smooth value noise, with the two axes scaled apart. Sampling on a grid longer
@@ -1059,6 +1166,8 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                     if (n < CLIFF_HIGH_MIN)
                         for (int i = 0; i < n; i++)
                             s_cliff_elev[cells[i] / MAP_WIDTH][cells[i] % MAP_WIDTH] = 0;
+                    else
+                        cliff_smooth_south(cells, n, y_lo, y_hi);
                 }
         }
 
@@ -1194,12 +1303,22 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // stops nothing, and a plateau can be walked onto from the side as it has
     // always been walkable from the rear. That is a change to where the player
     // may go, so it is not made here.
+    //
+    // The bucket one short of CLIFF_BANK_FRONT gets the same high bit too,
+    // but only out to CLIFF_SHOULDER_D rather than the full sweep — the
+    // corner's second stair. See CLIFF_SHOULDER_D for why a whole extra tile
+    // of the band and not a wider hung bank: the band cannot draw narrower
+    // than a tile at the corner any more than it can down a flank.
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         unsigned char bit = (unsigned char)(1 << (L - 1));
         for (int y = y_lo; y < y_hi; y++)
-            for (int x = x_lo; x < x_hi; x++)
-                if ((s_cliff_face[y][x] & bit) && cliff_bank(x, y, L) >= CLIFF_BANK_FRONT)
-                    s_cliff_face[y][x] |= (unsigned char)(bit << CLIFF_FACE_DRAW);
+            for (int x = x_lo; x < x_hi; x++) {
+                if (!(s_cliff_face[y][x] & bit)) continue;
+                int b = cliff_bank(x, y, L);
+                bool draw = b >= CLIFF_BANK_FRONT
+                         || (b == CLIFF_BANK_FRONT - 1 && cliff_face_shallow(x, y, L));
+                if (draw) s_cliff_face[y][x] |= (unsigned char)(bit << CLIFF_FACE_DRAW);
+            }
     }
 
     // A face of one or two tiles is a speck of brown, not a cliff.
