@@ -710,25 +710,49 @@ static const int CLIFF_FACE_D[CLIFF_LEVELS + 1] = { 0, 2, 3, 4 };
 // that the polygon alone leaves as beads.
 static const int CLIFF_FACE_SIDE = 1;
 
-// How deep the tile one bucket short of square-on is still allowed to sweep.
+// How fast the band is allowed to shallow out as the edge turns away from you,
+// in tiles of depth per tile walked along the edge.
 //
-// Without this the wall has exactly one drawn depth, CLIFF_FACE_D, and
-// exactly one threshold: short of CLIFF_BANK_FRONT a tile gets none of that
-// and falls straight to the outline's hung bank, eleven pixels at its
-// widest against a front thirty-odd deep. The gap between them is most of a
-// tile, crossed in a single step right where the wall is turning from facing
-// you to facing away — which is the one place the reference does not cross
-// it in a single step. Its own corners — e.g. the plateau shoulder running
-// SW from about (9960,10390) in assets/mother1.png — carry a short run of
-// the same full-weight band, bent to follow the turn, before it thins to the
-// flank's hung bank. That is a second stair, not a ramp: one more tile of
-// the band the front is cut from, shallower than the front's own.
+// This is the ramp that replaced the corner's second stair, and the reason it
+// had to is that a stair is not enough steps. The wall used to have exactly one
+// drawn depth, CLIFF_FACE_D, and exactly one threshold: short of
+// CLIFF_BANK_FRONT a tile got none of that and fell straight to the outline's
+// hung bank, eleven pixels at its widest against a front thirty-odd deep. A
+// single extra shallow row was added at the bucket below to break that fall.
+// It still read as a cut, and the measurement says why: the ladder is rungs of
+// facing, and facing is a centroid that swings from square-on to edge-on within
+// a tile or two of a sharp corner, so all six treatments landed on one or two
+// tiles and the eye saw the two ends and nothing in between.
 //
-// One row and not more. CLIFF_FACE_D is only two rows deep at the lowest
-// level, so a shoulder swept as deep as the front would not be a step down
-// from it at all; one row is shorter than every level's front by
-// construction and is still a whole tile of band rather than a hung bank.
-static const int CLIFF_SHOULDER_D = 0;
+// A rung of facing cannot fix that, because the thing that needs spreading is
+// distance along the edge, not facing. So the depth is ramped in tiles instead:
+// seed the front at its full CLIFF_FACE_D and let that value walk outward along
+// the swept mask, losing CLIFF_TAPER_SLOPE tiles of depth for every tile it
+// travels. Where it falls below one tile the band stops and the hung bank picks
+// it up, as before. The ramp is measured in the one unit that does not care how
+// sharply the contour turns.
+//
+// A half. The run is CLIFF_FACE_D / CLIFF_TAPER_SLOPE tiles long, so a half
+// gives four tiles at level 1 and eight at level 3 — deeper walls taking longer
+// to come down, which is what a landform does. A whole tile per tile is the
+// shortest ramp that is still a ramp and reads as a flight of steps; a quarter
+// runs the band most of the way round a small hill and takes the contrast with
+// the flank out with it.
+static const float CLIFF_TAPER_SLOPE = 0.5f;
+
+// The ramp is carried in quarter-tiles so it can live in the byte grid the rest
+// of this pass uses. CLIFF_FACE_D is at most 4, so the seed is at most 16.
+static const int CLIFF_TAPER_Q = 4;
+
+// How many forward-and-back sweeps the ramp is walked with.
+//
+// One pair carries a value along any path that runs monotonically in x and y,
+// which is most of a contour and not all of it: an edge that doubles back needs
+// another pair to get around the turn. The loop breaks as soon as a pass changes
+// nothing, so a bound that is too generous costs one comparison per masked tile
+// and a bound that is too tight silently leaves a corner half-ramped. Four errs
+// at the generous end on purpose.
+static const int CLIFF_TAPER_PASSES = 4;
 
 // Which way the height's edge faces at a tile: +1 where the drop is square on
 // to you, 0 where it runs north to south beside you, -1 where it is the back of
@@ -807,21 +831,32 @@ static int cliff_bank(int x, int y, int L) {
     return 0;
 }
 
-// The same sweep place_cliffs() runs out to CLIFF_FACE_D, capped instead at
-// CLIFF_SHOULDER_D — whether a tile qualifies for the corner's second stair.
-// A free function rather than a call to that sweep with a smaller depth: the
-// sweep stops at its first hit, and duplicating its dozen lines here is
-// simpler than threading one more parameter through it for a single caller.
-static bool cliff_face_shallow(int x, int y, int L) {
-    for (int dy = 0; dy <= CLIFF_SHOULDER_D; dy++) {
+// How far below the lip a tile sits: the depth at which place_cliffs()' sweep
+// first strikes the height, or -1 where it never does.
+//
+// One function rather than the bare bool the sweep used to want, because the
+// ramp needs the number and not just the fact. Both callers are in place_cliffs
+// and both must agree exactly — a tile the sweep claims and the ramp then
+// measures differently is a hole in the band — so they ask the same code.
+//
+// The narrowing with depth is the taper that lets the band come to a point at
+// each end of a hill: the first row down reaches a tile to either side so a
+// corner closes, below that it reaches straight up. A plain block fires its
+// wide part and its deep part at once where the outline turns from facing south
+// to facing sideways, and the band swells to the depth of the front exactly
+// where it should be thinning to the width of the flank. Every hill wore a lump
+// at each shoulder.
+static int cliff_face_depth(int x, int y, int L) {
+    int D = CLIFF_FACE_D[L];
+    for (int dy = 0; dy <= D; dy++) {
         int w = (dy <= 1) ? CLIFF_FACE_SIDE : 0;
         for (int dx = -w; dx <= w; dx++) {
             int sx = x - dx, sy = y - dy;
             if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
-            if (s_cliff_elev[sy][sx] >= L) return true;
+            if (s_cliff_elev[sy][sx] >= L) return dy;
         }
     }
-    return false;
+    return -1;
 }
 
 // Grow or shrink the plateau mask. `need` is how many of the (2r+1)^2 tiles
@@ -1233,7 +1268,6 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // a brown outline drawn around a green shape, which is what this looked
     // like when the face wrapped the sides as thickly as the front.
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
-        int D = CLIFF_FACE_D[L];
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
                 if (s_cliff_elev[y][x] >= L) continue;
@@ -1243,35 +1277,14 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 // stand outside the outline — which is what put a cap of rock
                 // on the north of every small landform.
                 if (y + 1 < MAP_HEIGHT && s_cliff_elev[y+1][x] >= L) continue;  // its far side
-                // The face is the plateau's own outline, pushed downhill: deep
-                // where the drop faces you, one tile where it runs away to the
-                // side, and tapering between the two.
-                //
-                // The taper is the point. Testing the four directions
-                // separately leaves a notch at every corner — the tile
-                // diagonally off a corner has no plateau directly above it and
-                // none directly beside it either — so this used to sweep a
-                // plain block instead, CLIFF_FACE_D deep and CLIFF_FACE_SIDE
-                // wide at every depth. That closes the corner and then some: at
-                // the far west and far east of a hill, where the outline turns
-                // from facing south to facing sideways, both parts of the block
-                // fire at once and the band swells to the depth of the front
-                // just where it should be thinning to the width of the flank.
-                // Every hill wore a lump at each shoulder.
-                //
-                // Narrowing the sweep as it goes deeper keeps the corner closed
-                // — the first row down is still full width — and lets the band
-                // come to a point at each end, which is what the reference does.
-                bool hit = false;
-                for (int dy = 0; dy <= D && !hit; dy++) {
-                    int w = (dy <= 1) ? CLIFF_FACE_SIDE : 0;
-                    for (int dx = -w; dx <= w; dx++) {
-                        int sx = x - dx, sy = y - dy;
-                        if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
-                        if (s_cliff_elev[sy][sx] >= L) { hit = true; break; }
-                    }
-                }
-                if (hit) s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
+                // The face is the plateau's own outline, pushed downhill: every
+                // tile the sweep can reach, however deep it turned out to be.
+                // How much of that depth is actually drawn is the ramp's
+                // business, two passes below; this mask is the candidate set,
+                // and it is also what the ground is walked on by. See
+                // cliff_face_depth() for why the sweep narrows as it descends.
+                if (cliff_face_depth(x, y, L) >= 0)
+                    s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
             }
     }
 
@@ -1304,20 +1317,80 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     // always been walkable from the rear. That is a change to where the player
     // may go, so it is not made here.
     //
-    // The bucket one short of CLIFF_BANK_FRONT gets the same high bit too,
-    // but only out to CLIFF_SHOULDER_D rather than the full sweep — the
-    // corner's second stair. See CLIFF_SHOULDER_D for why a whole extra tile
-    // of the band and not a wider hung bank: the band cannot draw narrower
-    // than a tile at the corner any more than it can down a flank.
+    // How much of the sweep's depth each of those tiles draws is a ramp rather
+    // than a threshold, which is the whole of the corner's answer. The facing
+    // says where the front is; from there the depth walks outward along the
+    // mask and comes down a fixed amount per tile travelled, so the wall steps
+    // from the front's depth to the flank's hung bank over
+    // CLIFF_FACE_D / CLIFF_TAPER_SLOPE tiles of edge no matter how sharply the
+    // contour turns underneath it. See CLIFF_TAPER_SLOPE for what that replaced
+    // and why a rung of facing could not do it.
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
-        unsigned char bit = (unsigned char)(1 << (L - 1));
+        unsigned char bit  = (unsigned char)(1 << (L - 1));
+        // The sweep runs dy from 0 to CLIFF_FACE_D inclusive, so a front is
+        // CLIFF_FACE_D + 1 rows and not CLIFF_FACE_D of them. Seeding the ramp
+        // at the depth rather than the row count quietly takes the deepest row
+        // off every wall that faces you — which measures, on seed 407, as the
+        // front's median run dropping from 50 px to 38.
+        int           seed = (CLIFF_FACE_D[L] + 1) * CLIFF_TAPER_Q;
+        int           step = (int)(CLIFF_TAPER_SLOPE * CLIFF_TAPER_Q + 0.5f);
+        if (step < 1) step = 1;
+
+        // The ramp is built in s_cliff_scratch, which the morphology has
+        // finished with by now and which the face-region cleanup below fills in
+        // again from nothing. It holds quarter-tiles of allowed depth.
+        //
+        // Seeded only where the drop is square on to you: those tiles get the
+        // front's whole depth and every other tile of the mask gets none, so the
+        // ramp has somewhere to run from and somewhere to run to.
+        for (int y = y_lo; y < y_hi; y++)
+            for (int x = x_lo; x < x_hi; x++) {
+                bool front = (s_cliff_face[y][x] & bit)
+                          && cliff_bank(x, y, L) >= CLIFF_BANK_FRONT;
+                s_cliff_scratch[y][x] = (unsigned char)(front ? seed : 0);
+            }
+
+        // Walk it outward along the mask, losing `step` quarter-tiles a tile.
+        // Along the mask and not across the grass: the value is only allowed to
+        // pass between tiles the sweep claimed, so the ramp follows the edge
+        // round its corner instead of cutting the corner off.
+        for (int pass = 0; pass < CLIFF_TAPER_PASSES; pass++) {
+            bool moved = false;
+            for (int y = y_lo; y < y_hi; y++)
+                for (int x = x_lo; x < x_hi; x++) {
+                    if (!(s_cliff_face[y][x] & bit)) continue;
+                    int v = s_cliff_scratch[y][x];
+                    if (x > x_lo && (s_cliff_face[y][x-1] & bit)
+                        && s_cliff_scratch[y][x-1] - step > v) v = s_cliff_scratch[y][x-1] - step;
+                    if (y > y_lo && (s_cliff_face[y-1][x] & bit)
+                        && s_cliff_scratch[y-1][x] - step > v) v = s_cliff_scratch[y-1][x] - step;
+                    if (v != s_cliff_scratch[y][x]) { s_cliff_scratch[y][x] = (unsigned char)v; moved = true; }
+                }
+            for (int y = y_hi - 1; y >= y_lo; y--)
+                for (int x = x_hi - 1; x >= x_lo; x--) {
+                    if (!(s_cliff_face[y][x] & bit)) continue;
+                    int v = s_cliff_scratch[y][x];
+                    if (x + 1 < x_hi && (s_cliff_face[y][x+1] & bit)
+                        && s_cliff_scratch[y][x+1] - step > v) v = s_cliff_scratch[y][x+1] - step;
+                    if (y + 1 < y_hi && (s_cliff_face[y+1][x] & bit)
+                        && s_cliff_scratch[y+1][x] - step > v) v = s_cliff_scratch[y+1][x] - step;
+                    if (v != s_cliff_scratch[y][x]) { s_cliff_scratch[y][x] = (unsigned char)v; moved = true; }
+                }
+            if (!moved) break;
+        }
+
+        // A tile draws its share of the band when the ramp has depth left for
+        // the row it sits in. Whole rows only — the band's cases join up because
+        // every one of them is drawn, so the ramp buys tiles of depth, never
+        // part of one, and a run of it comes out as a flight of steps down to
+        // the flank rather than as a wedge.
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
                 if (!(s_cliff_face[y][x] & bit)) continue;
-                int b = cliff_bank(x, y, L);
-                bool draw = b >= CLIFF_BANK_FRONT
-                         || (b == CLIFF_BANK_FRONT - 1 && cliff_face_shallow(x, y, L));
-                if (draw) s_cliff_face[y][x] |= (unsigned char)(bit << CLIFF_FACE_DRAW);
+                int dep = cliff_face_depth(x, y, L);
+                if (dep < 0) continue;
+                if ((dep + 1) * CLIFF_TAPER_Q <= s_cliff_scratch[y][x])
+                    s_cliff_face[y][x] |= (unsigned char)(bit << CLIFF_FACE_DRAW);
             }
     }
 
