@@ -3143,14 +3143,24 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             float px = map->cliff_peak_x / TILE_SIZE;
             float py = map->cliff_peak_y / TILE_SIZE;
 
-            auto is_top_level = [](int t) {
-                return t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3;
+            // Top-level ground with no cliff drawn over it. The tile id alone is
+            // not enough: a level's band is drawn over the tops of the levels
+            // below it, and the id of a tile says nothing about what lands on
+            // top of it, so a footprint chosen on ids alone can sit half inside
+            // the wall of the level above. tilemap_face_at is the low bits of
+            // the face mask — every tile any part of a cliff could close — so
+            // this keeps the castle on open plateau surface only.
+            auto is_open_top = [&](int x, int y) {
+                int t = map->tiles[y][x];
+                if (t != TILE_CLIFF_3 && t != TILE_CLIFF_SNOW_3 && t != TILE_CLIFF_WASTE_3)
+                    return false;
+                return !tilemap_face_at(x, y);
             };
 
             std::vector<std::pair<float,std::pair<int,int>>> top_tiles;
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 for (int x = 0; x < MAP_WIDTH; x++) {
-                    if (!is_top_level(map->tiles[y][x])) continue;
+                    if (!is_open_top(x, y)) continue;
                     float dx = x - px, dy2 = y - py;
                     top_tiles.push_back({ dx*dx + dy2*dy2, {x, y} });
                 }
@@ -3164,7 +3174,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 bool all_flat = true;
                 for (int cdy = 0; cdy < CASTLE_H && all_flat; cdy++)
                     for (int cdx = 0; cdx < CASTLE_W && all_flat; cdx++)
-                        if (!is_top_level(map->tiles[ty+cdy][tx+cdx])) all_flat = false;
+                        if (!is_open_top(tx + cdx, ty + cdy)) all_flat = false;
                 if (!all_flat) continue;
                 stamp_castle_blueprint(map, 1, tx, ty);
                 break;
@@ -4818,9 +4828,54 @@ static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 // the colour. The mask puts the change of ground exactly under the line that
 // marks it.
 static const int CLIFF_HAZE_ROW0 = 128;   // moved past the fourth bank class
-static const int CLIFF_HAZE_R = 236, CLIFF_HAZE_G = 244, CLIFF_HAZE_B = 252;
-static const int CLIFF_HAZE_A = 72;      // per storey above the first
+// The wash is per biome, because "paler" is only a step on ground that has room
+// to get paler. Measured off the sheet, the three ground cells sit at grass
+// (63,202,64), snow (246,237,215) and waste (36,6,0) — a mid green, an almost
+// white, and an almost black. One wash serving all three does the right thing
+// only for the green: on snow three storeys of it move every channel by about
+// three, which is no step at all, and on waste they carry a burnt biome from
+// near black to a middling grey, which is a step and also the end of the biome
+// looking burnt.
+//
+// So each gets a direction with somewhere to go. Grass pales toward a cool
+// white, as it always has. Snow has no paler left, so it goes the other way and
+// cools into a blue shadow. Waste lifts toward ash rather than toward daylight.
+//
+// The three alphas are not a style choice, they are levelled against each other.
+// Measured off a render, a storey of grass is about nine points of luma and a
+// storey of snow about ten, and the same alpha on waste gave twenty-seven —
+// which is what carried it to grey. Waste needs a third of the alpha for the
+// same *step* because it starts at luma 12 with the whole range above it, where
+// snow starts at 237 with almost none. Fourteen puts its ladder at 12, 22, 31,
+// 39: still nine points a storey, and still visibly scorched at the top.
+// One wash per storey, including the first, so that every level of ground is a
+// different shade and the field is the only one wearing none. It used to start
+// at the second storey, which left level 1 and the field it stands on exactly
+// the same colour — a whole storey of height whose only evidence was the band
+// round its edge, and a plateau you are standing on top of shows you no band
+// at all.
+//
+// The alphas are small because the wash compounds: each storey composites over
+// the last, so the third is 1-(1-a)^3 of the way to the tint, not 3a. Grass at
+// 51 lands its top storey 48.5% of the way, which is exactly where two storeys
+// at the old 72 already had it — so the highest ground is as pale as it always
+// was, and the new step is bought from the gaps between levels rather than by
+// bleaching the top.
+typedef struct { int r, g, b, a; } CliffHaze;
+static const CliffHaze CLIFF_HAZE_PLAIN = { 236, 244, 252, 51 };
+static const CliffHaze CLIFF_HAZE_SNOW  = { 140, 178, 224, 38 };
+static const CliffHaze CLIFF_HAZE_WASTE = { 198, 186, 180, 14 };
 
+// Which of them a tile wears. The cliff families first, so a plateau top takes
+// its own biome's wash, then the plain ground ids for the tiles at the edge of a
+// level where the outline runs over ordinary ground. Mirrors cliff_top_cover().
+static const CliffHaze* cliff_haze_for(int t) {
+    if ((t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  || t == TILE_SNOW)
+        return &CLIFF_HAZE_SNOW;
+    if ((t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) || t == TILE_WASTELAND)
+        return &CLIFF_HAZE_WASTE;
+    return &CLIFF_HAZE_PLAIN;
+}
 static inline int cliff_cell(int row0, int code, int x, int y) {
     int col = (y & (CLIFF_BLOCK - 1)) * CLIFF_BLOCK + (x & (CLIFF_BLOCK - 1));
     return sheet_cell(col, row0 + code);
@@ -5389,13 +5444,15 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // Standing high pales the ground you stand on — see
                 // CLIFF_HAZE_A. After the cover and its edges, so the whole
                 // surface goes; before the cliff art, so the rock does not.
-                // One wash per storey above the first, each cut to that
-                // storey's own outline, so they stack where the levels do.
+                // One wash per storey, each cut to that storey's own outline,
+                // so they stack where the levels do and every level of ground
+                // comes out a different green.
                 if (s_town0_tex) {
-                    SDL_SetTextureColorMod(s_town0_tex, (Uint8)CLIFF_HAZE_R,
-                                           (Uint8)CLIFF_HAZE_G, (Uint8)CLIFF_HAZE_B);
-                    SDL_SetTextureAlphaMod(s_town0_tex, (Uint8)CLIFF_HAZE_A);
-                    for (int L = 2; L <= CLIFF_LEVELS; L++) {
+                    const CliffHaze* hazec = cliff_haze_for(tile_id);
+                    SDL_SetTextureColorMod(s_town0_tex, (Uint8)hazec->r,
+                                           (Uint8)hazec->g, (Uint8)hazec->b);
+                    SDL_SetTextureAlphaMod(s_town0_tex, (Uint8)hazec->a);
+                    for (int L = 1; L <= CLIFF_LEVELS; L++) {
                         int hz = cliff_high_code(x, y, L);
                         if (hz) blit_tile(renderer, cliff_cell(CLIFF_HAZE_ROW0, hz, x, y),
                                           screen_x, screen_y, draw_size);
