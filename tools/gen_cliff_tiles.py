@@ -57,7 +57,7 @@ EDGE_ROW0  = 32      # ... and of the beaded outline
 SCREE_ROW0 = 48      # ... and of the spill of grains below a foot
 SCREE_STEPS = 2      # how many tiles below the rock the spill reaches
 BANK_ROW0  = 64      # ... and of the narrow bank the band thins to at a flank
-HAZE_ROW0  = 112     # ... and of the mask that pales the ground on top of it
+HAZE_ROW0  = 128     # ... and of the mask that pales the ground on top of it
 NCASE      = 16
 
 # How far the rock reaches out from the outline on a bank, in pixels, class by
@@ -74,7 +74,7 @@ NCASE      = 16
 # line rather than to be looked at on their own — five is two clefts wide and
 # three is one, which is the least that still reads as rock and not as a line
 # drawn heavy.
-BANK_REACH = (3.0, 5.0, 7.0)
+BANK_REACH = (3.0, 5.0, 7.0, 11.0)
 BANK_RAG   = 1.6
 BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
 
@@ -88,14 +88,16 @@ BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
 # the widest bank and the two narrow ones are spent turning the corner into the
 # rear.
 #
-# The last class reaches to -1 rather than stopping at -0.55, so that no part of
-# a landform's edge draws the bare line and nothing else. The reference wraps
-# its rock the whole way round; stopping short of that drew terraces as contour
-# lines on a map. See CLIFF_BANK_FACING in tilemap.cpp, which decides this and
-# which this has to agree with.
+# The ladder stops at -0.55 and the rear of a landform draws the bare beaded
+# line and no rock at all, which is what Mother 1 does: measured over 266 clean
+# cliff regions of assets/mother1.png, its south faces run 36 px deep, its
+# flanks 4, and its north edges have no band whatsoever — 60-64% of the total
+# drawn perimeter carries no face. Wrapping rock the whole way round was tried
+# and is not the reference. See CLIFF_BANK_FACING in tilemap.cpp, which decides
+# this and which this has to agree with.
 BANK_FRONT  = len(BANK_REACH) + 1
 BANK_R      = 3
-BANK_FACING = (0.35, -0.05, -0.30, -1.00)
+BANK_FACING = (0.35, 0.15, -0.05, -0.30, -0.55)
 
 KEY   = (255,   0,   0)   # the sheet's colour key
 BROWN = (136, 112,   0)   # straight off the reference

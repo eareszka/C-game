@@ -727,26 +727,32 @@ static const int CLIFF_FACE_SIDE = 1;
 // outline itself, in the cell the outline is already drawn in, and as many
 // pixels wide as the facing warrants.
 //
-// As many, but never none, and never so few that they stop being rock.
+// As many as the facing warrants, and none where the facing has gone.
 //
-// The ladder used to run out at -0.55 and everything below drew the bare line,
-// which is the whole back of every landform: on a window of seed 99 approached
-// from the north, 95.8% of the cliff drawn in it was hairline with no rock on
-// it anywhere, and a flight of terraces came out as contour lines on a map. The
-// reference wraps its rock the whole way round, shallower at the back than at
-// the front and much, but never nothing.
+// The ladder runs out at -0.55 and the whole rear of a landform draws the
+// beaded line and no rock, which looks like an omission and is the reference.
+// Measured over 266 clean cliff regions of assets/mother1.png at native scale:
+// south faces run 36 px deep, east-west flanks 4, and north edges carry no band
+// at all — 60-64% of its total drawn cliff perimeter has no face on it. Rock
+// the whole way round was tried here and taken out again.
 //
-// The narrow classes cannot carry that, and this is the part that is not
-// obvious: a bank is inked one pixel against the line and then wherever a cleft
-// crosses it, and both of those are fixed widths, so the narrower the bank the
-// more of it is black. Measured off the sheet — three pixels of bank is 83%
-// ink, five is 69%, seven is 62%, against 52% for the band itself. At three the
-// rear read as the outline drawn heavy, which is what those classes are for:
-// they exist to land the bank back into the line as the edge turns away, not to
-// be the edge. So the rear takes five, the flanks seven, and the two narrow
-// classes are no longer reached from anywhere.
-static const int   CLIFF_BANK_R = 3;     // tiles either way the facing is read over
-static const float CLIFF_BANK_FACING[] = { 0.35f, -0.05f, -1.00f, -1.00f };
+// What the narrow classes are for, since it is not obvious and it is the thing
+// that goes wrong if they are pressed into other service: they land the bank
+// back into the bare line as the edge turns away. They cannot be a face
+// themselves. A bank is inked one pixel against the line and again wherever a
+// cleft crosses it, and both are fixed widths, so the narrower the bank the
+// larger the share of it that is black — measured off the sheet, three pixels
+// of bank is 68% ink and seven is 61%, against 52% for the band. Asked to carry
+// a face, three pixels draws the outline gone heavy.
+// Tiles either way the facing is read over.
+//
+// Five rather than three. The facing is a centroid, so this window is how far
+// along the edge it takes to notice that the edge has turned, and a short one
+// turns the whole ladder over within a tile or two: the band stops, the bank
+// appears at its narrowest, and the corner reads as a cut rather than a turn.
+// Widening it spreads the same ladder along more of the edge.
+static const int   CLIFF_BANK_R = 5;
+static const float CLIFF_BANK_FACING[] = { 0.35f, 0.15f, -0.05f, -0.30f, -0.55f };
 static const int   CLIFF_BANK_N = (int)(sizeof CLIFF_BANK_FACING / sizeof *CLIFF_BANK_FACING);
 static const int   CLIFF_BANK_FRONT = CLIFF_BANK_N;   // the whole masked band
 
@@ -4504,7 +4510,7 @@ static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 // leaves dark ground inside it on the next, which is the tile grid showing in
 // the colour. The mask puts the change of ground exactly under the line that
 // marks it.
-static const int CLIFF_HAZE_ROW0 = 112;
+static const int CLIFF_HAZE_ROW0 = 128;   // moved past the fourth bank class
 static const int CLIFF_HAZE_R = 236, CLIFF_HAZE_G = 244, CLIFF_HAZE_B = 252;
 static const int CLIFF_HAZE_A = 72;      // per storey above the first
 
@@ -4537,7 +4543,7 @@ static inline int cliff_cell(int row0, int code, int x, int y) {
 // the middle of the range costs more in arithmetic than the rows cost in
 // memory.
 static const int CLIFF_INK_ROW0 = CLIFF_ROCK_ROW0;                        // 16
-static const int CLIFF_INK_ROWS = CLIFF_BANK_ROW0 + 3 * 16 - CLIFF_INK_ROW0;  // to 111
+static const int CLIFF_INK_ROWS = CLIFF_BANK_ROW0 + 4 * 16 - CLIFF_INK_ROW0;  // to 127
 static unsigned short s_cliff_ink[CLIFF_INK_ROWS][TOWN0_SHEET_COLS][16];
 // Whether there are any pixels to read. Without the sheet there is no cliff on
 // screen either, but there is still one in the ground, and an empty mask would
