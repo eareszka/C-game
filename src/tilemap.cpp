@@ -2290,6 +2290,614 @@ static int entrance_tile_id(DungeonEntranceType type) {
     }
 }
 
+// Join a set of places with worn routes: a minimum spanning tree over them,
+// each edge routed as a shortest path that goes round what it cannot cross and
+// bridges what it can, then smoothed and drifted so it reads as a track rather
+// than a line someone drew.
+//
+// Extracted from the wasteland-trail pass so roads between settlements can use
+// the same router. Everything biome-specific is a predicate the caller supplies:
+//
+//   is_region   ground a route may be laid on
+//   is_lava     the gap it may bridge, including decks already laid
+//   is_raw_gap  the tile a deck may be laid over
+//   in_moat     where a crossing is forbidden outright
+//   paintable   the tile the route may overwrite
+//
+// The names are the wasteland's because the code is, unchanged, and renaming a
+// six-hundred-line body is how a refactor that was meant to change nothing ends
+// up changing something.
+template <typename InRegion, typename IsGap, typename IsRawGap,
+          typename Forbidden, typename Paintable>
+static void route_network(Tilemap* map, unsigned int route_seed,
+                          const std::vector<std::pair<int,int>>& nodes,
+                          InRegion is_region, IsGap is_lava, IsRawGap is_raw_gap,
+                          Forbidden in_moat, Paintable paintable,
+                          int path_tile, int bridge_tile,
+                          int EDGE_CLEARANCE, int ENDPOINT_FREE, int ANCHOR_SEARCH,
+                          int BRIDGE_MAX, int BRIDGE_GAP)
+{
+        // Asked for rather than required: the
+        // router gives it up a tile at a time until a way through appears, so
+        // this is how far from the border a trail would like to run, not how
+        // far it must. Three was enough to stop trails tracing the rim but left
+        // them well inside it — routed at a mean of five tiles' clearance where
+        // the wasteland's own mean was nine — because a shortest path still
+        // hugs the inside of a bend once it is clear of the margin.
+        const int DX4[4] = {1,-1,0,0}, DY4[4] = {0,0,1,-1};
+        std::vector<uint8_t> seen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<uint8_t> incomp((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<uint8_t> nearedge((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<int> prev((size_t)MAP_WIDTH * MAP_HEIGHT, -1);
+        // How many tiles of lava the route has crossed to reach this one, so a
+        // crossing can be cut off once it is longer than a bridge should be.
+        std::vector<uint8_t> runlen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        // And how much ground it still owes before it may cross again. Two
+        // crossings back to back meet at a corner and fuse into one L-shaped
+        // deck, which is neither three wide nor going one way.
+        std::vector<uint8_t> cool((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        std::vector<int> comp, route, touched, path, rimq;
+        unsigned int ts = route_seed;
+
+        // A bridge is a straight run and nothing else: one direction, three
+        // tiles wide, and short. So lava is not ground the route wanders over —
+        // it is a gap the route may step across in one move, in a straight line
+        // and only where the crossing is brief. Anything wider is gone around.
+        //
+        // Letting the route treat lava as ordinary ground, which is what it did
+        // before, gave crossings that curved with the trail and sprawled wider
+        // than the trail at every turn, because the brush was sweeping a
+        // wandering line over a channel rather than laying a span across it.
+
+        // Lava a bridge is allowed to cross.
+        auto spannable = [&](int x, int y) {
+            return is_lava(x, y) && !in_moat(x, y);
+        };
+
+
+        // Is there a crossing from ground at (x,y) straight out along d — over
+        // nothing but spannable lava, landing on ground no more than
+        // BRIDGE_MAX tiles away? Returns where it lands, or -1.
+        //
+        // Used to work out what belongs to the same wasteland, where all that
+        // matters is whether a route could get across. The route itself does
+        // not step this way; it walks the channel a tile at a time, so that
+        // crossing costs what it is worth.
+        auto span_from = [&](int x, int y, int d) {
+            int nx = x + DX4[d], ny = y + DY4[d];
+            if (!in_bounds(nx, ny) || !spannable(nx, ny)) return -1;
+            for (int k = 1; k <= BRIDGE_MAX; k++) {
+                nx += DX4[d]; ny += DY4[d];
+                if (!in_bounds(nx, ny)) return -1;
+                if (spannable(nx, ny)) continue;
+                return is_region(nx, ny) ? ny * MAP_WIDTH + nx : -1;
+            }
+            return -1;
+        };
+
+        for (int y0 = 0; y0 < MAP_HEIGHT && !s_gen_cancel; y0++) {
+            for (int x0 = 0; x0 < MAP_WIDTH; x0++) {
+                size_t i0 = (size_t)y0 * MAP_WIDTH + x0;
+                if (seen[i0] || !is_region(x0, y0)) continue;
+
+                comp.clear();
+                comp.push_back((int)i0);
+                seen[i0] = 1;
+                for (size_t h = 0; h < comp.size(); h++) {
+                    int qx = comp[h] % MAP_WIDTH, qy = comp[h] / MAP_WIDTH;
+                    // Ground across a bridgeable channel belongs to the same
+                    // wasteland: it is somewhere a trail can get to, so the
+                    // dungeons either side of a narrow channel are joined to
+                    // each other rather than each getting a trail of its own.
+                    // Across a channel too wide to bridge they are not, and the
+                    // two sides are two regions — which is right, since there
+                    // is no way between them.
+                    for (int d = 0; d < 4; d++) {
+                        int sp = span_from(qx, qy, d);
+                        if (sp < 0 || seen[sp]) continue;
+                        seen[sp] = 1;
+                        comp.push_back(sp);
+                    }
+                    for (int d = 0; d < 4; d++) {
+                        int nx = qx + DX4[d], ny = qy + DY4[d];
+                        if (!in_bounds(nx, ny)) continue;
+                        size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                        if (seen[ni] || !is_region(nx, ny)) continue;
+                        seen[ni] = 1;
+                        comp.push_back((int)ni);
+                    }
+                }
+                for (int c : comp) incomp[c] = 1;
+
+                // An entrance stamp overwrites the ground it sits on, so the
+                // dungeon tile itself is not part of the region. Anchor to the
+                // nearest walkable tile of this wasteland instead, and if there
+                // is none within reach the dungeon belongs to somewhere else.
+                //
+                // Not to lava, near as it might be: an anchor is where a trail
+                // begins, and one out in a channel would start it on a stretch
+                // of bridge going nowhere.
+                std::vector<int> anchors;
+                for (size_t ni2 = 0; ni2 < nodes.size(); ni2++) {
+                    int ex = nodes[ni2].first;
+                    int ey = nodes[ni2].second;
+                    int best = -1, bestd = INT_MAX;
+                    for (int dy = -ANCHOR_SEARCH; dy <= ANCHOR_SEARCH; dy++)
+                        for (int dx = -ANCHOR_SEARCH; dx <= ANCHOR_SEARCH; dx++) {
+                            int nx = ex + dx, ny = ey + dy;
+                            if (!in_bounds(nx, ny)) continue;
+                            size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                            if (!incomp[ni] || is_lava(nx, ny)) continue;
+                            int dd = dx*dx + dy*dy;
+                            if (dd < bestd) { bestd = dd; best = (int)ni; }
+                        }
+                    if (best >= 0) anchors.push_back(best);
+                }
+
+                std::vector<std::pair<int,int>> edges;
+                if (anchors.size() >= 2) {
+                    // Minimum spanning tree over the dungeons, by Prim: grow
+                    // the tree one dungeon at a time, always taking the nearest
+                    // one still outside it.
+                    std::vector<bool> intree(anchors.size(), false);
+                    intree[0] = true;
+                    for (size_t added = 1; added < anchors.size(); added++) {
+                        int ba = -1, bb = -1; double bestd = 1e18;
+                        for (size_t a = 0; a < anchors.size(); a++) {
+                            if (!intree[a]) continue;
+                            int ax = anchors[a] % MAP_WIDTH, ay = anchors[a] / MAP_WIDTH;
+                            for (size_t b = 0; b < anchors.size(); b++) {
+                                if (intree[b]) continue;
+                                int bx = anchors[b] % MAP_WIDTH, by = anchors[b] / MAP_WIDTH;
+                                double dd = (double)(ax-bx)*(ax-bx) + (double)(ay-by)*(ay-by);
+                                if (dd < bestd) { bestd = dd; ba = (int)a; bb = (int)b; }
+                            }
+                        }
+                        if (bb < 0) break;
+                        intree[bb] = true;
+                        edges.push_back({ anchors[ba], anchors[bb] });
+                    }
+                } else if (anchors.size() == 1) {
+                    // A lone dungeon has nothing to join. Rather than leave the
+                    // wasteland bare, run its path out toward the point furthest
+                    // away — a track leading somewhere from the mouth. Pairing
+                    // it with a dungeon in another wasteland is not an option:
+                    // a trail cannot leave the biome to get there.
+                    //
+                    // The literal furthest point of an elongated wasteland
+                    // almost always sits right against its outer border, which
+                    // made the route to it run along that border for most of
+                    // its length instead of just ending out in the waste. Only
+                    // consider points with a clearance ring of the same
+                    // component around them, so the target — and the path
+                    // approaching it — stays away from the edge.
+                    //
+                    // The same ring the route wants, so the target is somewhere
+                    // the route can reach without giving that up. A smaller one
+                    // let the target sit up a narrow arm or spit, and a route
+                    // has no way to travel a five-wide arm except along its
+                    // edge, however much clearance it would rather have.
+                    const int EDGE_MARGIN = EDGE_CLEARANCE;
+                    int a = anchors[0];
+                    int ax = a % MAP_WIDTH, ay = a / MAP_WIDTH;
+                    auto is_deep = [&](int px2, int py2) {
+                        for (int dy = -EDGE_MARGIN; dy <= EDGE_MARGIN; dy++)
+                            for (int dx = -EDGE_MARGIN; dx <= EDGE_MARGIN; dx++) {
+                                int nx = px2 + dx, ny = py2 + dy;
+                                if (!in_bounds(nx, ny)) return false;
+                                if (!incomp[(size_t)ny * MAP_WIDTH + nx]) return false;
+                            }
+                        return true;
+                    };
+                    int pick = -1; long bestd = -1;
+                    for (int c : comp) {
+                        int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                        if (is_lava(px2, py2)) continue;   // no track ends mid-bridge
+                        if (!is_deep(px2, py2)) continue;
+                        long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                        if (dd > bestd) { bestd = dd; pick = c; }
+                    }
+                    if (pick < 0) {
+                        // No point has full clearance — a thin sliver of a
+                        // wasteland. Fall back to the plain furthest point
+                        // rather than leave the lone dungeon without a trail.
+                        for (int c : comp) {
+                            int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
+                            if (is_lava(px2, py2)) continue;
+                            long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                            if (dd > bestd) { bestd = dd; pick = c; }
+                        }
+                    }
+                    if (pick >= 0) edges.push_back({ a, pick });
+                }
+
+                if (!edges.empty()) {
+                    // Tiles of *this* wasteland. The smoothing and the paint
+                    // fallback below have to ask this rather than is_region:
+                    // is_region accepts any wasteland, so a point drifting
+                    // across a thin barrier into the neighbouring one passes
+                    // it, the fallback is skipped, and paint_trail then refuses
+                    // the tile for not belonging here — leaving a silent gap
+                    // that breaks the trail in two.
+                    auto in_this = [&](int x, int y) {
+                        return in_bounds(x, y) && incomp[(size_t)y * MAP_WIDTH + x];
+                    };
+
+                    // Keep the route off the wasteland's own border, for the
+                    // same reason it is kept off lava. A shortest path through
+                    // a curved region hugs the inside of the bend, so the
+                    // clearance around the target was not enough on its own:
+                    // the route reaching a target well out in the waste still
+                    // ran along the rim for most of its length.
+                    //
+                    // How far in each tile is, up to EDGE_CLEARANCE, by growing
+                    // the rim inward that many times: 1 for a tile against the
+                    // border, 0 for anything deeper than the margin. It is a
+                    // depth rather than a flag because the router gives the
+                    // margin up a tile at a time — banning tiles outright would
+                    // cost a narrow arm of a wasteland the rule altogether,
+                    // since every tile in a five-wide neck is within three of
+                    // the border and there would be no way through at all.
+                    //
+                    // With the drift clamped to two tiles and a radius-one
+                    // brush, a route three tiles in leaves the painted trail
+                    // clear of the border at worst.
+                    //
+                    // Lava is not the border for this purpose, whatever the
+                    // routing graph thinks of it. The margin exists to keep the
+                    // trail off the edge of the biome, and a channel running
+                    // through the middle of one is not that — treating it as
+                    // border would push the route six tiles clear of every
+                    // shore and leave it unable to reach a crossing at all.
+                    rimq.clear();
+                    for (int c : comp) {
+                        int qx = c % MAP_WIDTH, qy = c / MAP_WIDTH;
+                        bool onrim = false;
+                        for (int dy = -1; dy <= 1 && !onrim; dy++)
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = qx + dx, ny = qy + dy;
+                                if (in_this(nx, ny)) continue;
+                                if (in_bounds(nx, ny) && is_lava(nx, ny)) continue;
+                                onrim = true; break;
+                            }
+                        if (onrim) { nearedge[c] = 1; rimq.push_back(c); }
+                    }
+                    for (int depth = 1, lo = 0, hi = (int)rimq.size();
+                         depth < EDGE_CLEARANCE; depth++, lo = hi, hi = (int)rimq.size()) {
+                        for (int h = lo; h < hi; h++) {
+                            int qx = rimq[h] % MAP_WIDTH, qy = rimq[h] / MAP_WIDTH;
+                            for (int dy = -1; dy <= 1; dy++)
+                                for (int dx = -1; dx <= 1; dx++) {
+                                    int nx = qx + dx, ny = qy + dy;
+                                    if (!in_this(nx, ny)) continue;
+                                    size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                                    if (nearedge[ni]) continue;
+                                    nearedge[ni] = (uint8_t)(depth + 1);
+                                    rimq.push_back((int)ni);
+                                }
+                        }
+                    }
+
+                    auto paint_trail = [&](int ix, int iy) {
+                        // Radius one, so the stroke is three tiles at its
+                        // narrowest and only widens where it turns. Three is
+                        // the floor worth having: the nine-slice needs a row
+                        // down the middle with trail either side to put its
+                        // fill in, and at two wide every tile is a border.
+                        for (int by = -1; by <= 1; by++)
+                            for (int bx = -1; bx <= 1; bx++) {
+                                if (bx*bx + by*by > 1) continue;
+                                int px2 = ix + bx, py2 = iy + by;
+                                if (!in_bounds(px2, py2)) continue;
+                                size_t pi = (size_t)py2 * MAP_WIDTH + px2;
+                                // Never bleed into a neighbouring wasteland
+                                // across a thin barrier: that leaves a scrap of
+                                // trail somewhere it was not asked for.
+                                if (!incomp[pi]) continue;
+                                if (!paintable(px2, py2)) continue;
+                                map->tiles[py2][px2] = path_tile;
+                                // Nothing grows on a trail. Trees, dead trees,
+                                // rocks and ore are all scattered long before
+                                // the route through them is known, so they are
+                                // cleared here rather than tested for at
+                                // placement — the same reason the overlays
+                                // beside water are swept afterwards.
+                                map->overlay[py2][px2] = 0;
+                            }
+                    };
+
+                    // One tile's worth of bridge: the three across the span, and
+                    // nothing else. The trail brush cannot do this — it is a
+                    // diamond swept along a line that bends, so it would round
+                    // the bridge's corners off and widen its mouth wherever the
+                    // trail turned to meet it. Here the deck is laid square
+                    // across the direction of travel and only over lava, so a
+                    // crossing is three wide from end to end whatever the trail
+                    // either side of it is doing.
+                    //
+                    // `axis` is 0 for a span running east-west, 1 north-south.
+                    auto paint_span = [&](int ix, int iy, int axis) {
+                        for (int k = -1; k <= 1; k++) {
+                            int px2 = ix + (axis == 1 ? k : 0);
+                            int py2 = iy + (axis == 0 ? k : 0);
+                            if (!in_bounds(px2, py2)) continue;
+                            if (!is_raw_gap(px2, py2)) continue;
+                            if (in_moat(px2, py2)) continue;
+                            map->tiles[py2][px2]   = bridge_tile;
+                            map->overlay[py2][px2] = 0;
+                        }
+                    };
+
+                    for (auto& e : edges) {
+                        int from = e.first, to = e.second;
+                        s_trail_edges++;
+                        // Two dungeons close enough to share an anchor: there
+                        // is nothing to route, and they are already joined.
+                        if (from == to) { paint_trail(from % MAP_WIDTH, from / MAP_WIDTH); continue; }
+
+                        // Route through the region rather than straight at the
+                        // target: a straight run leaves the wasteland wherever
+                        // it bends and paints nothing out there.
+                        //
+                        // Each attempt gives up a tile of the border margin,
+                        // down to none, rather than leave the pair unjoined.
+                        // Dropping it in one go would put a route that only
+                        // needed to squeeze through one neck back against the
+                        // rim for its whole length.
+                        //
+                        // The border rule is waived near either end. A dungeon
+                        // can sit anywhere, including hard against the rim, and
+                        // a route that may not start within three tiles of the
+                        // border would fail outright and fall through to the
+                        // attempt that hugs it for its whole length.
+                        int fex = from % MAP_WIDTH, fey = from / MAP_WIDTH;
+                        int tex = to   % MAP_WIDTH, tey = to   / MAP_WIDTH;
+                        auto near_end = [&](int x, int y) {
+                            return (abs(x - fex) <= ENDPOINT_FREE && abs(y - fey) <= ENDPOINT_FREE)
+                                || (abs(x - tex) <= ENDPOINT_FREE && abs(y - tey) <= ENDPOINT_FREE);
+                        };
+                        bool found = false;
+                        path.clear();
+                        for (int margin = EDGE_CLEARANCE; margin >= 0 && !found; margin--) {
+                            route.clear();
+                            route.push_back(from);
+                            prev[from] = from;
+                            touched.push_back(from);
+                            for (size_t h = 0; h < route.size() && !found; h++) {
+                                int qx = route[h] % MAP_WIDTH, qy = route[h] / MAP_WIDTH;
+                                // Vary which direction is tried first. Every
+                                // shortest path here is the same length, and a
+                                // fixed order always picks the same one: run
+                                // east as far as possible, then turn. That came
+                                // out looking like a circuit board.
+                                ts = ts * 1664525u + 1013904223u;
+                                int rot = (int)((ts >> 16) & 3u);
+                                // Once out over lava there is only one way to
+                                // go: on in the same direction, until ground.
+                                // The direction is not remembered anywhere — it
+                                // is where this tile was entered from, which is
+                                // what prev already says.
+                                //
+                                // Crossing tile by tile rather than in one jump
+                                // is what keeps a bridge from being a shortcut.
+                                // A span counted as a single step cost the same
+                                // as one pace whatever its length, so the search
+                                // took every crossing it could find and the
+                                // wasteland came out stitched with bridges.
+                                // Stepped over, ten tiles of lava cost ten paces
+                                // and a trail only crosses where crossing is
+                                // genuinely the shorter way.
+                                bool on_lava = is_lava(qx, qy);
+                                int fixed_d = -1;
+                                if (on_lava) {
+                                    int p = prev[route[h]];
+                                    int ddx = qx - p % MAP_WIDTH, ddy = qy - p / MAP_WIDTH;
+                                    for (int d = 0; d < 4; d++)
+                                        if (DX4[d] == ddx && DY4[d] == ddy) fixed_d = d;
+                                }
+                                for (int k = 0; k < 4 && !found; k++) {
+                                    int d = on_lava ? fixed_d : ((k + rot) & 3);
+                                    if (d < 0) break;
+                                    int nx = qx + DX4[d], ny = qy + DY4[d];
+                                    if (in_bounds(nx, ny)) {
+                                        int ni = ny * MAP_WIDTH + nx;
+                                        int run = on_lava ? runlen[route[h]] : 0;
+                                        bool ok = false;
+                                        if (incomp[ni]) {
+                                            ok = true;                 // ground, either side
+                                        } else if (spannable(nx, ny) && run < BRIDGE_MAX
+                                                   && (on_lava || cool[route[h]] == 0)) {
+                                            ok = true;                 // another tile of channel
+                                        }
+                                        if (ok && prev[ni] == -1 &&
+                                            !(nearedge[ni] && nearedge[ni] <= margin
+                                              && ni != to && !near_end(nx, ny))) {
+                                            prev[ni] = route[h];
+                                            runlen[ni] = incomp[ni] ? 0 : (uint8_t)(run + 1);
+                                            // Landing from a crossing starts the
+                                            // debt; walking pays it off a tile
+                                            // at a time.
+                                            cool[ni] = incomp[ni]
+                                                ? (on_lava ? (uint8_t)BRIDGE_GAP
+                                                           : (uint8_t)(cool[route[h]] ? cool[route[h]] - 1 : 0))
+                                                : 0;
+                                            touched.push_back(ni);
+                                            route.push_back(ni);
+                                            if (ni == to) { found = true; break; }
+                                        }
+                                    }
+                                    if (on_lava) break;   // the one direction, and no other
+                                }
+                            }
+                            if (found)
+                                for (int cur = to; cur != from; cur = prev[cur])
+                                    path.push_back(cur);
+                            for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
+                            touched.clear();
+                        }
+                        if (!found) { s_trail_unroutable++; continue; }
+                        std::reverse(path.begin(), path.end());
+                        // Short paths are drawn too. Skipping them used to be
+                        // the tidy option — the smoothing filter reads two
+                        // points either side and has nothing to work with — but
+                        // an unpainted link leaves the spanning tree in pieces
+                        // a tile or two apart. Both loops below already guard
+                        // their own bounds, so a short path simply passes
+                        // through them unsmoothed.
+
+                        // Smooth off the staircase, then drift the result
+                        // sideways by a slowly changing amount so no stretch
+                        // stays straight for long. A step that would leave the
+                        // region is refused: checking only at the end is too
+                        // late, because once a point has drifted out the later
+                        // passes carry its neighbours after it.
+                        std::vector<float> fxs(path.size()), fys(path.size());
+                        for (size_t i = 0; i < path.size(); i++) {
+                            fxs[i] = (float)(path[i] % MAP_WIDTH);
+                            fys[i] = (float)(path[i] / MAP_WIDTH);
+                        }
+
+                        // Which points are on a bridge, and which way it runs:
+                        // -1 for ground, 0 for a span going east-west, 1 for
+                        // north-south. Taken from the tile rather than
+                        // remembered from the search, so it does not matter how
+                        // the path was put together.
+                        //
+                        // These points are pinned. Everything below moves the
+                        // line about to take the ruled edge off it, and a bridge
+                        // is the one part that has to stay ruled — the point of
+                        // it is that it goes one way only. The ground either
+                        // side of a span is pinned too, or the smoothing pulls
+                        // the approach off the end of the deck.
+                        std::vector<int8_t> span(path.size(), -1);
+                        for (size_t i = 0; i < path.size(); i++) {
+                            int px2 = path[i] % MAP_WIDTH, py2 = path[i] / MAP_WIDTH;
+                            if (!is_lava(px2, py2)) continue;
+                            size_t j = (i > 0) ? i - 1 : i + 1;
+                            if (j >= path.size()) { span[i] = 0; continue; }
+                            span[i] = (path[j] / MAP_WIDTH == py2) ? 0 : 1;
+                        }
+                        std::vector<uint8_t> pinned(path.size(), 0);
+                        for (size_t i = 0; i < path.size(); i++) {
+                            if (span[i] < 0) continue;
+                            pinned[i] = 1;
+                            if (i > 0) pinned[i-1] = 1;
+                            if (i + 1 < path.size()) pinned[i+1] = 1;
+                        }
+                        for (int pass = 0; pass < 6; pass++) {
+                            std::vector<float> nx2 = fxs, ny2 = fys;
+                            for (size_t i = 2; i + 2 < path.size(); i++) {
+                                if (pinned[i]) continue;
+                                float sx2 = (fxs[i-2] + fxs[i-1]*2 + fxs[i]*3 + fxs[i+1]*2 + fxs[i+2]) / 9.0f;
+                                float sy2 = (fys[i-2] + fys[i-1]*2 + fys[i]*3 + fys[i+1]*2 + fys[i+2]) / 9.0f;
+                                if (in_this((int)sx2, (int)sy2)) {
+                                    nx2[i] = sx2; ny2[i] = sy2;
+                                }
+                            }
+                            fxs.swap(nx2); fys.swap(ny2);
+                        }
+                        float drift = 0.0f, dvel = 0.0f;
+                        for (size_t i = 1; i + 1 < path.size(); i++) {
+                            // A pinned point takes no drift, and the wander is
+                            // wound back to nothing so it leaves the far end of
+                            // a bridge as straight as it met the near one.
+                            if (pinned[i]) { drift = 0.0f; dvel = 0.0f; continue; }
+                            ts = ts * 1664525u + 1013904223u;
+                            float kick = (float)((ts >> 16) % 2001u) / 1000.0f - 1.0f;
+                            // Pull the wander back toward the centreline as it
+                            // goes, not just clamp it: without a restoring
+                            // force this is an integrated random walk, so its
+                            // swing keeps growing with every extra step and a
+                            // long path ends up far more distorted at its far
+                            // end than near where it started. The spring term
+                            // bounds the swing regardless of how long the path
+                            // between two dungeons is, so the trail stays an
+                            // even, gentle snake its whole length.
+                            //
+                            // How loose it is decides what the snake looks
+                            // like. Stiff enough and the wander never gets
+                            // anywhere: at 0.02 the swing settled around 0.7
+                            // of a tile, well under the width of the trail
+                            // itself, and long runs came out as ruled straight
+                            // lines. This leaves it near a tile and a half,
+                            // inside the clamp, and stretches a full swing out
+                            // over some seventy tiles.
+                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
+                            drift += dvel;
+                            if (drift >  2.0f) drift =  2.0f;
+                            if (drift < -2.0f) drift = -2.0f;
+                            float tx2 = fxs[i+1] - fxs[i-1], ty2 = fys[i+1] - fys[i-1];
+                            float len2 = sqrtf(tx2*tx2 + ty2*ty2);
+                            if (len2 < 0.001f) continue;
+                            // Where the offset point is not somewhere a trail
+                            // can go, shorten it rather than drop it. Refusing
+                            // it outright left the point on the routed line
+                            // while its neighbours stood a full drift away, and
+                            // the brush, which draws between consecutive
+                            // centres, filled that jump in solid — a bulge
+                            // several tiles across in exactly the places the
+                            // drift gets refused most, along the border and
+                            // around lava. Backing off keeps the line
+                            // continuous, so it leans away from the obstacle
+                            // instead of jumping off it.
+                            //
+                            // The drift itself is wound back to what was
+                            // accepted, or the spring would spend the next
+                            // dozen steps hauling a value the line never took
+                            // back toward the centre.
+                            float taken = 0.0f;
+                            for (float s = 1.0f; s > 0.0f; s -= 0.25f) {
+                                float px2 = fxs[i] - ty2 / len2 * drift * s;
+                                float py2 = fys[i] + tx2 / len2 * drift * s;
+                                int ix = (int)px2, iy = (int)py2;
+                                if (!in_this(ix, iy)) continue;
+                                fxs[i] = px2; fys[i] = py2;
+                                taken = s;
+                                break;
+                            }
+                            drift *= taken;
+                        }
+
+                        // Draw between consecutive centres rather than stamping
+                        // at each: smoothing and drift move points by a few
+                        // tiles, and where one is carried out of the region it
+                        // falls back to the routed original — a jump wide
+                        // enough that two brush marks no longer overlap.
+                        int lastx = -1, lasty = -1;
+                        for (size_t i = 0; i < path.size(); i++) {
+                            // A span point is laid where the route put it, deck
+                            // only, and takes no part in the joining-up below:
+                            // interpolating onto or off a bridge would step
+                            // diagonally across the deck and cut its corners.
+                            if (span[i] >= 0) {
+                                paint_span(path[i] % MAP_WIDTH, path[i] / MAP_WIDTH, span[i]);
+                                lastx = -1;
+                                continue;
+                            }
+                            int ix = (int)fxs[i], iy = (int)fys[i];
+                            if (!in_this(ix, iy)) {
+                                ix = path[i] % MAP_WIDTH;
+                                iy = path[i] / MAP_WIDTH;
+                            }
+                            if (lastx < 0) {
+                                paint_trail(ix, iy);
+                            } else {
+                                int dxs = ix - lastx, dys = iy - lasty;
+                                int steps = (abs(dxs) > abs(dys)) ? abs(dxs) : abs(dys);
+                                if (steps < 1) steps = 1;
+                                for (int s = 1; s <= steps; s++)
+                                    paint_trail(lastx + dxs * s / steps,
+                                                lasty + dys * s / steps);
+                            }
+                            lastx = ix; lasty = iy;
+                        }
+                    }
+                }
+                for (int c : comp) { incomp[c] = 0; nearedge[c] = 0; }
+            }
+        }
+}
+
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Run at idle priority so this thread doesn't compete with the game loop
 #ifdef _WIN32
@@ -3948,42 +4556,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // turn would double back across the region; a tree branches the way tracks
     // between places actually do.
     {
-        // Asked for rather than required: the
-        // router gives it up a tile at a time until a way through appears, so
-        // this is how far from the border a trail would like to run, not how
-        // far it must. Three was enough to stop trails tracing the rim but left
-        // them well inside it — routed at a mean of five tiles' clearance where
-        // the wasteland's own mean was nine — because a shortest path still
-        // hugs the inside of a bend once it is clear of the margin.
         const int EDGE_CLEARANCE = 6;      // tiles the trail would rather keep from the border
         const int ENDPOINT_FREE  = 10;     // radius around a dungeon where that is waived
         const int ANCHOR_SEARCH  = 8;      // how far off a dungeon to find ground
-        const int DX4[4] = {1,-1,0,0}, DY4[4] = {0,0,1,-1};
-        std::vector<uint8_t> seen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        std::vector<uint8_t> incomp((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        std::vector<uint8_t> nearedge((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        std::vector<int> prev((size_t)MAP_WIDTH * MAP_HEIGHT, -1);
-        // How many tiles of lava the route has crossed to reach this one, so a
-        // crossing can be cut off once it is longer than a bridge should be.
-        std::vector<uint8_t> runlen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        // And how much ground it still owes before it may cross again. Two
-        // crossings back to back meet at a corner and fuse into one L-shaped
-        // deck, which is neither three wide nor going one way.
-        std::vector<uint8_t> cool((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
-        std::vector<int> comp, route, touched, path, rimq;
-        unsigned int ts = seed ^ 0x7A11D0u;
-
-        // A bridge is a straight run and nothing else: one direction, three
-        // tiles wide, and short. So lava is not ground the route wanders over —
-        // it is a gap the route may step across in one move, in a straight line
-        // and only where the crossing is brief. Anything wider is gone around.
-        //
-        // Letting the route treat lava as ordinary ground, which is what it did
-        // before, gave crossings that curved with the trail and sprawled wider
-        // than the trail at every turn, because the brush was sweeping a
-        // wandering line over a channel rather than laying a span across it.
-        const int BRIDGE_MAX = 10;   // longest crossing, in tiles of lava
-        const int BRIDGE_GAP = 4;    // ground a route must cover between crossings
 
         // The citadel's moat is the one lava no bridge may span. Crossing it
         // would hand over the way in that the ring exists to withhold.
@@ -3998,10 +4573,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int t = map->tiles[y][x];
             return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
         };
-        // Lava a bridge is allowed to cross.
-        auto spannable = [&](int x, int y) {
-            return is_lava(x, y) && !in_moat(x, y);
-        };
 
         // Ground a trail can be laid on. Cliffs are excluded here rather than
         // left to the brush: routing over ground that cannot be painted tears
@@ -4014,547 +4585,19 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return true;
         };
 
-        // Is there a crossing from ground at (x,y) straight out along d — over
-        // nothing but spannable lava, landing on ground no more than
-        // BRIDGE_MAX tiles away? Returns where it lands, or -1.
-        //
-        // Used to work out what belongs to the same wasteland, where all that
-        // matters is whether a route could get across. The route itself does
-        // not step this way; it walks the channel a tile at a time, so that
-        // crossing costs what it is worth.
-        auto span_from = [&](int x, int y, int d) {
-            int nx = x + DX4[d], ny = y + DY4[d];
-            if (!in_bounds(nx, ny) || !spannable(nx, ny)) return -1;
-            for (int k = 1; k <= BRIDGE_MAX; k++) {
-                nx += DX4[d]; ny += DY4[d];
-                if (!in_bounds(nx, ny)) return -1;
-                if (spannable(nx, ny)) continue;
-                return is_region(nx, ny) ? ny * MAP_WIDTH + nx : -1;
-            }
-            return -1;
-        };
+        // The deck goes over raw lava only, and the trail over bare wasteland.
+        auto raw_lava  = [&](int x, int y) { return map->tiles[y][x] == TILE_LAVA; };
+        auto paint_over = [&](int x, int y) { return map->tiles[y][x] == TILE_WASTELAND; };
 
-        for (int y0 = 0; y0 < MAP_HEIGHT && !s_gen_cancel; y0++) {
-            for (int x0 = 0; x0 < MAP_WIDTH; x0++) {
-                size_t i0 = (size_t)y0 * MAP_WIDTH + x0;
-                if (seen[i0] || !is_region(x0, y0)) continue;
+        std::vector<std::pair<int,int>> nodes;
+        for (int i = 0; i < map->num_dungeon_entrances; i++)
+            nodes.push_back({ map->dungeon_entrances[i].x,
+                              map->dungeon_entrances[i].y });
 
-                comp.clear();
-                comp.push_back((int)i0);
-                seen[i0] = 1;
-                for (size_t h = 0; h < comp.size(); h++) {
-                    int qx = comp[h] % MAP_WIDTH, qy = comp[h] / MAP_WIDTH;
-                    // Ground across a bridgeable channel belongs to the same
-                    // wasteland: it is somewhere a trail can get to, so the
-                    // dungeons either side of a narrow channel are joined to
-                    // each other rather than each getting a trail of its own.
-                    // Across a channel too wide to bridge they are not, and the
-                    // two sides are two regions — which is right, since there
-                    // is no way between them.
-                    for (int d = 0; d < 4; d++) {
-                        int sp = span_from(qx, qy, d);
-                        if (sp < 0 || seen[sp]) continue;
-                        seen[sp] = 1;
-                        comp.push_back(sp);
-                    }
-                    for (int d = 0; d < 4; d++) {
-                        int nx = qx + DX4[d], ny = qy + DY4[d];
-                        if (!in_bounds(nx, ny)) continue;
-                        size_t ni = (size_t)ny * MAP_WIDTH + nx;
-                        if (seen[ni] || !is_region(nx, ny)) continue;
-                        seen[ni] = 1;
-                        comp.push_back((int)ni);
-                    }
-                }
-                for (int c : comp) incomp[c] = 1;
-
-                // An entrance stamp overwrites the ground it sits on, so the
-                // dungeon tile itself is not part of the region. Anchor to the
-                // nearest walkable tile of this wasteland instead, and if there
-                // is none within reach the dungeon belongs to somewhere else.
-                //
-                // Not to lava, near as it might be: an anchor is where a trail
-                // begins, and one out in a channel would start it on a stretch
-                // of bridge going nowhere.
-                std::vector<int> anchors;
-                for (int i = 0; i < map->num_dungeon_entrances; i++) {
-                    int ex = map->dungeon_entrances[i].x;
-                    int ey = map->dungeon_entrances[i].y;
-                    int best = -1, bestd = INT_MAX;
-                    for (int dy = -ANCHOR_SEARCH; dy <= ANCHOR_SEARCH; dy++)
-                        for (int dx = -ANCHOR_SEARCH; dx <= ANCHOR_SEARCH; dx++) {
-                            int nx = ex + dx, ny = ey + dy;
-                            if (!in_bounds(nx, ny)) continue;
-                            size_t ni = (size_t)ny * MAP_WIDTH + nx;
-                            if (!incomp[ni] || is_lava(nx, ny)) continue;
-                            int dd = dx*dx + dy*dy;
-                            if (dd < bestd) { bestd = dd; best = (int)ni; }
-                        }
-                    if (best >= 0) anchors.push_back(best);
-                }
-
-                std::vector<std::pair<int,int>> edges;
-                if (anchors.size() >= 2) {
-                    // Minimum spanning tree over the dungeons, by Prim: grow
-                    // the tree one dungeon at a time, always taking the nearest
-                    // one still outside it.
-                    std::vector<bool> intree(anchors.size(), false);
-                    intree[0] = true;
-                    for (size_t added = 1; added < anchors.size(); added++) {
-                        int ba = -1, bb = -1; double bestd = 1e18;
-                        for (size_t a = 0; a < anchors.size(); a++) {
-                            if (!intree[a]) continue;
-                            int ax = anchors[a] % MAP_WIDTH, ay = anchors[a] / MAP_WIDTH;
-                            for (size_t b = 0; b < anchors.size(); b++) {
-                                if (intree[b]) continue;
-                                int bx = anchors[b] % MAP_WIDTH, by = anchors[b] / MAP_WIDTH;
-                                double dd = (double)(ax-bx)*(ax-bx) + (double)(ay-by)*(ay-by);
-                                if (dd < bestd) { bestd = dd; ba = (int)a; bb = (int)b; }
-                            }
-                        }
-                        if (bb < 0) break;
-                        intree[bb] = true;
-                        edges.push_back({ anchors[ba], anchors[bb] });
-                    }
-                } else if (anchors.size() == 1) {
-                    // A lone dungeon has nothing to join. Rather than leave the
-                    // wasteland bare, run its path out toward the point furthest
-                    // away — a track leading somewhere from the mouth. Pairing
-                    // it with a dungeon in another wasteland is not an option:
-                    // a trail cannot leave the biome to get there.
-                    //
-                    // The literal furthest point of an elongated wasteland
-                    // almost always sits right against its outer border, which
-                    // made the route to it run along that border for most of
-                    // its length instead of just ending out in the waste. Only
-                    // consider points with a clearance ring of the same
-                    // component around them, so the target — and the path
-                    // approaching it — stays away from the edge.
-                    //
-                    // The same ring the route wants, so the target is somewhere
-                    // the route can reach without giving that up. A smaller one
-                    // let the target sit up a narrow arm or spit, and a route
-                    // has no way to travel a five-wide arm except along its
-                    // edge, however much clearance it would rather have.
-                    const int EDGE_MARGIN = EDGE_CLEARANCE;
-                    int a = anchors[0];
-                    int ax = a % MAP_WIDTH, ay = a / MAP_WIDTH;
-                    auto is_deep = [&](int px2, int py2) {
-                        for (int dy = -EDGE_MARGIN; dy <= EDGE_MARGIN; dy++)
-                            for (int dx = -EDGE_MARGIN; dx <= EDGE_MARGIN; dx++) {
-                                int nx = px2 + dx, ny = py2 + dy;
-                                if (!in_bounds(nx, ny)) return false;
-                                if (!incomp[(size_t)ny * MAP_WIDTH + nx]) return false;
-                            }
-                        return true;
-                    };
-                    int pick = -1; long bestd = -1;
-                    for (int c : comp) {
-                        int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
-                        if (is_lava(px2, py2)) continue;   // no track ends mid-bridge
-                        if (!is_deep(px2, py2)) continue;
-                        long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
-                        if (dd > bestd) { bestd = dd; pick = c; }
-                    }
-                    if (pick < 0) {
-                        // No point has full clearance — a thin sliver of a
-                        // wasteland. Fall back to the plain furthest point
-                        // rather than leave the lone dungeon without a trail.
-                        for (int c : comp) {
-                            int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
-                            if (is_lava(px2, py2)) continue;
-                            long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
-                            if (dd > bestd) { bestd = dd; pick = c; }
-                        }
-                    }
-                    if (pick >= 0) edges.push_back({ a, pick });
-                }
-
-                if (!edges.empty()) {
-                    // Tiles of *this* wasteland. The smoothing and the paint
-                    // fallback below have to ask this rather than is_region:
-                    // is_region accepts any wasteland, so a point drifting
-                    // across a thin barrier into the neighbouring one passes
-                    // it, the fallback is skipped, and paint_trail then refuses
-                    // the tile for not belonging here — leaving a silent gap
-                    // that breaks the trail in two.
-                    auto in_this = [&](int x, int y) {
-                        return in_bounds(x, y) && incomp[(size_t)y * MAP_WIDTH + x];
-                    };
-
-                    // Keep the route off the wasteland's own border, for the
-                    // same reason it is kept off lava. A shortest path through
-                    // a curved region hugs the inside of the bend, so the
-                    // clearance around the target was not enough on its own:
-                    // the route reaching a target well out in the waste still
-                    // ran along the rim for most of its length.
-                    //
-                    // How far in each tile is, up to EDGE_CLEARANCE, by growing
-                    // the rim inward that many times: 1 for a tile against the
-                    // border, 0 for anything deeper than the margin. It is a
-                    // depth rather than a flag because the router gives the
-                    // margin up a tile at a time — banning tiles outright would
-                    // cost a narrow arm of a wasteland the rule altogether,
-                    // since every tile in a five-wide neck is within three of
-                    // the border and there would be no way through at all.
-                    //
-                    // With the drift clamped to two tiles and a radius-one
-                    // brush, a route three tiles in leaves the painted trail
-                    // clear of the border at worst.
-                    //
-                    // Lava is not the border for this purpose, whatever the
-                    // routing graph thinks of it. The margin exists to keep the
-                    // trail off the edge of the biome, and a channel running
-                    // through the middle of one is not that — treating it as
-                    // border would push the route six tiles clear of every
-                    // shore and leave it unable to reach a crossing at all.
-                    rimq.clear();
-                    for (int c : comp) {
-                        int qx = c % MAP_WIDTH, qy = c / MAP_WIDTH;
-                        bool onrim = false;
-                        for (int dy = -1; dy <= 1 && !onrim; dy++)
-                            for (int dx = -1; dx <= 1; dx++) {
-                                int nx = qx + dx, ny = qy + dy;
-                                if (in_this(nx, ny)) continue;
-                                if (in_bounds(nx, ny) && is_lava(nx, ny)) continue;
-                                onrim = true; break;
-                            }
-                        if (onrim) { nearedge[c] = 1; rimq.push_back(c); }
-                    }
-                    for (int depth = 1, lo = 0, hi = (int)rimq.size();
-                         depth < EDGE_CLEARANCE; depth++, lo = hi, hi = (int)rimq.size()) {
-                        for (int h = lo; h < hi; h++) {
-                            int qx = rimq[h] % MAP_WIDTH, qy = rimq[h] / MAP_WIDTH;
-                            for (int dy = -1; dy <= 1; dy++)
-                                for (int dx = -1; dx <= 1; dx++) {
-                                    int nx = qx + dx, ny = qy + dy;
-                                    if (!in_this(nx, ny)) continue;
-                                    size_t ni = (size_t)ny * MAP_WIDTH + nx;
-                                    if (nearedge[ni]) continue;
-                                    nearedge[ni] = (uint8_t)(depth + 1);
-                                    rimq.push_back((int)ni);
-                                }
-                        }
-                    }
-
-                    auto paint_trail = [&](int ix, int iy) {
-                        // Radius one, so the stroke is three tiles at its
-                        // narrowest and only widens where it turns. Three is
-                        // the floor worth having: the nine-slice needs a row
-                        // down the middle with trail either side to put its
-                        // fill in, and at two wide every tile is a border.
-                        for (int by = -1; by <= 1; by++)
-                            for (int bx = -1; bx <= 1; bx++) {
-                                if (bx*bx + by*by > 1) continue;
-                                int px2 = ix + bx, py2 = iy + by;
-                                if (!in_bounds(px2, py2)) continue;
-                                size_t pi = (size_t)py2 * MAP_WIDTH + px2;
-                                // Never bleed into a neighbouring wasteland
-                                // across a thin barrier: that leaves a scrap of
-                                // trail somewhere it was not asked for.
-                                if (!incomp[pi]) continue;
-                                if (map->tiles[py2][px2] != TILE_WASTELAND) continue;
-                                map->tiles[py2][px2] = TILE_WASTE_TRAIL;
-                                // Nothing grows on a trail. Trees, dead trees,
-                                // rocks and ore are all scattered long before
-                                // the route through them is known, so they are
-                                // cleared here rather than tested for at
-                                // placement — the same reason the overlays
-                                // beside water are swept afterwards.
-                                map->overlay[py2][px2] = 0;
-                            }
-                    };
-
-                    // One tile's worth of bridge: the three across the span, and
-                    // nothing else. The trail brush cannot do this — it is a
-                    // diamond swept along a line that bends, so it would round
-                    // the bridge's corners off and widen its mouth wherever the
-                    // trail turned to meet it. Here the deck is laid square
-                    // across the direction of travel and only over lava, so a
-                    // crossing is three wide from end to end whatever the trail
-                    // either side of it is doing.
-                    //
-                    // `axis` is 0 for a span running east-west, 1 north-south.
-                    auto paint_span = [&](int ix, int iy, int axis) {
-                        for (int k = -1; k <= 1; k++) {
-                            int px2 = ix + (axis == 1 ? k : 0);
-                            int py2 = iy + (axis == 0 ? k : 0);
-                            if (!in_bounds(px2, py2)) continue;
-                            if (map->tiles[py2][px2] != TILE_LAVA) continue;
-                            if (in_moat(px2, py2)) continue;
-                            map->tiles[py2][px2]   = TILE_WASTE_BRIDGE;
-                            map->overlay[py2][px2] = 0;
-                        }
-                    };
-
-                    for (auto& e : edges) {
-                        int from = e.first, to = e.second;
-                        s_trail_edges++;
-                        // Two dungeons close enough to share an anchor: there
-                        // is nothing to route, and they are already joined.
-                        if (from == to) { paint_trail(from % MAP_WIDTH, from / MAP_WIDTH); continue; }
-
-                        // Route through the region rather than straight at the
-                        // target: a straight run leaves the wasteland wherever
-                        // it bends and paints nothing out there.
-                        //
-                        // Each attempt gives up a tile of the border margin,
-                        // down to none, rather than leave the pair unjoined.
-                        // Dropping it in one go would put a route that only
-                        // needed to squeeze through one neck back against the
-                        // rim for its whole length.
-                        //
-                        // The border rule is waived near either end. A dungeon
-                        // can sit anywhere, including hard against the rim, and
-                        // a route that may not start within three tiles of the
-                        // border would fail outright and fall through to the
-                        // attempt that hugs it for its whole length.
-                        int fex = from % MAP_WIDTH, fey = from / MAP_WIDTH;
-                        int tex = to   % MAP_WIDTH, tey = to   / MAP_WIDTH;
-                        auto near_end = [&](int x, int y) {
-                            return (abs(x - fex) <= ENDPOINT_FREE && abs(y - fey) <= ENDPOINT_FREE)
-                                || (abs(x - tex) <= ENDPOINT_FREE && abs(y - tey) <= ENDPOINT_FREE);
-                        };
-                        bool found = false;
-                        path.clear();
-                        for (int margin = EDGE_CLEARANCE; margin >= 0 && !found; margin--) {
-                            route.clear();
-                            route.push_back(from);
-                            prev[from] = from;
-                            touched.push_back(from);
-                            for (size_t h = 0; h < route.size() && !found; h++) {
-                                int qx = route[h] % MAP_WIDTH, qy = route[h] / MAP_WIDTH;
-                                // Vary which direction is tried first. Every
-                                // shortest path here is the same length, and a
-                                // fixed order always picks the same one: run
-                                // east as far as possible, then turn. That came
-                                // out looking like a circuit board.
-                                ts = ts * 1664525u + 1013904223u;
-                                int rot = (int)((ts >> 16) & 3u);
-                                // Once out over lava there is only one way to
-                                // go: on in the same direction, until ground.
-                                // The direction is not remembered anywhere — it
-                                // is where this tile was entered from, which is
-                                // what prev already says.
-                                //
-                                // Crossing tile by tile rather than in one jump
-                                // is what keeps a bridge from being a shortcut.
-                                // A span counted as a single step cost the same
-                                // as one pace whatever its length, so the search
-                                // took every crossing it could find and the
-                                // wasteland came out stitched with bridges.
-                                // Stepped over, ten tiles of lava cost ten paces
-                                // and a trail only crosses where crossing is
-                                // genuinely the shorter way.
-                                bool on_lava = is_lava(qx, qy);
-                                int fixed_d = -1;
-                                if (on_lava) {
-                                    int p = prev[route[h]];
-                                    int ddx = qx - p % MAP_WIDTH, ddy = qy - p / MAP_WIDTH;
-                                    for (int d = 0; d < 4; d++)
-                                        if (DX4[d] == ddx && DY4[d] == ddy) fixed_d = d;
-                                }
-                                for (int k = 0; k < 4 && !found; k++) {
-                                    int d = on_lava ? fixed_d : ((k + rot) & 3);
-                                    if (d < 0) break;
-                                    int nx = qx + DX4[d], ny = qy + DY4[d];
-                                    if (in_bounds(nx, ny)) {
-                                        int ni = ny * MAP_WIDTH + nx;
-                                        int run = on_lava ? runlen[route[h]] : 0;
-                                        bool ok = false;
-                                        if (incomp[ni]) {
-                                            ok = true;                 // ground, either side
-                                        } else if (spannable(nx, ny) && run < BRIDGE_MAX
-                                                   && (on_lava || cool[route[h]] == 0)) {
-                                            ok = true;                 // another tile of channel
-                                        }
-                                        if (ok && prev[ni] == -1 &&
-                                            !(nearedge[ni] && nearedge[ni] <= margin
-                                              && ni != to && !near_end(nx, ny))) {
-                                            prev[ni] = route[h];
-                                            runlen[ni] = incomp[ni] ? 0 : (uint8_t)(run + 1);
-                                            // Landing from a crossing starts the
-                                            // debt; walking pays it off a tile
-                                            // at a time.
-                                            cool[ni] = incomp[ni]
-                                                ? (on_lava ? (uint8_t)BRIDGE_GAP
-                                                           : (uint8_t)(cool[route[h]] ? cool[route[h]] - 1 : 0))
-                                                : 0;
-                                            touched.push_back(ni);
-                                            route.push_back(ni);
-                                            if (ni == to) { found = true; break; }
-                                        }
-                                    }
-                                    if (on_lava) break;   // the one direction, and no other
-                                }
-                            }
-                            if (found)
-                                for (int cur = to; cur != from; cur = prev[cur])
-                                    path.push_back(cur);
-                            for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
-                            touched.clear();
-                        }
-                        if (!found) { s_trail_unroutable++; continue; }
-                        std::reverse(path.begin(), path.end());
-                        // Short paths are drawn too. Skipping them used to be
-                        // the tidy option — the smoothing filter reads two
-                        // points either side and has nothing to work with — but
-                        // an unpainted link leaves the spanning tree in pieces
-                        // a tile or two apart. Both loops below already guard
-                        // their own bounds, so a short path simply passes
-                        // through them unsmoothed.
-
-                        // Smooth off the staircase, then drift the result
-                        // sideways by a slowly changing amount so no stretch
-                        // stays straight for long. A step that would leave the
-                        // region is refused: checking only at the end is too
-                        // late, because once a point has drifted out the later
-                        // passes carry its neighbours after it.
-                        std::vector<float> fxs(path.size()), fys(path.size());
-                        for (size_t i = 0; i < path.size(); i++) {
-                            fxs[i] = (float)(path[i] % MAP_WIDTH);
-                            fys[i] = (float)(path[i] / MAP_WIDTH);
-                        }
-
-                        // Which points are on a bridge, and which way it runs:
-                        // -1 for ground, 0 for a span going east-west, 1 for
-                        // north-south. Taken from the tile rather than
-                        // remembered from the search, so it does not matter how
-                        // the path was put together.
-                        //
-                        // These points are pinned. Everything below moves the
-                        // line about to take the ruled edge off it, and a bridge
-                        // is the one part that has to stay ruled — the point of
-                        // it is that it goes one way only. The ground either
-                        // side of a span is pinned too, or the smoothing pulls
-                        // the approach off the end of the deck.
-                        std::vector<int8_t> span(path.size(), -1);
-                        for (size_t i = 0; i < path.size(); i++) {
-                            int px2 = path[i] % MAP_WIDTH, py2 = path[i] / MAP_WIDTH;
-                            if (!is_lava(px2, py2)) continue;
-                            size_t j = (i > 0) ? i - 1 : i + 1;
-                            if (j >= path.size()) { span[i] = 0; continue; }
-                            span[i] = (path[j] / MAP_WIDTH == py2) ? 0 : 1;
-                        }
-                        std::vector<uint8_t> pinned(path.size(), 0);
-                        for (size_t i = 0; i < path.size(); i++) {
-                            if (span[i] < 0) continue;
-                            pinned[i] = 1;
-                            if (i > 0) pinned[i-1] = 1;
-                            if (i + 1 < path.size()) pinned[i+1] = 1;
-                        }
-                        for (int pass = 0; pass < 6; pass++) {
-                            std::vector<float> nx2 = fxs, ny2 = fys;
-                            for (size_t i = 2; i + 2 < path.size(); i++) {
-                                if (pinned[i]) continue;
-                                float sx2 = (fxs[i-2] + fxs[i-1]*2 + fxs[i]*3 + fxs[i+1]*2 + fxs[i+2]) / 9.0f;
-                                float sy2 = (fys[i-2] + fys[i-1]*2 + fys[i]*3 + fys[i+1]*2 + fys[i+2]) / 9.0f;
-                                if (in_this((int)sx2, (int)sy2)) {
-                                    nx2[i] = sx2; ny2[i] = sy2;
-                                }
-                            }
-                            fxs.swap(nx2); fys.swap(ny2);
-                        }
-                        float drift = 0.0f, dvel = 0.0f;
-                        for (size_t i = 1; i + 1 < path.size(); i++) {
-                            // A pinned point takes no drift, and the wander is
-                            // wound back to nothing so it leaves the far end of
-                            // a bridge as straight as it met the near one.
-                            if (pinned[i]) { drift = 0.0f; dvel = 0.0f; continue; }
-                            ts = ts * 1664525u + 1013904223u;
-                            float kick = (float)((ts >> 16) % 2001u) / 1000.0f - 1.0f;
-                            // Pull the wander back toward the centreline as it
-                            // goes, not just clamp it: without a restoring
-                            // force this is an integrated random walk, so its
-                            // swing keeps growing with every extra step and a
-                            // long path ends up far more distorted at its far
-                            // end than near where it started. The spring term
-                            // bounds the swing regardless of how long the path
-                            // between two dungeons is, so the trail stays an
-                            // even, gentle snake its whole length.
-                            //
-                            // How loose it is decides what the snake looks
-                            // like. Stiff enough and the wander never gets
-                            // anywhere: at 0.02 the swing settled around 0.7
-                            // of a tile, well under the width of the trail
-                            // itself, and long runs came out as ruled straight
-                            // lines. This leaves it near a tile and a half,
-                            // inside the clamp, and stretches a full swing out
-                            // over some seventy tiles.
-                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
-                            drift += dvel;
-                            if (drift >  2.0f) drift =  2.0f;
-                            if (drift < -2.0f) drift = -2.0f;
-                            float tx2 = fxs[i+1] - fxs[i-1], ty2 = fys[i+1] - fys[i-1];
-                            float len2 = sqrtf(tx2*tx2 + ty2*ty2);
-                            if (len2 < 0.001f) continue;
-                            // Where the offset point is not somewhere a trail
-                            // can go, shorten it rather than drop it. Refusing
-                            // it outright left the point on the routed line
-                            // while its neighbours stood a full drift away, and
-                            // the brush, which draws between consecutive
-                            // centres, filled that jump in solid — a bulge
-                            // several tiles across in exactly the places the
-                            // drift gets refused most, along the border and
-                            // around lava. Backing off keeps the line
-                            // continuous, so it leans away from the obstacle
-                            // instead of jumping off it.
-                            //
-                            // The drift itself is wound back to what was
-                            // accepted, or the spring would spend the next
-                            // dozen steps hauling a value the line never took
-                            // back toward the centre.
-                            float taken = 0.0f;
-                            for (float s = 1.0f; s > 0.0f; s -= 0.25f) {
-                                float px2 = fxs[i] - ty2 / len2 * drift * s;
-                                float py2 = fys[i] + tx2 / len2 * drift * s;
-                                int ix = (int)px2, iy = (int)py2;
-                                if (!in_this(ix, iy)) continue;
-                                fxs[i] = px2; fys[i] = py2;
-                                taken = s;
-                                break;
-                            }
-                            drift *= taken;
-                        }
-
-                        // Draw between consecutive centres rather than stamping
-                        // at each: smoothing and drift move points by a few
-                        // tiles, and where one is carried out of the region it
-                        // falls back to the routed original — a jump wide
-                        // enough that two brush marks no longer overlap.
-                        int lastx = -1, lasty = -1;
-                        for (size_t i = 0; i < path.size(); i++) {
-                            // A span point is laid where the route put it, deck
-                            // only, and takes no part in the joining-up below:
-                            // interpolating onto or off a bridge would step
-                            // diagonally across the deck and cut its corners.
-                            if (span[i] >= 0) {
-                                paint_span(path[i] % MAP_WIDTH, path[i] / MAP_WIDTH, span[i]);
-                                lastx = -1;
-                                continue;
-                            }
-                            int ix = (int)fxs[i], iy = (int)fys[i];
-                            if (!in_this(ix, iy)) {
-                                ix = path[i] % MAP_WIDTH;
-                                iy = path[i] / MAP_WIDTH;
-                            }
-                            if (lastx < 0) {
-                                paint_trail(ix, iy);
-                            } else {
-                                int dxs = ix - lastx, dys = iy - lasty;
-                                int steps = (abs(dxs) > abs(dys)) ? abs(dxs) : abs(dys);
-                                if (steps < 1) steps = 1;
-                                for (int s = 1; s <= steps; s++)
-                                    paint_trail(lastx + dxs * s / steps,
-                                                lasty + dys * s / steps);
-                            }
-                            lastx = ix; lasty = iy;
-                        }
-                    }
-                }
-                for (int c : comp) { incomp[c] = 0; nearedge[c] = 0; }
-            }
-        }
+        route_network(map, seed ^ 0x7A11D0u, nodes,
+                      is_region, is_lava, raw_lava, in_moat, paint_over,
+                      TILE_WASTE_TRAIL, TILE_WASTE_BRIDGE,
+                      EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, 4);
     }
     // The citadel's moat, laid again over whatever has happened since it was
     // first drawn. It is stamped when the castle is placed, because everything
