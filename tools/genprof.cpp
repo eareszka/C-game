@@ -527,7 +527,10 @@ int main(int argc, char** argv)
                          miss[0] ? ", " : "", kind, i, px, py, gap);
             }
         };
-        for (int i = 0; i < 3; i++)
+        // Town 0 starts at 1: the starting island is deliberately off the
+        // road network (see src/tilemap.cpp, "before Roads"), so it would
+        // always read as unserved here and that is not a failure to report.
+        for (int i = 1; i < 3; i++)
             if (g_map.towns[i].x >= 0)
                 note("town", i, g_map.towns[i].x, g_map.towns[i].y,
                      road_gap_at(g_map.towns[i].x, g_map.towns[i].y, TOWN_W, TOWN_H));
@@ -552,7 +555,7 @@ int main(int argc, char** argv)
         // What a settlement with no road is actually surrounded by. Guessing it
         // from a downscaled picture is how the last hour went.
         if (miss[0] && getenv("ROADMAP_DIR")) {
-            for (int i = 0; i < 3; i++) {
+            for (int i = 1; i < 3; i++) {
                 if (g_map.towns[i].x < 0) continue;
                 int cx2 = g_map.towns[i].x + TOWN_W / 2, cy2 = g_map.towns[i].y + TOWN_H / 2;
                 if (road_gap_at(g_map.towns[i].x, g_map.towns[i].y, TOWN_W, TOWN_H) <= 6) continue;

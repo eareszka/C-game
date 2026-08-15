@@ -1768,6 +1768,28 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
 static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
     const int (*layout)[TOWN_W] = all_towns[town_idx];
 
+    // Towns 1 and 2 have no interior yet -- their layout is 0 everywhere, and
+    // 0 means "leave biome terrain unchanged", so with nothing pre-filled they
+    // stamped as invisible: no marker on the minimap, and open country a road
+    // was free to route straight through the middle of, the same as if no
+    // town were there at all. Villages avoid this by pre-filling their
+    // footprint with a placeholder before their layout goes on top; towns
+    // never did. Pre-fill here too, so an undesigned town reads as a town.
+    //
+    // Town 0 is excluded: it has a real interior, and relies on 0 to leave
+    // its round hub ring showing through the square footprint's corners.
+    // Pre-filling those corners would paint over the ring it is meant to
+    // show.
+    if (town_idx != 0) {
+        for (int dy = 0; dy < TOWN_H; dy++)
+            for (int dx = 0; dx < TOWN_W; dx++) {
+                int wx = tx + dx, wy = ty + dy;
+                if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+                map->tiles[wy][wx]   = TILE_BLUEPRINT;
+                map->overlay[wy][wx] = 0;
+            }
+    }
+
     for (int dy = 0; dy < TOWN_H; dy++) {
         for (int dx = 0; dx < TOWN_W; dx++) {
             int val = layout[dy][dx];
@@ -4701,15 +4723,23 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // --- Roads between the settlements ---
     //
     // The world is not short of things to find — a cave or a dungeon lies within
-    // sixty tiles of anywhere — but nothing lay *between* them, so fifteen
-    // settlements sat alone on open ground with nothing relating one to another
-    // and the place read as items scattered on a field. A road gives travel a
-    // direction to follow and takes the player past what they would otherwise
-    // walk by.
+    // sixty tiles of anywhere — but nothing lay *between* them, so the fourteen
+    // settlements outside the start sat alone on open ground with nothing
+    // relating one to another and the place read as items scattered on a
+    // field. A road gives travel a direction to follow and takes the player
+    // past what they would otherwise walk by.
     //
     // Same router as the wasteland trails: a spanning tree over the settlements,
     // each edge a shortest path that goes round the mountains and bridges the
     // water, then worn into a track rather than ruled as a line.
+    //
+    // Town 0 is left out of that tree on purpose. It sits on the hub at map
+    // centre, ringed by TILE_HUB out to MOAT_REACH, and that ring is not open
+    // ground or bridgeable water to road_region/road_gap below — no route can
+    // land on it or cross it. Leaving it out of the node list as well means no
+    // edge is even aimed at it, so no road runs up to the ring and stops; the
+    // starting island and the water around it stay untouched by the network,
+    // not just unreachable through it.
     if (!s_gen_cancel) {
         // A road wants less clearance from the edge of its region than a trail
         // does — the "region" here is all the open ground in the world, and its
@@ -4719,10 +4749,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         const int ROAD_ENDPOINT_FREE  = 24;   // settlements are wide; let it reach them
         // How far the search walks from a settlement's centre to find open
         // ground to start from. A town is 156 across, so its centre is 78 tiles
-        // deep already -- and town 0 carries a ring of solid hub tiles out to
-        // radius 102 on top of that. At 90 the search died inside the ring on
-        // seed 387 and the citadel, which is where the player starts, got no
-        // road on the map at all. This clears the ring with room over.
+        // deep already. Kept generous rather than trimmed to that, since town 0
+        // is the one settlement that would need more -- it sits behind its own
+        // hub ring -- and it costs nothing to leave the margin sized for a
+        // settlement this search will never actually be run on.
         const int ROAD_ANCHOR_SEARCH  = 120;
         // Ten is what a lava stream inside one wasteland needs. Rivers and lake
         // arms are wider than that, and this is the number that decides which
@@ -4781,8 +4811,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // stamp a placeholder block and no interior. The anchor search then
         // walks out to the nearest open ground, which for a town is its own
         // edge — which is where a road should stop anyway.
+        //
+        // Town 0 starts the loop at 1, not 0: see the note above the router
+        // call for why the starting island is not a node here.
         std::vector<std::pair<int,int>> places;
-        for (int i = 0; i < 3; i++)
+        for (int i = 1; i < 3; i++)
             if (map->towns[i].x >= 0)
                 places.push_back({ map->towns[i].x + TOWN_W / 2,
                                    map->towns[i].y + TOWN_H / 2 });
