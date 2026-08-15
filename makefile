@@ -1,5 +1,12 @@
 CXX = g++
-CXXFLAGS = -w -std=c++17 -Iinclude -MMD -MP
+# -O2 because the player waits for worldgen. It is two dozen passes over a
+# nine-million-tile map, and unoptimised it took twenty-four seconds against
+# four with this on -- the same world either way, verified by hashing every tile
+# and overlay on four seeds before and after. No -ffast-math and nothing else
+# that would let the compiler reassociate float arithmetic: worldgen is seeded
+# and reproducible, and a world that differs between builds is a bug that only
+# shows up on someone else's machine.
+CXXFLAGS = -O2 -w -std=c++17 -Iinclude -MMD -MP
 # Lazy on purpose: expanding this outside MSYS2 makes make print a CreateProcess
 # warning, so the forwarding decision below is taken without touching it.
 SDL_FLAGS = $(shell pkg-config --cflags --libs sdl2 SDL2_image)
