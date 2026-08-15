@@ -431,6 +431,13 @@ int main(int argc, char** argv)
                 printf("     %-14s flat %4d   mountain %3d\n", ENT_NAME[t], flat[t], mtn[t]);
     }
 
+    {
+        int placed_towns = 0;
+        for (int i = 0; i < 3; i++) if (g_map.towns[i].x >= 0) placed_towns++;
+        printf("  towns: %d of 3 placed   villages: %d\n",
+               placed_towns, g_map.num_villages);
+    }
+
     static const char* CASTLE_NAME[3] = { "ocean", "mountain", "lava" };
     printf("  castles:");
     for (int i = 0; i < 3; i++) {

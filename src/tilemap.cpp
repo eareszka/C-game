@@ -3099,6 +3099,39 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return true;
         };
 
+        // Last resort for either town: the first place on the map that will
+        // take one at all.
+        //
+        // A town is 156x156 and footprint_ok wants every one of those 24336
+        // tiles free of water, river and cliff, on a map where highland alone is
+        // eight percent and scattered through everything. That is a demanding
+        // ask, and both searches below used to answer "nowhere" by writing
+        // {-1,-1} and moving on — a town silently absent from the world with
+        // nothing saying so. There are meant to be three, always, so the search
+        // widens instead of giving up.
+        //
+        // Coarse step because this only runs when the proper search has already
+        // failed: it is the difference between a town in a slightly odd place
+        // and no town.
+        auto scan_any_footprint = [&](int& out_x, int& out_y, int min_dist, int upto) -> bool {
+            for (int ty = TOWN_H; ty + TOWN_H < MAP_HEIGHT - TOWN_H; ty += 8)
+                for (int tx = TOWN_W; tx + TOWN_W < MAP_WIDTH - TOWN_W; tx += 8) {
+                    int ddx = tx - cx, ddy = ty - cy;
+                    if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
+                    bool far_enough = true;
+                    for (int i = 0; i < upto && far_enough; i++) {
+                        if (map->towns[i].x < 0) continue;
+                        int ex = map->towns[i].x - tx, ey = map->towns[i].y - ty;
+                        if (ex*ex + ey*ey < min_dist*min_dist) far_enough = false;
+                    }
+                    if (!far_enough) continue;
+                    if (!footprint_ok(tx, ty)) continue;
+                    out_x = tx; out_y = ty;
+                    return true;
+                }
+            return false;
+        };
+
         // -- Town 1: on the coast --
         // Helper: try all 4 footprint corners relative to a candidate tile and
         // push any that pass footprint_ok + centre exclusion into `shore`.
@@ -3162,7 +3195,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int idx = (int)((ts >> 16) % (unsigned)shore.size());
                 stamp_town_blueprint(map, 1, shore[idx].first, shore[idx].second);
             } else {
-                map->towns[1] = { -1, -1, 1 };
+                // No shore will hold a town on this seed. Better inland than
+                // missing — a coastal town is what this one wants to be, not a
+                // condition of its existing.
+                int fx, fy;
+                if (scan_any_footprint(fx, fy, 0, 1)) stamp_town_blueprint(map, 1, fx, fy);
+                else                                  map->towns[1] = { -1, -1, 1 };
             }
         }
 
@@ -3190,6 +3228,18 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (!far_enough) continue;
                 stamp_town_blueprint(map, 2, tx, ty);
                 placed = true;
+            }
+            // Six hundred tiles of separation is a preference, not a
+            // requirement. Loosen it a step at a time rather than lose the town,
+            // and fall back to anywhere at all if even that finds nothing.
+            if (!placed) {
+                int fx, fy;
+                const int relax[] = { 400, 250, 120, 0 };
+                for (int r = 0; r < 4 && !placed; r++)
+                    if (scan_any_footprint(fx, fy, relax[r], 2)) {
+                        stamp_town_blueprint(map, 2, fx, fy);
+                        placed = true;
+                    }
             }
             if (!placed) map->towns[2] = { -1, -1, 2 };
         }
