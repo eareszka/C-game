@@ -24,6 +24,10 @@
 static std::atomic<bool> s_gen_cancel{false};
 // Diagnostics for the wasteland trail router; a probe reads these.
 int s_trail_edges = 0, s_trail_unroutable = 0, s_trail_tooshort = 0;
+// Reset at every route_network call, so after generation these describe the
+// last network routed -- the roads. How many places were asked for, and how
+// many of them had ground close enough to start a route from.
+int s_route_nodes = 0, s_route_anchors = 0, s_route_lone = 0;
 void tilemap_cancel_gen()       { s_gen_cancel = true; }
 void tilemap_reset_gen_cancel() { s_gen_cancel = false; }
 
@@ -178,8 +182,8 @@ static const TileStyle tile_styles[] =
     {100,  65,  25,  140,  90,  40, glyph_cliff_side }, // TILE_CLIFF_BACK_1   (79)
     { 90,  58,  22,  130,  82,  36, glyph_cliff_side }, // TILE_CLIFF_BACK_2   (80)
     { 80,  52,  20,  120,  74,  32, glyph_cliff_side }, // TILE_CLIFF_BACK_3   (81)
-    { 70,  46,  18,  110,  66,  28, glyph_cliff_side }, // TILE_CLIFF_BACK_4   (82)
-    { 60,  40,  16,  100,  58,  24, glyph_cliff_side }, // TILE_CLIFF_BACK_5   (83)
+    { 92,  74,  44,  150, 124,  80, glyph_path       }, // TILE_ROAD           (82)
+    { 78,  62,  40,  128, 104,  70, glyph_path       }, // TILE_ROAD_BRIDGE    (83)
 };
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
@@ -207,7 +211,7 @@ static inline uint32_t tile_key(int x, int y) {
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
 // Index matches TileId enum. Filled by tilemap_init_tile_cache().
-static const int TILE_CACHE_SIZE = 84; // TILE_CLIFF_BACK_5 + 1
+static const int TILE_CACHE_SIZE = 84; // TILE_ROAD_BRIDGE + 1
 // Every id below TILE_TOWN0_BASE draws from tile_styles and gets a cached
 // texture, so the three have to agree. They are three separate edits when a
 // tile is added and it is the second one that gets forgotten, which shows up
@@ -277,7 +281,8 @@ static bool overlay_site_dry(const Tilemap* map, int tx, int ty) {
 // the nodes placed later — gravestones, which are scattered when the player
 // first comes near a graveyard — ask this before choosing a tile.
 static inline bool tile_id_is_trail(int t) {
-    return t == TILE_WASTE_TRAIL || t == TILE_WASTE_BRIDGE;
+    return t == TILE_WASTE_TRAIL || t == TILE_WASTE_BRIDGE
+        || t == TILE_ROAD        || t == TILE_ROAD_BRIDGE;
 }
 
 // Sweep the overlays after generation rather than testing at each placement:
@@ -2304,6 +2309,20 @@ static int entrance_tile_id(DungeonEntranceType type) {
 //   in_moat     where a crossing is forbidden outright
 //   paintable   the tile the route may overwrite
 //
+// connect_all is how hard the caller wants the network held together, and the
+// two callers want opposite things.
+//
+// Trails pass false. A wasteland with one dungeon still wants a track leading
+// away from the mouth, so a lone node runs a stub out into the waste; and a
+// spanning-tree edge that will not route is dropped, because a trail that
+// cannot get there is a trail that was not meant to be.
+//
+// Roads pass true. A lone settlement does not want a road to nowhere -- a road
+// goes *between* places -- so there is no stub. But a settlement left off the
+// network is a settlement the player cannot drive to, so a dropped edge is
+// retried against the next-nearest settlement across the break until the whole
+// set is one network or nothing is left to try.
+//
 // The names are the wasteland's because the code is, unchanged, and renaming a
 // six-hundred-line body is how a refactor that was meant to change nothing ends
 // up changing something.
@@ -2315,8 +2334,12 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                           Forbidden in_moat, Paintable paintable,
                           int path_tile, int bridge_tile,
                           int EDGE_CLEARANCE, int ENDPOINT_FREE, int ANCHOR_SEARCH,
-                          int BRIDGE_MAX, int BRIDGE_GAP)
+                          int BRIDGE_MAX, int BRIDGE_GAP, bool connect_all)
 {
+        s_route_nodes = (int)nodes.size();
+        s_route_anchors = 0;
+        s_route_lone = 0;
+        s_trail_edges = s_trail_unroutable = s_trail_tooshort = 0;
         // Asked for rather than required: the
         // router gives it up a tile at a time until a way through appears, so
         // this is how far from the border a trail would like to run, not how
@@ -2433,8 +2456,13 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         }
                     if (best >= 0) anchors.push_back(best);
                 }
+                s_route_anchors += (int)anchors.size();
+                if (anchors.size() == 1) s_route_lone++;
 
-                std::vector<std::pair<int,int>> edges;
+                // Endpoints as tiles, and the same edges as anchor indices. The
+                // router works in tiles; holding the network together works in
+                // anchors, because that is what has to end up in one piece.
+                std::vector<std::pair<int,int>> edges, edge_idx;
                 if (anchors.size() >= 2) {
                     // Minimum spanning tree over the dungeons, by Prim: grow
                     // the tree one dungeon at a time, always taking the nearest
@@ -2456,8 +2484,9 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         if (bb < 0) break;
                         intree[bb] = true;
                         edges.push_back({ anchors[ba], anchors[bb] });
+                        edge_idx.push_back({ ba, bb });
                     }
-                } else if (anchors.size() == 1) {
+                } else if (anchors.size() == 1 && !connect_all) {
                     // A lone dungeon has nothing to join. Rather than leave the
                     // wasteland bare, run its path out toward the point furthest
                     // away — a track leading somewhere from the mouth. Pairing
@@ -2508,7 +2537,9 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             if (dd > bestd) { bestd = dd; pick = c; }
                         }
                     }
-                    if (pick >= 0) edges.push_back({ a, pick });
+                    // The far end is a point in the waste, not an anchor, so
+                    // there is nothing for it to be joined to.
+                    if (pick >= 0) { edges.push_back({ a, pick }); edge_idx.push_back({ 0, -1 }); }
                 }
 
                 if (!edges.empty()) {
@@ -2628,12 +2659,77 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         }
                     };
 
-                    for (auto& e : edges) {
-                        int from = e.first, to = e.second;
+                    // The spanning tree is a plan; this is what came of it.
+                    // Disjoint sets over the anchors, joined only by an edge
+                    // that actually routed, so "is the network in one piece"
+                    // is a question with an answer rather than an assumption.
+                    const int NA = (int)anchors.size();
+                    std::vector<int> dsu(NA);
+                    for (int i = 0; i < NA; i++) dsu[i] = i;
+                    auto dsu_find = [&](int v) {
+                        while (dsu[v] != v) { dsu[v] = dsu[dsu[v]]; v = dsu[v]; }
+                        return v;
+                    };
+                    // Pairs already attempted, so a break that cannot be routed
+                    // is not retried forever. Only roads keep this.
+                    std::vector<uint8_t> tried;
+                    int retries_left = 0;
+                    if (connect_all) {
+                        tried.assign((size_t)NA * NA, 0);
+                        for (auto& p : edge_idx)
+                            if (p.second >= 0) {
+                                tried[(size_t)p.first * NA + p.second] = 1;
+                                tried[(size_t)p.second * NA + p.first] = 1;
+                            }
+                        // One retry per anchor. Every success removes a set, so
+                        // this is generous, and it caps the whole-map frontier
+                        // searches a pathological map could ask for.
+                        retries_left = NA;
+                    }
+
+                    // Called however an edge ends. It records what the edge did
+                    // to the sets, and — once the planned edges are spent — asks
+                    // for one more where the network is still in pieces.
+                    auto finish_edge = [&](size_t ei, bool joined) {
+                        int ia = edge_idx[ei].first, ib = edge_idx[ei].second;
+                        if (joined && ib >= 0) {
+                            int ra = dsu_find(ia), rb = dsu_find(ib);
+                            if (ra != rb) dsu[ra] = rb;
+                        }
+                        if (ei + 1 != edges.size() || retries_left <= 0) return;
+                        // Nearest pair still on opposite sides of a break. Going
+                        // by distance again means the second attempt crosses the
+                        // narrowest part of whatever stopped the first.
+                        int ba = -1, bb = -1; double bestd = 1e18;
+                        for (int a2 = 0; a2 < NA; a2++)
+                            for (int b2 = a2 + 1; b2 < NA; b2++) {
+                                if (tried[(size_t)a2 * NA + b2]) continue;
+                                if (dsu_find(a2) == dsu_find(b2)) continue;
+                                int ax2 = anchors[a2] % MAP_WIDTH, ay2 = anchors[a2] / MAP_WIDTH;
+                                int bx2 = anchors[b2] % MAP_WIDTH, by2 = anchors[b2] / MAP_WIDTH;
+                                double dd = (double)(ax2-bx2)*(ax2-bx2) + (double)(ay2-by2)*(ay2-by2);
+                                if (dd < bestd) { bestd = dd; ba = a2; bb = b2; }
+                            }
+                        if (ba < 0) { retries_left = 0; return; }
+                        tried[(size_t)ba * NA + bb] = 1;
+                        tried[(size_t)bb * NA + ba] = 1;
+                        retries_left--;
+                        edges.push_back({ anchors[ba], anchors[bb] });
+                        edge_idx.push_back({ ba, bb });
+                    };
+
+                    // Indexed, not ranged: finish_edge appends to `edges` as it
+                    // goes, which would leave a reference dangling.
+                    for (size_t ei = 0; ei < edges.size(); ei++) {
+                        int from = edges[ei].first, to = edges[ei].second;
                         s_trail_edges++;
                         // Two dungeons close enough to share an anchor: there
                         // is nothing to route, and they are already joined.
-                        if (from == to) { paint_trail(from % MAP_WIDTH, from / MAP_WIDTH); continue; }
+                        if (from == to) {
+                            paint_trail(from % MAP_WIDTH, from / MAP_WIDTH);
+                            finish_edge(ei, true);
+                            continue;
+                        }
 
                         // Route through the region rather than straight at the
                         // target: a straight run leaves the wasteland wherever
@@ -2735,7 +2831,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
                             touched.clear();
                         }
-                        if (!found) { s_trail_unroutable++; continue; }
+                        if (!found) { s_trail_unroutable++; finish_edge(ei, false); continue; }
                         std::reverse(path.begin(), path.end());
                         // Short paths are drawn too. Skipping them used to be
                         // the tidy option — the smoothing filter reads two
@@ -2891,6 +2987,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             }
                             lastx = ix; lasty = iy;
                         }
+                        finish_edge(ei, true);
                     }
                 }
                 for (int c : comp) { incomp[c] = 0; nearedge[c] = 0; }
@@ -3687,7 +3784,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     auto is_cliff_slope = [](int bt) -> bool {
         return (bt >= TILE_CLIFF_EDGE_1   && bt <= TILE_CLIFF_EDGE_5)     // 12-16: south drop
             || (bt >= TILE_CLIFF_SIDE_1   && bt <= TILE_CLIFF_CORNER_NE_5) // 34-58: west sides/corners
-            || (bt >= TILE_CLIFF_SIDE_E_1 && bt <= TILE_CLIFF_BACK_5);     // 74-83: east sides, back faces
+            || (bt >= TILE_CLIFF_SIDE_E_1 && bt <= TILE_CLIFF_BACK_3);     // 74-81: east sides, back faces
     };
 
     GEN_STAGE(map, "before Towns 1-3");
@@ -4597,8 +4694,110 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         route_network(map, seed ^ 0x7A11D0u, nodes,
                       is_region, is_lava, raw_lava, in_moat, paint_over,
                       TILE_WASTE_TRAIL, TILE_WASTE_BRIDGE,
-                      EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, 4);
+                      EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, 4, false);
     }
+
+    GEN_STAGE(map, "before Roads");
+    // --- Roads between the settlements ---
+    //
+    // The world is not short of things to find — a cave or a dungeon lies within
+    // sixty tiles of anywhere — but nothing lay *between* them, so fifteen
+    // settlements sat alone on open ground with nothing relating one to another
+    // and the place read as items scattered on a field. A road gives travel a
+    // direction to follow and takes the player past what they would otherwise
+    // walk by.
+    //
+    // Same router as the wasteland trails: a spanning tree over the settlements,
+    // each edge a shortest path that goes round the mountains and bridges the
+    // water, then worn into a track rather than ruled as a line.
+    if (!s_gen_cancel) {
+        // A road wants less clearance from the edge of its region than a trail
+        // does — the "region" here is all the open ground in the world, and its
+        // border is the coast and the foot of every cliff, which is exactly
+        // where a road has business going.
+        const int ROAD_EDGE_CLEARANCE = 2;
+        const int ROAD_ENDPOINT_FREE  = 24;   // settlements are wide; let it reach them
+        // How far the search walks from a settlement's centre to find open
+        // ground to start from. A town is 156 across, so its centre is 78 tiles
+        // deep already -- and town 0 carries a ring of solid hub tiles out to
+        // radius 102 on top of that. At 90 the search died inside the ring on
+        // seed 387 and the citadel, which is where the player starts, got no
+        // road on the map at all. This clears the ring with room over.
+        const int ROAD_ANCHOR_SEARCH  = 120;
+        // Ten is what a lava stream inside one wasteland needs. Rivers and lake
+        // arms are wider than that, and this is the number that decides which
+        // settlements are even in the same region: the flood joins ground across
+        // a crossing it could build, so anything wider cuts the map in two and
+        // the spanning tree is built over the pieces separately. At ten, four
+        // seeds gave three to seven separate networks and settlements with no
+        // road at all. This is how long a bridge may be, and therefore how much
+        // water counts as passable.
+        const int ROAD_BRIDGE_MAX = 24;
+        // Ground a route must cover between one crossing and the next. Scaling
+        // it with the longer span looked right and measured worse -- at ten,
+        // two seeds of twenty-two grew a fused deck instead of one, because the
+        // cooldown only governs one route's own crossings and what actually
+        // fuses is two different roads reaching the same water beside each
+        // other. Where three roads meet at a crossing their decks still merge
+        // into a slab; it reads as a wide bridge head rather than a fault, and
+        // narrowing it would mean refusing deck tiles a road needs to land on.
+        const int ROAD_BRIDGE_GAP = 4;
+
+        const CastlePlacement& citadel2 = map->castles[2];
+        int mcx = citadel2.x + CASTLE_W / 2, mcy = citadel2.y + CASTLE_H / 2;
+        auto road_forbidden = [&](int x, int y) {
+            if (citadel2.x < 0) return false;
+            int dx = x - mcx, dy = y - mcy;
+            return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
+        };
+        // Water is the gap a road bridges, lava is not: a road over a lava
+        // channel is a different thing and the wasteland has its own trails.
+        auto road_gap = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_WATER || t == TILE_RIVER || t == TILE_ROAD_BRIDGE;
+        };
+        auto road_raw_gap = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_WATER || t == TILE_RIVER;
+        };
+        // Ground a road may run on: open country, and nothing that is already
+        // something. Cliffs are excluded outright — a road cannot climb a wall,
+        // and a plateau is only enterable from its north side.
+        auto road_region = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SAND &&
+                t != TILE_SNOW  && t != TILE_WASTELAND && t != TILE_ROAD) return false;
+            if (s_cliff_elev[y][x] || tilemap_face_at(x, y)) return false;
+            return true;
+        };
+        auto road_paint_over = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_GRASS || t == TILE_MEADOW || t == TILE_SAND ||
+                   t == TILE_SNOW  || t == TILE_WASTELAND;
+        };
+
+        // Aim at the middle of each settlement. There is nothing better to aim
+        // at: every village blueprint is empty and so are towns 1 and 2, so they
+        // stamp a placeholder block and no interior. The anchor search then
+        // walks out to the nearest open ground, which for a town is its own
+        // edge — which is where a road should stop anyway.
+        std::vector<std::pair<int,int>> places;
+        for (int i = 0; i < 3; i++)
+            if (map->towns[i].x >= 0)
+                places.push_back({ map->towns[i].x + TOWN_W / 2,
+                                   map->towns[i].y + TOWN_H / 2 });
+        for (int i = 0; i < map->num_villages; i++)
+            places.push_back({ map->villages[i].x + VILLAGE_W / 2,
+                               map->villages[i].y + VILLAGE_H / 2 });
+
+        route_network(map, seed ^ 0x20AD5u, places,
+                      road_region, road_gap, road_raw_gap, road_forbidden,
+                      road_paint_over,
+                      TILE_ROAD, TILE_ROAD_BRIDGE,
+                      ROAD_EDGE_CLEARANCE, ROAD_ENDPOINT_FREE, ROAD_ANCHOR_SEARCH,
+                      ROAD_BRIDGE_MAX, ROAD_BRIDGE_GAP, true);
+    }
+
     // The citadel's moat, laid again over whatever has happened since it was
     // first drawn. It is stamped when the castle is placed, because everything
     // after that needs to see the lava — the trail router reads it, and the
@@ -4855,6 +5054,19 @@ static constexpr GroundCover COVER_TRAIL = cover_nineslice(
     sheet_cell(24, 5), sheet_cell(25, 5), sheet_cell(26, 5),
     sheet_cell(24, 6), sheet_cell(25, 6), sheet_cell(26, 6),
     sheet_cell(24, 7), sheet_cell(25, 7), sheet_cell(26, 7), TILE_WASTE_TRAIL);
+// The road between settlements. Drawn as ground with its own borders, the way
+// the wasteland trail is, and deliberately not the way TILE_PATH is: that one is
+// town-blueprint decoration with no cover and no biome row, so it renders as a
+// flat ASCII square with a comma on it and would read as a placeholder beside
+// the sheet art of every other ground.
+//
+// Sharing the trail's nine-slice until a road is drawn. A road and a worn track
+// are the same idea, so it reads correctly meanwhile; give it cells of its own
+// and only these two lines change.
+static constexpr GroundCover COVER_ROAD = cover_nineslice(
+    sheet_cell(24, 5), sheet_cell(25, 5), sheet_cell(26, 5),
+    sheet_cell(24, 6), sheet_cell(25, 6), sheet_cell(26, 6),
+    sheet_cell(24, 7), sheet_cell(25, 7), sheet_cell(26, 7), TILE_ROAD);
 // Water: one tile, carrying its own ripples, and it repeats seamlessly.
 static constexpr GroundCover COVER_WATER = cover_single(sheet_cell(14, 0), TILE_WATER);
 // Lava, one cell to its right, same idea: dark base with its own hot speckle.
@@ -4945,6 +5157,7 @@ static GroundBiome s_biomes[] = {
     { { TILE_SAND,      -1, -1, -1 },                  &COVER_DESERT, false, false, false, 0,0,0,  -1,  -1,  -1 },
     { { TILE_WASTELAND, -1, -1, -1 },                  &COVER_WASTE,  false, false, false, 0,0,0,  -1,  -1,  -1 },
     { { TILE_WASTE_TRAIL, -1, -1, -1 },                &COVER_TRAIL,  false, false, true,  0,0,0,  -1,  -1,  -1 },
+    { { TILE_ROAD,      -1, -1, -1 },                  &COVER_ROAD,   false, false, true,  0,0,0,  -1,  -1,  -1 },
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1 },
     { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255 },
     { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1 },
@@ -5258,7 +5471,7 @@ static int cliff_body_elev(int t) {
 static bool cliff_is_face_tile(int t) {
     return (t >= TILE_CLIFF_EDGE_1   && t <= TILE_CLIFF_EDGE_5)
         || (t >= TILE_CLIFF_SIDE_1   && t <= TILE_CLIFF_CORNER_NE_5)
-        || (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_BACK_5);
+        || (t >= TILE_CLIFF_SIDE_E_1 && t <= TILE_CLIFF_BACK_3);
 }
 
 
@@ -6068,6 +6281,16 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         2,                                                                         // 60: BLUEPRINT → always show
         2,                                                                         // 61: VILLAGE_PLACEHOLDER → always show
         2,                                                                         // 62: CASTLE_PLACEHOLDER → always show
+        // Both tables used to stop here, so anything past 62 sampled as grass.
+        // A road network is most of what a map is for, so it wins its block
+        // outright: three tiles wide sampled every few tiles would vanish more
+        // often than not at any lower priority.
+        0, 0, 0, 0, 0, 0, 0, 0,                                                   // 63-70: dungeon markers → hidden
+        0,                                                                         // 71: DEAD_TREE → hidden
+        3, 3,                                                                      // 72-73: waste trail and its deck
+        0, 0, 0, 0, 0,                                                            // 74-78: legacy east sides → unused
+        0, 0, 0,                                                                   // 79-81: legacy backs → unused
+        3, 3,                                                                      // 82-83: ROAD, ROAD_BRIDGE
     };
     static const SDL_Color tile_colors[] = {
         { 30,  90,  30, 255}, // GRASS  (dark green = dense forest)
@@ -6133,6 +6356,27 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         {255,   0, 255, 255}, // BLUEPRINT            (60) → bright magenta
         {255, 140,   0, 255}, // VILLAGE_PLACEHOLDER  (61) → orange
         {255, 255, 255, 255}, // CASTLE_PLACEHOLDER   (62) → white
+        { 30,  90,  30, 255}, // DUNGEON_CAVE         (63) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_RUINS        (64) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_GRAVEYARD_SM (65) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_GRAVEYARD_LG (66) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_OASIS        (67) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_PYRAMID      (68) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_STONEHENGE   (69) → hidden
+        { 30,  90,  30, 255}, // DUNGEON_LARGE_TREE   (70) → hidden
+        { 30,  90,  30, 255}, // DEAD_TREE            (71) → hidden
+        { 95,  72,  48, 255}, // WASTE_TRAIL          (72)
+        {120,  95,  65, 255}, // WASTE_BRIDGE         (73)
+        { 30,  90,  30, 255}, // CLIFF_SIDE_E_1       (74) → unused
+        { 30,  90,  30, 255}, // CLIFF_SIDE_E_2       (75) → unused
+        { 30,  90,  30, 255}, // CLIFF_SIDE_E_3       (76) → unused
+        { 30,  90,  30, 255}, // CLIFF_SIDE_E_4       (77) → unused
+        { 30,  90,  30, 255}, // CLIFF_SIDE_E_5       (78) → unused
+        { 30,  90,  30, 255}, // CLIFF_BACK_1         (79) → unused
+        { 30,  90,  30, 255}, // CLIFF_BACK_2         (80) → unused
+        { 30,  90,  30, 255}, // CLIFF_BACK_3         (81) → unused
+        {150, 110,  70, 255}, // ROAD                 (82) → light track, reads over forest
+        {185, 150, 105, 255}, // ROAD_BRIDGE          (83) → lighter deck over water
     };
     static const int NUM_MM_COLORS = (int)(sizeof(tile_colors) / sizeof(tile_colors[0]));
 
@@ -6462,6 +6706,8 @@ static bool tile_ground_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_WASTELAND:
         case TILE_WASTE_TRAIL:
         case TILE_WASTE_BRIDGE:
+        case TILE_ROAD:
+        case TILE_ROAD_BRIDGE:
         case TILE_MEADOW:
         // Elevated terrain top surfaces — the top of a plateau is walked on,
         // like any other ground. A cliff face has no id of its own to list

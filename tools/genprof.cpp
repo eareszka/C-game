@@ -29,6 +29,7 @@
 #include <algorithm>
 #include "tilemap.h"
 #include "dungeon.h"
+#include "towns.h"      // TOWN_W/H and VILLAGE_W/H, for the road-coverage check
 
 static Tilemap g_map;
 
@@ -429,6 +430,204 @@ int main(int argc, char** argv)
         for (int t = 0; t < 9; t++)
             if (flat[t] || mtn[t])
                 printf("     %-14s flat %4d   mountain %3d\n", ENT_NAME[t], flat[t], mtn[t]);
+    }
+
+    // Roads: how much got laid, whether it goes anywhere it should not, and
+    // whether every settlement actually ended up on the network.
+    {
+        static uint8_t rseen[MAP_HEIGHT][MAP_WIDTH];
+        static int rq[MAP_HEIGHT * MAP_WIDTH];
+        long road_n = 0, bridge_n = 0, on_cliff = 0, unwalkable = 0;
+        int deck_wide = 0, deck_long = 0, deck_wx = -1, deck_wy = -1;
+        auto is_road = [&](int x, int y) {
+            int t = g_map.tiles[y][x];
+            return t == TILE_ROAD || t == TILE_ROAD_BRIDGE;
+        };
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int t = g_map.tiles[y][x];
+                if (t == TILE_ROAD)        road_n++;
+                if (t == TILE_ROAD_BRIDGE) bridge_n++;
+                if (!is_road(x, y)) continue;
+                if (tilemap_face_at(x, y)) on_cliff++;
+                // A road you cannot walk on is not a road.
+                if (!tilemap_is_walkable(&g_map, x, y)) unwalkable++;
+                if (t != TILE_ROAD_BRIDGE) continue;
+                // A deck is three across and no longer than the crossing it was
+                // allowed. Measured both ways round: the short run is the width,
+                // the long one is the span, and two crossings fused at a corner
+                // would show up as a deck wider than three.
+                int h = 1, v = 1;
+                for (int x2 = x-1; x2 >= 0 && g_map.tiles[y][x2] == TILE_ROAD_BRIDGE; x2--) h++;
+                for (int x2 = x+1; x2 < MAP_WIDTH && g_map.tiles[y][x2] == TILE_ROAD_BRIDGE; x2++) h++;
+                for (int y2 = y-1; y2 >= 0 && g_map.tiles[y2][x] == TILE_ROAD_BRIDGE; y2--) v++;
+                for (int y2 = y+1; y2 < MAP_HEIGHT && g_map.tiles[y2][x] == TILE_ROAD_BRIDGE; y2++) v++;
+                int shortr = h < v ? h : v, longr = h < v ? v : h;
+                if (shortr > deck_wide) { deck_wide = shortr; deck_wx = x; deck_wy = y; }
+                if (longr  > deck_long) deck_long  = longr;
+            }
+
+        // Flood the road network from the first road tile; then ask how many
+        // settlements have road within reach of their footprint.
+        memset(rseen, 0, sizeof rseen);
+        int comps = 0, biggest = 0;
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int t = g_map.tiles[y][x];
+                if (rseen[y][x] || (t != TILE_ROAD && t != TILE_ROAD_BRIDGE)) continue;
+                int n = 0, hd = 0;
+                rq[n++] = y * MAP_WIDTH + x; rseen[y][x] = 1;
+                while (hd < n) {
+                    int v = rq[hd++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
+                    const int DX[4] = {1,-1,0,0}, DY[4] = {0,0,1,-1};
+                    for (int d = 0; d < 4; d++) {
+                        int nx = vx + DX[d], ny = vy + DY[d];
+                        if (nx < 0 || ny < 0 || nx >= MAP_WIDTH || ny >= MAP_HEIGHT) continue;
+                        int tt = g_map.tiles[ny][nx];
+                        if (rseen[ny][nx] || (tt != TILE_ROAD && tt != TILE_ROAD_BRIDGE)) continue;
+                        rseen[ny][nx] = 1; rq[n++] = ny * MAP_WIDTH + nx;
+                    }
+                }
+                comps++; if (n > biggest) biggest = n;
+            }
+
+        // How far outside the footprint the nearest road stops. A boolean with a
+        // threshold picked out of the air only argues with itself; the distance
+        // says whether a road ends at the wall, at a moat ring, or nowhere near.
+        auto road_gap_at = [&](int px, int py, int w, int h) {
+            for (int m = 0; m <= 140; m++) {
+                for (int y = py - m; y <= py + h + m; y++)
+                    for (int x = px - m; x <= px + w + m; x++) {
+                        if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) continue;
+                        // Only the ring at exactly this margin is new.
+                        if (m && x > px - m && x < px + w + m && y > py - m && y < py + h + m) continue;
+                        int t = g_map.tiles[y][x];
+                        if (t == TILE_ROAD || t == TILE_ROAD_BRIDGE) return m;
+                    }
+            }
+            return 999;
+        };
+        
+        // The question the roads have to answer is "can the player drive from
+        // any settlement to any other", so the measure is how far short of each
+        // one the road stops, and the worst of those. A settlement a road never
+        // reaches at all reads 999 and is a different failure from one the road
+        // stops twenty tiles outside because something solid is in the way.
+        int served_n = 0, total_places = 0, worst = 0;
+        char miss[512] = {0}, shown[64] = {0};
+        auto note = [&](const char* kind, int i, int px, int py, int gap) {
+            total_places++;
+            if (gap > worst) worst = gap;
+            if (gap <= 6) {
+                served_n++;
+                if (!shown[0]) snprintf(shown, sizeof shown, "  (look at %s %d: %d,%d)", kind, i, px, py);
+            } else {
+                snprintf(miss + strlen(miss), sizeof miss - strlen(miss),
+                         "%s%s %d at %d,%d stops %d out",
+                         miss[0] ? ", " : "", kind, i, px, py, gap);
+            }
+        };
+        for (int i = 0; i < 3; i++)
+            if (g_map.towns[i].x >= 0)
+                note("town", i, g_map.towns[i].x, g_map.towns[i].y,
+                     road_gap_at(g_map.towns[i].x, g_map.towns[i].y, TOWN_W, TOWN_H));
+        for (int i = 0; i < g_map.num_villages; i++)
+            note("village", i, g_map.villages[i].x, g_map.villages[i].y,
+                 road_gap_at(g_map.villages[i].x, g_map.villages[i].y, VILLAGE_W, VILLAGE_H));
+        printf("  roads: %ld tiles, %ld bridge, %d network%s (biggest %d), "
+               "%d/%d reached, worst approach %d%s\n",
+               road_n, bridge_n, comps, comps == 1 ? "" : "s", biggest,
+               served_n, total_places, worst,
+               on_cliff ? "   <-- ROAD ON A CLIFF" : "");
+        printf("    decks %d wide (at %d,%d), longest span %d; %ld road tile%s unwalkable%s\n",
+               deck_wide, deck_wx, deck_wy, deck_long, unwalkable, unwalkable == 1 ? "" : "s",
+               (unwalkable || on_cliff) ? "   <-- BAD" : "");
+        extern int s_route_nodes, s_route_anchors, s_route_lone;
+        extern int s_trail_edges, s_trail_unroutable;
+        printf("    router saw %d places, anchored %d, %d component%s held only one; "
+               "%d edges, %d would not route\n",
+               s_route_nodes, s_route_anchors, s_route_lone, s_route_lone == 1 ? "" : "s",
+               s_trail_edges, s_trail_unroutable);
+        if (miss[0]) printf("    unserved: %s\n", miss);
+        // What a settlement with no road is actually surrounded by. Guessing it
+        // from a downscaled picture is how the last hour went.
+        if (miss[0] && getenv("ROADMAP_DIR")) {
+            for (int i = 0; i < 3; i++) {
+                if (g_map.towns[i].x < 0) continue;
+                int cx2 = g_map.towns[i].x + TOWN_W / 2, cy2 = g_map.towns[i].y + TOWN_H / 2;
+                if (road_gap_at(g_map.towns[i].x, g_map.towns[i].y, TOWN_W, TOWN_H) <= 6) continue;
+                long hist[256] = {0};
+                for (int y = cy2 - 150; y <= cy2 + 150; y++)
+                    for (int x = cx2 - 150; x <= cx2 + 150; x++) {
+                        if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) continue;
+                        long dx = x - cx2, dy = y - cy2, r2 = dx*dx + dy*dy;
+                        if (r2 < 78L*78 || r2 > 150L*150) continue;
+                        hist[g_map.tiles[y][x] & 255]++;
+                    }
+                printf("    town %d ring 78-150 tiles:", i);
+                for (int k = 0; k < 5; k++) {
+                    int b = 0; for (int t = 0; t < 256; t++) if (hist[t] > hist[b]) b = t;
+                    if (!hist[b]) break;
+                    printf("  id%d x%ld", b, hist[b]); hist[b] = 0;
+                }
+                printf("\n");
+            }
+        }
+        if (shown[0]) printf("  %s\n", shown);
+
+        // A road is a thing you follow across the whole map, so the whole map is
+        // the only view that shows whether it worked. Sixteen tiles to a pixel:
+        // a 3-wide road survives as a hairline, which is all that is needed to
+        // see where the network goes, where it stops, and what it went around.
+        if (const char* dir = getenv("ROADMAP_DIR")) {
+            const int SC = 4, W = MAP_WIDTH / SC, H = MAP_HEIGHT / SC;
+            SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
+            Uint32* px = (Uint32*)s->pixels;
+            auto put = [&](int x, int y, Uint8 r, Uint8 g, Uint8 b) {
+                px[y * (s->pitch / 4) + x] = SDL_MapRGBA(s->format, r, g, b, 255);
+            };
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++) {
+                    int best = 0;   // 0 ground, 1 cliff, 2 water, 3 bridge, 4 road
+                    for (int j = 0; j < SC; j++)
+                        for (int i = 0; i < SC; i++) {
+                            int t = g_map.tiles[y * SC + j][x * SC + i];
+                            bool liquid = t == TILE_WATER || t == TILE_RIVER || t == TILE_LAVA;
+                            bool high   = (t >= TILE_CLIFF && t <= TILE_CLIFF_5 && t != 5 && t != 6 && t != 7) ||
+                                          (t >= TILE_CLIFF_SNOW_1 && t <= TILE_CLIFF_WASTE_5) ||
+                                          tilemap_face_at(x * SC + i, y * SC + j);
+                            int r = t == TILE_ROAD        ? 4
+                                  : t == TILE_ROAD_BRIDGE ? 3
+                                  : liquid ? 2 : high ? 1 : 0;
+                            if (r > best) best = r;
+                        }
+                    switch (best) {
+                        case 4: put(x, y, 90, 50, 30);    break;
+                        case 3: put(x, y, 255, 140, 0);   break;
+                        case 2: put(x, y, 110, 150, 220); break;
+                        case 1: put(x, y, 130, 130, 130); break;
+                        default: put(x, y, 150, 200, 130);
+                    }
+                }
+            auto dot = [&](int cx, int cy, Uint8 r, Uint8 g, Uint8 b) {
+                for (int j = -2; j <= 2; j++)
+                    for (int i = -2; i <= 2; i++) {
+                        int x = cx / SC + i, y = cy / SC + j;
+                        if (x >= 0 && y >= 0 && x < W && y < H) put(x, y, r, g, b);
+                    }
+            };
+            for (int i = 0; i < 3; i++)
+                if (g_map.towns[i].x >= 0)
+                    dot(g_map.towns[i].x + TOWN_W / 2, g_map.towns[i].y + TOWN_H / 2, 220, 40, 40);
+            for (int i = 0; i < g_map.num_villages; i++)
+                dot(g_map.villages[i].x + VILLAGE_W / 2, g_map.villages[i].y + VILLAGE_H / 2,
+                    250, 240, 60);
+            char path[512];
+            snprintf(path, sizeof path, "%s/roadmap_%u.png", dir, seed);
+            IMG_SavePNG(s, path);
+            SDL_FreeSurface(s);
+            printf("    wrote %s\n", path);
+        }
     }
 
     {

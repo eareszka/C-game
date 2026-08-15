@@ -118,8 +118,21 @@ enum TileId {
     TILE_CLIFF_BACK_1   = 79,
     TILE_CLIFF_BACK_2   = 80,
     TILE_CLIFF_BACK_3   = 81,
-    TILE_CLIFF_BACK_4   = 82,
-    TILE_CLIFF_BACK_5   = 83,
+
+    // The road between settlements, and the bridge that carries it over water.
+    //
+    // These two take the numbers of TILE_CLIFF_BACK_4 and _5, which were part of
+    // the legacy cliff set that nothing has written since the band stopped being
+    // a tile — an audit over five seeds and forty-five million tiles found them
+    // never placed. Reusing the numbers rather than appending renumbers nothing:
+    // every enumerator here has an explicit value and TILE_TOWN0_BASE is pinned
+    // at 84 by two static_asserts and an eighty-four-row style table.
+    //
+    // The two predicates that swept 74-83 as "side of a mountain" are narrowed
+    // to end at TILE_CLIFF_BACK_3, or a road would answer yes to being a cliff
+    // face and never draw its own ground.
+    TILE_ROAD           = 82,
+    TILE_ROAD_BRIDGE    = 83,
 
     // Tiles sampled from assets/tileset.png (256 cols × 256 rows = 65536 tiles).
     // Index within sheet = (tile_id - TILE_TOWN0_BASE).
