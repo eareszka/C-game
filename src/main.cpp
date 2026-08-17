@@ -151,12 +151,13 @@ int main(int argc, char *argv[])
     static const int DBG_TYPE_COUNT = 8;
 
     bool dbg_open     = false;
-    // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon
-    static const int DBG_ROW_COUNT = 6;
+    // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid
+    static const int DBG_ROW_COUNT = 7;
     int  dbg_sel      = 0;
     int  dbg_type     = 0;
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
+    bool dbg_grid     = false;
     bool crafting_open    = false;
     bool map_open         = false;
     bool battle_list_open = false;
@@ -320,6 +321,9 @@ int main(int argc, char *argv[])
             if (dbg_sel == 4 && dbg_confirm)
                 dbg_show_all = !dbg_show_all;
 
+            if (dbg_sel == 6 && dbg_confirm)
+                dbg_grid = !dbg_grid;
+
             if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
                 dbg_open = false;
         }
@@ -422,6 +426,7 @@ int main(int argc, char *argv[])
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_depth(map, &cam, plat.renderer);
+                if (dbg_grid) tilemap_draw_debug_grid(map, &cam, plat.renderer);
 
                 // --- Weapon cooldown bar ---
                 {
@@ -956,6 +961,7 @@ int main(int argc, char *argv[])
                 SDL_RenderClear(plat.renderer);
 
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
+                if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
                 player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
 
                 // Draw active chasers
@@ -1074,8 +1080,19 @@ int main(int argc, char *argv[])
                 if (input_pressed(&in, SDL_SCANCODE_M))
                     map_open = !map_open;
 
-                if (map_open)
+                if (map_open) {
                     dungeon_minimap_draw(&dmap, &dplayer, plat.renderer, 640, 480, dbg_show_all);
+
+                    if (in.mouse_left_pressed) {
+                        float wx, wy;
+                        if (dungeon_minimap_click_to_world(&dmap, 640, 480, in.mouse_x, in.mouse_y,
+                                                           dbg_show_all, &wx, &wy)) {
+                            dplayer.x = wx;
+                            dplayer.y = wy;
+                            map_open = false;
+                        }
+                    }
+                }
 
                 if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
                     dungeon_explored_cache[current_dng_seed].assign(
@@ -1228,7 +1245,7 @@ int main(int argc, char *argv[])
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
-            const int MX = 120, MY = 130, MW = 400, MH = 204;
+            const int MX = 120, MY = 130, MW = 400, MH = 226;
             const int LH = 22;  // line height
 
             draw_nes_panel(plat.renderer, MX, MY, MW, MH);
@@ -1286,6 +1303,12 @@ int main(int argc, char *argv[])
                 SDL_snprintf(wbuf, sizeof(wbuf), "WEAPON: < %s >",
                              weapon_name(player.equipped_weapon));
                 draw_row(5, wbuf, dbg_sel == 5);
+            }
+
+            // Row 6: tile-grid overlay toggle
+            {
+                const char* gr = dbg_grid ? "GRID: ON " : "GRID: OFF";
+                draw_row(6, gr, dbg_sel == 6);
             }
 
             draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",

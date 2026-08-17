@@ -93,8 +93,17 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, bool noclip = false);
 void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                   const Camera* cam, SDL_Renderer* ren, bool show_all = false);
+// Debug overlay: thin lines around every DMAP_TILE grid cell in view,
+// labeled with the tileset (col,row) a cave wall tile actually draws from
+// (blank for floor tiles, non-cave dungeon types, and deep-interior void,
+// none of which source from the tileset).
+void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren);
 void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                           SDL_Renderer* ren, int screen_w, int screen_h,
                           bool show_all = false);
+bool dungeon_minimap_click_to_world(const DungeonMap* dmap,
+                                    int screen_w, int screen_h, int mx, int my,
+                                    bool show_all,
+                                    float* out_world_x, float* out_world_y);
 
 #endif

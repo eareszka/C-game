@@ -6281,6 +6281,64 @@ void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* ren
     tilemap_draw_impl(map, cam, renderer, true);
 }
 
+// ── Public: debug tile-grid overlay ─────────────────────────────────────────
+// Same idea as dungeon.cpp's version -- one box per TILE_SIZE cell in view --
+// but the label here is the tileset (col,row) a tile draws from rather than
+// its world (tx,ty), since that's the coordinate system assets/tileset.png
+// edits are actually made in. Exact for anything stored directly as a
+// TOWN0/OW0 sheet id (cliffs, roads, buildings, dungeon entrances). Ground
+// cover (grass, sand, snow...) picks its exact cell per-position at draw
+// time via GroundCover variants rather than from tile_id directly, so those
+// fall back to the stored id's own naive col,row, which won't always be the
+// specific variant actually drawn there.
+void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer) {
+    float z   = cam->zoom;
+    int   tsz = (int)(TILE_SIZE * z);
+    if (tsz < 1) tsz = 1;
+
+    int tx0 = (int)(cam->x / TILE_SIZE) - 1;
+    int ty0 = (int)(cam->y / TILE_SIZE) - 1;
+    int tx1 = tx0 + (int)(cam->screen_w / tsz) + 3;
+    int ty1 = ty0 + (int)(cam->screen_h / tsz) + 3;
+    if (tx0 < 0) tx0 = 0;
+    if (ty0 < 0) ty0 = 0;
+    if (tx1 > MAP_WIDTH)  tx1 = MAP_WIDTH;
+    if (ty1 > MAP_HEIGHT) ty1 = MAP_HEIGHT;
+
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 110);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    for (int ty = ty0; ty < ty1; ty++) {
+        for (int tx = tx0; tx < tx1; tx++) {
+            int sx = (int)((tx * TILE_SIZE - cam->x) * z);
+            int sy = (int)((ty * TILE_SIZE - cam->y) * z);
+            SDL_Rect r = { sx, sy, tsz, tsz };
+            SDL_RenderDrawRect(renderer, &r);
+        }
+    }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+    if (tsz >= 24) {   // labels need room; skip them at small zoom rather than smear illegible text
+        for (int ty = ty0; ty < ty1; ty++) {
+            for (int tx = tx0; tx < tx1; tx++) {
+                int sx = (int)((tx * TILE_SIZE - cam->x) * z);
+                int sy = (int)((ty * TILE_SIZE - cam->y) * z);
+                int tile_id = map->tiles[ty][tx];
+                char buf[16];
+                if (tile_id >= TILE_OW0_BASE) {
+                    int idx = tile_id - TILE_OW0_BASE;
+                    SDL_snprintf(buf, sizeof(buf), "%d:%d", idx % TOWN0_SHEET_COLS, idx / TOWN0_SHEET_COLS);
+                } else if (tile_id >= TILE_TOWN0_BASE) {
+                    int idx = tile_id - TILE_TOWN0_BASE;
+                    SDL_snprintf(buf, sizeof(buf), "%d:%d", idx % TOWN0_SHEET_COLS, idx / TOWN0_SHEET_COLS);
+                } else {
+                    SDL_snprintf(buf, sizeof(buf), "ID%d", tile_id);
+                }
+                draw_text(renderer, buf, sx + 1, sy + 1, 1, 60, 255, 60);
+            }
+        }
+    }
+}
+
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,
                   float player_x, float player_y)

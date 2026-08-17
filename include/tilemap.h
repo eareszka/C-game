@@ -237,6 +237,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed);
 void tilemap_update(float dt); // advance hit-jitter timers
 void tilemap_draw_base (const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
 void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
+// Debug overlay: thin lines around every TILE_SIZE grid cell in view, labeled
+// with the tileset (col,row) the tile draws from -- see definition for the
+// ground-cover-variant caveat.
+void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer);
 
 // Pre-render all tile types into small textures so tilemap_draw uses one RenderCopy
 // per tile instead of ~65 RenderFillRect calls. Call once after creating the renderer.

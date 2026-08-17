@@ -9,8 +9,12 @@
 struct DngPalette { SDL_Color wall, floor, entry, exit_; };
 
 static const DngPalette PALETTES[8] = {
-    // CAVE
-    {{ 35, 30, 30,255},{ 65, 58, 55,255},{200,175, 40,255},{180, 45, 45,255}},
+    // CAVE — warm stone-gray floor, contrasting the cool blue-purple wall
+    // rock (assets/tileset.png cols 27-29 rows 0-4). Wall colour is now only
+    // a fallback: the minimap (dungeon_minimap_draw, flat per-pixel colors)
+    // and the case where assets/tileset.png fails to load — the main view
+    // always draws the real rock texture, see draw_cave_wall_cell() above.
+    {{ 60, 65,100,255},{ 90, 80, 74,255},{200,175, 40,255},{180, 45, 45,255}},
     // RUINS
     {{ 75, 65, 55,255},{110, 98, 82,255},{200,175, 40,255},{180, 45, 45,255}},
     // GRAVEYARD_SM
@@ -2295,6 +2299,253 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
             if (dmap->visible[fy][fx]) dmap->explored[fy][fx] = 1;
 }
 
+// ── CAVE: directional NES-style wall faces ────────────────────────────────
+// Classic top-down dungeon convention: only the wall bordering floor to its
+// SOUTH shows a tall "face" (you're looking at it as it recedes north, away
+// from you) — every other wall (bordering floor to the north/east/west, or
+// bordering no floor at all) is a flat, single-height boundary marker. Cells
+// sampled from the user's hand-drawn rock swatch in assets/tileset.png,
+// cols 27-29 rows 0-4 (confirmed unreferenced by anything else — no
+// sheet_cell() call touches cols 27+, and the interior.h tile atlas only
+// touches rows 0-14 cols 0-13).
+static inline bool cave_floor_at(const DungeonMap* dmap, int x, int y) {
+    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;
+    uint8_t t = dmap->tiles[y][x];
+    return t == DNG_FLOOR || t == DNG_ENTRY || t == DNG_EXIT;
+}
+
+// Edge trims from the user's own hand-built mockup at assets/tileset.png
+// 432,0-512,128 (cols 27-31, rows 0-7). Re-examined pixel-exactly this
+// round and found a mistake in the previous pass: these were assumed to be
+// full 16x16 opaque tiles, but they're actually only HALF filled --
+// (29,7)/(30,7) (South) are opaque in their TOP half only, and
+// (27,3)/(27,4)/(31,0)/(31,3) (West/East, confirmed identical to each
+// other) are opaque in their LEFT half only. Stretching that across a
+// full-tile destination (the previous approach) left the other half of
+// every south/west/east wall tile transparent, showing the render's clear
+// colour through it -- a black half hiding in plain sight inside what
+// looked like "one solid tile" at a glance. The correct read: these are
+// half-tile trims meant to hug the boundary edge, not full-tile fills.
+static const int TRIM_WE_X = 31 * 16, TRIM_WE_Y = 0 * 16;   // opaque left 8px of this 16x16 cell
+static const int TRIM_S_X  = 29 * 16, TRIM_S_Y  = 7 * 16;   // opaque top 8px of this 16x16 cell
+
+// Corner-transition accent pieces, layered on top of a plain West/East trim
+// (TRIM_WE) for the tile immediately above or below a corner, blending its
+// trim run into the turn. Only their own top 8x8 quadrant is painted --
+// (31,7) top-LEFT, (32,7) top-RIGHT (confirmed distinct from every other
+// cell already in play, and (33,7) -- checked as a possible third -- is
+// fully blank, not part of the pair). An earlier version stretched this
+// across the full tile height as a *replacement* for the plain trim instead
+// of an accent on top of it, which left the untouched bottom half of the
+// source (fully transparent) stretched into a visible gap at the bottom of
+// the tile -- confirmed by direct pixel dump. Below a corner, the same piece
+// is reused vertically flipped (see draw_cave_wall()), same convention as
+// nub_se/nub_sw reusing the north-facing nub art.
+static const int TRIM_TRANS_L_X = 31 * 16, TRIM_TRANS_L_Y = 7 * 16;   // pairs with floor_w (hugs left edge)
+static const int TRIM_TRANS_R_X = 32 * 16, TRIM_TRANS_R_Y = 7 * 16;   // pairs with floor_e (hugs right edge)
+static const int TALL_BAND_X = 28 * 16, TALL_BAND_Y = 0 * 16;         // (28,0)(28,1)(28,2), stacked into one tall face
+
+// Whether the wall tile at (tx,ty) is itself a corner -- both a South-style
+// trim condition and a West/East-style one true at once. Called from inside
+// cave_wall_classify() below to detect a corner sitting just above OR just
+// below a plain West/East tile (see trim_trans_above/trim_trans_below).
+static bool cave_is_corner(const DungeonMap* dmap, int tx, int ty) {
+    bool vert  = cave_floor_at(dmap, tx, ty - 1) || cave_floor_at(dmap, tx, ty + 1);
+    bool horiz = cave_floor_at(dmap, tx + 1, ty) || cave_floor_at(dmap, tx - 1, ty);
+    return vert && horiz;
+}
+
+// Which tileset pieces the cave wall tile at (tx,ty) is built from, derived
+// once from its local floor/wall neighborhood. Single source of truth,
+// consumed by both draw_cave_wall() (renders it) and cave_wall_debug_cell()
+// (labels it on the F2 debug grid overlay) -- previously each independently
+// re-derived this same boundary logic by hand, with a comment warning future
+// editors to keep the two copies in sync.
+struct CaveWallPieces {
+    bool tall_band = false;
+    bool trim_n = false, trim_s = false;
+    bool trim_e = false, trim_w = false;
+    bool trim_trans_above = false;  // corner sits directly above this tile's
+    bool trim_trans_below = false;  // trim_e/trim_w -- layers a small corner-
+                                      // blending accent onto the plain trim
+                                      // (above: unflipped; below: vertically
+                                      // flipped, same reuse-with-flip
+                                      // convention as nub_se/nub_sw) instead
+                                      // of replacing it outright.
+    bool nub_ne = false, nub_se = false, nub_sw = false, nub_nw = false;
+};
+
+static CaveWallPieces cave_wall_classify(const DungeonMap* dmap, int tx, int ty) {
+    CaveWallPieces p;
+    bool floor_s = cave_floor_at(dmap, tx, ty + 1);
+    bool floor_n = cave_floor_at(dmap, tx, ty - 1);
+    bool floor_e = cave_floor_at(dmap, tx + 1, ty);
+    bool floor_w = cave_floor_at(dmap, tx - 1, ty);
+    int cardinal_count = (floor_s?1:0) + (floor_n?1:0) + (floor_e?1:0) + (floor_w?1:0);
+
+    if (cardinal_count >= 3) {
+        p.tall_band = true;
+    } else if (floor_s) {
+        // Any wall bordering floor to its south gets the tall face -- no
+        // additional requirement that a diagonal (SW/SE) neighbor also be
+        // floor. That extra check used to silently fall back to a flat
+        // trim_s marker for any single-tile-wide floor notch (wall flanking
+        // both sides of the notch, so both diagonals are wall too), breaking
+        // the tall-band silhouette for an entirely ordinary jagged-cave
+        // shape -- confirmed against a concrete generated example.
+        p.tall_band = true;
+    }
+
+    // tall_band's asset is a continuous, fully opaque vertical band (bled
+    // upward, cleaned up by the second floor-repaint pass in dungeon_draw())
+    // that already covers this tile completely on its own -- unlike the
+    // nub_ne/nub_se sampling bug fixed alongside this, a tall_band tile was
+    // never actually *blank* without a cardinal trim layered on it, so
+    // there's nothing to rescue by drawing one. What layering a cardinal
+    // trim on top DOES do is paint a visibly different, unrelated source
+    // crop over part of tall_band's own continuous texture -- confirmed by
+    // direct pixel inspection of a rendered tile: a hard vertical seam right
+    // down the middle where trim_w's art meets tall_band's, not a blend.
+    // So all four cardinal trims are suppressed under tall_band, not just
+    // trim_s -- trim_trans can never coexist with tall_band anyway (proven
+    // below), and the diagonal nubs are left unconditional since they're a
+    // much smaller quarter-tile accent at a literal corner (where pieces
+    // already deliberately combine elsewhere in this file) and this
+    // combination is rare enough in practice (1 instance across 8 test
+    // seeds) not to be worth the same treatment without concrete evidence
+    // it looks bad too.
+    p.trim_s = floor_s && !p.tall_band;
+    p.trim_n = floor_n && !p.tall_band;
+    p.trim_e = floor_e && !p.tall_band;
+    p.trim_w = floor_w && !p.tall_band;
+    bool trim_axis = (floor_e || floor_w) && !floor_n && !floor_s;
+    p.trim_trans_above = trim_axis && cave_is_corner(dmap, tx, ty - 1);
+    p.trim_trans_below = trim_axis && cave_is_corner(dmap, tx, ty + 1);
+
+    bool floor_ne = cave_floor_at(dmap, tx + 1, ty - 1);
+    bool floor_se = cave_floor_at(dmap, tx + 1, ty + 1);
+    bool floor_nw = cave_floor_at(dmap, tx - 1, ty - 1);
+    bool floor_sw = cave_floor_at(dmap, tx - 1, ty + 1);
+    p.nub_ne = floor_ne && !floor_n && !floor_e;
+    p.nub_se = floor_se && !floor_s && !floor_e;
+    p.nub_sw = floor_sw && !floor_s && !floor_w;
+    p.nub_nw = floor_nw && !floor_n && !floor_w;
+    return p;
+}
+
+// Everything a cave wall tile draws EXCEPT tall_band: the half-tile trims,
+// corner-transition accents, and diagonal nubs. Split out of draw_cave_wall()
+// so dungeon_draw()'s bleed-reclaim second pass can redraw the same
+// decoration a second time, on top of any tall_band bleed from a tile below
+// that would otherwise silently paint over it -- tall_band bleeds two tile
+// heights upward, and the main pass draws rows north-to-south, so a
+// tall_band tile drawn later in the same pass can erase a decorated tile's
+// art that was already drawn above it. Caller is responsible for the
+// texture color mod (FOV dimming) around this call.
+static void draw_cave_wall_decor(SDL_Renderer* ren, SDL_Texture* tex,
+                                  const CaveWallPieces& p, int sx, int sy, int tsz) {
+    int half = tsz / 2;
+
+    // No base fill: true interior wall mass (nothing covered by an
+    // edge/corner piece below) is left as blank void, showing the raw
+    // background clear color through -- reverted from a textured base fill
+    // per request, back to how the rim/trim system looked on its own.
+
+    // A tile can qualify for more than one of these (a corner, where the
+    // boundary turns) -- each trim only ever touches its own half of the
+    // tile, so at a corner they naturally combine into an L-shape instead
+    // of needing a separate composited corner asset.
+    //
+    // A round-gem single-accent version was tried in place of this combo
+    // and reported as looking worse, not better -- reverted. Leaving this
+    // as the known-working baseline rather than guessing again blind.
+    if (p.trim_s) {
+        // No dedicated "north" piece exists in the mockup -- North and
+        // South are visually symmetric (floor on the near side either
+        // way), so this reuses the South trim's art, just bottom-aligned
+        // instead of top-aligned since the floor here is south of the
+        // tile, not north.
+        SDL_Rect src = { TRIM_S_X, TRIM_S_Y, 16, 8 };
+        SDL_Rect dst = { sx, sy + half, tsz, half };
+        SDL_RenderCopy(ren, tex, &src, &dst);
+    }
+    if (p.trim_n) {
+        SDL_Rect src = { TRIM_S_X, TRIM_S_Y, 16, 8 };
+        SDL_Rect dst = { sx, sy, tsz, half };
+        SDL_RenderCopy(ren, tex, &src, &dst);
+    }
+    // Shared 8x8 accent helper: samples one quadrant of a TRIM_TRANS_* cell
+    // and places it in one quadrant of the destination tile, optionally
+    // flipped vertically -- used below by both the corner-transition trim
+    // accents and the diagonal corner nubs.
+    auto accent = [&](int cell_x, bool flip_v, int dst_x, int dst_y) {
+        SDL_Rect src = { cell_x, TRIM_TRANS_L_Y, 8, 8 };
+        SDL_Rect dst = { dst_x, dst_y, half, half };
+        SDL_RenderCopyEx(ren, tex, &src, &dst, 0, nullptr, flip_v ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);
+    };
+
+    if (p.trim_e) {
+        // Source width must stay 8 (just the filled half of the 16-wide
+        // cell) to match the destination's half-tile width at the same 2x
+        // scale every other trim uses -- a first version left it at 16,
+        // which squished the content to half its correct width instead.
+        SDL_Rect src = { TRIM_WE_X, TRIM_WE_Y, 8, 16 };
+        SDL_Rect dst = { sx + (tsz - half), sy, half, tsz };
+        SDL_RenderCopy(ren, tex, &src, &dst);
+        // Corner-transition accent, layered on top of the plain trim rather
+        // than replacing it -- TRIM_TRANS_R's source art only paints its own
+        // top 8x8 quadrant (confirmed by direct pixel dump of tileset.png),
+        // so stretching it across the full tile like the old code did left
+        // the bottom half fully transparent whenever this fired.
+        if (p.trim_trans_above) accent(TRIM_TRANS_R_X + 8, false, sx + (tsz - half), sy);
+        if (p.trim_trans_below) accent(TRIM_TRANS_R_X + 8, true,  sx + (tsz - half), sy + half);
+    }
+    if (p.trim_w) {
+        SDL_Rect src = { TRIM_WE_X, TRIM_WE_Y, 8, 16 };
+        SDL_Rect dst = { sx, sy, half, tsz };
+        SDL_RenderCopy(ren, tex, &src, &dst);
+        if (p.trim_trans_above) accent(TRIM_TRANS_L_X, false, sx, sy);
+        if (p.trim_trans_below) accent(TRIM_TRANS_L_X, true,  sx, sy + half);
+    }
+
+    // Diagonal-only corner nubs -- unconditional, independent of whichever
+    // cardinal edges just got drawn above (see cave_wall_classify()).
+    // TRIM_TRANS_R's opaque half is its right 8px (see the +8 offset trim_e
+    // already uses above).
+    if (p.nub_ne) accent(TRIM_TRANS_R_X + 8, false, sx + half, sy);
+    if (p.nub_nw) accent(TRIM_TRANS_L_X, false, sx, sy);
+    if (p.nub_se) accent(TRIM_TRANS_R_X + 8, true, sx + half, sy + half);
+    if (p.nub_sw) accent(TRIM_TRANS_L_X, true, sx, sy + half);
+}
+
+static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
+                           const DungeonMap* dmap, int tx, int ty,
+                           int sx, int sy, int tsz, bool in_fov) {
+    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
+
+    Uint8 m = in_fov ? 255 : (Uint8)(255 * 3 / 10);
+    SDL_SetTextureColorMod(tex, m, m, m);
+
+    if (p.tall_band) {
+        // Stonehenge's wall_h mechanic (is_shg_wall below) but filled with a
+        // real texture instead of a flat color. Falls through (no return)
+        // so a trim/nub on the tile's orthogonal E/W axis or diagonal
+        // corners can still layer on top -- the colormod set above stays
+        // active throughout, so those pieces keep the same FOV dimming
+        // instead of snapping back to full brightness.
+        int wall_h = 2 * tsz;
+        SDL_Rect src = { TALL_BAND_X, TALL_BAND_Y, 16, 3 * 16 };
+        SDL_Rect dst = { sx, sy - wall_h, tsz, tsz + wall_h };
+        SDL_RenderCopy(ren, tex, &src, &dst);
+    }
+
+    draw_cave_wall_decor(ren, tex, p, sx, sy, tsz);
+
+    SDL_SetTextureColorMod(tex, 255, 255, 255);   // shared texture — reset immediately so the
+                                                   // dim doesn't leak into the next thing that
+                                                   // draws from tilemap_get_town_tex()
+}
+
 // ── public: draw dungeon tiles ────────────────────────────────────────────
 // Visibility model:
 //   unexplored              → skip (black background shows through)
@@ -2332,6 +2583,19 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             bool in_fov = show_all || dmap->visible[ty][tx];
 
             uint8_t tile = dmap->tiles[ty][tx];
+
+            if (tile == DNG_WALL && dmap->type == DUNGEON_ENT_CAVE) {
+                SDL_Texture* cave_tex = tilemap_get_town_tex();
+                if (cave_tex) {
+                    int sx = (int)((tx * DMAP_TILE - cam->x) * z);
+                    int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                    draw_cave_wall(ren, cave_tex, dmap, tx, ty, sx, sy, tsz, in_fov);
+                    continue;
+                }
+                // sheet failed to load — fall through to the generic border-cull +
+                // flat-fill path below, same degraded fallback every other
+                // dungeon type already has.
+            }
 
             // Outline walls: skip wall tiles not adjacent to any open tile (all except stonehenge)
             if (tile == DNG_WALL && dmap->type != DUNGEON_ENT_STONEHENGE) {
@@ -2386,6 +2650,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             char ch; Uint8 cr, cg, cb;
             switch (tile) {
                 case DNG_FLOOR:
+                    if (dmap->type == DUNGEON_ENT_CAVE) continue;   // flat floor reads cleaner bare
                     ch = ascii.floor;
                     cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
                     break;
@@ -2410,23 +2675,53 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
         }
     }
 
-    // Second pass (stonehenge only): redraw path tiles over tall wall extensions.
-    if (dmap->type == DUNGEON_ENT_STONEHENGE) {
+    // Second pass (stonehenge and cave): redraw floor/entry/exit tiles over
+    // tall wall extensions — a tall north-facing wall bleeds upward into
+    // screen space already drawn by an earlier (smaller-ty) loop iteration.
+    if (dmap->type == DUNGEON_ENT_STONEHENGE || dmap->type == DUNGEON_ENT_CAVE) {
+        bool is_cave = dmap->type == DUNGEON_ENT_CAVE;
         for (int ty = ty0; ty < ty1; ty++) {
             for (int tx = tx0; tx < tx1; tx++) {
                 uint8_t tile = dmap->tiles[ty][tx];
-                if (tile == DNG_WALL) continue;
                 if (!show_all && !dmap->explored[ty][tx]) continue;
 
                 bool shg_fov = show_all || dmap->visible[ty][tx];
+                int sx = (int)((tx * DMAP_TILE - cam->x) * z);
+                int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+
+                if (tile == DNG_WALL) {
+                    // Reclaim a cave wall tile's own decoration (trim/nub)
+                    // from any tall_band bleed a tile below it painted over
+                    // it in the main pass -- tall_band bleeds two tile
+                    // heights upward, and the main pass draws north row
+                    // first, so a tall_band tile drawn later can erase a
+                    // decorated tile's art already drawn above it.
+                    // tall_band itself isn't redrawn here: it can only ever
+                    // get bled over by another tall_band tile (same
+                    // continuous rock texture drawn over itself, no visible
+                    // seam either way), so there's nothing worth reclaiming.
+                    if (is_cave) {
+                        CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
+                        if (p.trim_n || p.trim_s || p.trim_e || p.trim_w ||
+                            p.nub_ne || p.nub_se || p.nub_sw || p.nub_nw) {
+                            SDL_Texture* cave_tex = tilemap_get_town_tex();
+                            if (cave_tex) {
+                                Uint8 m = shg_fov ? 255 : (Uint8)(255 * 3 / 10);
+                                SDL_SetTextureColorMod(cave_tex, m, m, m);
+                                draw_cave_wall_decor(ren, cave_tex, p, sx, sy, tsz);
+                                SDL_SetTextureColorMod(cave_tex, 255, 255, 255);
+                            }
+                        }
+                    }
+                    continue;
+                }
+
                 const SDL_Color* c;
                 switch (tile) {
                     case DNG_ENTRY: c = &pal.entry; break;
                     case DNG_EXIT:  c = &pal.exit_;  break;
                     default:        c = &pal.floor;  break;
                 }
-                int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-                int sy = (int)((ty * DMAP_TILE - cam->y) * z);
                 SDL_Rect rect = { sx, sy, tsz, tsz };
                 int sr = shg_fov ? c->r : c->r * 3 / 10;
                 int sg = shg_fov ? c->g : c->g * 3 / 10;
@@ -2451,6 +2746,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 }
                 if (has_loot) continue;   // skip the ASCII floor dot — keep the square clean
 
+                if (is_cave && tile == DNG_FLOOR) continue;   // no ascii dot on cave floor, matches main pass
+
                 char ch; Uint8 cr, cg, cb;
                 switch (tile) {
                     case DNG_ENTRY: ch = '<'; cr=255; cg=240; cb=80; break;
@@ -2463,6 +2760,105 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 if (!shg_fov) { cr = cr * 3 / 10; cg = cg * 3 / 10; cb = cb * 3 / 10; }
                 char buf[2] = {ch, '\0'};
                 draw_text(ren, buf, sx + coff, sy + coff, scale, cr, cg, cb);
+            }
+        }
+    }
+}
+
+// For the debug grid overlay: which tileset.png cell(s) a cave wall tile at
+// (tx,ty) actually draws from. Shares its classification with
+// draw_cave_wall() via cave_wall_classify() above, so the two can no longer
+// drift out of sync. Returns false for non-wall tiles and for true-interior
+// wall tiles that draw nothing at all (blank void, no rim/trim touching them).
+static bool cave_wall_debug_cell(const DungeonMap* dmap, int tx, int ty, char* buf, size_t buflen) {
+    if (dmap->tiles[ty][tx] != DNG_WALL) return false;
+
+    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
+
+    buf[0] = '\0';
+    if (p.tall_band) {
+        SDL_snprintf(buf, buflen, "28:0");
+    }
+    // Every piece below joins onto whatever's already in buf via the same
+    // len-guarded "+" pattern, so it doesn't matter that tall_band is now
+    // just the first optional piece instead of an early return -- trim_s/
+    // trim_n are provably mutually exclusive with tall_band (see
+    // cave_wall_classify()) and never actually co-occur with it, but nub_ne/
+    // nub_nw can (a floor_s-triggered tall_band tile can still have a
+    // diagonal-only NW/NE corner), which is exactly the case this fix
+    // restores.
+    if (p.trim_s || p.trim_n) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s29:7", len ? "+" : "");
+    }
+    if (p.trim_e || p.trim_w) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s31:0", len ? "+" : "");
+    }
+    // Corner-transition accent, layered on top of the base trim above (see
+    // draw_cave_wall()) -- shown as a separate "+"-joined piece rather than
+    // swapped in for 31:0, since both actually draw now. Same known,
+    // deliberately-accepted quirk as the nub labels below: if a tile has
+    // floor on both east *and* west with a transition active, this only
+    // shows the east variant -- rendering itself is correct either way.
+    if (p.trim_trans_above) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s%s", len ? "+" : "", p.trim_e ? "32:7" : "31:7");
+    }
+    if (p.trim_trans_below) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s%s", len ? "+" : "", p.trim_e ? "32:7v" : "31:7v");
+    }
+    if (p.nub_ne) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s32:7",  len ? "+" : ""); }
+    if (p.nub_nw) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s31:7",  len ? "+" : ""); }
+    if (p.nub_se) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s32:7v", len ? "+" : ""); }
+    if (p.nub_sw) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s31:7v", len ? "+" : ""); }
+    return buf[0] != '\0';
+}
+
+// ── Public: debug tile-grid overlay ───────────────────────────────────────
+// One line per DMAP_TILE boundary in view, plus a label in each cell's
+// corner once tiles are big enough to read one. The label is the tileset
+// (col,row) that tile actually draws from -- see cave_wall_debug_cell()
+// above -- rather than the world (tx,ty), since that's the coordinate
+// system assets/tileset.png edits are made in. Only cave wall tiles source
+// from the tileset (every other dungeon type, and floor/entry/exit tiles
+// even within a cave, are flat colour fills), so those are left unlabeled.
+void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren) {
+    float z   = cam->zoom;
+    int   tsz = (int)(DMAP_TILE * z);
+    if (tsz < 1) tsz = 1;
+
+    int tx0 = (int)(cam->x / DMAP_TILE) - 1;
+    int ty0 = (int)(cam->y / DMAP_TILE) - 1;
+    int tx1 = tx0 + (int)(cam->screen_w / tsz) + 3;
+    int ty1 = ty0 + (int)(cam->screen_h / tsz) + 3;
+    if (tx0 < 0) tx0 = 0;
+    if (ty0 < 0) ty0 = 0;
+    if (tx1 > DMAP_W) tx1 = DMAP_W;
+    if (ty1 > DMAP_H) ty1 = DMAP_H;
+
+    SDL_SetRenderDrawColor(ren, 0, 255, 0, 110);
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+    for (int ty = ty0; ty < ty1; ty++) {
+        for (int tx = tx0; tx < tx1; tx++) {
+            int sx = (int)((tx * DMAP_TILE - cam->x) * z);
+            int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+            SDL_Rect r = { sx, sy, tsz, tsz };
+            SDL_RenderDrawRect(ren, &r);
+        }
+    }
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+
+    if (tsz >= 24) {   // labels need room; skip them at small zoom rather than smear illegible text
+        bool is_cave = dmap->type == DUNGEON_ENT_CAVE;
+        for (int ty = ty0; ty < ty1; ty++) {
+            for (int tx = tx0; tx < tx1; tx++) {
+                char buf[40];   // base fill + up to 2 edges + up to 4 nubs can exceed the old 16
+                if (!is_cave || !cave_wall_debug_cell(dmap, tx, ty, buf, sizeof(buf))) continue;
+                int sx = (int)((tx * DMAP_TILE - cam->x) * z);
+                int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                draw_text(ren, buf, sx + 1, sy + 1, 1, 60, 255, 60);
             }
         }
     }
@@ -2518,4 +2914,41 @@ void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
     SDL_RenderFillRect(ren, &dot);
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+}
+
+bool dungeon_minimap_click_to_world(const DungeonMap* dmap,
+                                    int screen_w, int screen_h, int mx, int my,
+                                    bool show_all,
+                                    float* out_world_x, float* out_world_y)
+{
+    // Mirror the step/offset calculation from dungeon_minimap_draw exactly
+    int max_dim = (screen_w < screen_h ? screen_w : screen_h) * 4 / 5;
+    int step = 1;
+    while (DMAP_W / step > max_dim || DMAP_H / step > max_dim)
+        step++;
+
+    int mw = DMAP_W / step;
+    int mh = DMAP_H / step;
+    int ox = (screen_w - mw) / 2;
+    int oy = (screen_h - mh) / 2;
+
+    // Check the click is inside the minimap rectangle
+    if (mx < ox || mx >= ox + mw || my < oy || my >= oy + mh)
+        return false;
+
+    // step can overshoot the map edge by up to step-1, so clamp before
+    // indexing into the tile arrays.
+    int tx = (mx - ox) * step;
+    int ty = (my - oy) * step;
+    if (tx >= DMAP_W) tx = DMAP_W - 1;
+    if (ty >= DMAP_H) ty = DMAP_H - 1;
+
+    // Don't send the player into a wall, or into fog they can't see on the
+    // very minimap they're clicking.
+    if (!show_all && !dmap->explored[ty][tx]) return false;
+    if (dmap->tiles[ty][tx] == DNG_WALL) return false;
+
+    *out_world_x = (float)(tx * DMAP_TILE);
+    *out_world_y = (float)(ty * DMAP_TILE);
+    return true;
 }
