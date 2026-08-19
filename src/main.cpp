@@ -17,6 +17,7 @@
 #include "camera.h"
 #include "tilemap.h"
 #include "resource_node.h"
+#include "floattext.h"
 
 
 int main(int argc, char *argv[])
@@ -73,22 +74,9 @@ int main(int argc, char *argv[])
     int          flash_count        = 0;
     float        pre_battle_timer   = -1.0f;  // -1 = inactive
 
-    // Floating +N resource text — one active at a time above the last hit node
-    struct FloatText { float wx, wy, drift, life; char text[8]; Uint8 r, g, b; bool active; int count; };
-    FloatText cur_float = {};
-    auto spawn_float = [&](float wx, float wy, Uint8 r, Uint8 g, Uint8 b) {
-        if (cur_float.active && fabsf(cur_float.wx - wx) < 2.0f && fabsf(cur_float.wy - wy) < 2.0f) {
-            cur_float.count++;
-            cur_float.life = 1.0f;
-            cur_float.drift = 0.0f;
-        } else {
-            cur_float = {};
-            cur_float.wx = wx; cur_float.wy = wy;
-            cur_float.life = 1.0f; cur_float.active = true; cur_float.count = 1;
-            cur_float.r = r; cur_float.g = g; cur_float.b = b;
-        }
-        SDL_snprintf(cur_float.text, sizeof(cur_float.text), "+%d", cur_float.count);
-    };
+    // Floating +N resource text — one active at a time above the last hit node.
+    // Shared by the overworld and every dungeon (include/floattext.h).
+    FloatText cur_float;
 
     Overworld ow;
 
@@ -402,16 +390,7 @@ int main(int argc, char *argv[])
 
                 HarvestResult harvest = {};
                 overworld_update(&ow, &player, game_in, dt, &resources, map, &cam, dbg_noclip, &harvest);
-                // One popup per thing struck — a scythe sweep hits several, and
-                // a single "+1" would understate what was actually collected.
-                for (int hi = 0; hi < harvest.count; hi++) {
-                    int res = harvest.hits[hi].resource;
-                    if (res < 0) continue;
-                    Uint8 fr = 180, fg = 120, fb = 60;
-                    if      (res == (int)RESOURCE_ROCK) { fr = 160; fg = 160; fb = 160; }
-                    else if (res == (int)RESOURCE_GOLD) { fr = 255; fg = 210; fb =  40; }
-                    spawn_float(harvest.hits[hi].x, harvest.hits[hi].y, fr, fg, fb);
-                }
+                floattext_spawn_from_harvest(&cur_float, &harvest);
 
                 float player_cx = ow.x + player.width * 0.5f;
                 float player_cy = ow.y + player.height * 0.5f;
@@ -434,8 +413,8 @@ int main(int argc, char *argv[])
                     // cooldown this weapon actually sets rather than its raw
                     // fire rate — which several weapons no longer go by.
                     float max_cd = weapon_cooldown_seconds(player.equipped_weapon);
-                    float ready  = (max_cd > 0.0f && ow.tool_cd > 0.0f)
-                                 ? 1.0f - ow.tool_cd / max_cd : 1.0f;
+                    float ready  = (max_cd > 0.0f && ow.swing.tool_cd > 0.0f)
+                                 ? 1.0f - ow.swing.tool_cd / max_cd : 1.0f;
                     if (ready < 0.0f) ready = 0.0f;
                     if (ready > 1.0f) ready = 1.0f;
                     const int BAR_W = 160, BAR_H = 5;
@@ -449,20 +428,7 @@ int main(int argc, char *argv[])
                 }
 
                 // --- Floating resource text ---
-                if (cur_float.active) {
-                    cur_float.drift += 60.0f * dt;
-                    cur_float.life  -= dt;
-                    if (cur_float.life <= 0.0f) {
-                        cur_float.active = false;
-                    } else {
-                        int sx = (int)((cur_float.wx - cam.x) * cam.zoom);
-                        int sy = (int)((cur_float.wy - cam.y) * cam.zoom) - (int)cur_float.drift;
-                        sx -= text_width(cur_float.text, 1) / 2;
-                        float a = cur_float.life;
-                        draw_text(plat.renderer, cur_float.text, sx, sy, 1,
-                                  (Uint8)(cur_float.r * a), (Uint8)(cur_float.g * a), (Uint8)(cur_float.b * a));
-                    }
-                }
+                floattext_update_draw(&cur_float, dt, &cam, plat.renderer);
 
 
                 // Dungeon entry — show name prompt when standing on an entrance.
@@ -749,8 +715,11 @@ int main(int argc, char *argv[])
                 break;
 
             case STATE_DUNGEON: {
-                if (pre_battle_timer < 0.0f)
-                    dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, dbg_noclip);
+                if (pre_battle_timer < 0.0f) {
+                    HarvestResult dng_harvest = {};
+                    dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, &cam, dbg_noclip, &dng_harvest);
+                    floattext_spawn_from_harvest(&cur_float, &dng_harvest);
+                }
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
                 float dpcy = dplayer.y + player.height * 0.5f;
@@ -963,6 +932,10 @@ int main(int argc, char *argv[])
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
                 player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
+                dungeon_draw_swing(&dplayer, &cam, plat.renderer);
+
+                // --- Floating resource text ---
+                floattext_update_draw(&cur_float, dt, &cam, plat.renderer);
 
                 // Draw active chasers
                 for (int ci = 0; ci < num_chasers; ci++) {

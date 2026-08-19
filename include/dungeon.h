@@ -7,6 +7,8 @@
 #include "input.h"
 #include "camera.h"
 #include "tilemap.h"   // DungeonEntranceType
+#include "resource_node.h"
+#include "combat.h"
 
 #define DMAP_W              768
 #define DMAP_H              512
@@ -75,6 +77,7 @@ struct DungeonMap {
     int            num_spawners;
     DungeonLoot    loot[DMAP_MAX_LOOT];
     int            num_loot;
+    ResourceNodeList dungeon_rocks;    // destroyable rock-node wall tiles
 };
 
 struct DungeonPlayer {
@@ -82,6 +85,10 @@ struct DungeonPlayer {
     float speed;
     int   at_exit;    // 1 if player centre is over DNG_EXIT tile
     int   at_entry;   // 1 if player centre is over DNG_ENTRY tile (exit back to overworld)
+
+    // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
+    // the overworld (Overworld, include/overworld.h).
+    WeaponSwingState swing;
 };
 
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
@@ -90,9 +97,14 @@ void dungeon_orient_portals(DungeonMap* dmap, float exit_angle);
 // from_exit=0: spawn at DNG_ENTRY; from_exit=1: spawn at DNG_EXIT (connected entrance)
 void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, int from_exit);
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
-                           float dt, DungeonMap* dmap, bool noclip = false);
+                           float dt, DungeonMap* dmap, const Camera* cam,
+                           bool noclip = false, HarvestResult* out_harvest = nullptr);
 void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                   const Camera* cam, SDL_Renderer* ren, bool show_all = false);
+// Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
+// around weapon_swing_draw() (combat.h), the same one overworld_draw_swing()
+// (src/overworld.cpp) calls.
+void dungeon_draw_swing(const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren);
 // Debug overlay: thin lines around every DMAP_TILE grid cell in view,
 // labeled with the tileset (col,row) a cave wall tile actually draws from
 // (blank for floor tiles, non-cave dungeon types, and deep-interior void,

@@ -7,6 +7,7 @@
 #include "camera.h"
 #include "resource_node.h"
 #include "tilemap.h"
+#include "combat.h"
 
 typedef struct Overworld {
     float x, y;
@@ -22,35 +23,11 @@ typedef struct Overworld {
     int at_interior_door;
     int interior_door_idx;              // index into map->doors, valid when at_interior_door == 1
 
-    float tool_cd;   // seconds remaining before next resource hit is allowed
-
-    // Swing in progress — either a blade turning around the player (sweep) or
-    // one driving straight ahead (thrust), striking what it passes over.
-    // swing_t is seconds in, or negative when nothing is swinging. The weapon
-    // is remembered so switching mid-swing can't change what is already moving.
-    float      swing_t;
-    float      swing_angle;    // sweep: starting bearing. thrust: direction.
-    float      swing_len;      // thrust only: how far this one drives
-    WeaponType swing_weapon;
-
-    // Seconds left rooted in place by a heavy weapon's swing. See
-    // weapon_freeze_seconds(). Zero when free to move.
-    float      freeze_t;
-
-    // The one thrown object in flight, if any. It travels until it meets
-    // something harvestable or leaves the screen, then is gone.
-    int        throw_live;
-    float      throw_x, throw_y;
-    float      throw_dx, throw_dy;   // unit direction
-    WeaponType throw_weapon;
+    // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
+    // every dungeon (DungeonPlayer, include/dungeon.h).
+    WeaponSwingState swing;
 
 } Overworld;
-
-// Seconds of cooldown a swing with this weapon sets. Sweeps and thrusts can use
-// their own animation as the cooldown and throws scale the fire rate, so this is
-// the one place that resolves it — the swing and the HUD bar both read it, which
-// is what stops the bar from describing a cooldown the weapon doesn't have.
-float weapon_cooldown_seconds(WeaponType w);
 
 void overworld_init(Overworld* ow, Player* player, float x, float y);
 // out_harvest, if given, is filled with everything this frame's swing struck —

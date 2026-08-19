@@ -2,6 +2,7 @@
 #include "collision.h"
 #include "core.h"
 #include "resource_node.h"   // RESOURCE_GOLD inventory index
+#include "combat.h"          // weapon_swing_update/draw -- shared with the overworld harvest mechanic
 #include <string.h>
 #include <math.h>
 
@@ -1911,6 +1912,13 @@ static bool tile_open_interior(const DungeonMap* dmap, int tx, int ty) {
     return open >= 6;
 }
 
+// Defined later, alongside cave_wall_classify() (whose tall_band_standalone
+// flag is the exact placement criterion) -- forward-declared here so
+// dungeon_generate() and dungeon_player_update() can call it before that
+// point in the file.
+static void place_cave_rock_nodes(DungeonMap* dmap);
+static bool cave_tile_is_rock_candidate(const DungeonMap* dmap, int tx, int ty);
+
 // Spread loot across floor tiles using the same grid + local-search shape as
 // place_spawners, but biased away from the entrance and away from dead ends /
 // wall-hugging pockets, so it rewards exploring the dungeon's open rooms.
@@ -2008,6 +2016,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
     dmap->num_portals = 0;
     if (dmap->want_portals < 2)                 dmap->want_portals = 2;
     if (dmap->want_portals > DMAP_MAX_PORTALS)  dmap->want_portals = DMAP_MAX_PORTALS;
+    resource_nodes_init(&dmap->dungeon_rocks);
 
     uint32_t rng = seed ^ ((uint32_t)type * 0xBEEF1234u);
 
@@ -2018,6 +2027,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
         place_loot(dmap, &rng);
+        place_cave_rock_nodes(dmap);
         return;
     }
 
@@ -2189,6 +2199,8 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
     dp->at_exit  = 0;
     dp->at_entry = 0;
 
+    dp->swing = WeaponSwingState();
+
     // Reset animation state on the shared player
     player->facing        = 0;
     player->facing_locked = 0;
@@ -2239,11 +2251,61 @@ static void compute_fov(DungeonMap* dmap, int ptx, int pty) {
 
 // ── Public: player update ─────────────────────────────────────────────────
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
-                           float dt, DungeonMap* dmap, bool noclip) {
+                           float dt, DungeonMap* dmap, const Camera* cam,
+                           bool noclip, HarvestResult* out_harvest) {
     float anim_speed;
 
-    float dx, dy;
-    player_read_input(player, in, &dx, &dy);
+    float hx = dp->x + (HB_X1 + HB_X2) * 0.5f;
+    float hy = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
+
+    HarvestResult local = {};
+    HarvestResult* h = out_harvest ? out_harvest : &local;
+
+    // Same trigger/dispatch/advance machinery as overworld_update()
+    // (src/overworld.cpp) -- tiles is null since a dungeon has no tile-based
+    // harvest system, only rock nodes, and attack_blocked is always false:
+    // dungeons have no door/entrance prompt competing for the same key.
+    weapon_swing_update(&dp->swing, player, in, dt, hx, hy, &dmap->dungeon_rocks,
+                       nullptr, cam, false, h);
+
+    // A destroyed rock node carves the wall tile it sat in open into floor --
+    // the dungeon's equivalent of the gravestone-reveal tile write in
+    // overworld_update() (src/overworld.cpp).
+    for (int i = 0; i < h->count; i++) {
+        if (!h->hits[i].destroyed) continue;
+        int rtx = (int)(h->hits[i].x / DMAP_TILE);
+        int rty = (int)(h->hits[i].y / DMAP_TILE);
+        if (rtx < 0 || rtx >= DMAP_W || rty < 0 || rty >= DMAP_H) continue;
+        dmap->tiles[rty][rtx] = DNG_FLOOR;
+
+        // Cave-only: a neighbor that only just became a headroom-orphaned
+        // tall_band tile (see cave_wall_classify()'s tall_band_standalone)
+        // would otherwise show the same 32:0 art but not be struck-able --
+        // pick up any newly-qualifying, not-yet-tracked neighbor so digging
+        // further keeps finding real, harvestable rock. Non-cave dungeons
+        // don't place any rock nodes yet, so there's nothing to rescan there.
+        if (dmap->type != DUNGEON_ENT_CAVE) continue;
+        for (int ndy = -1; ndy <= 1; ndy++) {
+            for (int ndx = -1; ndx <= 1; ndx++) {
+                int nx = rtx + ndx, ny = rty + ndy;
+                if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) continue;
+                if (dmap->tiles[ny][nx] != DNG_WALL) continue;
+                if (!cave_tile_is_rock_candidate(dmap, nx, ny)) continue;
+                bool tracked = false;
+                for (int k = 0; k < dmap->dungeon_rocks.count; k++) {
+                    ResourceNode& rn = dmap->dungeon_rocks.nodes[k];
+                    if ((int)(rn.x / DMAP_TILE) == nx && (int)(rn.y / DMAP_TILE) == ny) { tracked = true; break; }
+                }
+                if (!tracked)
+                    resource_nodes_add(&dmap->dungeon_rocks, RESOURCE_ROCK,
+                                       (float)(nx * DMAP_TILE), (float)(ny * DMAP_TILE));
+            }
+        }
+    }
+
+    float dx = 0.0f, dy = 0.0f;
+    if (!weapon_swing_frozen_tick(&dp->swing, player, dt))
+        player_read_input(player, in, &dx, &dy);
 
     if (input_down(in, SDL_SCANCODE_LSHIFT))
         { dp->speed = 300.0f; anim_speed = 0.10f; }
@@ -2344,6 +2406,7 @@ static const int TRIM_S_X  = 29 * 16, TRIM_S_Y  = 7 * 16;   // opaque top 8px of
 static const int TRIM_TRANS_L_X = 31 * 16, TRIM_TRANS_L_Y = 7 * 16;   // pairs with floor_w (hugs left edge)
 static const int TRIM_TRANS_R_X = 32 * 16, TRIM_TRANS_R_Y = 7 * 16;   // pairs with floor_e (hugs right edge)
 static const int TALL_BAND_X = 28 * 16, TALL_BAND_Y = 0 * 16;         // (28,0)(28,1)(28,2), stacked into one tall face
+static const int TALL_BAND_SOLO_X = 32 * 16, TALL_BAND_SOLO_Y = 0 * 16;  // standalone boulder, single cell, not stacked
 
 // Whether the wall tile at (tx,ty) is itself a corner -- both a South-style
 // trim condition and a West/East-style one true at once. Called from inside
@@ -2363,6 +2426,15 @@ static bool cave_is_corner(const DungeonMap* dmap, int tx, int ty) {
 // editors to keep the two copies in sync.
 struct CaveWallPieces {
     bool tall_band = false;
+    bool tall_band_standalone = false;  // tall_band true, but floor sits
+                                          // immediately north -- the bleed's
+                                          // upper segment(s) would land on
+                                          // real floor and get erased by the
+                                          // second-pass floor reclaim,
+                                          // leaving 28:2 orphaned with
+                                          // nothing above it. Drawn as a
+                                          // single standalone boulder
+                                          // (TALL_BAND_SOLO) instead.
     bool trim_n = false, trim_s = false;
     bool trim_e = false, trim_w = false;
     bool trim_trans_above = false;  // corner sits directly above this tile's
@@ -2394,6 +2466,21 @@ static CaveWallPieces cave_wall_classify(const DungeonMap* dmap, int tx, int ty)
         // the tall-band silhouette for an entirely ordinary jagged-cave
         // shape -- confirmed against a concrete generated example.
         p.tall_band = true;
+    }
+    if (p.tall_band) {
+        // tall_band's 3-cell texture bleeds two tiles upward from this
+        // tile's own row. If floor sits immediately north, the second-pass
+        // floor reclaim in dungeon_draw() repaints exactly where the bled
+        // texture landed there, erasing it -- leaving just this tile's own
+        // bottom segment (28:2) on screen with nothing above it, a
+        // disconnected fragment of a "tall face" that was never going to
+        // read as tall in the first place (there's no wall mass above it to
+        // face). Draw the standalone piece instead when there's no room for
+        // the bleed to land on real wall. Confirmed via the 8-seed test set
+        // that this never fires on adjacent tiles in the same row, so it's
+        // always an isolated single-tile situation, not a run that would
+        // look repetitive rendered piecemeal.
+        p.tall_band_standalone = floor_n;
     }
 
     // tall_band's asset is a continuous, fully opaque vertical band (bled
@@ -2431,6 +2518,25 @@ static CaveWallPieces cave_wall_classify(const DungeonMap* dmap, int tx, int ty)
     p.nub_sw = floor_sw && !floor_s && !floor_w;
     p.nub_nw = floor_nw && !floor_n && !floor_w;
     return p;
+}
+
+// A cave wall tile is a rock-node candidate exactly when it renders the
+// standalone crystal/boulder sprite (TALL_BAND_SOLO/32:0) -- see
+// tall_band_standalone above. Placement and rendering share this one
+// criterion, so the two can never disagree.
+static bool cave_tile_is_rock_candidate(const DungeonMap* dmap, int tx, int ty) {
+    return cave_wall_classify(dmap, tx, ty).tall_band_standalone;
+}
+
+static void place_cave_rock_nodes(DungeonMap* dmap) {
+    for (int ty = 0; ty < DMAP_H; ty++) {
+        for (int tx = 0; tx < DMAP_W; tx++) {
+            if (dmap->tiles[ty][tx] != DNG_WALL) continue;
+            if (!cave_tile_is_rock_candidate(dmap, tx, ty)) continue;
+            resource_nodes_add(&dmap->dungeon_rocks, RESOURCE_ROCK,
+                               (float)(tx * DMAP_TILE), (float)(ty * DMAP_TILE));
+        }
+    }
 }
 
 // Everything a cave wall tile draws EXCEPT tall_band: the half-tile trims,
@@ -2533,10 +2639,21 @@ static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
         // corners can still layer on top -- the colormod set above stays
         // active throughout, so those pieces keep the same FOV dimming
         // instead of snapping back to full brightness.
-        int wall_h = 2 * tsz;
-        SDL_Rect src = { TALL_BAND_X, TALL_BAND_Y, 16, 3 * 16 };
-        SDL_Rect dst = { sx, sy - wall_h, tsz, tsz + wall_h };
-        SDL_RenderCopy(ren, tex, &src, &dst);
+        //
+        // No room above for the bleed to land on real wall (floor sits
+        // immediately north) -- draw the standalone single-cell piece
+        // instead of a 3-cell stretch that would just get partially erased
+        // by the floor reclaim, orphaning the bottom segment.
+        if (p.tall_band_standalone) {
+            SDL_Rect src = { TALL_BAND_SOLO_X, TALL_BAND_SOLO_Y, 16, 16 };
+            SDL_Rect dst = { sx, sy, tsz, tsz };
+            SDL_RenderCopy(ren, tex, &src, &dst);
+        } else {
+            int wall_h = 2 * tsz;
+            SDL_Rect src = { TALL_BAND_X, TALL_BAND_Y, 16, 3 * 16 };
+            SDL_Rect dst = { sx, sy - wall_h, tsz, tsz + wall_h };
+            SDL_RenderCopy(ren, tex, &src, &dst);
+        }
     }
 
     draw_cave_wall_decor(ren, tex, p, sx, sy, tsz);
@@ -2765,6 +2882,16 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
     }
 }
 
+// Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
+// around weapon_swing_draw() (combat.h), the same one overworld_draw_swing()
+// (src/overworld.cpp) calls.
+void dungeon_draw_swing(const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren)
+{
+    float px = dp->x + (HB_X1 + HB_X2) * 0.5f;
+    float py = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
+    weapon_swing_draw(&dp->swing, px, py, cam, ren);
+}
+
 // For the debug grid overlay: which tileset.png cell(s) a cave wall tile at
 // (tx,ty) actually draws from. Shares its classification with
 // draw_cave_wall() via cave_wall_classify() above, so the two can no longer
@@ -2777,7 +2904,7 @@ static bool cave_wall_debug_cell(const DungeonMap* dmap, int tx, int ty, char* b
 
     buf[0] = '\0';
     if (p.tall_band) {
-        SDL_snprintf(buf, buflen, "28:0");
+        SDL_snprintf(buf, buflen, "%s", p.tall_band_standalone ? "32:0" : "28:0");
     }
     // Every piece below joins onto whatever's already in buf via the same
     // len-guarded "+" pattern, so it doesn't matter that tall_band is now
