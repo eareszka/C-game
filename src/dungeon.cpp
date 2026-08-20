@@ -2418,6 +2418,33 @@ static bool cave_is_corner(const DungeonMap* dmap, int tx, int ty) {
     return vert && horiz;
 }
 
+// Does the cave wall tile at (x,y) draw the 3-cell stacked north face? Used to
+// find where a run of them ends, so the exposed flank can be outlined.
+// Equivalent to cave_wall_classify(dmap,x,y).tall_band && !tall_band_standalone,
+// reduced to three neighbor lookups instead of a full re-classify: tall_band's
+// cardinal_count>=3 arm can only fire without floor_s when floor_n is also true,
+// which is exactly the standalone case -- so "floor south, no floor north" is
+// the whole condition. Deliberately NOT a call back into cave_wall_classify(),
+// which calls this; keeping it flat keeps that one-directional.
+static inline bool cave_is_tall_face(const DungeonMap* dmap, int x, int y) {
+    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;  // map edge ends the run
+    if (cave_floor_at(dmap, x, y)) return false;                     // not a wall at all
+    return cave_floor_at(dmap, x, y + 1) && !cave_floor_at(dmap, x, y - 1);
+}
+
+// The standalone-boulder counterpart of cave_is_tall_face(): floor both north
+// and south, which is exactly cave_wall_classify()'s tall_band_standalone.
+// A run-end outline must not paint into a column holding one of these -- 32:0
+// is a shaped free-standing cluster with transparent margins, and a solid
+// half-tile strip over its near half cuts the silhouette down to a spike or
+// two. It's also the minable rock node (see cave_tile_is_rock_candidate()),
+// which the player picks out of the wall by that silhouette.
+static inline bool cave_is_solo_boulder(const DungeonMap* dmap, int x, int y) {
+    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;
+    if (cave_floor_at(dmap, x, y)) return false;
+    return cave_floor_at(dmap, x, y + 1) && cave_floor_at(dmap, x, y - 1);
+}
+
 // Which tileset pieces the cave wall tile at (tx,ty) is built from, derived
 // once from its local floor/wall neighborhood. Single source of truth,
 // consumed by both draw_cave_wall() (renders it) and cave_wall_debug_cell()
@@ -2435,6 +2462,14 @@ struct CaveWallPieces {
                                           // nothing above it. Drawn as a
                                           // single standalone boulder
                                           // (TALL_BAND_SOLO) instead.
+    bool band_edge_w = false;  // this tall face is the West/East end of its run
+    bool band_edge_e = false;  // -- the neighbor on that side isn't itself a
+                               // stacked face, so the run's flank is exposed.
+                               // Outlined with the 3-cell 31:0/31:1/31:2 strip
+                               // drawn into the NEIGHBORING cell's near half,
+                               // by dungeon_draw()'s third pass rather than
+                               // draw_cave_wall_decor() (see there for why it
+                               // can't live in either earlier pass).
     bool trim_n = false, trim_s = false;
     bool trim_e = false, trim_w = false;
     bool trim_trans_above = false;  // corner sits directly above this tile's
@@ -2481,6 +2516,34 @@ static CaveWallPieces cave_wall_classify(const DungeonMap* dmap, int tx, int ty)
         // always an isolated single-tile situation, not a run that would
         // look repetitive rendered piecemeal.
         p.tall_band_standalone = floor_n;
+    }
+
+    // Where a run of tall faces ends, its flank is a hard vertical cut through
+    // the band texture -- the face reads as art that got clipped rather than a
+    // rock mass with ends. Outline both exposed ends (31:0/31:1/31:2, drawn at
+    // the band's own full 3-tile height by the third pass in dungeon_draw()).
+    // Two faces side by side each see the other as a tall face, so neither
+    // claims the gap between them: an outline lands at most once per gap.
+    if (p.tall_band && !p.tall_band_standalone) {
+        // Also skip a side whose neighboring column is already spoken for over
+        // the strip's own 3-tile span, in either of two ways:
+        //   - ANOTHER face's drawn footprint -- a diagonal staircase edge,
+        //     where the face one row up bleeds two tiles up through that same
+        //     column. Without this the outline paints its flat-bright strip
+        //     straight down through that face's darker segments (28:1/28:2).
+        //   - a standalone boulder, whose shaped silhouette the strip would
+        //     cut in half (see cave_is_solo_boulder()).
+        // Measured across the 8-seed set: 201 run ends, of which 4 sat beside
+        // a boulder -- rare, but it gutted the node marker every time.
+        bool blocked_w = false, blocked_e = false;
+        for (int k = 0; k <= 2; k++) {
+            blocked_w = blocked_w || cave_is_tall_face(dmap, tx - 1, ty - k)
+                                  || cave_is_solo_boulder(dmap, tx - 1, ty - k);
+            blocked_e = blocked_e || cave_is_tall_face(dmap, tx + 1, ty - k)
+                                  || cave_is_solo_boulder(dmap, tx + 1, ty - k);
+        }
+        p.band_edge_w = !blocked_w;
+        p.band_edge_e = !blocked_e;
     }
 
     // tall_band's asset is a continuous, fully opaque vertical band (bled
@@ -2880,6 +2943,57 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             }
         }
     }
+
+    // Third pass (cave only): outline the exposed flanks of each tall-face run.
+    //
+    // Needs a pass of its own. The strip deliberately overhangs the NEIGHBORING
+    // cell by half a tile, and that neighbor is usually floor -- that's why the
+    // run ended there. The second pass above repaints every floor tile flat, so
+    // anything the main pass draws onto one dies. Putting it in the second
+    // pass's own wall branch fails differently: that pass walks west to east,
+    // so an east-side strip at column tx+1 is drawn before that column's floor
+    // repaint and gets erased, leaving only the west side. Drawn here, last,
+    // after every floor repaint and decor redraw, nothing can overwrite it.
+    //
+    // Sourced as one 8x48 crop (31:0/31:1/31:2) rather than a single cell tiled
+    // three times: at 8x48 -> half-tile by 3-tile it maps at the same 2x every
+    // other piece here renders at, where one 8x16 cell stretched over that
+    // height would be a 3x vertical smear.
+    if (dmap->type == DUNGEON_ENT_CAVE) {
+        SDL_Texture* cave_tex = tilemap_get_town_tex();
+        if (cave_tex) {
+            int half = tsz / 2;
+            SDL_Rect src = { TRIM_WE_X, TRIM_WE_Y, 8, 3 * 16 };
+            for (int ty = ty0; ty < ty1; ty++) {
+                for (int tx = tx0; tx < tx1; tx++) {
+                    if (!show_all && !dmap->explored[ty][tx]) continue;
+                    if (dmap->tiles[ty][tx] != DNG_WALL) continue;
+                    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
+                    if (!p.band_edge_w && !p.band_edge_e) continue;
+
+                    int sx = (int)((tx * DMAP_TILE - cam->x) * z);
+                    int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                    // Dimmed to the BAND tile's own FOV, not that of the cell it
+                    // paints into, so the strip always matches the face it hugs
+                    // rather than the floor it overhangs.
+                    bool lit = show_all || dmap->visible[ty][tx];
+                    Uint8 m = lit ? 255 : (Uint8)(255 * 3 / 10);
+                    SDL_SetTextureColorMod(cave_tex, m, m, m);
+
+                    if (p.band_edge_w) {   // right half of the cell to the west
+                        SDL_Rect dst = { sx - half, sy - 2 * tsz, half, 3 * tsz };
+                        SDL_RenderCopy(ren, cave_tex, &src, &dst);
+                    }
+                    if (p.band_edge_e) {   // left half of the cell to the east
+                        SDL_Rect dst = { sx + tsz, sy - 2 * tsz, half, 3 * tsz };
+                        SDL_RenderCopyEx(ren, cave_tex, &src, &dst, 0, nullptr,
+                                         SDL_FLIP_HORIZONTAL);
+                    }
+                    SDL_SetTextureColorMod(cave_tex, 255, 255, 255);
+                }
+            }
+        }
+    }
 }
 
 // Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
@@ -2905,6 +3019,18 @@ static bool cave_wall_debug_cell(const DungeonMap* dmap, int tx, int ty, char* b
     buf[0] = '\0';
     if (p.tall_band) {
         SDL_snprintf(buf, buflen, "%s", p.tall_band_standalone ? "32:0" : "28:0");
+    }
+    // Run-end outline strips. Labelled on the band tile that OWNS the strip,
+    // not on the neighboring cell it actually paints into, so the label lines
+    // up with cave_wall_classify()'s owner. "h" = horizontally flipped, same
+    // suffix convention as the "v" used for the flipped nubs below.
+    if (p.band_edge_w) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s31:0w", len ? "+" : "");
+    }
+    if (p.band_edge_e) {
+        size_t len = SDL_strlen(buf);
+        SDL_snprintf(buf+len, buflen-len, "%s31:0eh", len ? "+" : "");
     }
     // Every piece below joins onto whatever's already in buf via the same
     // len-guarded "+" pattern, so it doesn't matter that tall_band is now
@@ -2981,7 +3107,7 @@ void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Rend
         bool is_cave = dmap->type == DUNGEON_ENT_CAVE;
         for (int ty = ty0; ty < ty1; ty++) {
             for (int tx = tx0; tx < tx1; tx++) {
-                char buf[40];   // base fill + up to 2 edges + up to 4 nubs can exceed the old 16
+                char buf[56];   // base fill + 2 run-end strips + up to 2 edges + up to 4 nubs
                 if (!is_cave || !cave_wall_debug_cell(dmap, tx, ty, buf, sizeof(buf))) continue;
                 int sx = (int)((tx * DMAP_TILE - cam->x) * z);
                 int sy = (int)((ty * DMAP_TILE - cam->y) * z);
