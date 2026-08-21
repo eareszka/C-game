@@ -9,7 +9,7 @@
 // ── Color palettes per dungeon type ───────────────────────────────────────
 struct DngPalette { SDL_Color wall, floor, entry, exit_; };
 
-static const DngPalette PALETTES[8] = {
+static const DngPalette PALETTES[DUNGEON_ENT_COUNT] = {
     // CAVE — a fallback row, and only that. Both colours here are overridden
     // per material by dng_palette(): the floor comes from MaterialDef::floor
     // and the wall from MaterialDef::minimap_wall. What is left reaching this
@@ -31,11 +31,14 @@ static const DngPalette PALETTES[8] = {
     {{210,112, 20,255},{ 10,  5,  2,255},{200,175, 40,255},{ 80,110,200,255}},
     // LARGE_TREE
     {{ 20, 55, 18,255},{ 33, 85, 28,255},{200,175, 40,255},{ 55,200, 50,255}},
+    // CATACOMBS — a step darker again than GRAVEYARD_LG, which is itself a step
+    // darker than SM. The three read as one family getting deeper underground.
+    {{ 18, 16, 28,255},{ 38, 34, 50,255},{200,175, 40,255},{100, 50,180,255}},
 };
 
 // ── ASCII chars per dungeon type [wall, floor] ────────────────────────────
 struct DngAscii { char wall, floor; };
-static const DngAscii ASCII_CHARS[8] = {
+static const DngAscii ASCII_CHARS[DUNGEON_ENT_COUNT] = {
     {'#', '.'}, // CAVE
     {'+', ','}, // RUINS
     {'#', '.'}, // GRAVEYARD_SM
@@ -44,6 +47,7 @@ static const DngAscii ASCII_CHARS[8] = {
     {'#', '.'}, // PYRAMID
     {'O', '.'}, // STONEHENGE
     {'*', '.'}, // LARGE_TREE
+    {'#', ','}, // CATACOMBS — graveyard walls, older floor
 };
 
 // Both tables above are indexed by dungeon type and both need the same range
@@ -52,7 +56,7 @@ static const DngAscii ASCII_CHARS[8] = {
 // can drift apart.
 static inline int dng_palette_index(const DungeonMap* dmap) {
     int ci = (int)dmap->type;
-    return (ci < 0 || ci > 7) ? 0 : ci;
+    return (ci < 0 || ci >= DUNGEON_ENT_COUNT) ? 0 : ci;
 }
 
 // ── Cave materials ────────────────────────────────────────────────────────
@@ -863,14 +867,25 @@ static void carve_ruins_layout(DungeonMap* dmap, uint32_t* rng) {
 }
 
 // ── GRAVEYARD: roguelike square rooms ────────────────────────────────────
-#define GY_MAX_ROOMS 24
+#define GY_MAX_ROOMS 32
 struct GyRoom { int x, y, w, h; };
 static GyRoom s_gy_rooms[GY_MAX_ROOMS];
 static int    s_gy_room_n;
 
-static void carve_graveyard_layout(DungeonMap* dmap, bool large, uint32_t* rng) {
+// The three graveyard scales. One generator, one row of numbers each -- the
+// layout, the corridors and the entry/exit rule are shared and always were.
+enum GyScale { GY_SMALL = 0, GY_LARGE = 1, GY_CATACOMBS = 2 };
+
+static void carve_graveyard_layout(DungeonMap* dmap, int scale, uint32_t* rng) {
     int area_w, area_h, num_target, room_min, room_max, hall_w;
-    if (large) {
+    if (scale == GY_CATACOMBS) {
+        // Massive: as much of the 768x512 map as leaves a margin, against the
+        // large yard's 340x250.
+        area_w = 700; area_h = 460;
+        num_target = 20 + (int)(rng_next(rng) % 5);  // 20–24
+        room_min = 22; room_max = 34;
+        hall_w   = 6;
+    } else if (scale == GY_LARGE) {
         area_w = 340; area_h = 250;
         num_target = 10 + (int)(rng_next(rng) % 5);  // 10–14
         room_min = 16; room_max = 24;
@@ -881,6 +896,12 @@ static void carve_graveyard_layout(DungeonMap* dmap, bool large, uint32_t* rng) 
         room_min = 10; room_max = 16;
         hall_w   = 4;
     }
+
+    // s_gy_rooms is a fixed array and the loop below fills it to num_target. The
+    // old code was in bounds only because its largest row happened to top out at
+    // exactly GY_MAX_ROOMS -- an accident, and a silent overrun the moment a row
+    // asked for one more. Say it instead of relying on it.
+    if (num_target > GY_MAX_ROOMS) num_target = GY_MAX_ROOMS;
 
     int area_x = (DMAP_W - area_w) / 2;
     int area_y = (DMAP_H - area_h) / 2;
@@ -1959,8 +1980,22 @@ static int spawner_enemy_base(DungeonEntranceType type) {
         case DUNGEON_ENT_PYRAMID:      return 21; // desert
         case DUNGEON_ENT_STONEHENGE:   return 14; // snow
         case DUNGEON_ENT_LARGE_TREE:   return  7; // forest
+        // The graveyard family already climbs this ladder rather than matching
+        // where it is placed -- SM takes grassland, LG takes forest although it
+        // spawns on flat ground and snow. Catacombs continues that by one rung.
+        case DUNGEON_ENT_CATACOMBS:    return 14; // snow
         default:                       return  0;
     }
+}
+
+// How much of the spawner/loot arrays one dungeon may fill. Catacombs is the
+// only archetype with the floor area to justify the extra room; see the note on
+// DMAP_MAX_SPAWNERS in dungeon.h for why this is not simply the array size.
+static inline int dng_spawner_budget(DungeonEntranceType type) {
+    return (type == DUNGEON_ENT_CATACOMBS) ? DMAP_MAX_SPAWNERS : DNG_SPAWNER_BUDGET;
+}
+static inline int dng_loot_budget(DungeonEntranceType type) {
+    return (type == DUNGEON_ENT_CATACOMBS) ? DMAP_MAX_LOOT : DNG_LOOT_BUDGET;
 }
 
 // Spread spawners across all floor tiles using a regular grid + local floor search.
@@ -1970,12 +2005,15 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
     const int STEP   = 24;   // grid spacing in tiles — guarantees spread
     const int SEARCH = 8;    // radius to search for a floor tile near each grid point
     int base = spawner_enemy_base(dmap->type);
+    // Only catacombs is allowed past the budget every other archetype has always
+    // had, so every existing dungeon generates exactly as it did before.
+    int budget = dng_spawner_budget(dmap->type);
 
     int ox = (int)(rng_next(rng) % STEP);
     int oy = (int)(rng_next(rng) % STEP);
 
-    for (int gy = oy; gy < DMAP_H && dmap->num_spawners < DMAP_MAX_SPAWNERS; gy += STEP) {
-        for (int gx = ox; gx < DMAP_W && dmap->num_spawners < DMAP_MAX_SPAWNERS; gx += STEP) {
+    for (int gy = oy; gy < DMAP_H && dmap->num_spawners < budget; gy += STEP) {
+        for (int gx = ox; gx < DMAP_W && dmap->num_spawners < budget; gx += STEP) {
             int best_tx = -1, best_ty = -1, best_d2 = SEARCH * SEARCH + 1;
             for (int dy = -SEARCH; dy <= SEARCH; dy++) {
                 for (int dx = -SEARCH; dx <= SEARCH; dx++) {
@@ -2052,8 +2090,9 @@ static void place_loot(DungeonMap* dmap, uint32_t* rng) {
     int ox = (int)(rng_next(rng) % STEP);
     int oy = (int)(rng_next(rng) % STEP);
 
-    for (int gy = oy; gy < DMAP_H && dmap->num_loot < DMAP_MAX_LOOT; gy += STEP) {
-        for (int gx = ox; gx < DMAP_W && dmap->num_loot < DMAP_MAX_LOOT; gx += STEP) {
+    int budget = dng_loot_budget(dmap->type);
+    for (int gy = oy; gy < DMAP_H && dmap->num_loot < budget; gy += STEP) {
+        for (int gx = ox; gx < DMAP_W && dmap->num_loot < budget; gx += STEP) {
             int best_tx = -1, best_ty = -1, best_d2 = SEARCH * SEARCH + 1;
             for (int dy = -SEARCH; dy <= SEARCH; dy++) {
                 for (int dx = -SEARCH; dx <= SEARCH; dx++) {
@@ -2178,7 +2217,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
 
     // ── Graveyard SM: small roguelike rooms ──────────────────────────────
     if (type == DUNGEON_ENT_GRAVEYARD_SM) {
-        carve_graveyard_layout(dmap, false, &rng);
+        carve_graveyard_layout(dmap, GY_SMALL, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
         place_loot(dmap, &rng);
@@ -2187,7 +2226,16 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
 
     // ── Graveyard LG: large roguelike rooms ──────────────────────────────
     if (type == DUNGEON_ENT_GRAVEYARD_LG) {
-        carve_graveyard_layout(dmap, true, &rng);
+        carve_graveyard_layout(dmap, GY_LARGE, &rng);
+        clear_portal_surroundings(dmap);
+        place_spawners(dmap, &rng);
+        place_loot(dmap, &rng);
+        return;
+    }
+
+    // ── Catacombs: the graveyard layout at its largest ───────────────────
+    if (type == DUNGEON_ENT_CATACOMBS) {
+        carve_graveyard_layout(dmap, GY_CATACOMBS, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
         place_loot(dmap, &rng);

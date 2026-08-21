@@ -2108,41 +2108,61 @@ static int biome_of(const Tilemap* map, int tx, int ty) {
 // Picks an entrance type for the given biome + mountain flag.
 // Also sets out_size (0=small, 1=large) — fixed for most types, random for Cave/Ruins.
 // rng_seed is passed by value; advances internally without disturbing the caller's RNG.
-static DungeonEntranceType pick_entrance_type(int biome, bool is_mountain,
-                                               unsigned int rng_seed, int& out_size) {
-    DungeonEntranceType pool[8];
+//
+// The pool is WEIGHTED. It used to be a uniform draw, which left rarity nowhere to
+// live except in a gate in front of the pool: stonehenge needed a 1-in-8 roll
+// merely to JOIN, and then took its chances in a 1-in-3 draw — two stages saying
+// one thing, and impossible to read a rate off. With weights, "rare" and "twice as
+// common as" are numbers in the table below and the mechanism never changes.
+struct Weighted { DungeonEntranceType type; int w; };
+
+// Builds the weighted pool for a biome. Split out from the draw so the guarantee
+// pass further down can ask "is this type native here?" against the same table
+// the odds come from. A second list of which archetype belongs where is exactly
+// the copy that goes stale the first time a weight moves.
+static int build_entrance_pool(int biome, bool is_mountain, Weighted* pool) {
     int pool_sz = 0;
-    auto add = [&](DungeonEntranceType t) { pool[pool_sz++] = t; };
+    auto add = [&](DungeonEntranceType t, int w) { pool[pool_sz++] = { t, w }; };
 
     switch (biome) {
         case TILE_SNOW:
-            add(DUNGEON_ENT_RUINS);
-            add(DUNGEON_ENT_GRAVEYARD_LG);
+            // Snow used to be the large graveyard's alone, and at ~18% of the
+            // sites a world places that was enough to put it ahead of the small
+            // one overall however the flat pool was weighted. Ruins keeps its
+            // half exactly; the other half is now split the same way flat
+            // ground splits it, so the ordering holds per world and not merely
+            // on average.
+            add(DUNGEON_ENT_RUINS,        50);
+            add(DUNGEON_ENT_GRAVEYARD_LG, 20);
+            add(DUNGEON_ENT_GRAVEYARD_SM, 30);
             break;
         case TILE_WASTELAND:
-            add(DUNGEON_ENT_RUINS);
-            add(DUNGEON_ENT_CAVE);
+            add(DUNGEON_ENT_RUINS, 50);
+            add(DUNGEON_ENT_CAVE,  50);
             break;
         case TILE_SAND:
-            if (!is_mountain) add(DUNGEON_ENT_OASIS);   // oasis removed on mountain
-            add(DUNGEON_ENT_PYRAMID);
+            if (!is_mountain) add(DUNGEON_ENT_OASIS, 50);   // oasis removed on mountain
+            add(DUNGEON_ENT_PYRAMID, 50);
             break;
-        case TILE_TREE: { // forest: 50% large tree, 25% small graveyard, 25% large graveyard
-            int roll = (int)((rng_seed >> 16) & 3); // 0-3
-            if (!is_mountain && (roll == 0 || roll == 1)) {
-                out_size = 0; return DUNGEON_ENT_LARGE_TREE;
-            } else if (roll == 2) {
-                out_size = 0; return DUNGEON_ENT_GRAVEYARD_SM;
-            } else {
-                out_size = 1; return DUNGEON_ENT_GRAVEYARD_LG;
-            }
-        }
+        case TILE_TREE:
+            // Forest used to be a hand-rolled 50/25/25 that returned early,
+            // skipping both the mountain modifier below and the size switch at
+            // the end of this function. Same odds, said the same way as every
+            // other biome, and now nothing bypasses the tail.
+            if (!is_mountain) add(DUNGEON_ENT_LARGE_TREE, 50);
+            add(DUNGEON_ENT_GRAVEYARD_SM, 25);
+            add(DUNGEON_ENT_GRAVEYARD_LG, 25);
+            break;
         default: // flat (grass/meadow)
-            add(DUNGEON_ENT_GRAVEYARD_SM);
-            add(DUNGEON_ENT_GRAVEYARD_LG);
-            // Stonehenge is rare: ~1-in-8 flat dungeons add it to the pool
-            rng_seed = rng_seed * 1664525u + 1013904223u;
-            if ((rng_seed >> 16) % 8 == 0) add(DUNGEON_ENT_STONEHENGE);
+            // Flat ground is about two thirds of every site a world places, so
+            // this row alone decides which graveyard the player meets more of.
+            add(DUNGEON_ENT_GRAVEYARD_SM, 60);
+            add(DUNGEON_ENT_GRAVEYARD_LG, 30);
+            // The two landmarks, deliberately sharing a weight: catacombs is
+            // meant to be exactly as rare as stonehenge, so it is the same
+            // number rather than a second mechanism tuned until it matches.
+            add(DUNGEON_ENT_STONEHENGE, 4);
+            add(DUNGEON_ENT_CATACOMBS,  4);
             break;
     }
 
@@ -2150,30 +2170,68 @@ static DungeonEntranceType pick_entrance_type(int biome, bool is_mountain,
     if (is_mountain) {
         bool has_cave = false;
         for (int i = 0; i < pool_sz; i++)
-            if (pool[i] == DUNGEON_ENT_CAVE) { has_cave = true; break; }
-        if (!has_cave) add(DUNGEON_ENT_CAVE);
+            if (pool[i].type == DUNGEON_ENT_CAVE) { has_cave = true; break; }
+        if (!has_cave) add(DUNGEON_ENT_CAVE, 50);
     }
 
-    if (pool_sz == 0) add(DUNGEON_ENT_CAVE); // should never happen
+    if (pool_sz == 0) add(DUNGEON_ENT_CAVE, 50); // should never happen
+    return pool_sz;
+}
 
-    rng_seed = rng_seed * 1664525u + 1013904223u;
-    DungeonEntranceType type = pool[(rng_seed >> 16) % (unsigned)pool_sz];
+// Whether this archetype belongs in this biome at all. The guarantee pass uses
+// it to keep a forced placement somewhere plausible before it resorts to
+// anywhere at all.
+static bool entrance_native_to_biome(int biome, bool is_mountain, DungeonEntranceType t) {
+    Weighted pool[8];
+    int n = build_entrance_pool(biome, is_mountain, pool);
+    for (int i = 0; i < n; i++) if (pool[i].type == t) return true;
+    return false;
+}
 
-    // Derive size — fixed for most types, random for Cave and Ruins
+// Footprint of an archetype: 0 = 1x1, 1 = 2x2. Fixed for most, random for the
+// two that vary. Its own function because the guarantee pass needs a size for a
+// type it chose rather than drew.
+static int entrance_size_for(DungeonEntranceType type, unsigned int rng_seed) {
     switch (type) {
-        case DUNGEON_ENT_GRAVEYARD_SM: out_size = 0; break;
-        case DUNGEON_ENT_OASIS:        out_size = 0; break;
-        case DUNGEON_ENT_GRAVEYARD_LG: out_size = 1; break;
-        case DUNGEON_ENT_PYRAMID:      out_size = 1; break;
-        case DUNGEON_ENT_STONEHENGE:   out_size = 1; break;
-        case DUNGEON_ENT_LARGE_TREE:   out_size = 0; break;
+        case DUNGEON_ENT_GRAVEYARD_SM: return 0;
+        case DUNGEON_ENT_OASIS:        return 0;
+        case DUNGEON_ENT_GRAVEYARD_LG: return 1;
+        case DUNGEON_ENT_PYRAMID:      return 1;
+        case DUNGEON_ENT_STONEHENGE:   return 1;
+        case DUNGEON_ENT_LARGE_TREE:   return 0;
+        case DUNGEON_ENT_CATACOMBS:    return 1;
         default: // CAVE and RUINS vary
             rng_seed = rng_seed * 1664525u + 1013904223u;
-            out_size = (int)((rng_seed >> 16) & 1);
-            break;
+            return (int)((rng_seed >> 16) & 1);
+    }
+}
+
+static DungeonEntranceType pick_entrance_type(int biome, bool is_mountain,
+                                               unsigned int rng_seed, int& out_size) {
+    Weighted pool[8];
+    int pool_sz = build_entrance_pool(biome, is_mountain, pool);
+    int total_w = 0;
+    for (int i = 0; i < pool_sz; i++) total_w += pool[i].w;
+
+    rng_seed = rng_seed * 1664525u + 1013904223u;
+    int roll = (int)((rng_seed >> 16) % (unsigned)total_w);
+    DungeonEntranceType type = pool[pool_sz - 1].type;   // last entry absorbs rounding
+    for (int i = 0; i < pool_sz; i++) {
+        roll -= pool[i].w;
+        if (roll < 0) { type = pool[i].type; break; }
     }
 
+    out_size = entrance_size_for(type, rng_seed);
     return type;
+}
+
+// The yard a graveyard of this kind stands in: fence width and height in tiles.
+// stamp_dungeon_surround draws the fence from these and tilemap_spawn_graveyard_lg_nodes
+// lays its rows of headstones out inside the same shape, so the two cannot
+// disagree about where the walls are and leave stones standing in a hedge.
+static void graveyard_yard_size(DungeonEntranceType type, int& span, int& H) {
+    if (type == DUNGEON_ENT_CATACOMBS) { span = 30; H = 24; }
+    else                               { span = 17; H = 14; }
 }
 
 // Stamps decorative tiles/overlays around a placed dungeon entrance.
@@ -2201,6 +2259,51 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int e
         map->overlay[ty][tx] = ovl_id;
     };
 
+    // Placeholder parallelogram fence — 1:1 diagonal (north wall shifted right by
+    // H tiles vs south wall). To be replaced with proper art later.
+    //
+    //   N: (L+H, T) ────[gate]──────── (R+H, T)
+    //        \                             \
+    //   S: (L, B) ──────────────────── (R, B)   (fully closed)
+    //
+    // `span` is the fence width and `H` its height; L falls out of centring the
+    // north fence on the mausoleum (ex, ex+1) so the entrance sits in the middle
+    // of the top row rather than at the far-left corner. Parameterised because
+    // catacombs is the same yard at a larger size — the shear, the gate and the
+    // fill are one description, not two that have to be kept in step.
+    auto stamp_graveyard_yard = [&](int span, int H) {
+        const int L = ex - span / 2 - H, R = L + span;   // south fence extents
+        const int T = ey - 1,            B = T + H;      // north/south rows
+
+        auto lx_at = [&](int ty) { return L + (B - ty); };
+        auto rx_at = [&](int ty) { return R + (B - ty); };
+
+        // Interior PATH fill
+        for (int ty = T + 1; ty < B; ty++)
+            for (int tx = lx_at(ty) + 1; tx < rx_at(ty); tx++)
+                safe_base(tx, ty, TILE_PATH);
+
+        // North fence — closed, the mausoleum itself is the way through
+        for (int tx = lx_at(T); tx <= rx_at(T); tx++)
+            safe_ovl(tx, T, TILE_ROCK);
+
+        // South fence — 2-tile gate at its centre
+        {
+            int sl = lx_at(B), sr = rx_at(B);
+            int gate_l = (sl + sr) / 2;
+            for (int tx = sl; tx <= sr; tx++) {
+                bool is_gate = (tx == gate_l || tx == gate_l + 1);
+                if (!is_gate) safe_ovl(tx, B, TILE_ROCK);
+            }
+        }
+
+        // Left and right diagonal fence walls
+        for (int ty = T; ty <= B; ty++) {
+            safe_ovl(lx_at(ty), ty, TILE_ROCK);
+            safe_ovl(rx_at(ty), ty, TILE_ROCK);
+        }
+    };
+
     switch (type) {
         case DUNGEON_ENT_GRAVEYARD_SM:
             // Small path clearing — gravestones are spawned as resource nodes later.
@@ -2210,53 +2313,12 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int e
                     //safe_base(ex+dx, ey+dy, TILE_PATH);
             break;
 
-        case DUNGEON_ENT_GRAVEYARD_LG: {
-            // Placeholder parallelogram fence — 1:1 diagonal (north wall shifted
-            // right by H tiles vs south wall).  To be replaced with proper art later.
-            //
-            //   N: (L+H, T) ────[gate]──────── (R+H, T)
-            //        \                             \
-            //   S: (L, B) ──────────────────── (R, B)   (fully closed)
-            //
-            // Centre the north fence on the mausoleum (ex, ex+1) so the entrance
-            // sits in the middle of the top row rather than the far-left corner.
-            // South fence is 18 tiles wide; H=14 gives the 1:1 diagonal shear.
-            //   north fence  lx_at(T) = ex-8 .. ex+9  (mausoleum centred)
-            //   south fence  lx_at(B) = ex-22 .. ex-5
-            const int L = ex - 22, R = ex - 5;  // south fence extents
-            const int T = ey - 1,  B = ey + 13; // north/south row (H = 14)
-
-            auto lx_at = [&](int ty) { return L + (B - ty); };
-            auto rx_at = [&](int ty) { return R + (B - ty); };
-
-            // Interior PATH fill
-            for (int ty = T + 1; ty < B; ty++)
-                for (int tx = lx_at(ty) + 1; tx < rx_at(ty); tx++)
-                    safe_base(tx, ty, TILE_PATH);
-
-            // North fence — 2-tile gate centred on the mausoleum entrance
-                int nl = lx_at(T), nr = rx_at(T);
-                //int gate_l = (nl + nr) / 2;
-                for (int tx = nl; tx <= nr; tx++) 
-                {
-                    safe_ovl(tx, T, TILE_ROCK);
-                }
-
-            // South fence — 2-tile gate centred on the south fence
-            {
-                int sl = lx_at(B), sr = rx_at(B);
-                int gate_l = (sl + sr) / 2;
-                for (int tx = sl; tx <= sr; tx++) {
-                    bool is_gate = (tx == gate_l || tx == gate_l + 1);
-                    if (!is_gate) safe_ovl(tx, B, TILE_ROCK);
-                }
-            }
-
-            // Left and right diagonal fence walls
-            for (int ty = T; ty <= B; ty++) {
-                safe_ovl(lx_at(ty), ty, TILE_ROCK);
-                safe_ovl(rx_at(ty), ty, TILE_ROCK);
-            }
+        case DUNGEON_ENT_GRAVEYARD_LG:
+        case DUNGEON_ENT_CATACOMBS: {
+            // The same yard either way; catacombs is simply a bigger one.
+            int span, H;
+            graveyard_yard_size(type, span, H);
+            stamp_graveyard_yard(span, H);
             break;
         }
 
@@ -2309,6 +2371,10 @@ static int entrance_tile_id(DungeonEntranceType type) {
         case DUNGEON_ENT_RUINS:        return TILE_DUNGEON_RUINS;
         case DUNGEON_ENT_GRAVEYARD_SM: return TILE_DUNGEON_GRAVEYARD_SM;
         case DUNGEON_ENT_GRAVEYARD_LG: return TILE_DUNGEON_GRAVEYARD_LG;
+        // Catacombs has no tile of its own and borrows the large graveyard's --
+        // see the note on DUNGEON_ENT_CATACOMBS. The archetype is read from the
+        // entrance record, so nothing downstream can tell the difference.
+        case DUNGEON_ENT_CATACOMBS:    return TILE_DUNGEON_GRAVEYARD_LG;
         case DUNGEON_ENT_OASIS:        return TILE_DUNGEON_OASIS;
         case DUNGEON_ENT_PYRAMID:      return TILE_DUNGEON_PYRAMID;
         case DUNGEON_ENT_STONEHENGE:   return TILE_DUNGEON_STONEHENGE;
@@ -4536,6 +4602,40 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // the cave mouths too by now, so testing it against TARGET directly
         // would let a world full of mountains spend the whole allowance on
         // caves and leave no graveyards anywhere.
+        // Stamp the ground, decorate around it, and record the entrance. Shared
+        // by the ordinary rolls and the guarantee pass below so the two cannot
+        // drift apart on what placing a dungeon means. The aggregate below is
+        // positional and there are already three of them in this file — see the
+        // warning on DungeonEntrance in tilemap.h.
+        auto place_entrance = [&](int ex, int ey, DungeonEntranceType ent_type,
+                                  int ent_size, int cliff_lvl) {
+            int sz = ent_size + 1;
+
+            // Difficulty: straight average of distance-from-center and elevation
+            float fdx      = (float)(ex - MAP_WIDTH  / 2);
+            float fdy      = (float)(ey - MAP_HEIGHT / 2);
+            float dist     = sqrtf(fdx*fdx + fdy*fdy);
+            float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
+                                   (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
+            float difficulty = ((dist / max_dist) + (float)cliff_lvl / 5.0f) * 0.5f;
+
+            // GRAVEYARD_SM: entrance tile stays hidden under the biome tile.
+            // It is revealed when the player destroys the hidden gravestone
+            // resource node. All other types stamp their dungeon tile now.
+            if (ent_type != DUNGEON_ENT_GRAVEYARD_SM) {
+                int tile_id = entrance_tile_id(ent_type);
+                for (int r = 0; r < sz; r++)
+                    for (int c = 0; c < sz; c++) {
+                        map->tiles[ey + r][ex + c]   = tile_id;
+                        map->overlay[ey + r][ex + c] = 0;
+                    }
+            }
+            stamp_dungeon_surround(map, ent_type, ex, ey, sz);
+            map->dungeon_entrances[map->num_dungeon_entrances++] = {
+                ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1
+            };
+        };
+
         const int ordinary_first = map->num_dungeon_entrances;
 
         for (int ci : cells) {
@@ -4565,30 +4665,64 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
                 if (!door_ok(ex, ey, sz)) continue;
 
-                // Difficulty: straight average of distance-from-center and elevation
-                float fdx      = (float)(ex - MAP_WIDTH  / 2);
-                float fdy      = (float)(ey - MAP_HEIGHT / 2);
-                float dist     = sqrtf(fdx*fdx + fdy*fdy);
-                float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
-                                       (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
-                float difficulty = ((dist / max_dist) + (float)cliff_lvl / 5.0f) * 0.5f;
-
-                // GRAVEYARD_SM: entrance tile stays hidden under the biome tile.
-                // It is revealed when the player destroys the hidden gravestone resource node.
-                // All other types stamp their dungeon tile immediately.
-                if (ent_type != DUNGEON_ENT_GRAVEYARD_SM) {
-                    int tile_id = entrance_tile_id(ent_type);
-                    for (int r = 0; r < sz; r++)
-                        for (int c = 0; c < sz; c++) {
-                            map->tiles[ey + r][ex + c]   = tile_id;
-                            map->overlay[ey + r][ex + c] = 0;
-                        }
-                }
-                stamp_dungeon_surround(map, ent_type, ex, ey, sz);
-                map->dungeon_entrances[map->num_dungeon_entrances++] = {
-                    ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1
-                };
+                place_entrance(ex, ey, ent_type, ent_size, cliff_lvl);
                 break;
+            }
+        }
+
+        // ── Guarantee every archetype exists somewhere ────────────────
+        // Which types a world gets is decided by which biomes its cells
+        // happen to land in, and biome area is luck: measured across 32
+        // worlds, three had no pyramid or no oasis at all. Desert survives
+        // worldgen only as one or two large blobs (MIN_BIOME_AREA), and a
+        // world's 400 cells can simply miss them. A world short an archetype
+        // is short a whole kind of dungeon, so anything that came out at zero
+        // is placed here.
+        //
+        // Two rounds, and the split is the point. The first considers only
+        // sites the type is native to, so a backfilled oasis still stands in
+        // desert whenever any desert site is free. The second drops that and
+        // takes any site that will hold it, which is what makes this a
+        // guarantee rather than an attempt — it runs only for a type with
+        // nowhere natural left to go.
+        {
+            int have[DUNGEON_ENT_COUNT] = {0};
+            for (int i = 0; i < map->num_dungeon_entrances; i++) {
+                int t = (int)map->dungeon_entrances[i].type;
+                if (t >= 0 && t < DUNGEON_ENT_COUNT) have[t]++;
+            }
+
+            unsigned int bs = seed ^ 0x5EEDBAC7u;
+            for (int t = 0; t < DUNGEON_ENT_COUNT; t++) {
+                if (have[t]) continue;
+                DungeonEntranceType want = (DungeonEntranceType)t;
+                bool placed = false;
+                for (int round = 0; round < 2 && !placed; round++) {
+                    for (int tries = 0; tries < 4000 && !placed; tries++) {
+                        if (map->num_dungeon_entrances >= MAX_DUNGEON_ENTRANCES) break;
+                        bs = bs * 1664525u + 1013904223u;
+                        int ex = MARGIN + (int)((bs >> 16) % (unsigned)(MAP_WIDTH  - 2*MARGIN));
+                        bs = bs * 1664525u + 1013904223u;
+                        int ey = MARGIN + (int)((bs >> 16) % (unsigned)(MAP_HEIGHT - 2*MARGIN));
+
+                        int cliff_lvl = cliff_level_of(map->tiles[ey][ex]);
+                        bool is_mtn   = (cliff_lvl >= 3);
+                        bs = bs * 1664525u + 1013904223u;
+                        int ent_size = entrance_size_for(want, bs);
+                        int sz = ent_size + 1;
+
+                        // Cheapest rejections first: the biome scan is 289 tile
+                        // reads and door_ok walks every entrance placed so far.
+                        if (hits_cliff(ex, ey, sz)) continue;
+                        if (round == 0 &&
+                            !entrance_native_to_biome(biome_of(map, ex, ey), is_mtn, want))
+                            continue;
+                        if (!door_ok(ex, ey, sz)) continue;
+
+                        place_entrance(ex, ey, want, ent_size, cliff_lvl);
+                        placed = true;
+                    }
+                }
             }
         }
     }
@@ -4634,15 +4768,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 DungeonEntrance* ej = &map->dungeon_entrances[j];
                 if (ej->partner_idx != -1) continue;
                 if (near_start(ej)) continue;      // don't pair into starting area
-                // Compatible: same type, or SM↔LG graveyard.
-                bool compat = (ei->type == ej->type);
-                if (!compat) {
-                    bool ai = (ei->type == DUNGEON_ENT_GRAVEYARD_SM ||
-                               ei->type == DUNGEON_ENT_GRAVEYARD_LG);
-                    bool aj = (ej->type == DUNGEON_ENT_GRAVEYARD_SM ||
-                               ej->type == DUNGEON_ENT_GRAVEYARD_LG);
-                    compat = ai && aj;
-                }
+                // Compatible: same type, or any two of the graveyard family,
+                // which pair across their three scales.
+                bool compat = (ei->type == ej->type) ||
+                              (dungeon_is_graveyard(ei->type) &&
+                               dungeon_is_graveyard(ej->type));
                 if (!compat) continue;
                 int dx = ei->x - ej->x, dy = ei->y - ej->y;
                 int d2 = dx*dx + dy*dy;
@@ -6987,33 +7117,47 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
 void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
                                       int entrance_idx, unsigned int seed) {
     DungeonEntrance* e = &map->dungeon_entrances[entrance_idx];
-    if (e->type != DUNGEON_ENT_GRAVEYARD_LG || e->gravestones_spawned) return;
+    // Both visible-yard scales come here; only GRAVEYARD_SM, which hides its
+    // entrance under a scattered handful instead, has a spawner of its own.
+    if (e->type == DUNGEON_ENT_GRAVEYARD_SM ||
+        !dungeon_is_graveyard(e->type) || e->gravestones_spawned) return;
     e->gravestones_spawned = 1;
 
     unsigned int rng = seed
         ^ ((unsigned int)e->x * 73856093u)
         ^ ((unsigned int)e->y * 19349663u);
 
-    // 36 candidate slots in 6 rows × 6 cols.
-    // Each row shifts 2 tiles left per 2-tile step south, tracking the
-    // parallelogram walls.  Columns are centred on the mausoleum (ex+0.5).
-    static const int slots[36][2] = {
-        { -8, 2}, {-6, 2}, {-4, 2}, {-2, 2}, { 0, 2}, { 2, 2},
-        {-10, 4}, {-8, 4}, {-6, 4}, {-4, 4}, {-2, 4}, { 0, 4},
-        {-12, 6}, {-10, 6}, {-8, 6}, {-6, 6}, {-4, 6}, {-2, 6},
-        {-14, 8}, {-12, 8}, {-10, 8}, {-8, 8}, {-6, 8}, {-4, 8},
-        {-16,10}, {-14,10}, {-12,10}, {-10,10}, {-8,10}, {-6,10},
-        {-18,12}, {-16,12}, {-14,12}, {-12,12}, {-10,12}, {-8,12},
-    };
+    // Candidate slots on a 2-tile grid inside the fence, generated from the same
+    // yard dimensions the fence itself is drawn from rather than from a second
+    // hand-written table -- the rows shear one tile left per row south, exactly
+    // as the parallelogram walls do, so a bigger yard needs no new numbers.
+    int span, H;
+    graveyard_yard_size(e->type, span, H);
+    const int rows = (H - 2) / 2;
+    const int cols = span / 2 - 2;
+    const int MAX_SLOTS = 256;
+    static int slots[MAX_SLOTS][2];
+    int nslots = 0;
+    for (int r = 0; r < rows && nslots < MAX_SLOTS; r++) {
+        int dy = 2 + r * 2;
+        for (int c = 0; c < cols && nslots < MAX_SLOTS; c++) {
+            slots[nslots][0] = -(span / 2) - (dy - 2) + c * 2;
+            slots[nslots][1] = dy;
+            nslots++;
+        }
+    }
 
-    // Count: 18–28
+    // Fill half to three quarters of the slots, so a yard reads as tended rather
+    // than packed. Written as a fraction of the slots so it scales with the yard:
+    // at the large yard's 36 this is exactly the 18-28 it has always placed.
     rng = rng * 1664525u + 1013904223u;
-    int count = 18 + (int)((rng >> 16) % 11);
+    int count = nslots / 2 + (int)((rng >> 16) % (unsigned)(nslots / 4 + 2));
+    if (count > nslots) count = nslots;
 
     // Fisher-Yates shuffle of slot indices so the selection is random
-    int order[36];
-    for (int i = 0; i < 36; i++) order[i] = i;
-    for (int i = 35; i > 0; i--) {
+    static int order[MAX_SLOTS];
+    for (int i = 0; i < nslots; i++) order[i] = i;
+    for (int i = nslots - 1; i > 0; i--) {
         rng = rng * 1664525u + 1013904223u;
         int j = (int)((rng >> 16) % (unsigned)(i + 1));
         int tmp = order[i]; order[i] = order[j]; order[j] = tmp;

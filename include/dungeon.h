@@ -14,8 +14,15 @@
 #define DMAP_H              512
 #define DMAP_TILE           32
 #define DUNGEON_FOV_RADIUS  12   // visible tile radius around player
-#define DMAP_MAX_SPAWNERS   24
-#define DMAP_MAX_LOOT       32
+// Array capacity, not the amount any one dungeon gets. Catacombs covers several
+// times the floor area of anything else and would read as empty on the old cap,
+// so the arrays grew for its sake -- but raising what every archetype PLACES
+// would quietly add enemies and chests to every dungeon in the game, which is
+// why the budgets below stayed where they were. See dng_spawner_budget().
+#define DMAP_MAX_SPAWNERS   64
+#define DMAP_MAX_LOOT       64
+#define DNG_SPAWNER_BUDGET  24   // every archetype except catacombs
+#define DNG_LOOT_BUDGET     32
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,

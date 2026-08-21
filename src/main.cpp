@@ -134,9 +134,9 @@ int main(int argc, char *argv[])
     // ── Debug menu ───────────────────────────────────────────────────────────
     static const char* DBG_TYPE_NAMES[] = {
         "CAVE", "RUINS", "GRAVEYARD", "GRAVEYARD LG",
-        "OASIS", "PYRAMID", "STONEHENGE", "LARGE TREE"
+        "OASIS", "PYRAMID", "STONEHENGE", "LARGE TREE", "CATACOMBS"
     };
-    static const int DBG_TYPE_COUNT = 8;
+    static const int DBG_TYPE_COUNT = DUNGEON_ENT_COUNT;
 
     // The warp list is those eight types with CAVE expanded into one entry per
     // ore band. Two caves of the same type still differ: which of MATERIALS
@@ -461,13 +461,15 @@ int main(int argc, char *argv[])
                     float py = ow.y + player.height * 0.5f;
                     for (int i = 0; i < map->num_dungeon_entrances; i++) {
                         DungeonEntrance* e = &map->dungeon_entrances[i];
-                        if (e->type != DUNGEON_ENT_GRAVEYARD_SM &&
-                            e->type != DUNGEON_ENT_GRAVEYARD_LG) continue;
+                        if (!dungeon_is_graveyard(e->type)) continue;
                         if (e->gravestones_spawned) continue;
                         float ex = (float)(e->x * TILE_SIZE + TILE_SIZE / 2);
                         float ey = (float)(e->y * TILE_SIZE + TILE_SIZE / 2);
                         float ddx = px - ex, ddy = py - ey;
                         if (ddx*ddx + ddy*ddy < SPAWN_RANGE * SPAWN_RANGE) {
+                            // SM hides its entrance under one of a scattered
+                            // handful; the two larger scales lay theirs out in
+                            // rows across a visible yard.
                             if (e->type == DUNGEON_ENT_GRAVEYARD_SM)
                                 tilemap_spawn_graveyard_nodes(map, &resources, i, map_seed);
                             else
@@ -530,9 +532,10 @@ int main(int argc, char *argv[])
                         "PYRAMID",
                         "STONEHENGE",
                         "LARGE TREE",
+                        "CATACOMBS",
                     };
                     int ci = (int)ow.dungeon_type;
-                    if (ci < 0 || ci > 7) ci = 0;
+                    if (ci < 0 || ci >= DUNGEON_ENT_COUNT) ci = 0;
                     const char* name = dungeon_names[ci];
 
                     draw_nes_panel(plat.renderer, 0, 448, 640, 32);
@@ -667,13 +670,18 @@ int main(int argc, char *argv[])
                             }
                         }
 
-                        // SM connected to LG: generate at the larger scale.
+                        // Two graveyards linked across scales share one interior,
+                        // and it is the larger of the two. Stated as a rank
+                        // comparison rather than as the SM->LG case it used to
+                        // be: with three scales, naming pairs means a catacombs
+                        // mouth partnered to a small graveyard would drop you
+                        // into the small one.
                         DungeonEntranceType gen_type = ow.dungeon_type;
                         if (cur_ent && cur_ent->partner_idx >= 0) {
                             DungeonEntrance* partner2 = &map->dungeon_entrances[cur_ent->partner_idx];
-                            if (gen_type == DUNGEON_ENT_GRAVEYARD_SM &&
-                                partner2->type == DUNGEON_ENT_GRAVEYARD_LG)
-                                gen_type = DUNGEON_ENT_GRAVEYARD_LG;
+                            if (dungeon_graveyard_rank(partner2->type) >
+                                dungeon_graveyard_rank(gen_type))
+                                gen_type = partner2->type;
                         }
                         dungeon_generate(&dmap, gen_type,
                                          ow.dungeon_difficulty, dng_seed);

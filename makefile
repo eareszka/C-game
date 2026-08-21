@@ -66,7 +66,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot
+.PHONY: all run clean tile_editor dngshot dngcensus
 
 all: $(TARGET)
 
@@ -87,22 +87,32 @@ tile_editor: tile_editor$(EXE)
 tile_editor$(EXE): tools/tile_editor.cpp
 	$(CXX) -std=c++17 -O2 tools/tile_editor.cpp -o $@ $(SDL_FLAGS)
 
-# Headless cave-art preview tool. dungeon.h pulls in SDL.h, which #defines
-# main to SDL_main unless SDL_MAIN_HANDLED is set first -- and pkg-config's
-# own --cflags injects -Dmain=SDL_main independently of that, same gotcha
-# documented in tools/genprof.cpp. -Umain cancels the latter; SDL_MAIN_HANDLED
-# stops the former; stripping -lSDL2main/-mwindows keeps this a plain console
-# exe instead of a windowed one wanting a WinMain.
-DNGSHOT_OBJ  = $(filter-out src/main.o,$(OBJ))
-DNGSHOT_LIBS = $(shell pkg-config --libs sdl2 SDL2_image | sed 's/-lSDL2main//; s/-mwindows//')
+# Shared recipe for the headless console tools -- they link the game's own
+# objects minus its main() and run without a window. dungeon.h pulls in SDL.h,
+# which #defines main to SDL_main unless SDL_MAIN_HANDLED is set first -- and
+# pkg-config's own --cflags injects -Dmain=SDL_main independently of that, same
+# gotcha documented in tools/genprof.cpp. -Umain cancels the latter;
+# SDL_MAIN_HANDLED stops the former; stripping -lSDL2main/-mwindows keeps these
+# plain console exes instead of windowed ones wanting a WinMain.
+HEADLESS_OBJ  = $(filter-out src/main.o,$(OBJ))
+HEADLESS_LIBS = $(shell pkg-config --libs sdl2 SDL2_image | sed 's/-lSDL2main//; s/-mwindows//')
+HEADLESS_CXX  = $(CXX) -std=c++17 -O2 -Iinclude -w -DSDL_MAIN_HANDLED \
+                $(shell pkg-config --cflags sdl2 SDL2_image) -Umain
 
+# Headless cave-art preview tool.
 dngshot: dngshot$(EXE)
 
-dngshot$(EXE): tools/dngshot.cpp $(DNGSHOT_OBJ)
-	$(CXX) -std=c++17 -O2 -Iinclude -w -DSDL_MAIN_HANDLED $(shell pkg-config --cflags sdl2 SDL2_image) \
-		-Umain tools/dngshot.cpp $(DNGSHOT_OBJ) -o $@ $(DNGSHOT_LIBS) -lm -lpthread
+dngshot$(EXE): tools/dngshot.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/dngshot.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Dungeon archetype census across many world seeds. Run it from the repo root --
+# it reads assets/tileset.png by relative path.
+dngcensus: dngcensus$(EXE)
+
+dngcensus$(EXE): tools/dngcensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/dngcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE)
 
 endif

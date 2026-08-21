@@ -3,6 +3,10 @@
 // Used to iterate on cave wall/floor art.
 //
 //   dngshot.exe <seed> <out.png> [tile_x tile_y] [tiles_w tiles_h]
+//
+// Env: DNGSHOT_TYPE=<0..8> archetype (default cave), DNGSHOT_ORE=<0..6> cave
+//      material, DNGSHOT_DIM simulate FOV memory-dimming, DNGSHOT_DUMP ASCII
+//      floor/wall grid to stdout, DNGSHOT_GRID debug source-cell overlay.
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <cstdio>
@@ -33,8 +37,19 @@ int main(int argc, char** argv) {
 
     tilemap_init_tile_cache(ren);   // loads assets/tileset.png — same atlas dungeon_draw() reads
 
+    // Which archetype to generate. Caves are the default because this tool was
+    // built to iterate on cave wall art, but every type generates through the
+    // same entry point and a layout that only ever gets looked at in the running
+    // game is a layout nobody checks -- DNGSHOT_DUMP on a non-cave type is the
+    // cheapest way to see whether its rooms actually join up.
+    DungeonEntranceType dng_type = DUNGEON_ENT_CAVE;
+    if (const char* tp = getenv("DNGSHOT_TYPE")) {
+        int ti = atoi(tp);
+        if (ti >= 0 && ti < DUNGEON_ENT_COUNT) dng_type = (DungeonEntranceType)ti;
+    }
+
     g_dmap.want_portals = 2;        // spine fallback (want_ox/oy left zero) — fine for a preview
-    dungeon_generate(&g_dmap, DUNGEON_ENT_CAVE, 0.5f, seed);
+    dungeon_generate(&g_dmap, dng_type, 0.5f, seed);
 
     DungeonPlayer dp{};
     Camera cam;
@@ -75,6 +90,52 @@ int main(int argc, char** argv) {
             }
             putchar('\n');
         }
+    }
+
+    // Whole-map summary. The ASCII dump above only covers the rendered window,
+    // and the one question a window cannot answer about a layout is whether it
+    // is one dungeon or several disconnected pieces -- a floor tile the player
+    // can never stand on looks exactly like one they can. So flood the floor
+    // from the entrance and report what the flood missed.
+    if (getenv("DNGSHOT_STATS")) {
+        static bool seen[DMAP_H][DMAP_W];
+        static int qx[DMAP_H * DMAP_W], qy[DMAP_H * DMAP_W];
+        int head = 0, tail = 0, floor_n = 0;
+        int lox = DMAP_W, loy = DMAP_H, hix = -1, hiy = -1;
+        for (int y = 0; y < DMAP_H; y++)
+            for (int x = 0; x < DMAP_W; x++) {
+                seen[y][x] = false;
+                uint8_t t = g_dmap.tiles[y][x];
+                if (t == DNG_FLOOR || t == DNG_ENTRY || t == DNG_EXIT) {
+                    floor_n++;
+                    if (x < lox) lox = x;  if (x > hix) hix = x;
+                    if (y < loy) loy = y;  if (y > hiy) hiy = y;
+                }
+            }
+        qx[tail] = g_dmap.entry_x; qy[tail] = g_dmap.entry_y; tail++;
+        seen[g_dmap.entry_y][g_dmap.entry_x] = true;
+        int reached = 0;
+        while (head < tail) {
+            int x = qx[head], y = qy[head]; head++; reached++;
+            const int dx[4] = {1,-1,0,0}, dy[4] = {0,0,1,-1};
+            for (int d = 0; d < 4; d++) {
+                int nx = x + dx[d], ny = y + dy[d];
+                if (nx < 0 || ny < 0 || nx >= DMAP_W || ny >= DMAP_H) continue;
+                if (seen[ny][nx]) continue;
+                uint8_t t = g_dmap.tiles[ny][nx];
+                if (t != DNG_FLOOR && t != DNG_ENTRY && t != DNG_EXIT) continue;
+                seen[ny][nx] = true;
+                qx[tail] = nx; qy[tail] = ny; tail++;
+            }
+        }
+        bool exit_ok = seen[g_dmap.exit_y][g_dmap.exit_x];
+        printf("type %d  floor %d tiles  extent %dx%d  reachable %d (%.1f%%)  "
+               "exit %s  spawners %d  loot %d%s\n",
+               (int)dng_type, floor_n, hix - lox + 1, hiy - loy + 1,
+               reached, floor_n ? 100.0 * reached / floor_n : 0.0,
+               exit_ok ? "REACHED" : "UNREACHABLE",
+               g_dmap.num_spawners, g_dmap.num_loot,
+               (!exit_ok || reached != floor_n) ? "   <-- STRANDED FLOOR" : "");
     }
 
     SDL_SetRenderDrawColor(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear, main.cpp:955

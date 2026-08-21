@@ -157,7 +157,42 @@ typedef enum {
     DUNGEON_ENT_PYRAMID      = 5,
     DUNGEON_ENT_STONEHENGE   = 6,
     DUNGEON_ENT_LARGE_TREE   = 7,
+    // A massive graveyard. Appended rather than slotted beside the other two
+    // graveyards on purpose: `type` is XOR'd into the interior seed
+    // (dungeon.cpp's dungeon_generate), so renumbering the enum would silently
+    // regenerate every existing world's dungeon interiors.
+    //
+    // It has no tile id of its own and reuses TILE_DUNGEON_GRAVEYARD_LG. The
+    // tile decides only the overworld square's art and answers the two
+    // contiguous "is this a dungeon" range tests; the archetype is read from
+    // this record, not from the ground. Every entrance tile but LARGE_TREE
+    // draws the same solid black square anyway, so a dedicated id would buy
+    // nothing today and cost the renumbering described above TILE_ROAD.
+    DUNGEON_ENT_CATACOMBS    = 8,
+    // Keep last — the number of archetypes, not an archetype. Every table keyed
+    // by type and every range clamp on one is sized from this, because the way
+    // this enum grows is somebody adding a value and a [8] somewhere quietly
+    // reading past its end or clamping the new type back onto CAVE.
+    DUNGEON_ENT_COUNT
 } DungeonEntranceType;
+
+// The graveyard family is three scales of one archetype. Three separate things
+// need to agree on who belongs to it and which of two is bigger: the pairing
+// pass links them across scales, entering through a smaller one's mouth
+// generates its partner's larger interior, and the gravestone spawner has to
+// recognise all of them. Each used to hard-code the SM/LG pair inline, which is
+// how a third scale gets silently left out of one of the three.
+static inline int dungeon_graveyard_rank(DungeonEntranceType t) {
+    switch (t) {
+        case DUNGEON_ENT_GRAVEYARD_SM: return 0;
+        case DUNGEON_ENT_GRAVEYARD_LG: return 1;
+        case DUNGEON_ENT_CATACOMBS:    return 2;
+        default:                       return -1;   // not a graveyard at all
+    }
+}
+static inline bool dungeon_is_graveyard(DungeonEntranceType t) {
+    return dungeon_graveyard_rank(t) >= 0;
+}
 
 typedef struct {
     int x, y;                  // top-left tile coordinate of the entrance stamp
@@ -165,7 +200,7 @@ typedef struct {
     DungeonEntranceType type;  // entrance archetype — drives interior layout + skin
     int cliff_level;           // 0 = flat, 1–5 = elevation tier at placement
     float difficulty;          // 0.0–1.0: straight average of dist_norm and elev_norm
-    int gravestones_spawned;   // GRAVEYARD_SM only: 0 until resource nodes are spawned
+    int gravestones_spawned;   // every graveyard kind: 0 until resource nodes are spawned
     int partner_idx;           // index into dungeon_entrances[] of connected partner, or -1
     // A cave system's mouths all carry the same anchor — the top-left of the
     // landform they were cut into — and the interior is seeded from it rather
@@ -290,7 +325,9 @@ bool tilemap_pixel_solid(const void* map, float px, float py);
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
                                    int entrance_idx, unsigned int seed);
 
-// GRAVEYARD_LG: 10–20 organized gravestones around the visible mausoleum entrance.
+// The two visible-yard scales, GRAVEYARD_LG and CATACOMBS: gravestones in rows
+// inside the fence, filling half to three quarters of the slots the yard has
+// room for — 18–28 for a large graveyard, proportionally more for a catacombs.
 void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
                                       int entrance_idx, unsigned int seed);
 
