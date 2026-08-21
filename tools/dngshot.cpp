@@ -42,6 +42,16 @@ int main(int argc, char** argv) {
     cam.y = (float)(want_y * DMAP_TILE);
     cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
 
+    // Force the cave's material, so the regression check can pin MAT_VEYRITE
+    // (the identity row, which must render byte-identical to the pre-material
+    // build) and so one cave can be rendered once per material for the
+    // legibility comparison. Without this the material follows dngshot's
+    // hardcoded 0.5 difficulty and only ever lands on one of them.
+    if (const char* om = getenv("DNGSHOT_ORE")) {
+        int mi = atoi(om);
+        if (mi >= 0 && mi < MAT_COUNT) g_dmap.ore = (Material)mi;
+    }
+
     bool force_dim = getenv("DNGSHOT_DIM") != nullptr;
     bool show_all = true;
     if (force_dim) {

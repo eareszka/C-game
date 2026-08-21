@@ -138,11 +138,78 @@ int main(int argc, char *argv[])
     };
     static const int DBG_TYPE_COUNT = 8;
 
+    // The warp list is those eight types with CAVE expanded into one entry per
+    // ore band. Two caves of the same type still differ: which of MATERIALS
+    // (src/dungeon.cpp) a cave holds is picked from its DungeonEntrance
+    // difficulty, and that material is the whole of the difference, so it is
+    // what the menu has to name to warp you to a particular kind of cave.
+    //
+    // Index layout: 0 = any cave, 1..MAT_COUNT = a cave of material index-1,
+    // then one entry per non-cave type. DUNGEON_ENT_CAVE is 0, so the tail
+    // lands on type (index - MAT_COUNT) with no second table to keep in step.
+    static const int DBG_TARGET_COUNT = MAT_COUNT + DBG_TYPE_COUNT;
+    auto dbg_target_type = [&](int i) -> DungeonEntranceType {
+        return i <= MAT_COUNT ? DUNGEON_ENT_CAVE
+                              : (DungeonEntranceType)(i - MAT_COUNT);
+    };
+    // Which material this target insists on, or -1 for "whatever it holds".
+    auto dbg_target_ore = [&](int i) {
+        return (i >= 1 && i <= MAT_COUNT) ? i - 1 : -1;
+    };
+    // Does this overworld entrance answer to the selected target?
+    auto dbg_target_matches = [&](int i, const DungeonEntrance* e) {
+        if (e->type != dbg_target_type(i)) return false;
+        int ore = dbg_target_ore(i);
+        return ore < 0 || (int)material_for_difficulty(e->difficulty) == ore;
+    };
+    // "CAVE", "CAVE: DRAVIUM", "RUINS", ... Material names come from
+    // dungeon.cpp's table and are upper-cased here, because core.cpp's bitmap
+    // font only carries ASCII 32-90 and draws lowercase as blanks.
+    auto dbg_target_name = [&](int i, char* out, size_t n) {
+        int ore = dbg_target_ore(i);
+        if (ore < 0) {
+            SDL_snprintf(out, n, "%s", DBG_TYPE_NAMES[dbg_target_type(i)]);
+            return;
+        }
+        SDL_snprintf(out, n, "CAVE: %s", material_name((Material)ore));
+        for (char* c = out; *c; c++)
+            if (*c >= 'a' && *c <= 'z') *c = (char)(*c - 'a' + 'A');
+    };
+    // Every separate place the target could warp you to, as indices into
+    // dungeon_entrances[], in array order. Every mouth of one mountain opens
+    // the same cave and they all share its anchor, so a system contributes its
+    // first mouth and no more -- otherwise a four-mouthed mountain is three
+    // wasted steps of the tour and reads as four caves in the count.
+    //
+    // The row's count and the tour both walk this one list, so "12 FOUND" and
+    // twelve presses of ENTER land on twelve different caves by construction.
+    auto dbg_target_list = [&](int i, int* out, int max_out) {
+        int n = 0;
+        for (int a = 0; a < map->num_dungeon_entrances && n < max_out; a++) {
+            const DungeonEntrance* e = &map->dungeon_entrances[a];
+            if (!dbg_target_matches(i, e)) continue;
+            bool listed = false;
+            if (e->cave_anchor_x >= 0)
+                for (int b = 0; b < a && !listed; b++)
+                    listed = map->dungeon_entrances[b].cave_anchor_x == e->cave_anchor_x &&
+                             map->dungeon_entrances[b].cave_anchor_y == e->cave_anchor_y;
+            if (!listed) out[n++] = a;
+        }
+        return n;
+    };
+    // Scratch for the above, sized to the entrance array so no target can
+    // overflow it. static rather than a local: 8KB is more than a stack frame
+    // wants, and it is rebuilt from scratch on every call anyway.
+    static int dbg_list[MAX_DUNGEON_ENTRANCES];
+    // Where the tour has got to: index into dbg_list of the one you were last
+    // put outside, or -1 before the first press.
+    int  dbg_tour     = -1;
+
     bool dbg_open     = false;
-    // 0=type, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid
+    // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid
     static const int DBG_ROW_COUNT = 7;
     int  dbg_sel      = 0;
-    int  dbg_type     = 0;
+    int  dbg_target   = 0;
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
     bool dbg_grid     = false;
@@ -250,10 +317,15 @@ int main(int argc, char *argv[])
                 dbg_sel = (dbg_sel + 1) % DBG_ROW_COUNT;
 
             if (dbg_sel == 0) {
+                int was = dbg_target;
                 if (input_pressed(&in, SDL_SCANCODE_LEFT))
-                    dbg_type = (dbg_type + DBG_TYPE_COUNT - 1) % DBG_TYPE_COUNT;
+                    dbg_target = (dbg_target + DBG_TARGET_COUNT - 1) % DBG_TARGET_COUNT;
                 if (input_pressed(&in, SDL_SCANCODE_RIGHT))
-                    dbg_type = (dbg_type + 1) % DBG_TYPE_COUNT;
+                    dbg_target = (dbg_target + 1) % DBG_TARGET_COUNT;
+                // A different target is a different tour. Carrying the position
+                // over would start the Dravium caves at the third one purely
+                // because that is where the Kharvite tour had got to.
+                if (dbg_target != was) dbg_tour = -1;
             }
 
             // Weapon: applied straight to the player so the change is visible
@@ -271,17 +343,32 @@ int main(int argc, char *argv[])
                                input_pressed(&in, SDL_SCANCODE_Z);
 
             if (dbg_sel == 1 && dbg_confirm) {
-                // Teleport to the nearest overworld entrance of the selected type
-                for (int ei = 0; ei < map->num_dungeon_entrances; ei++) {
-                    const DungeonEntrance* e = &map->dungeon_entrances[ei];
-                    if ((int)e->type == dbg_type) {
-                        ow.x = (float)(e->x * TILE_SIZE);
-                        ow.y = (float)(e->y * TILE_SIZE);
-                        state = STATE_OVERWORLD;
-                        break;
-                    }
+                // Step to the NEXT place answering the target, not the nearest:
+                // pressing this repeatedly walks every one of them in turn,
+                // which is how you find out where they all are. Array order, so
+                // press number three always lands on the same cave.
+                //
+                // The menu deliberately stays open. Touring is the point, and
+                // an F2 between every hop is three keys where one will do; the
+                // world still draws around the panel, and the minimap (M) is
+                // the thing you are reading anyway.
+                int n = dbg_target_list(dbg_target, dbg_list, MAX_DUNGEON_ENTRANCES);
+                if (n > 0) {
+                    // Modulo, not ++: the gen thread is still appending
+                    // entrances early on, so the list can grow or shrink under
+                    // a tour already in progress.
+                    dbg_tour = (dbg_tour + 1) % n;
+                    // Feet in the middle of the entrance tile, the same way the
+                    // spawn-door placement above does it. Landing the sprite
+                    // origin on the tile instead puts the feet a tile south of
+                    // the mouth, which is far enough off that the entrance
+                    // prompt never appears and a key press mines the rock in
+                    // front of you rather than taking you in.
+                    const DungeonEntrance& e = map->dungeon_entrances[dbg_list[dbg_tour]];
+                    ow.x  = e.x * TILE_SIZE + TILE_SIZE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
+                    ow.y  = e.y * TILE_SIZE + TILE_SIZE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+                    state = STATE_OVERWORLD;
                 }
-                dbg_open = false;
             }
 
             if (dbg_sel == 2 && dbg_confirm) {
@@ -297,6 +384,7 @@ int main(int argc, char *argv[])
                 tilemap_build_overworld_phase1(map, map_seed);
                 gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
                 resource_nodes_init(&resources);
+                dbg_tour = -1;   // new world, new set of entrances to tour
                 ow.x = (MAP_WIDTH  / 2.0f) * TILE_SIZE;
                 ow.y = (MAP_HEIGHT / 2.0f) * TILE_SIZE;
                 state    = STATE_OVERWORLD;
@@ -1218,7 +1306,12 @@ int main(int argc, char *argv[])
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
-            const int MX = 120, MY = 130, MW = 400, MH = 226;
+            // Still centred in the 640px logical screen, but wider than it was:
+            // the longest row is now "WARP: < CAVE: REALITY SHARD >", 29 chars
+            // at scale 2 = 464px, which needs 24px of indent and a margin on
+            // top of it. text_width() is exact (8px per char per scale step),
+            // so this is arithmetic rather than a guess.
+            const int MX = 70, MY = 130, MW = 500, MH = 226;
             const int LH = 22;  // line height
 
             draw_nes_panel(plat.renderer, MX, MY, MW, MH);
@@ -1236,27 +1329,34 @@ int main(int argc, char *argv[])
                 draw_text(plat.renderer, label, MX + 24, ry, 2, r, g, b);
             };
 
-            // Row 0: dungeon type selector
+            // Row 0: warp target selector
             {
-                char buf[64];
-                const char* dn = DBG_TYPE_NAMES[dbg_type];
-                // build "< NAME >" string
-                int blen = 0;
-                buf[blen++] = '<'; buf[blen++] = ' ';
-                for (int k = 0; dn[k]; k++) buf[blen++] = dn[k];
-                buf[blen++] = ' '; buf[blen++] = '>'; buf[blen] = '\0';
-                // prefix with "DUNGEON: "
-                char full[80];
-                int fi = 0;
-                const char* pre = "DUNGEON: ";
-                for (int k = 0; pre[k]; k++) full[fi++] = pre[k];
-                for (int k = 0; buf[k]; k++) full[fi++] = buf[k];
-                full[fi] = '\0';
+                char name[48], full[80];
+                dbg_target_name(dbg_target, name, sizeof(name));
+                SDL_snprintf(full, sizeof(full), "WARP: < %s >", name);
                 draw_row(0, full, dbg_sel == 0);
             }
 
-            draw_row(1, "ENTER DUNGEON", dbg_sel == 1);
-            draw_row(2, "REGEN MAP",     dbg_sel == 2);
+            // Row 1: the tour. Before the first press it reads how many of the
+            // target this world holds -- a target as narrow as one ore band can
+            // legitimately have none, and without that an empty result is
+            // indistinguishable from a dead key. Once touring it reads which of
+            // them you are standing outside, so you know when you have been
+            // round them all.
+            {
+                char buf[48];
+                int  n = dbg_target_list(dbg_target, dbg_list, MAX_DUNGEON_ENTRANCES);
+                if (n <= 0)
+                    SDL_snprintf(buf, sizeof(buf), "ENTER DUNGEON: NONE FOUND");
+                else if (dbg_tour < 0)
+                    SDL_snprintf(buf, sizeof(buf), "ENTER DUNGEON: %d FOUND", n);
+                else
+                    SDL_snprintf(buf, sizeof(buf), "ENTER DUNGEON: %d OF %d",
+                                 (dbg_tour % n) + 1, n);
+                draw_row(1, buf, dbg_sel == 1);
+            }
+
+            draw_row(2, "REGEN MAP", dbg_sel == 2);
 
             // Row 3: noclip toggle
             {

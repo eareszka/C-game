@@ -3,6 +3,27 @@
 
 #include "input.h"
 
+// What a weapon or tool is made of. Mined in cave dungeons, one material per
+// enemy band -- see MATERIALS in src/dungeon.cpp for the floor and minimap
+// colours and the difficulty thresholds that gate them, tools/oreprof.cpp for
+// the census those thresholds were calibrated from, and tools/gen_cave_tiles.py
+// for the rock art, which is baked per material rather than tinted at runtime.
+//
+// Ordered weakest to strongest. MAT_STONE is 0 so a zero-initialised DungeonMap
+// degrades to the weakest material rather than to garbage, and MAT_VEYRITE is
+// the rung whose generated art is a byte-for-byte copy of the hand-painted
+// master, so it renders exactly as caves did before materials existed.
+enum Material {
+    MAT_STONE,
+    MAT_BRONZE,
+    MAT_EMERALD,
+    MAT_VEYRITE,
+    MAT_DRAVIUM,
+    MAT_KHARVITE,
+    MAT_REALITY_SHARD,
+    MAT_COUNT   // keep last -- number of materials, not a material
+};
+
 enum WeaponType {
     WEAPON_KNIFE,
     WEAPON_CLUB,

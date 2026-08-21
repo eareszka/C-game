@@ -73,6 +73,11 @@ struct DungeonMap {
     int exit_x,  exit_y;
     DungeonEntranceType type;
     float difficulty;
+    // Which material this cave's rock is, derived from difficulty by
+    // dungeon_generate(). Every mouth of one cave system already shares a
+    // difficulty (tilemap.cpp's cave_diff), so this agrees across mouths and
+    // across re-entries with no extra state. Unread for non-cave types.
+    Material ore;
     DungeonSpawner spawners[DMAP_MAX_SPAWNERS];
     int            num_spawners;
     DungeonLoot    loot[DMAP_MAX_LOOT];
@@ -90,6 +95,16 @@ struct DungeonPlayer {
     // the overworld (Overworld, include/overworld.h).
     WeaponSwingState swing;
 };
+
+// Which material a cave of this difficulty holds. Exposed so tools/oreprof.cpp
+// censuses the SHIPPED thresholds instead of its own copy of them -- a second
+// copy is exactly how a calibration silently goes stale.
+Material material_for_difficulty(float difficulty);
+// Display name of a material -- "Stone", "Reality Shard", ... Exposed for the
+// same reason as material_for_difficulty(): the debug menu and
+// tools/oreprof.cpp name the tiers from the table the game renders them from,
+// rather than each keeping a copy that can drift out of step with it.
+const char* material_name(Material m);
 
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed);
