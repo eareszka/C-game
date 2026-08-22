@@ -66,7 +66,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus shot
+.PHONY: all run clean tile_editor dngshot dngcensus dngportals shot
 
 all: $(TARGET)
 
@@ -112,6 +112,13 @@ dngcensus: dngcensus$(EXE)
 dngcensus$(EXE): tools/dngcensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Stair audit across every archetype and every way one can be bound to the
+# overworld. Exits non-zero on a broken invariant, so it can gate a build.
+dngportals: dngportals$(EXE)
+
+dngportals$(EXE): tools/dngportals.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/dngportals.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 # Headless overworld screenshot, and the whole-world mask views behind its
 # SHOT_* environment switches.
 shot: shot$(EXE)
@@ -120,6 +127,6 @@ shot$(EXE): tools/shot.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/shot.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) shot$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) dngportals$(EXE) shot$(EXE)
 
 endif

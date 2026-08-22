@@ -1512,10 +1512,27 @@ static void clear_portal_surroundings(DungeonMap* dmap) {
     // sites. Getting this wrong is silent: an unfilled array means the loop
     // below does nothing and every non-cave dungeon loses the pocket of floor
     // around its stairs.
+    //
+    // The destinations start at -1: dungeon_generate() zeroes num_portals but
+    // leaves the LAST dungeon's landings sitting in the array, and inheriting
+    // one of those is a door that opens somewhere else entirely.
     if (dmap->num_portals == 0) {
         dmap->portals[0] = { dmap->entry_x, dmap->entry_y, -1, -1 };
         dmap->portals[1] = { dmap->exit_x,  dmap->exit_y,  -1, -1 };
         dmap->num_portals = 2;
+    } else {
+        // A second call means the pair moved after it was carved -- which is
+        // what dungeon_orient_portals() does to every partnered dungeon. The
+        // array is the list of stair tiles, so it has to follow the move, or
+        // the restore loop below stamps stairs straight back onto the ground
+        // the move had just cleared. That is where the four sets of stairs in
+        // a catacombs came from: two entries and two exits, all four of them a
+        // door out, and only two of them in the array. Syncing here rather
+        // than at the mover means the next thing to re-site a portal cannot
+        // reintroduce it. Destinations are left alone -- this is about where a
+        // portal IS, not where it goes.
+        dmap->portals[0].tx = dmap->entry_x; dmap->portals[0].ty = dmap->entry_y;
+        dmap->portals[1].tx = dmap->exit_x;  dmap->portals[1].ty = dmap->exit_y;
     }
     // Every portal, not just the pair: a cave's extra mouths need the same
     // pocket of floor around them or the player lands facing a wall.
@@ -2343,6 +2360,201 @@ void dungeon_orient_portals(DungeonMap* dmap, float exit_angle) {
     dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
 
     clear_portal_surroundings(dmap);
+}
+
+// ── Public: which dungeon does this entrance open? ───────────────────
+//
+// Three quantities decide it -- seed, difficulty, archetype -- and they used to
+// be worked out by four overlapping `if` blocks in main.cpp's input handler,
+// applied last-writer-wins with no precedence written anywhere. That is not a
+// tidiness complaint: the partner block ran after the cave-anchor block and
+// overwrote it, so a partnered mouth opened a different interior from its own
+// siblings on the same mountain -- 13.4% of multi-mouth systems measured over
+// ten worlds. Difficulty had no rule at all and was simply taken from whichever
+// entrance the player touched, so a linked pair sharing one layout did not share
+// its rock: the same cave was Bronze from one mouth and Kharvite from the other.
+//
+// So: one function, one answer, and the precedence spelled out. It takes a map
+// and an index and nothing else, which is what lets tools/dngportals.cpp ask the
+// question the game asks instead of a reconstruction of it.
+
+static unsigned int dng_hash_xy(unsigned int map_seed, int x, int y) {
+    return map_seed ^ ((unsigned int)x * 73856093u) ^ ((unsigned int)y * 19349663u);
+}
+
+DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
+                                 int entrance_idx) {
+    DungeonWiring w = {};
+    w.connect_angle = NAN;
+    w.n_mouths      = 0;
+    w.my_mouth      = -1;
+    w.from_exit     = 0;
+
+    if (!map || entrance_idx < 0 || entrance_idx >= map->num_dungeon_entrances) {
+        // No record under the player. Nothing sane to open, so hand back a solo
+        // dungeon at the origin rather than reading past the array.
+        w.seed = map_seed;
+        w.difficulty = 0.5f;
+        w.type = DUNGEON_ENT_CAVE;
+        return w;
+    }
+
+    const DungeonEntrance* e = &map->dungeon_entrances[entrance_idx];
+
+    // Defaults are the solo case, rule 4: this entrance alone, keyed to its
+    // canonical top-left so any tile of a 2x2 stamp opens the same interior.
+    w.type        = e->type;
+    w.difficulty  = e->difficulty;
+    w.seed        = dng_hash_xy(map_seed, e->x, e->y);
+    w.entry_ow_x  = e->x; w.entry_ow_y = e->y;
+    w.exit_ow_x   = e->x; w.exit_ow_y  = e->y;
+
+    // Gather the mouths of this mountain first -- in array order, so the mapping
+    // from portal to mouth is the same whichever one you walked in by -- because
+    // whether there are two of them is what decides rule 2 below.
+    if (e->cave_anchor_x >= 0) {
+        for (int i = 0; i < map->num_dungeon_entrances &&
+                        w.n_mouths < DMAP_MAX_PORTALS; i++) {
+            const DungeonEntrance* m = &map->dungeon_entrances[i];
+            if (m->cave_anchor_x != e->cave_anchor_x ||
+                m->cave_anchor_y != e->cave_anchor_y) continue;
+            if (i == entrance_idx) w.my_mouth = w.n_mouths;
+            w.mouth_ow_x[w.n_mouths] = m->x;
+            w.mouth_ow_y[w.n_mouths] = m->y;
+            w.n_mouths++;
+        }
+        // One mouth is not a system. Clear my_mouth with it: leaving it at 0
+        // while n_mouths says there are no mouths is an index into nothing, and
+        // every reader guards on n_mouths today only by habit.
+        if (w.n_mouths < 2) { w.n_mouths = 0; w.my_mouth = -1; }
+    }
+
+    // Hand the carve the shape of the mountain: each mouth's offset from where
+    // the mouths average out. It lays the chambers out to match, so the
+    // south-face mouth opens into the south of the cave and a north top into the
+    // north of it.
+    if (w.n_mouths >= 2) {
+        int sx = 0, sy = 0;
+        for (int m = 0; m < w.n_mouths; m++) { sx += w.mouth_ow_x[m]; sy += w.mouth_ow_y[m]; }
+        sx /= w.n_mouths; sy /= w.n_mouths;
+        for (int m = 0; m < w.n_mouths; m++) {
+            w.want_ox[m] = w.mouth_ow_x[m] - sx;
+            w.want_oy[m] = w.mouth_ow_y[m] - sy;
+        }
+    }
+
+    // ── Precedence. Exactly one of these sets the seed. ─────────────────
+    //
+    // Written as one chain rather than four independent ifs so that "which wins"
+    // is a property of the code and not of the order somebody happened to paste
+    // the blocks in. Highest claim on a dungeon's identity first.
+
+    if (e->x == DNG_FIXED_CAVE_X && e->y == DNG_FIXED_CAVE_Y) {
+        // 1. The hand-authored cave: the same layout in every world. It carries
+        //    no cave anchor and sits inside the start zone where nothing pairs,
+        //    so it can never reach the rules below -- it is first anyway so that
+        //    stays true if either of those ever changes.
+        w.seed = DNG_FIXED_CAVE_SEED;
+
+    } else if (w.n_mouths >= 2) {
+        // 2. A cave system. Every mouth of one mountain opens one cave: that is
+        //    the whole of "several ways in", and it outranks a partner link,
+        //    which the binding already ignores here for want of a single bearing
+        //    between four holes. Difficulty needs no rule -- cave_diff in
+        //    tilemap.cpp is already one number for the whole system.
+        w.seed = dng_hash_xy(map_seed, e->cave_anchor_x, e->cave_anchor_y);
+
+    } else if (e->partner_idx >= 0 && e->partner_idx < map->num_dungeon_entrances) {
+        // 3. A partnered pair: one interior reached from two places, so all
+        //    three quantities have to be symmetric or the two ends disagree
+        //    about what they are sharing.
+        const DungeonEntrance* p = &map->dungeon_entrances[e->partner_idx];
+        int ax = e->x, ay = e->y, bx = p->x, by = p->y;
+        int minx = ax < bx ? ax : bx, miny = ay < by ? ay : by;
+        int maxx = ax > bx ? ax : bx, maxy = ay > by ? ay : by;
+        w.seed = map_seed
+               ^ ((unsigned int)minx * 73856093u)
+               ^ ((unsigned int)miny * 19349663u)
+               ^ ((unsigned int)maxx * 83492791u)
+               ^ ((unsigned int)maxy * 31729253u);
+
+        // The harder of the two ends. Symmetric, so unlike the seed it needs no
+        // tiebreak, and it reads the way a shortcut should: a passage joining a
+        // shallow cave to a deep one is the deep one. Both ends then agree on
+        // their rock and their loot by construction.
+        w.difficulty = (p->difficulty > e->difficulty) ? p->difficulty : e->difficulty;
+
+        // Two graveyards linked across scales share one interior, and it is the
+        // larger of the two. A rank comparison rather than the SM->LG case it
+        // used to be: with three scales, naming pairs means a catacombs mouth
+        // partnered to a small graveyard would drop you into the small one.
+        if (dungeon_graveyard_rank(p->type) > dungeon_graveyard_rank(w.type))
+            w.type = p->type;
+
+        // Lexicographic order on stamp top-left: lower = DNG_ENTRY side.
+        bool we_are_primary = (ax < bx) || (ax == bx && ay < by);
+        if (we_are_primary) {
+            w.entry_ow_x = ax; w.entry_ow_y = ay;
+            w.exit_ow_x  = bx; w.exit_ow_y  = by;
+            w.from_exit     = 0;
+            w.connect_angle = atan2f((float)(by - ay), (float)(bx - ax));
+        } else {
+            w.entry_ow_x = bx; w.entry_ow_y = by;
+            w.exit_ow_x  = ax; w.exit_ow_y  = ay;
+            w.from_exit     = 1;
+            w.connect_angle = atan2f((float)(ay - by), (float)(ax - bx));
+        }
+    }
+    // 4. Otherwise solo, which is what the defaults above already say.
+
+    return w;
+}
+
+// ── Public: bind a generated dungeon to the overworld ────────────────
+//
+// A dungeon comes out of dungeon_generate() with a layout and no idea where its
+// stairs let out. There are exactly three answers to that, and they used to sit
+// as three inline branches in the overworld input handler in main.cpp -- the one
+// place a headless tool cannot reach, which is why nothing had ever counted the
+// stairs of a dungeon the way the game actually wires them. They live here now,
+// taking nothing but numbers, so the check in tools/dngportals.cpp asks the
+// shipped code the question rather than a copy of it.
+//
+// All three leave the same invariant behind: portals[0..num_portals-1] IS the
+// list of stair tiles on the map, portal 0 the entry and the rest exits.
+
+void dungeon_bind_solo(DungeonMap* dmap, int ow_x, int ow_y) {
+    // No partner, so the exit the layout carved is a door to nowhere: the way
+    // you came in is the way back out. Said as one portal rather than as two
+    // with the second's tile quietly floored -- a portal that is not a tile is
+    // the disagreement between the array and the map that this file exists to
+    // keep out.
+    dmap->tiles[dmap->exit_y][dmap->exit_x] = DNG_FLOOR;
+    dmap->portals[0] = { dmap->entry_x, dmap->entry_y, ow_x, ow_y };
+    dmap->num_portals = 1;
+}
+
+void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
+                       int entry_ow_x, int entry_ow_y,
+                       int exit_ow_x,  int exit_ow_y) {
+    // Orient first so the underground direction matches the overworld direction
+    // between the two entrances, then give each end of the passage its landing.
+    dungeon_orient_portals(dmap, exit_angle);
+    dmap->portals[0] = { dmap->entry_x, dmap->entry_y, entry_ow_x, entry_ow_y };
+    dmap->portals[1] = { dmap->exit_x,  dmap->exit_y,  exit_ow_x,  exit_ow_y  };
+    dmap->num_portals = 2;
+}
+
+void dungeon_bind_cave_mouths(DungeonMap* dmap, const int* ow_x, const int* ow_y, int n) {
+    // A cave keeps all its ways out and each one leads to its own mouth.
+    // Orienting is a two-mouth idea -- it aligns the underground direction with
+    // the bearing between a pair -- and there is no single bearing when there
+    // are four, so it is skipped.
+    for (int p = 0; p < dmap->num_portals; p++) {
+        int mi = (p < n) ? p : 0;
+        dmap->portals[p].ow_x = ow_x[mi];
+        dmap->portals[p].ow_y = ow_y[mi];
+    }
 }
 
 // ── Public: player init ───────────────────────────────────────────────────

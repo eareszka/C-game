@@ -2006,7 +2006,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Fixed cave dungeon — world pixel (47936, 50329), tile (1498, 1572).
     // Stamped in phase 1 so it's visible immediately on load.
     {
-        const int fcx = 1498, fcy = 1572;
+        const int fcx = DNG_FIXED_CAVE_X, fcy = DNG_FIXED_CAVE_Y;
         map->tiles[fcy][fcx]   = TILE_DUNGEON_CAVE;
         map->overlay[fcy][fcx] = 0;
         float fdx = (float)(fcx - MAP_WIDTH  / 2);
@@ -4700,6 +4700,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             // GRAVEYARD_SM: entrance tile stays hidden under the biome tile.
             // It is revealed when the player destroys the hidden gravestone
             // resource node. All other types stamp their dungeon tile now.
+            // Pairing has not run yet at this point; the one it links gets
+            // stamped open there, where whether it has a partner is known.
             if (ent_type != DUNGEON_ENT_GRAVEYARD_SM) {
                 int tile_id = entrance_tile_id(ent_type);
                 for (int r = 0; r < sz; r++)
@@ -4805,7 +4807,24 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
-    // ── Link ~25% of dungeons to their closest compatible neighbour ───────
+    // ── Link a share of every archetype to its closest compatible neighbour ─
+    //
+    // The share is taken PER ARCHETYPE, as a quota of sites that may end up
+    // linked. It used to be a single 25% coin flip per dungeon, and that made a
+    // type's chance of a partner scale with its own scarcity twice over: a rare
+    // archetype has few compatible sites to find, and each site got exactly one
+    // roll and was never revisited. Measured over ten worlds that left the two
+    // rarest — stonehenge and catacombs, six-odd sites apiece against eight
+    // hundred caves — at 28% linked with three worlds in ten containing no
+    // linked stonehenge at all, while the common types drifted up to 43%: the
+    // flip fired once per site but a site could also be CHOSEN by a later one,
+    // and only a type with hundreds of sites gets that second chance often.
+    //
+    // A quota says the thing the coin flip was trying to say and says it the
+    // same way for every archetype. LINK_SHARE is 0.40 rather than the 0.25 the
+    // flip was written for because 0.40 is what the flip actually produced for
+    // the types numerous enough for the retries to work — common archetypes keep
+    // the density they had, and the scarce ones come up to meet them.
     {
         int n = map->num_dungeon_entrances;
         // partner_idx already initialised to -1 above.
@@ -4833,11 +4852,72 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return ddx*ddx + ddy*ddy < START_ZONE_R * START_ZONE_R;
         };
 
+        // A mountain with several mouths is already a network of ways in and
+        // out of one cave, and a pair link on top of that is a second, louder
+        // claim on the same thing: the interior seed comes from the mountain's
+        // anchor so every mouth opens one cave, and the binding gives every
+        // mouth its own way out, so neither has anywhere left to put a partner.
+        // The link was not merely unused -- it used to win the seed, and a
+        // partnered mouth opened a different cave from its own siblings. Rather
+        // than leave a partner_idx sitting in the data that nothing acts on,
+        // such a mouth is not offered for pairing at all. A cave with one mouth
+        // pairs like anything else.
+        //
+        // Counted once here rather than asked per candidate: the scan below is
+        // already quadratic in the entrance count and this need not be.
+        std::vector<int> system_mouths(n, 1);
+        for (int i = 0; i < n; i++) {
+            const DungeonEntrance* ei = &map->dungeon_entrances[i];
+            if (ei->cave_anchor_x < 0) continue;
+            int cnt = 0;
+            for (int j = 0; j < n; j++) {
+                const DungeonEntrance* ej = &map->dungeon_entrances[j];
+                if (ej->cave_anchor_x == ei->cave_anchor_x &&
+                    ej->cave_anchor_y == ei->cave_anchor_y) cnt++;
+            }
+            system_mouths[i] = cnt;
+        }
+
+        auto pairable = [&](int idx) {
+            const DungeonEntrance* e = &map->dungeon_entrances[idx];
+            if (near_start(e)) return false;
+            if (system_mouths[idx] >= 2) return false;
+            return true;
+        };
+
+        // How much of each archetype ends up linked.
+        const float LINK_SHARE = 0.40f;
+
+        // Quota of linked SITES per archetype, not of pairs: a link across two
+        // scales of the graveyard family spends one from each of the two, so a
+        // cross-scale pair cannot quietly overdraw either type's share.
+        int quota[DUNGEON_ENT_COUNT] = {0};
+        {
+            int eligible[DUNGEON_ENT_COUNT] = {0};
+            for (int i = 0; i < n; i++) {
+                const DungeonEntrance* e = &map->dungeon_entrances[i];
+                int t = (int)e->type;
+                if (t < 0 || t >= DUNGEON_ENT_COUNT) continue;
+                if (!pairable(i)) continue;
+                eligible[t]++;
+            }
+            for (int t = 0; t < DUNGEON_ENT_COUNT; t++) {
+                quota[t] = (int)((float)eligible[t] * LINK_SHARE + 0.5f);
+                // Two is what one link costs, so an archetype the share rounds
+                // below that has no partner anywhere in the world however many
+                // sites it grew. Floor at a single link for anything with two
+                // sites to spend it on — that is the whole of what a rare
+                // archetype needs and it is the same sentence for all nine.
+                if (eligible[t] >= 2 && quota[t] < 2) quota[t] = 2;
+            }
+        }
+
         for (int oi = 0; oi < n; oi++) {
             int i = order[oi];
             DungeonEntrance* ei = &map->dungeon_entrances[i];
             if (ei->partner_idx != -1) continue;  // already paired
-            if (near_start(ei)) continue;          // solo in starting area
+            if (!pairable(i)) continue;            // starting area, or a cave system
+            if (quota[(int)ei->type] <= 0) continue;   // this archetype has had its share
 
             // Find closest unlinked compatible neighbour.
             int best_j = -1, best_d2 = INT_MAX;
@@ -4845,13 +4925,17 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (j == i) continue;
                 DungeonEntrance* ej = &map->dungeon_entrances[j];
                 if (ej->partner_idx != -1) continue;
-                if (near_start(ej)) continue;      // don't pair into starting area
+                if (!pairable(j)) continue;        // same two reasons, from the other end
                 // Compatible: same type, or any two of the graveyard family,
                 // which pair across their three scales.
                 bool compat = (ei->type == ej->type) ||
                               (dungeon_is_graveyard(ei->type) &&
                                dungeon_is_graveyard(ej->type));
                 if (!compat) continue;
+                // Same-type pairing spends two of one quota, so the partner has
+                // to be affordable alongside the site already being spent for.
+                int need = (ej->type == ei->type) ? 2 : 1;
+                if (quota[(int)ej->type] < need) continue;
                 int dx = ei->x - ej->x, dy = ei->y - ej->y;
                 int d2 = dx*dx + dy*dy;
                 if (d2 < best_d2) { best_d2 = d2; best_j = j; }
@@ -4859,11 +4943,26 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
             if (best_j < 0) continue;
 
-            // Accept with 25% probability so ~25% of all dungeons end up linked.
-            if (lnext() % 4 != 0) continue;
+            DungeonEntrance* ej = &map->dungeon_entrances[best_j];
+            quota[(int)ei->type]--;
+            quota[(int)ej->type]--;
 
             ei->partner_idx = best_j;
-            map->dungeon_entrances[best_j].partner_idx = i;
+            ej->partner_idx = i;
+        }
+
+        // A small graveyard hides its mouth under one of its gravestones, and
+        // the player is meant to find it by breaking one. That is a fine way IN
+        // and no way at all to arrive: coming up the tunnel from its partner
+        // put you on open ground with nothing to walk back into, and about half
+        // of every catacombs link ends at one of these. A linked one is stamped
+        // open here instead — the far end of a passage has to look like a way
+        // through from both sides. Solo ones keep the gravestone over the door.
+        for (int i = 0; i < n; i++) {
+            DungeonEntrance* e = &map->dungeon_entrances[i];
+            if (e->type != DUNGEON_ENT_GRAVEYARD_SM || e->partner_idx < 0) continue;
+            map->tiles[e->y][e->x]   = TILE_DUNGEON_GRAVEYARD_SM;
+            map->overlay[e->y][e->x] = 0;
         }
     }
 
@@ -7247,12 +7346,21 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
 
     // The hidden entrance gravestone sits directly on the entrance tile.
     // Pixel position: top-left of the tile.
-    resource_nodes_add_gravestone(resources,
-        (float)(e->x * TILE_SIZE), (float)(e->y * TILE_SIZE),
-        1, TILE_DUNGEON_GRAVEYARD_SM, e->x, e->y);
+    //
+    // Skipped on a linked graveyard: worldgen stamps that mouth open so the
+    // partner's tunnel has something to come up into, and a stone standing on
+    // an open door hides a way in that is no longer hidden. Its share of the
+    // handful goes to the scatter below instead, so the yard is not a stone
+    // short for having a passage under it.
+    int placed = 0;
+    if (e->partner_idx < 0) {
+        resource_nodes_add_gravestone(resources,
+            (float)(e->x * TILE_SIZE), (float)(e->y * TILE_SIZE),
+            1, TILE_DUNGEON_GRAVEYARD_SM, e->x, e->y);
+        placed = 1;
+    }
 
     // Scatter the remaining gravestones in a ~3-tile radius around the entrance.
-    int placed = 1;
     const int RADIUS = 3;
     for (int attempt = 0; attempt < 80 && placed < count; attempt++) {
         rng = rng * 1664525u + 1013904223u;

@@ -557,167 +557,59 @@ int main(int argc, char *argv[])
                         int etx = (int)((ow.x + player.width  * 0.5f) / TILE_SIZE);
                         int ety = (int)((ow.y + player.height - 8.0f) / TILE_SIZE);
 
-                        unsigned int dng_seed = map_seed
-                            ^ ((unsigned int)etx * 73856093u)
-                            ^ ((unsigned int)ety * 19349663u);
-
-                        // Default: solo dungeon — both portals return to this entrance.
-                        dng_entry_portal_x = etx; dng_entry_portal_y = ety;
-                        dng_exit_portal_x  = etx; dng_exit_portal_y  = ety;
-                        int from_exit = 0;
-                        float connect_angle = NAN;
-
                         // Find the DungeonEntrance record we're standing on.
-                        DungeonEntrance* cur_ent = nullptr;
+                        int cur_ent_idx = -1;
                         for (int ci = 0; ci < map->num_dungeon_entrances; ci++) {
                             DungeonEntrance* ce = &map->dungeon_entrances[ci];
                             int stamp = (ce->size == 0) ? 1 : 2;
                             if (etx >= ce->x && etx < ce->x + stamp &&
                                 ety >= ce->y && ety < ce->y + stamp) {
-                                cur_ent = ce; break;
+                                cur_ent_idx = ci; break;
                             }
                         }
 
-                        // For solo entrances, anchor the seed to the entrance's
-                        // canonical top-left so any tile of a 2×2 stamp gives
-                        // the same layout every visit.
-                        if (cur_ent && cur_ent->partner_idx < 0) {
-                            dng_seed = map_seed
-                                ^ ((unsigned int)cur_ent->x * 73856093u)
-                                ^ ((unsigned int)cur_ent->y * 19349663u);
+                        // Which dungeon this is, how hard, and where its stairs
+                        // come out. One answer with its precedence written down,
+                        // in dungeon.cpp where a tool can reach it -- as four
+                        // last-writer-wins blocks out here, the partner rule
+                        // silently beat the cave-system rule and a mountain
+                        // could hide two different caves.
+                        DungeonWiring w = dungeon_wiring_for(map, map_seed, cur_ent_idx);
+
+                        dng_entry_portal_x = w.entry_ow_x; dng_entry_portal_y = w.entry_ow_y;
+                        dng_exit_portal_x  = w.exit_ow_x;  dng_exit_portal_y  = w.exit_ow_y;
+                        int   from_exit     = w.from_exit;
+                        float connect_angle = w.connect_angle;
+                        int   n_cave_mouth  = w.n_mouths;
+                        int   my_mouth      = w.my_mouth;
+
+                        dmap.want_portals = (n_cave_mouth >= 2) ? n_cave_mouth : 2;
+                        for (int m = 0; m < n_cave_mouth; m++) {
+                            dmap.want_ox[m] = w.want_ox[m];
+                            dmap.want_oy[m] = w.want_oy[m];
                         }
 
-                        // A cave system's mouths anchor to the mountain instead
-                        // of to themselves, which is the whole of "one cave,
-                        // several ways in": the mouth in the south wall and the
-                        // ones on each storey's top all hash to the same seed,
-                        // so they generate the same interior — and the fog of
-                        // war cache is keyed by seed, so the map you uncovered
-                        // coming in one way is still uncovered coming in
-                        // another.
-                        if (cur_ent && cur_ent->cave_anchor_x >= 0) {
-                            dng_seed = map_seed
-                                ^ ((unsigned int)cur_ent->cave_anchor_x * 73856093u)
-                                ^ ((unsigned int)cur_ent->cave_anchor_y * 19349663u);
-                        }
-
-                        // Fixed cave at tile (1498, 1572) — same layout every seed.
-                        if (cur_ent && cur_ent->x == 1498 && cur_ent->y == 1572)
-                            dng_seed = 0xCA4E5EEDu;
-
-                        if (cur_ent && cur_ent->partner_idx >= 0) {
-                            DungeonEntrance* partner = &map->dungeon_entrances[cur_ent->partner_idx];
-                            int ax = cur_ent->x, ay = cur_ent->y;
-                            int bx = partner->x, by = partner->y;
-
-                            // Shared, order-independent seed.
-                            int minx = ax < bx ? ax : bx, miny = ay < by ? ay : by;
-                            int maxx = ax > bx ? ax : bx, maxy = ay > by ? ay : by;
-                            dng_seed = map_seed
-                                ^ ((unsigned int)minx * 73856093u)
-                                ^ ((unsigned int)miny * 19349663u)
-                                ^ ((unsigned int)maxx * 83492791u)
-                                ^ ((unsigned int)maxy * 31729253u);
-
-                            // Lexicographic order on stamp top-left: lower = DNG_ENTRY side.
-                            bool we_are_primary = (ax < bx) || (ax == bx && ay < by);
-                            if (we_are_primary) {
-                                dng_entry_portal_x = ax;  dng_entry_portal_y = ay;
-                                dng_exit_portal_x  = bx;  dng_exit_portal_y  = by;
-                                from_exit     = 0;
-                                connect_angle = atan2f((float)(by - ay), (float)(bx - ax));
-                            } else {
-                                dng_entry_portal_x = bx;  dng_entry_portal_y = by;
-                                dng_exit_portal_x  = ax;  dng_exit_portal_y  = ay;
-                                from_exit     = 1;
-                                connect_angle = atan2f((float)(ay - by), (float)(ax - bx));
-                            }
-                        }
-
-                        // A cave system: gather every mouth of this mountain, in
-                        // array order so the mapping is the same whichever one
-                        // you walked into, and ask the interior for that many
-                        // ways out.
-                        int cave_mouth[DMAP_MAX_PORTALS];
-                        int n_cave_mouth = 0, my_mouth = -1;
-                        dmap.want_portals = 2;
-                        if (cur_ent && cur_ent->cave_anchor_x >= 0) {
-                            for (int i = 0; i < map->num_dungeon_entrances &&
-                                            n_cave_mouth < DMAP_MAX_PORTALS; i++) {
-                                DungeonEntrance* e = &map->dungeon_entrances[i];
-                                if (e->cave_anchor_x != cur_ent->cave_anchor_x ||
-                                    e->cave_anchor_y != cur_ent->cave_anchor_y) continue;
-                                if (e == cur_ent) my_mouth = n_cave_mouth;
-                                cave_mouth[n_cave_mouth++] = i;
-                            }
-                            if (n_cave_mouth >= 2) {
-                                dmap.want_portals = n_cave_mouth;
-                                // Hand the carve the shape of the mountain: each
-                                // mouth's offset from where the mouths average
-                                // out. It lays the chambers out to match, so the
-                                // south-face mouth opens into the south of the
-                                // cave and a north top into the north of it.
-                                int sx = 0, sy = 0;
-                                for (int m = 0; m < n_cave_mouth; m++) {
-                                    sx += map->dungeon_entrances[cave_mouth[m]].x;
-                                    sy += map->dungeon_entrances[cave_mouth[m]].y;
-                                }
-                                sx /= n_cave_mouth; sy /= n_cave_mouth;
-                                for (int m = 0; m < n_cave_mouth; m++) {
-                                    dmap.want_ox[m] = map->dungeon_entrances[cave_mouth[m]].x - sx;
-                                    dmap.want_oy[m] = map->dungeon_entrances[cave_mouth[m]].y - sy;
-                                }
-                            }
-                        }
-
-                        // Two graveyards linked across scales share one interior,
-                        // and it is the larger of the two. Stated as a rank
-                        // comparison rather than as the SM->LG case it used to
-                        // be: with three scales, naming pairs means a catacombs
-                        // mouth partnered to a small graveyard would drop you
-                        // into the small one.
-                        DungeonEntranceType gen_type = ow.dungeon_type;
-                        if (cur_ent && cur_ent->partner_idx >= 0) {
-                            DungeonEntrance* partner2 = &map->dungeon_entrances[cur_ent->partner_idx];
-                            if (dungeon_graveyard_rank(partner2->type) >
-                                dungeon_graveyard_rank(gen_type))
-                                gen_type = partner2->type;
-                        }
-                        dungeon_generate(&dmap, gen_type,
-                                         ow.dungeon_difficulty, dng_seed);
-                        current_dng_seed = dng_seed;
+                        dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
+                        current_dng_seed = w.seed;
                         {
                             auto exp_it = dungeon_explored_cache.find(current_dng_seed);
                             if (exp_it != dungeon_explored_cache.end())
                                 SDL_memcpy(dmap.explored, exp_it->second.data(), DMAP_H * DMAP_W);
                         }
 
+                        // Where the stairs let out. The three cases and the
+                        // invariant they keep live in dungeon.cpp, next to the
+                        // code that carved the stairs — out here they were
+                        // somewhere tools/dngportals.cpp could not check them.
                         if (n_cave_mouth >= 2) {
-                            // A cave keeps all its ways out and each one leads to
-                            // its own mouth. Orienting is a two-mouth idea — it
-                            // aligns the underground direction with the bearing
-                            // between a pair — and there is no single bearing
-                            // when there are four, so it is skipped.
-                            for (int p = 0; p < dmap.num_portals; p++) {
-                                int mi = cave_mouth[p < n_cave_mouth ? p : 0];
-                                dmap.portals[p].ow_x = map->dungeon_entrances[mi].x;
-                                dmap.portals[p].ow_y = map->dungeon_entrances[mi].y;
-                            }
+                            dungeon_bind_cave_mouths(&dmap, w.mouth_ow_x, w.mouth_ow_y,
+                                                     n_cave_mouth);
                         } else if (!isnan(connect_angle)) {
-                            // Connected: orient portals so the underground direction
-                            // matches the overworld direction between the two entrances.
-                            dungeon_orient_portals(&dmap, connect_angle);
-                            dmap.portals[0] = { dmap.entry_x, dmap.entry_y,
-                                                dng_entry_portal_x, dng_entry_portal_y };
-                            dmap.portals[1] = { dmap.exit_x,  dmap.exit_y,
-                                                dng_exit_portal_x,  dng_exit_portal_y };
+                            dungeon_bind_pair(&dmap, connect_angle,
+                                              dng_entry_portal_x, dng_entry_portal_y,
+                                              dng_exit_portal_x,  dng_exit_portal_y);
                         } else {
-                            // Solo: remove the exit tile; the entry tile is the only way out.
-                            dmap.tiles[dmap.exit_y][dmap.exit_x] = DNG_FLOOR;
-                            dmap.portals[0] = { dmap.entry_x, dmap.entry_y,
-                                                dng_entry_portal_x, dng_entry_portal_y };
-                            dmap.portals[1] = { dmap.exit_x,  dmap.exit_y,
-                                                dng_exit_portal_x,  dng_exit_portal_y };
+                            dungeon_bind_solo(&dmap, dng_entry_portal_x, dng_entry_portal_y);
                         }
 
                         dungeon_player_init(&dplayer, &player, &dmap, from_exit);

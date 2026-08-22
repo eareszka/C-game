@@ -148,6 +148,15 @@ enum TileId {
 #define TOWN0_SHEET_COLS 256
 #define TOWN0_SHEET_ROWS 256
 
+// The hand-authored cave: one tile stamped the same in every world by
+// tilemap_build_overworld_phase1(), and the fixed interior seed that goes with
+// it. Here rather than at either use because two files have to agree on it --
+// worldgen stamps the tile, dungeon_wiring_for() recognises it -- and a magic
+// coordinate written out twice is one that drifts.
+#define DNG_FIXED_CAVE_X    1498
+#define DNG_FIXED_CAVE_Y    1572
+#define DNG_FIXED_CAVE_SEED 0xCA4E5EEDu
+
 typedef enum {
     DUNGEON_ENT_CAVE         = 0,
     DUNGEON_ENT_RUINS        = 1,

@@ -116,6 +116,49 @@ const char* material_name(Material m);
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed);
 void dungeon_orient_portals(DungeonMap* dmap, float exit_angle);
+
+// Everything that has to be decided about a dungeon before it is generated:
+// which interior it is, how hard, and where its stairs come out. See the
+// precedence block in dungeon_wiring_for() (src/dungeon.cpp) for what wins when
+// an entrance could be described by more than one rule.
+struct DungeonWiring {
+    unsigned int        seed;         // interior layout, and the fog-cache key
+    float               difficulty;   // ore band and chest gold
+    DungeonEntranceType type;         // which archetype's generator runs
+    int   from_exit;                  // spawn at portal 0 (0) or portal 1 (1)
+    float connect_angle;              // NAN unless a partnered pair
+    int   entry_ow_x, entry_ow_y;     // portal 0 destination
+    int   exit_ow_x,  exit_ow_y;      // portal 1 destination
+    // A cave system's mouths, in entrance-array order, and each one's offset
+    // from their centroid for the carve to lay chambers out against. n_mouths is
+    // 0 for anything that is not a mountain with two or more ways in.
+    int   mouth_ow_x[DMAP_MAX_PORTALS], mouth_ow_y[DMAP_MAX_PORTALS];
+    int   want_ox[DMAP_MAX_PORTALS],    want_oy[DMAP_MAX_PORTALS];
+    int   n_mouths;
+    int   my_mouth;                   // which mouth was walked into, or -1
+};
+
+// Which dungeon the entrance at this index opens, and where its ways out lead.
+// Takes a map and an index so a headless tool can ask exactly what the game
+// asks -- the decision used to live in main.cpp's input handler, out of reach of
+// anything that could check it.
+DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
+                                 int entrance_idx);
+// Bind a freshly generated dungeon to the overworld. Exactly three answers to
+// "where do these stairs let out", and every one of them leaves portals[] as the
+// list of stair tiles on the map -- portal 0 the entry, the rest exits. See the
+// block above dungeon_bind_solo() in src/dungeon.cpp.
+//
+// Solo: the way in is the only way out, so one portal and no DNG_EXIT tile.
+void dungeon_bind_solo(DungeonMap* dmap, int ow_x, int ow_y);
+// Partnered: orient the pair along the overworld bearing between the two linked
+// entrances, then give each end its landing.
+void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
+                       int entry_ow_x, int entry_ow_y,
+                       int exit_ow_x,  int exit_ow_y);
+// Cave system: one portal per mouth, each returning to the mouth it belongs to.
+// ow_x/ow_y are n overworld tiles, in the same order the portals were carved.
+void dungeon_bind_cave_mouths(DungeonMap* dmap, const int* ow_x, const int* ow_y, int n);
 // from_exit=0: spawn at DNG_ENTRY; from_exit=1: spawn at DNG_EXIT (connected entrance)
 void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, int from_exit);
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
