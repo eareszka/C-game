@@ -66,7 +66,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus
+.PHONY: all run clean tile_editor dngshot dngcensus shot
 
 all: $(TARGET)
 
@@ -112,7 +112,14 @@ dngcensus: dngcensus$(EXE)
 dngcensus$(EXE): tools/dngcensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Headless overworld screenshot, and the whole-world mask views behind its
+# SHOT_* environment switches.
+shot: shot$(EXE)
+
+shot$(EXE): tools/shot.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/shot.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) shot$(EXE)
 
 endif

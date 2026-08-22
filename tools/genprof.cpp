@@ -439,15 +439,18 @@ int main(int argc, char** argv)
         static int rq[MAP_HEIGHT * MAP_WIDTH];
         long road_n = 0, bridge_n = 0, on_cliff = 0, unwalkable = 0;
         int deck_wide = 0, deck_long = 0, deck_wx = -1, deck_wy = -1;
+        // A road is worn over the ground rather than written into it, so it
+        // lives in its own layer; only the deck that carries it over water is
+        // still a tile. Ask both or the census reports an empty world.
         auto is_road = [&](int x, int y) {
-            int t = g_map.tiles[y][x];
-            return t == TILE_ROAD || t == TILE_ROAD_BRIDGE;
+            return g_map.route[y][x] == ROUTE_ROAD ||
+                   g_map.tiles[y][x] == TILE_ROAD_BRIDGE;
         };
         for (int y = 0; y < MAP_HEIGHT; y++)
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int t = g_map.tiles[y][x];
-                if (t == TILE_ROAD)        road_n++;
-                if (t == TILE_ROAD_BRIDGE) bridge_n++;
+                if (g_map.route[y][x] == ROUTE_ROAD) road_n++;
+                if (t == TILE_ROAD_BRIDGE)           bridge_n++;
                 if (!is_road(x, y)) continue;
                 if (tilemap_face_at(x, y)) on_cliff++;
                 // A road you cannot walk on is not a road.
@@ -473,8 +476,7 @@ int main(int argc, char** argv)
         int comps = 0, biggest = 0;
         for (int y = 0; y < MAP_HEIGHT; y++)
             for (int x = 0; x < MAP_WIDTH; x++) {
-                int t = g_map.tiles[y][x];
-                if (rseen[y][x] || (t != TILE_ROAD && t != TILE_ROAD_BRIDGE)) continue;
+                if (rseen[y][x] || !is_road(x, y)) continue;
                 int n = 0, hd = 0;
                 rq[n++] = y * MAP_WIDTH + x; rseen[y][x] = 1;
                 while (hd < n) {
@@ -483,8 +485,7 @@ int main(int argc, char** argv)
                     for (int d = 0; d < 4; d++) {
                         int nx = vx + DX[d], ny = vy + DY[d];
                         if (nx < 0 || ny < 0 || nx >= MAP_WIDTH || ny >= MAP_HEIGHT) continue;
-                        int tt = g_map.tiles[ny][nx];
-                        if (rseen[ny][nx] || (tt != TILE_ROAD && tt != TILE_ROAD_BRIDGE)) continue;
+                        if (rseen[ny][nx] || !is_road(nx, ny)) continue;
                         rseen[ny][nx] = 1; rq[n++] = ny * MAP_WIDTH + nx;
                     }
                 }
@@ -501,8 +502,8 @@ int main(int argc, char** argv)
                         if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) continue;
                         // Only the ring at exactly this margin is new.
                         if (m && x > px - m && x < px + w + m && y > py - m && y < py + h + m) continue;
-                        int t = g_map.tiles[y][x];
-                        if (t == TILE_ROAD || t == TILE_ROAD_BRIDGE) return m;
+                        if (g_map.route[y][x] == ROUTE_ROAD ||
+                            g_map.tiles[y][x] == TILE_ROAD_BRIDGE) return m;
                     }
             }
             return 999;
@@ -599,7 +600,7 @@ int main(int argc, char** argv)
                             bool high   = (t >= TILE_CLIFF && t <= TILE_CLIFF_5 && t != 5 && t != 6 && t != 7) ||
                                           (t >= TILE_CLIFF_SNOW_1 && t <= TILE_CLIFF_WASTE_5) ||
                                           tilemap_face_at(x * SC + i, y * SC + j);
-                            int r = t == TILE_ROAD        ? 4
+                            int r = g_map.route[y * SC + j][x * SC + i] == ROUTE_ROAD ? 4
                                   : t == TILE_ROAD_BRIDGE ? 3
                                   : liquid ? 2 : high ? 1 : 0;
                             if (r > best) best = r;

@@ -276,13 +276,17 @@ static bool overlay_site_dry(const Tilemap* map, int tx, int ty) {
     return true;
 }
 
-// Trail, and the bridge that carries it over lava. Nothing destroyable stands
-// on either: the overlays are cleared as the trail is painted over them, and
-// the nodes placed later — gravestones, which are scattered when the player
-// first comes near a graveyard — ask this before choosing a tile.
-static inline bool tile_id_is_trail(int t) {
-    return t == TILE_WASTE_TRAIL || t == TILE_WASTE_BRIDGE
-        || t == TILE_ROAD        || t == TILE_ROAD_BRIDGE;
+// A track, or the deck that carries it over a gap. Nothing destroyable stands
+// on either: the overlays are cleared as the track is laid, and the nodes
+// placed later — gravestones, which are scattered when the player first comes
+// near a graveyard — ask this before choosing a tile.
+//
+// Two layers to ask, because a track is worn over ground that is still there
+// while a deck replaces the surface outright.
+static inline bool tile_is_route(const Tilemap* map, int x, int y) {
+    if (map->route[y][x]) return true;
+    int t = map->tiles[y][x];
+    return t == TILE_WASTE_BRIDGE || t == TILE_ROAD_BRIDGE;
 }
 
 // Sweep the overlays after generation rather than testing at each placement:
@@ -1983,6 +1987,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Grass fill (TILE_GRASS==0)
     memset(map->tiles, 0, sizeof(map->tiles));
     memset(map->overlay, 0, sizeof(map->overlay));
+    memset(map->route,   0, sizeof(map->route));
     map->num_doors = 0;
 
     // Hub ring — cleared by the starting town stamp below
@@ -2395,7 +2400,13 @@ static int entrance_tile_id(DungeonEntranceType type) {
 //   is_lava     the gap it may bridge, including decks already laid
 //   is_raw_gap  the tile a deck may be laid over
 //   in_moat     where a crossing is forbidden outright
-//   paintable   the tile the route may overwrite
+//   paintable   the ground the route may be laid over
+//   spillable   the tile the stroke's OUTER edge may overwrite as well. The
+//               route is planned on the middle tile of a three-wide track, and
+//               the two beside it can easily fall outside the ground the route
+//               was allowed to follow -- along the edge of the wasteland, most
+//               of all. Refusing them there is what makes a track two wide, so
+//               this is the ground it may lean onto instead.
 //
 // connect_all is how hard the caller wants the network held together, and the
 // two callers want opposite things.
@@ -2415,12 +2426,12 @@ static int entrance_tile_id(DungeonEntranceType type) {
 // six-hundred-line body is how a refactor that was meant to change nothing ends
 // up changing something.
 template <typename InRegion, typename IsGap, typename IsRawGap,
-          typename Forbidden, typename Paintable>
+          typename Forbidden, typename Paintable, typename Spillable>
 static void route_network(Tilemap* map, unsigned int route_seed,
                           const std::vector<std::pair<int,int>>& nodes,
                           InRegion is_region, IsGap is_lava, IsRawGap is_raw_gap,
-                          Forbidden in_moat, Paintable paintable,
-                          int path_tile, int bridge_tile,
+                          Forbidden in_moat, Paintable paintable, Spillable spillable,
+                          uint8_t route_kind, int bridge_tile,
                           int EDGE_CLEARANCE, int ENDPOINT_FREE, int ANCHOR_SEARCH,
                           int BRIDGE_MAX, int BRIDGE_GAP, bool connect_all)
 {
@@ -2712,9 +2723,35 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 // Never bleed into a neighbouring wasteland
                                 // across a thin barrier: that leaves a scrap of
                                 // trail somewhere it was not asked for.
-                                if (!incomp[pi]) continue;
-                                if (!paintable(px2, py2)) continue;
-                                map->tiles[py2][px2] = path_tile;
+                                // The middle of the stroke is the tile the
+                                // route was planned on and must be in the
+                                // region; an outer tile may instead lean onto
+                                // ground the route itself could not follow.
+                                // Measured, that is where 70% of the trail's
+                                // narrow stretches came from: the wasteland
+                                // simply runs out under the edge of the track.
+                                //
+                                // It has to be TOUCHING the region to do it,
+                                // which is what incomp was really guarding --
+                                // not "stay off other ground" but "never step
+                                // over a thin barrier into the next wasteland
+                                // and leave a scrap of trail there".
+                                if (!incomp[pi] || !paintable(px2, py2)) {
+                                    if (!spillable(px2, py2)) continue;
+                                    bool touches = false;
+                                    for (int d = 0; d < 4 && !touches; d++) {
+                                        int ax = px2 + DX4[d], ay = py2 + DY4[d];
+                                        touches = in_bounds(ax, ay) &&
+                                                  incomp[(size_t)ay * MAP_WIDTH + ax];
+                                    }
+                                    if (!touches) continue;
+                                }
+                                // The ground stays exactly what it was. A
+                                // track is worn INTO a place, not laid instead
+                                // of it, and keeping the tile is what lets the
+                                // track know which ground it crosses and lets
+                                // that ground draw underneath it.
+                                map->route[py2][px2] = route_kind;
                                 // Nothing grows on a trail. Trees, dead trees,
                                 // rocks and ore are all scattered long before
                                 // the route through them is known, so they are
@@ -2836,13 +2873,38 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // attempt that hugs it for its whole length.
                         int fex = from % MAP_WIDTH, fey = from / MAP_WIDTH;
                         int tex = to   % MAP_WIDTH, tey = to   / MAP_WIDTH;
+                        int end_free = ENDPOINT_FREE;
                         auto near_end = [&](int x, int y) {
-                            return (abs(x - fex) <= ENDPOINT_FREE && abs(y - fey) <= ENDPOINT_FREE)
-                                || (abs(x - tex) <= ENDPOINT_FREE && abs(y - tey) <= ENDPOINT_FREE);
+                            return (abs(x - fex) <= end_free && abs(y - fey) <= end_free)
+                                || (abs(x - tex) <= end_free && abs(y - tey) <= end_free);
                         };
                         bool found = false;
                         path.clear();
-                        for (int margin = EDGE_CLEARANCE; margin >= 0 && !found; margin--) {
+                        // Two attempts, strict then as before.
+                        //
+                        // The stroke is three tiles across and is refused any
+                        // tile outside the region it belongs to, so a route lying
+                        // against that region's edge comes out two wide with no
+                        // complaint from anything. Measured over four worlds,
+                        // that is where essentially every narrow stretch comes
+                        // from: 88% of the road's run alongside a settlement
+                        // footprint, and 70% of the trail's along the edge of the
+                        // wasteland. Both were reached through the waivers below
+                        // rather than in spite of them — the margin gives its
+                        // clearance away one tile at a time down to nothing, and
+                        // near_end() waives it outright, over a 24-tile box for a
+                        // road, which is exactly the ground a settlement covers.
+                        //
+                        // So ask first for a route that keeps a tile of clearance
+                        // and only claims the waiver right at its ends. Where no
+                        // such route exists — a dungeon hard against the border, a
+                        // settlement ringed by water — fall back to the old terms
+                        // rather than leave the pair unjoined. Connectivity was
+                        // never the thing that needed fixing.
+                        for (int pass = 0; pass < 2 && !found; pass++) {
+                        int margin_min = (pass == 0) ? 1 : 0;
+                        end_free       = (pass == 0) ? 2 : ENDPOINT_FREE;
+                        for (int margin = EDGE_CLEARANCE; margin >= margin_min && !found; margin--) {
                             route.clear();
                             route.push_back(from);
                             prev[from] = from;
@@ -2893,6 +2955,21 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                                    && (on_lava || cool[route[h]] == 0)) {
                                             ok = true;                 // another tile of channel
                                         }
+                                        // Keeping a tile of clearance from the
+                                        // GAP as well as from the rim was tried
+                                        // here and measured worse, so it is not
+                                        // done. The rim scan skips lava so a
+                                        // route can reach a channel and bridge
+                                        // it, which does let a track lie hard
+                                        // against one — a quarter of the trail's
+                                        // narrow stretches. But the same
+                                        // predicate is water for a road, and
+                                        // asking roads to stand off every
+                                        // shoreline pushed edge after edge into
+                                        // the fallback below: roads went from 2.0%
+                                        // narrow to 3.8% and their worst stretch
+                                        // from 18 tiles to 77, to buy the trail
+                                        // 0.7 of a point. Left alone deliberately.
                                         if (ok && prev[ni] == -1 &&
                                             !(nearedge[ni] && nearedge[ni] <= margin
                                               && ni != to && !near_end(nx, ny))) {
@@ -2918,6 +2995,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     path.push_back(cur);
                             for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
                             touched.clear();
+                        }
                         }
                         if (!found) { s_trail_unroutable++; finish_edge(ei, false); continue; }
                         std::reverse(path.begin(), path.end());
@@ -4828,7 +4906,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // a hole in the trail, and mountains are to be gone around anyway.
         auto is_region = [&](int x, int y) {
             int t = map->tiles[y][x];
-            if (t != TILE_WASTELAND && t != TILE_WASTE_TRAIL) return false;
+            // Wasteland, or a stretch of trail already worn across it: a later
+            // edge follows a track that is going its way rather than laying a
+            // second one beside it. That used to be read off the tile the trail
+            // had overwritten; it lives in its own layer now.
+            if (t != TILE_WASTELAND && map->route[y][x] != ROUTE_TRAIL) return false;
             if (cliff_blocked[y][x]) return false;
             if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
             return true;
@@ -4838,14 +4920,28 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         auto raw_lava  = [&](int x, int y) { return map->tiles[y][x] == TILE_LAVA; };
         auto paint_over = [&](int x, int y) { return map->tiles[y][x] == TILE_WASTELAND; };
 
+        // Where the wasteland runs out under the edge of the track, let that
+        // edge lean onto the ordinary ground beside it rather than stop dead --
+        // a worn path spreads across a boundary, it does not narrow at one.
+        // Everything a trail is routed around stays excluded: cliffs, water,
+        // lava, structures, the hub, and any route already laid.
+        auto spill_over = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            if (t != TILE_GRASS && t != TILE_MEADOW &&
+                t != TILE_SAND  && t != TILE_SNOW) return false;
+            if (cliff_blocked[y][x]) return false;
+            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
+            return true;
+        };
+
         std::vector<std::pair<int,int>> nodes;
         for (int i = 0; i < map->num_dungeon_entrances; i++)
             nodes.push_back({ map->dungeon_entrances[i].x,
                               map->dungeon_entrances[i].y });
 
         route_network(map, seed ^ 0x7A11D0u, nodes,
-                      is_region, is_lava, raw_lava, in_moat, paint_over,
-                      TILE_WASTE_TRAIL, TILE_WASTE_BRIDGE,
+                      is_region, is_lava, raw_lava, in_moat, paint_over, spill_over,
+                      ROUTE_TRAIL, TILE_WASTE_BRIDGE,
                       EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, 4, false);
     }
 
@@ -4926,7 +5022,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         auto road_region = [&](int x, int y) {
             int t = map->tiles[y][x];
             if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SAND &&
-                t != TILE_SNOW  && t != TILE_WASTELAND && t != TILE_ROAD) return false;
+                t != TILE_SNOW  && t != TILE_WASTELAND &&
+                map->route[y][x] != ROUTE_ROAD) return false;
             if (s_cliff_elev[y][x] || tilemap_face_at(x, y)) return false;
             return true;
         };
@@ -4955,8 +5052,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         route_network(map, seed ^ 0x20AD5u, places,
                       road_region, road_gap, road_raw_gap, road_forbidden,
-                      road_paint_over,
-                      TILE_ROAD, TILE_ROAD_BRIDGE,
+                      road_paint_over, road_paint_over,
+                      ROUTE_ROAD, TILE_ROAD_BRIDGE,
                       ROAD_EDGE_CLEARANCE, ROAD_ENDPOINT_FREE, ROAD_ANCHOR_SEARCH,
                       ROAD_BRIDGE_MAX, ROAD_BRIDGE_GAP, true);
     }
@@ -5603,6 +5700,68 @@ static int scatter_variant(int x, int y, const GroundCover* cover) {
 // cell in a nine-slice; that falls through to the single-edge tests and comes
 // out as one border with the other missing. Keeping trails wider than a tile is
 // what avoids it.
+// Per-biome trail banks: the master nine-slice recoloured once per ground a
+// track can run over, laid out left to right from TRAIL_BANK_COL0 by
+// tools/gen_trail_tiles.py. Because sheet_cell() is base + row*256 + col, a bank
+// is a constant added to whatever cell the picker chose — the same trick the
+// cave materials use. KEEP IN SYNC with that script's MASTER_COL0 / OUT_COL0 /
+// BANK_COLS and the order of its BIOMES list.
+static const int TRAIL_MASTER_COL0 = 24;
+static const int TRAIL_BANK_COL0   = 68;
+static const int TRAIL_BANK_COLS   = 3;
+enum TrailBank { TB_GRASS = 0, TB_MEADOW, TB_SAND, TB_WASTELAND, TB_SNOW, TB_COUNT };
+
+// Which ground this stretch of track is worn through. The track no longer
+// overwrites what it was laid on, so this is simply the tile underneath -- it
+// used to be a 7x7 vote over the neighbours, because the answer had been thrown
+// away at worldgen and had to be guessed back.
+static int trail_bank_at(const Tilemap* map, int x, int y) {
+    switch (map->tiles[y][x]) {
+        case TILE_GRASS:     return TB_GRASS;
+        case TILE_MEADOW:    return TB_MEADOW;
+        case TILE_SAND:      return TB_SAND;
+        case TILE_SNOW:      return TB_SNOW;
+        case TILE_WASTELAND: return TB_WASTELAND;
+        // Ground with no bank of its own -- a town square, a cliff top. The
+        // wasteland bank is the master's own colours, so this draws what the
+        // track always did rather than nothing.
+        default:             return TB_WASTELAND;
+    }
+}
+
+// Which of the nine cells a track tile shows, from its neighbours in the route
+// layer. Same shape as nineslice_variant below, but a track is no longer a
+// ground cover, so that function's pointer-identity test cannot answer it --
+// and a trail meeting a road must still read as two tracks, which comparing the
+// route kind gives for free.
+static int route_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
+    uint8_t mine = map->route[y][x];
+    auto same = [&](int nx, int ny) {
+        return in_bounds(nx, ny) && map->route[ny][nx] == mine;
+    };
+    bool n = same(x, y - 1), so = same(x, y + 1);
+    bool w = same(x - 1, y), e  = same(x + 1, y);
+
+    if (!n && !w) return cover->v[0];
+    if (!n && !e) return cover->v[2];
+    if (!so && !w) return cover->v[5];
+    if (!so && !e) return cover->v[7];
+    if (!n)  return cover->v[1];
+    if (!so) return cover->v[6];
+    if (!w)  return cover->v[3];
+    if (!e)  return cover->v[4];
+    return cover->plain;
+}
+
+// The cell a track tile draws: its nine-slice piece, shifted into the bank for
+// the ground it runs over.
+static int route_cell(const Tilemap* map, int x, int y) {
+    const GroundCover* rc = (map->route[y][x] == ROUTE_ROAD) ? &COVER_ROAD : &COVER_TRAIL;
+    return route_variant(map, x, y, rc)
+         + trail_bank_at(map, x, y) * TRAIL_BANK_COLS
+         + TRAIL_BANK_COL0 - TRAIL_MASTER_COL0;
+}
+
 static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
     auto same = [&](int nx, int ny) { return tile_cover(map, nx, ny) == cover; };
     bool n = same(x, y - 1), s = same(x, y + 1);
@@ -6320,6 +6479,13 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 else if (!is_cliff)
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
                 draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
+                // The track, worn over that ground and over its fringe. Drawn
+                // here rather than written into the tile, so the ground keeps
+                // drawing underneath: the seam between two biomes now runs on
+                // beneath a road instead of being erased by it, and shows
+                // through wherever the track's own art is keyed out.
+                if (map->route[y][x])
+                    blit_tile(renderer, route_cell(map, x, y), screen_x, screen_y, draw_size);
                 // Standing high pales the ground you stand on — see
                 // CLIFF_HAZE_A. After the cover and its edges, so the whole
                 // surface goes; before the cliff art, so the rock does not.
@@ -6611,6 +6777,13 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
             for (int by = y; by < y1; by++) {
                 for (int bx = x; bx < x1; bx++) {
                     int id = map->tiles[by][bx];
+                    // A track is no longer written into the tile, so sample its
+                    // layer too — at the priority the table already gives it,
+                    // which is the highest there is and deliberately so: three
+                    // tiles wide sampled every few tiles would vanish more often
+                    // than not at anything lower.
+                    if (map->route[by][bx])
+                        id = (map->route[by][bx] == ROUTE_ROAD) ? TILE_ROAD : TILE_WASTE_TRAIL;
                     if (id >= 0 && id < NUM_MM_COLORS && tile_priority[id] > best_pri) {
                         best_pri = tile_priority[id];
                         best_id  = id;
@@ -7093,7 +7266,7 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.
         if (!overlay_site_dry(map, tx, ty)) continue;
-        if (tile_id_is_trail(map->tiles[ty][tx])) continue;
+        if (tile_is_route(map, tx, ty)) continue;
 
         // Reject if another gravestone is already at this tile
         float wx = (float)(tx * TILE_SIZE), wy = (float)(ty * TILE_SIZE);
@@ -7171,7 +7344,7 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.
         if (!overlay_site_dry(map, tx, ty)) continue;
-        if (tile_id_is_trail(map->tiles[ty][tx])) continue;
+        if (tile_is_route(map, tx, ty)) continue;
         resource_nodes_add_gravestone(resources,
             (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE),
             0, 0, -1, -1);

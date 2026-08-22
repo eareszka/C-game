@@ -244,11 +244,22 @@ typedef struct {
 // begin. The array carries both, so it needs room for both.
 #define MAX_DUNGEON_ENTRANCES 2048
 
+enum RouteKind { ROUTE_NONE = 0, ROUTE_TRAIL = 1, ROUTE_ROAD = 2 };
+
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
     int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
     uint8_t coll[MAP_HEIGHT][MAP_WIDTH];        // solid collision footprint from editor _coll layer
     uint8_t depth_layer[MAP_HEIGHT][MAP_WIDTH]; // Y-sorted tiles drawn after the player
+    // A track worn over the ground rather than replacing it: ROUTE_NONE/TRAIL/ROAD.
+    // Its own layer for the same reason a cliff face has one -- the ground it runs
+    // over is still there and still has to draw, and a track that overwrote the
+    // tile threw away the very thing it needed to know to pick its own colour.
+    //
+    // Bridges are NOT here. A deck replaces the surface -- you walk on the deck,
+    // not on the lava -- so it stays a real tile, and three separate solidity
+    // paths depend on it being one.
+    uint8_t route[MAP_HEIGHT][MAP_WIDTH];
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
     DungeonEntrance dungeon_entrances[MAX_DUNGEON_ENTRANCES];
     int num_dungeon_entrances;
