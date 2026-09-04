@@ -25,13 +25,42 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
+    // One logical screen, drawn at one pixel to the pixel and scaled to the
+    // window exactly once, at present time.
+    static const int LOGICAL_W = 640, LOGICAL_H = 480;
+
     Platform plat;
-    if (!platform_init(&plat, "Four Castle Chronicles", 640, 480)) {
+    if (!platform_init(&plat, "Four Castle Chronicles", LOGICAL_W, LOGICAL_H)) {
         return 1;
     }
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
-    SDL_RenderSetLogicalSize(plat.renderer, 640, 480);
+    SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
+
+    // Everything the game draws goes here first, and this one finished picture
+    // goes to the window.
+    //
+    // Drawing straight at the window sent every tile quad through the
+    // logical-size scale -- 2.25 in a 1920x1080 window -- so a tile edge could
+    // land on a half pixel. The outermost row of such a quad has its centre
+    // exactly on the boundary of the source cell, and nearest rounding takes it
+    // one texel into the neighbouring cell: tileset.png is packed sixteen to
+    // the cell with no gutter, and what sits above the grass block is the tree
+    // row, keyed background with two black pixels along the foot of a trunk.
+    // That came out as a one-pixel dark dash along the top of the tile, walking
+    // over the ground as the camera moved it in and out of the half-pixel
+    // phase.
+    //
+    // Compositing first makes every quad edge whole, so no sample can reach a
+    // cell boundary. That is a property of the frame rather than of any sheet,
+    // tile or draw site, so it holds at every zoom and every window size, and
+    // nothing downstream has to know about it.
+    SDL_Texture* frame_tex = NULL;
+    if (SDL_RenderTargetSupported(plat.renderer))
+        frame_tex = SDL_CreateTexture(plat.renderer, SDL_PIXELFORMAT_RGBA8888,
+                                      SDL_TEXTUREACCESS_TARGET, LOGICAL_W, LOGICAL_H);
+    if (frame_tex) SDL_SetTextureBlendMode(frame_tex, SDL_BLENDMODE_NONE);
+    else printf("No render target: drawing straight at the window, seams and all.\n");
 
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) 
     {
@@ -125,8 +154,8 @@ int main(int argc, char *argv[])
     int zoom_idx = 3; // default: 1.0x
 
     Camera cam = {0};
-    cam.screen_w = 640;
-    cam.screen_h = 480;
+    cam.screen_w = LOGICAL_W;
+    cam.screen_h = LOGICAL_H;
     cam.zoom = zoom_levels[zoom_idx];
 
     bool running = true;
@@ -298,6 +327,10 @@ int main(int argc, char *argv[])
         } else {
             esc_hold_time = 0.f;
         }
+
+        // Bound before any state draws, so the RenderClear each of them opens
+        // with clears the frame rather than the window.
+        if (frame_tex) SDL_SetRenderTarget(plat.renderer, frame_tex);
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
             Uint32 flags = SDL_GetWindowFlags(plat.window);
@@ -1074,8 +1107,8 @@ int main(int argc, char *argv[])
                 // Interior fills the screen 1:1 — identity camera.
                 Camera icam = {};
                 icam.zoom = 1.0f;
-                icam.screen_w = 640;
-                icam.screen_h = 480;
+                icam.screen_w = LOGICAL_W;
+                icam.screen_h = LOGICAL_H;
                 player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
 
                 // Doormat — exit back to the overworld; ow.x/ow.y were never
@@ -1338,6 +1371,14 @@ int main(int argc, char *argv[])
             SDL_RenderFillRect(plat.renderer, &fill);
         }
 
+        // The one place the window scale is applied. RenderClear ignores the
+        // viewport, so this paints the letterbox bars as well.
+        if (frame_tex) {
+            SDL_SetRenderTarget(plat.renderer, NULL);
+            SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 255);
+            SDL_RenderClear(plat.renderer);
+            SDL_RenderCopy(plat.renderer, frame_tex, NULL, NULL);
+        }
         SDL_RenderPresent(plat.renderer);
 
         // Precise frame cap: sleep most of the wait, spin the last ~1 ms
@@ -1360,6 +1401,9 @@ int main(int argc, char *argv[])
     //cleanups textures
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
+
+    if (frame_tex) SDL_DestroyTexture(frame_tex);
+    frame_tex = NULL;
 
     tilemap_free_tile_cache();
     IMG_Quit();
