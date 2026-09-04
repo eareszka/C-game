@@ -20,6 +20,17 @@
 #include "floattext.h"
 
 
+// How many whole pixels of frame there are to a logical pixel: as many as the
+// window has room for. One is the floor, so a window smaller than the logical
+// screen still gets a frame, just a downscaled one.
+static int frame_scale_for(SDL_Renderer* renderer, int lw, int lh) {
+    int ow = lw, oh = lh;
+    SDL_GetRendererOutputSize(renderer, &ow, &oh);
+    int s = ow / lw;
+    if (oh / lh < s) s = oh / lh;
+    return s < 1 ? 1 : s;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -55,12 +66,19 @@ int main(int argc, char *argv[])
     // cell boundary. That is a property of the frame rather than of any sheet,
     // tile or draw site, so it holds at every zoom and every window size, and
     // nothing downstream has to know about it.
-    SDL_Texture* frame_tex = NULL;
-    if (SDL_RenderTargetSupported(plat.renderer))
-        frame_tex = SDL_CreateTexture(plat.renderer, SDL_PIXELFORMAT_RGBA8888,
-                                      SDL_TEXTUREACCESS_TARGET, LOGICAL_W, LOGICAL_H);
-    if (frame_tex) SDL_SetTextureBlendMode(frame_tex, SDL_BLENDMODE_NONE);
-    else printf("No render target: drawing straight at the window, seams and all.\n");
+    // The frame is a whole multiple of the logical screen rather than the
+    // logical screen itself. At one to one a source texel gets
+    // (int)(32*zoom)/16 pixels to live in, which is half a pixel at 0.25x and
+    // one and a half at 0.75x: the first throws every other texel away and the
+    // second lands them alternately one and two wide, and the window then
+    // magnifies whichever it got. Drawing at the largest whole multiple the
+    // window has room for gives those zooms their pixels back, and keeps the
+    // scale inside the frame a whole number, which is the part that closes the
+    // seam.
+    SDL_Texture* frame_tex   = NULL;
+    int          frame_scale = 0;
+    const bool   can_target  = (SDL_RenderTargetSupported(plat.renderer) == SDL_TRUE);
+    if (!can_target) printf("No render target: drawing straight at the window, seams and all.\n");
 
     if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) 
     {
@@ -329,8 +347,25 @@ int main(int argc, char *argv[])
         }
 
         // Bound before any state draws, so the RenderClear each of them opens
-        // with clears the frame rather than the window.
-        if (frame_tex) SDL_SetRenderTarget(plat.renderer, frame_tex);
+        // with clears the frame rather than the window. Sized here too, since
+        // the window is resizable and F11 changes it out from under us.
+        if (can_target) {
+            int fs = frame_scale_for(plat.renderer, LOGICAL_W, LOGICAL_H);
+            if (fs != frame_scale || !frame_tex) {
+                if (frame_tex) SDL_DestroyTexture(frame_tex);
+                frame_tex = SDL_CreateTexture(plat.renderer, SDL_PIXELFORMAT_RGBA8888,
+                                              SDL_TEXTUREACCESS_TARGET,
+                                              LOGICAL_W * fs, LOGICAL_H * fs);
+                if (frame_tex) SDL_SetTextureBlendMode(frame_tex, SDL_BLENDMODE_NONE);
+                frame_scale = fs;
+            }
+        }
+        if (frame_tex) {
+            SDL_SetRenderTarget(plat.renderer, frame_tex);
+            // Explicit: binding a target resets the logical size, and this is
+            // what makes the scale inside the frame exactly frame_scale.
+            SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
+        }
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
             Uint32 flags = SDL_GetWindowFlags(plat.window);
@@ -1375,6 +1410,7 @@ int main(int argc, char *argv[])
         // viewport, so this paints the letterbox bars as well.
         if (frame_tex) {
             SDL_SetRenderTarget(plat.renderer, NULL);
+            SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
             SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 255);
             SDL_RenderClear(plat.renderer);
             SDL_RenderCopy(plat.renderer, frame_tex, NULL, NULL);
