@@ -362,4 +362,25 @@ void tilemap_reset_gen_cancel();
 
 bool tilemap_face_at(int x, int y);
 
+// Why the coastal town's shore search kept or threw away each window it looked
+// at. Every window the search considers lands in exactly one of these counts,
+// so `windows` equals the sum of the rest -- which is what makes an empty
+// `kept` readable: whatever number is large is the reason there was no coast to
+// build on. Filled by the town pass and handed to gen_trace_shore() under
+// GEN_TRACE (tools/coastprobe.cpp); the shipping build neither counts nor
+// reports, and there is no second copy of the search to drift from this one.
+struct ShoreTally {
+    int windows;      // windows examined -- one per line the coast is long
+    int no_coast;     // the sea never reaches inland anywhere in the window
+    int bounds;       // the shifted footprint would leave the map
+    int near_town0;   // too close to the starting town
+    int unclean;      // something the town would have to level under the footprint
+    int kept;         // clean survivors -- what the town is drawn from when there are any
+    int coastal;      // windows genuinely on the coast, clean or not
+    // Set when every coastal window had something wrong with it and the town
+    // was placed on the least bad one anyway. -1 when that did not happen.
+    // A town is always coastal; these say what it cost to keep it there.
+    int relaxed_cost;   // bad tiles under the chosen footprint, or -1
+};
+
 #endif

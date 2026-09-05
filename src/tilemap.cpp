@@ -251,8 +251,14 @@ static bool in_bounds(int x, int y) {
 #ifdef GEN_TRACE
 void gen_trace_stage(const Tilemap* map, const char* stage);
 #define GEN_STAGE(map, name) gen_trace_stage((map), (name))
+// The same arrangement for the coastal town's shore search: it reports what it
+// rejected and why, so a probe can tell a world with no usable coast from a
+// filter throwing away a coast that was there. See ShoreTally in tilemap.h.
+void gen_trace_shore(const ShoreTally* tally);
+#define GEN_SHORE(tally) gen_trace_shore(&(tally))
 #else
 #define GEN_STAGE(map, name) ((void)0)
+#define GEN_SHORE(tally)     ((void)0)
 #endif
 
 // Ground an overlay must not stand in or overhang. Kept as a plain tile test
@@ -3957,7 +3963,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // --- Towns 1-3 ---
     if (s_gen_cancel) return;
     // Town 0 is already stamped in phase1 (player starts there).
-    // Town 1: placed on the coastline, position varies by seed.
+    // Town 1: placed on the coastline, standing out over the water, position
+    //         varies by seed.
     // Town 2: random walkable location, far from towns 0 and 1.
     {
         auto footprint_ok = [&](int tx, int ty) -> bool {
@@ -3968,6 +3975,53 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     if (is_cliff(bt)) return false;
                 }
             return true;
+        };
+
+        // How far the coastal town stands out past the waterline. Its
+        // footprint is neither reshaped nor resized: the whole 156x156 simply
+        // sits this much further out to sea than dry land begins.
+        const int COAST_REACH = 30;
+
+        // Which way the open sea lies. The ocean is a single band down one side
+        // of the map — see the Ocean pass, which floods one edge and only one
+        // — so this is one direction for the whole world, not something each
+        // candidate has to work out from the water beside it.
+        const int sea_dx = (ocean_side == 0) ? -1 : (ocean_side == 1) ? 1 : 0;
+        const int sea_dy = (ocean_side == 2) ? -1 : (ocean_side == 3) ? 1 : 0;
+
+        // Which side of the shifted footprint is the strip that hangs out to sea.
+        // Everything else is the town proper.
+        auto in_sea_strip = [&](int dx, int dy) -> bool {
+            if (sea_dx < 0) return dx <  COAST_REACH;
+            if (sea_dx > 0) return dx >= TOWN_W - COAST_REACH;
+            if (sea_dy < 0) return dy <  COAST_REACH;
+            return dy >= TOWN_H - COAST_REACH;
+        };
+
+        // What this window would cost to build on: every tile the town would
+        // overwrite that is not ordinary ground. Sea is ordinary out in the
+        // strip -- reaching over it is the whole point -- and a defect
+        // anywhere else, along with river and cliff on either side.
+        //
+        // Counted rather than merely detected, because when no window is clean
+        // the town still has to go somewhere, and the least bad coast is a
+        // better answer than open country inland. `cap` stops the count once
+        // the answer is past caring: the first pass only asks whether a window
+        // is spotless, and pays for one tile rather than twenty-four thousand
+        // to hear that it is not. One description of a bad tile either way --
+        // this used to be a pair of boolean lambdas beside this counter, which
+        // is two places to change the day sand or lava stops being ground.
+        auto coastal_cost = [&](int tx, int ty, int cap) -> int {
+            int bad = 0;
+            for (int dy = 0; dy < TOWN_H; dy++)
+                for (int dx = 0; dx < TOWN_W; dx++) {
+                    int bt = map->tiles[ty+dy][tx+dx];
+                    if (bt == TILE_WATER)      { if (!in_sea_strip(dx, dy)) bad++; }
+                    else if (bt == TILE_RIVER) bad++;
+                    else if (is_cliff(bt))     bad++;
+                    if (bad > cap) return bad;
+                }
+            return bad;
         };
 
         // Last resort for either town: the first place on the map that will
@@ -4003,62 +4057,110 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return false;
         };
 
-        // -- Town 1: on the coast --
-        // Helper: try all 4 footprint corners relative to a candidate tile and
-        // push any that pass footprint_ok + centre exclusion into `shore`.
-        auto try_shore_origins = [&](std::vector<std::pair<int,int>>& shore, int x, int y) {
-            const int ox[4] = { x, x - TOWN_W + 1, x,              x - TOWN_W + 1 };
-            const int oy[4] = { y, y,               y - TOWN_H + 1, y - TOWN_H + 1 };
-            for (int k = 0; k < 4; k++) {
-                int tx = ox[k], ty = oy[k];
-                if (tx < TOWN_W || ty < TOWN_H ||
-                    tx + TOWN_W > MAP_WIDTH  - TOWN_W ||
-                    ty + TOWN_H > MAP_HEIGHT - TOWN_H) continue;
+        // -- Town 1: on the coast, reaching out over it --
+        //
+        // The coast is read rather than searched for. wl[] is the waterline,
+        // one entry per line across it: how far in the open water reaches
+        // before it stops. Counted inward from the map edge, so what it
+        // measures is the ocean by construction — never a pond, never a
+        // river, and never the ring of water town 0 stamps around the starting
+        // island, whose far shore is otherwise indistinguishable from a coast.
+        //
+        // A town then falls out of a window of lines and one number: the
+        // deepest the sea comes inland anywhere in that window. Put the town's
+        // seaward edge COAST_REACH tiles out from there and it stands exactly
+        // COAST_REACH tiles over the water at that line, and a little less
+        // along the rest of its edge as the coastline wanders back out.
+        //
+        // This replaced a search for tiles on the waterline that hung a
+        // footprint corner on each one. A corner is where it put the tile it
+        // had found, so it quietly required the deepest point of the coast to
+        // fall on the very first or very last line of the town — true on some
+        // seeds, false on plenty of others, and the ones where it was false got
+        // a town reaching a few tiles short or no coastal town at all. Asking
+        // the coast its shape answers that for every window at once.
+        {
+            static int wl[MAP_HEIGHT];   // MAP_WIDTH == MAP_HEIGHT
+            const int lines = (sea_dx != 0) ? MAP_HEIGHT : MAP_WIDTH;
+            const int depth = (sea_dx != 0) ? MAP_WIDTH  : MAP_HEIGHT;
+            for (int i = 0; i < lines; i++) {
+                // Start on the wet edge of the map and walk inland, against the
+                // way the sea lies.
+                int x = (sea_dx > 0) ? MAP_WIDTH  - 1 : (sea_dx < 0) ? 0 : i;
+                int y = (sea_dy > 0) ? MAP_HEIGHT - 1 : (sea_dy < 0) ? 0 : i;
+                int n = 0;
+                while (n < depth && map->tiles[y][x] == TILE_WATER) {
+                    n++; x -= sea_dx; y -= sea_dy;
+                }
+                wl[i] = n;
+            }
+
+            std::vector<std::pair<int,int>> shore;      // windows with nothing wrong with them
+            std::vector<std::pair<int,int>> any_coast;  // every window actually on the coast
+            shore.reserve(lines);
+            any_coast.reserve(lines);
+            ShoreTally tally = {};
+            tally.relaxed_cost = -1;   // set only if the relaxed path is taken
+            const int span = (sea_dx != 0) ? TOWN_H : TOWN_W;
+            for (int i0 = 0; i0 + span <= lines; i0++) {
+                tally.windows++;
+                int deepest = 0;
+                for (int k = 0; k < span; k++)
+                    if (wl[i0+k] > deepest) deepest = wl[i0+k];
+                if (deepest == 0) { tally.no_coast++; continue; }  // no coast in this window
+
+                int tx, ty;
+                if      (sea_dx < 0) { tx = deepest - COAST_REACH;                        ty = i0; }
+                else if (sea_dx > 0) { tx = MAP_WIDTH  - deepest + COAST_REACH - TOWN_W;  ty = i0; }
+                else if (sea_dy < 0) { ty = deepest - COAST_REACH;                        tx = i0; }
+                else                 { ty = MAP_HEIGHT - deepest + COAST_REACH - TOWN_H;  tx = i0; }
+
+                // A town-width margin is kept off every map edge except the one
+                // the sea is on. On that side the town is meant to end up at
+                // the water, and the ocean band is usually far narrower than a
+                // town is wide, so demanding the margin there demanded the sea
+                // flood TOWN_W + COAST_REACH tiles inland before a coastal
+                // town could exist at all -- an inland town's rule, applied to
+                // the one town whose whole business is the edge of the map.
+                // Requiring only that the footprint stay on the map leaves
+                // exactly the condition that matters: deepest >= COAST_REACH,
+                // or the strip would hang off the wet edge.
+                const int lo_x = (sea_dx < 0) ? 0 : TOWN_W;
+                const int lo_y = (sea_dy < 0) ? 0 : TOWN_H;
+                const int hi_x = (sea_dx > 0) ? MAP_WIDTH  : MAP_WIDTH  - TOWN_W;
+                const int hi_y = (sea_dy > 0) ? MAP_HEIGHT : MAP_HEIGHT - TOWN_H;
+                if (tx < lo_x || ty < lo_y ||
+                    tx + TOWN_W > hi_x || ty + TOWN_H > hi_y) { tally.bounds++; continue; }
                 int ddx = tx - cx, ddy = ty - cy;
-                if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
-                if (!footprint_ok(tx, ty)) continue;
+                if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) { tally.near_town0++; continue; }
+                any_coast.push_back({tx, ty});
+                if (coastal_cost(tx, ty, 0) > 0) { tally.unclean++; continue; }
                 shore.push_back({tx, ty});
             }
-        };
+            tally.kept    = (int)shore.size();
+            tally.coastal = (int)any_coast.size();
 
-        {
-            std::vector<std::pair<int,int>> shore;
-            shore.reserve(4096);
-
-            // Pass 1: tiles immediately adjacent to water
-            for (int y = TOWN_H; y < MAP_HEIGHT - TOWN_H; y++) {
-                for (int x = TOWN_W; x < MAP_WIDTH - TOWN_W; x++) {
-                    int t = map->tiles[y][x];
-                    if (t != TILE_GRASS && t != TILE_SAND &&
-                        t != TILE_MEADOW && t != TILE_SNOW) continue;
-                    if (!(map->tiles[y-1][x] == TILE_WATER ||
-                          map->tiles[y+1][x] == TILE_WATER ||
-                          map->tiles[y][x-1] == TILE_WATER ||
-                          map->tiles[y][x+1] == TILE_WATER)) continue;
-                    try_shore_origins(shore, x, y);
+            // Nothing clean, but there is a coast. Take the least bad window
+            // rather than the fallback: a coastal town that is not on the coast
+            // is in the wrong place, and a town that levelled some cliff to get
+            // there is merely on awkward ground. The full count is only paid on
+            // the seeds that need it -- where a clean window exists the cheap
+            // early-outs above have already found it.
+            if (shore.empty() && !any_coast.empty()) {
+                // Kept rather than recomputed: this is the one path that pays
+                // the full count, and asking twice would pay it twice.
+                std::vector<int> cost(any_coast.size());
+                int best = -1;
+                for (size_t i = 0; i < any_coast.size(); i++) {
+                    cost[i] = coastal_cost(any_coast[i].first, any_coast[i].second, INT_MAX);
+                    if (best < 0 || cost[i] < best) best = cost[i];
                 }
+                for (size_t i = 0; i < any_coast.size(); i++)
+                    if (cost[i] == best) shore.push_back(any_coast[i]);
+                // Every window in `shore` cost `best`, so any of them says it.
+                tally.relaxed_cost = best;
             }
-
-            // Pass 2 fallback: tiles within 30 tiles of water (catches seeds
-            // where cliffs back the beach and pass 1 finds nothing)
-            if (shore.empty()) {
-                for (int y = TOWN_H; y < MAP_HEIGHT - TOWN_H; y++) {
-                    for (int x = TOWN_W; x < MAP_WIDTH - TOWN_W; x++) {
-                        int t = map->tiles[y][x];
-                        if (t != TILE_GRASS && t != TILE_SAND &&
-                            t != TILE_MEADOW && t != TILE_SNOW) continue;
-                        bool near_water = false;
-                        for (int r = 1; r <= 30 && !near_water; r++) {
-                            if (y-r >= 0           && map->tiles[y-r][x] == TILE_WATER) near_water = true;
-                            if (y+r < MAP_HEIGHT   && map->tiles[y+r][x] == TILE_WATER) near_water = true;
-                            if (x-r >= 0           && map->tiles[y][x-r] == TILE_WATER) near_water = true;
-                            if (x+r < MAP_WIDTH    && map->tiles[y][x+r] == TILE_WATER) near_water = true;
-                        }
-                        if (!near_water) continue;
-                        try_shore_origins(shore, x, y);
-                    }
-                }
-            }
+            GEN_SHORE(tally);
 
             if (!shore.empty()) {
                 unsigned int ts = seed ^ 0xC0A57001u;
@@ -4066,9 +4168,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int idx = (int)((ts >> 16) % (unsigned)shore.size());
                 stamp_town_blueprint(map, 1, shore[idx].first, shore[idx].second);
             } else {
-                // No shore will hold a town on this seed. Better inland than
-                // missing — a coastal town is what this one wants to be, not a
-                // condition of its existing.
+                // Reached only by a world with no coast a town can stand on at
+                // all -- an ocean shallower than COAST_REACH everywhere along
+                // it. Any coast at all is handled above, however rough, so this
+                // is no longer the answer to "the coast was untidy". Better
+                // inland than missing.
                 int fx, fy;
                 if (scan_any_footprint(fx, fy, 0, 1)) stamp_town_blueprint(map, 1, fx, fy);
                 else                                  map->towns[1] = { -1, -1, 1 };

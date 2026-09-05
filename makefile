@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus dngportals shot
+.PHONY: all run clean tile_editor dngshot dngcensus dngportals shot coastprobe
 
 all: $(TARGET)
 
@@ -105,6 +105,8 @@ tile_editor$(EXE): tools/tile_editor.cpp
 # SDL_MAIN_HANDLED stops the former; stripping -lSDL2main/-mwindows keeps these
 # plain console exes instead of windowed ones wanting a WinMain.
 HEADLESS_OBJ  = $(filter-out src/main.o,$(OBJ))
+# The same set again for a probe that brings its own tilemap.o -- see coastprobe.
+TRACE_OBJ     = $(filter-out src/tilemap.o,$(HEADLESS_OBJ))
 HEADLESS_LIBS = $(shell pkg-config --libs sdl2 SDL2_image | sed 's/-lSDL2main//; s/-mwindows//')
 HEADLESS_CXX  = $(CXX) -std=c++17 -O2 -Iinclude -w -DSDL_MAIN_HANDLED \
                 $(shell pkg-config --cflags sdl2 SDL2_image) -Umain
@@ -136,7 +138,21 @@ shot: shot$(EXE)
 shot$(EXE): tools/shot.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/shot.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Does the coastal town stand out over the water? Needs a tilemap object of its
+# own: GEN_TRACE turns the pass-boundary hook into a real call so the probe can
+# see the world before the towns pave what they cover, and the shipping build
+# must not carry that.
+coastprobe: coastprobe$(EXE)
+
+src/tilemap_trace.o: src/tilemap.cpp
+	$(HEADLESS_CXX) -DGEN_TRACE -MMD -MP -c src/tilemap.cpp -o $@
+
+-include src/tilemap_trace.d
+
+coastprobe$(EXE): tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ)
+	$(HEADLESS_CXX) -DGEN_TRACE tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) dngportals$(EXE) shot$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE)
 
 endif
