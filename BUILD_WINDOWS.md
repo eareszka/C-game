@@ -17,28 +17,26 @@ essentially unchanged using the **MSYS2 MINGW64** toolchain, which supplies the
 
 ## Build and run
 
-### Using `make` directly (PowerShell)
+`make` works from any shell -- cmd, PowerShell, Git Bash, or an MSYS2 MINGW64
+shell:
 
-A `make` function in the PowerShell profile
-(`$PROFILE` → `Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`)
-forwards to MSYS2's MINGW64 environment while staying in the current directory,
-so the makefile works as written from Windows Terminal:
-
-```powershell
-make                 # builds game.exe
-make run             # builds and launches
-make tile_editor     # builds the tile editor
-make clean           # removes objects and binaries
+```bat
+make                 :: builds game.exe
+make run             :: builds and launches
+make tile_editor     :: builds the tile editor
+make clean           :: removes objects and binaries
 ```
 
-This works because the recipes get a real Unix shell — `pkg-config`, `rm -f` and
-`./game` all resolve. Note it shadows `C:\ProgramData\chocolatey\bin\make.exe`;
-remove the function from the profile to get that back.
+Outside MINGW64 there is no `pkg-config` on `PATH`, and the `clean` and `run`
+recipes want `rm` and `./game.exe`, so a native build there would link with no
+SDL2 libraries at all. The makefile detects that case and re-enters MSYS2's
+MINGW64 environment to run the real build, staying in the current directory.
+Nothing has to be on `PATH` for that but `make` itself -- no PowerShell profile
+function, no wrapper.
 
-Plain `make.exe` from Chocolatey does *not* work here: `pkg-config` is not on the
-native `PATH`, and the `clean`/`run` recipes use `rm` and `./game`.
+### Batch-file wrappers
 
-### Using the batch files (cmd, or without the profile function)
+`build.bat` and `run.bat` do the same job without needing `make` on `PATH`:
 
 ```bat
 build.bat             :: builds game.exe
@@ -46,8 +44,6 @@ build.bat tile_editor :: builds the tile editor
 build.bat clean       :: removes objects and binaries
 run.bat               :: runs the game
 ```
-
-An MSYS2 MINGW64 shell also works directly, with no wrapper at all.
 
 ## Notes and gotchas
 

@@ -35,14 +35,24 @@ GOALS := $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all)
 
 .PHONY: $(GOALS) msys2-forward
 
+# Which shell make hands this recipe to is not the same everywhere. Git Bash
+# puts sh.exe on PATH so make uses that; from cmd or PowerShell there is no sh
+# to find and make falls back to cmd.exe, which understands neither a
+# `VAR=value command` prefix nor a backslash-continued recipe line. So the call
+# below is one line, and MSYSTEM travels as an exported make variable rather
+# than a shell assignment -- make writes it into the child environment itself
+# and neither shell has to parse it. It has to be set before bash starts, not
+# inside the -lc string: /etc/profile reads MSYSTEM to pick the PATH a login
+# shell gets, and by the time that string runs the choice is already made.
+export MSYSTEM = MINGW64
+
 # Every goal hangs off the single forwarding rule, so `make clean all` crosses
 # into MSYS2 once rather than once per goal.
 $(GOALS): msys2-forward
 	@:
 
 msys2-forward:
-	@MSYSTEM=MINGW64 "$(MSYS2_BASH)" -lc \
-		'cd "$(CURDIR)" && exec make MSYS2_FORWARDED=1 $(GOALS)'
+	@"$(MSYS2_BASH)" -lc "cd '$(CURDIR)' && exec make MSYS2_FORWARDED=1 $(GOALS)"
 
 else
 
