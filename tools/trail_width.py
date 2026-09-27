@@ -90,21 +90,26 @@ def ridge_of(dist, mask):
 
 
 def largest_clump(mask):
-    """Size of the biggest 8-connected component of `mask`, and how many there are."""
+    """Size of the biggest 8-connected component of `mask`, how many there are,
+    and where the biggest one is (x0, y0, x1, y1) -- so it can be dumped with
+    SHOT_TRAIL's window rather than hunted for."""
     h, w = mask.shape
     seen = np.zeros((h, w), dtype=bool)
-    best, n = 0, 0
+    best, n, where = 0, 0, None
     ys, xs = np.nonzero(mask)
     for sy, sx in zip(ys.tolist(), xs.tolist()):
         if seen[sy, sx]:
             continue
         n += 1
         size = 0
+        x0 = x1 = sx
+        y0 = y1 = sy
         q = deque([(sy, sx)])
         seen[sy, sx] = True
         while q:
             y, x = q.popleft()
             size += 1
+            x0, x1, y0, y1 = min(x0, x), max(x1, x), min(y0, y), max(y1, y)
             for dy in (-1, 0, 1):
                 for dx in (-1, 0, 1):
                     ny, nx = y + dy, x + dx
@@ -112,8 +117,9 @@ def largest_clump(mask):
                             and mask[ny, nx] and not seen[ny, nx]):
                         seen[ny, nx] = True
                         q.append((ny, nx))
-        best = max(best, size)
-    return best, n
+        if size > best:
+            best, where = size, (x0, y0, x1, y1)
+    return best, n, where
 
 
 def report(name, mask):
@@ -134,7 +140,10 @@ def report(name, mask):
     interior = (mask & pad[:-2, 1:-1] & pad[2:, 1:-1]
                 & pad[1:-1, :-2] & pad[1:-1, 2:])
     gap = mask & ~interior
-    worst, nclump = largest_clump(gap & (dist == 1) & ridge)
+    worst, nclump, worst_at = largest_clump(gap & (dist == 1) & ridge)
+    # And the same for the other direction: the biggest clump of stroke five
+    # or more tiles across, which is what a track that swells reads as.
+    wide, nwide, wide_at = largest_clump(dist >= 3)
 
     print('  %-6s %6d tiles, %5d ridge, interior %5.1f%%'
           % (name, total, nridge, 100.0 * int(interior.sum()) / total))
@@ -144,7 +153,8 @@ def report(name, mask):
                '  <-- target' if d == 2 else '  <-- wide')
         print('         d=%d (~%d wide) %6d  %5.1f%%%s'
               % (d, wide, counts[d], 100.0 * counts[d] / nridge, tag))
-    print('         narrow stretches: %d, largest %d tiles' % (nclump, worst))
+    print('         narrow stretches: %d, largest %d tiles at %s' % (nclump, worst, worst_at))
+    print('         wide cores (5+):  %d, largest %d tiles at %s' % (nwide, wide, wide_at))
 
 
 def main():

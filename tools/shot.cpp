@@ -131,7 +131,14 @@ int main(int argc, char** argv)
                 uint8_t rt = g_map.route[y][x];
                 uint32_t c = rgba(0, 0, 0);
                 // The track lives in its own layer; only the deck is a tile.
-                if      (rt == ROUTE_TRAIL)      { c = rgba(0, 255, 0);   n_trail++; }
+                // With ROUTE_OWNER_TRACE=1 as well, a tile painted by more
+                // than one edge of its network is red. A stroke that is too
+                // wide and two strokes side by side look identical from above,
+                // and they are different bugs: the width tool cannot tell them
+                // apart, this can.
+                const uint8_t* multi = tilemap_debug_route_multi();
+                if      (rt && multi && multi[(size_t)y * MAP_WIDTH + x]) { c = rgba(255, 0, 0); if (rt == ROUTE_TRAIL) n_trail++; else n_road++; }
+                else if (rt == ROUTE_TRAIL)      { c = rgba(0, 255, 0);   n_trail++; }
                 else if (rt == ROUTE_ROAD)       { c = rgba(0, 128, 255); n_road++;  }
                 else if (t == TILE_WASTE_BRIDGE ||
                          t == TILE_ROAD_BRIDGE)  { c = rgba(0, 255, 255); n_bridge++; }
@@ -176,7 +183,16 @@ int main(int argc, char** argv)
                     }
                     int t = g_map.tiles[y][x];
                     uint8_t rt = g_map.route[y][x];
-                    if      (rt == ROUTE_ROAD)          ch = 'R';
+                    // Under ROUTE_OWNER_TRACE the route tiles print the edge
+                    // that painted them instead of R/T -- modulo 36, as
+                    // 0-9a-z, so two strokes lying together read as two
+                    // characters and edge 11 does not print as edge 1.
+                    const uint16_t* owner = tilemap_debug_route_owner();
+                    if (rt && owner) {
+                        int o = (owner[(size_t)y * MAP_WIDTH + x] - 1) % 36;
+                        ch = (char)(o < 10 ? '0' + o : 'a' + (o - 10));
+                    }
+                    else if (rt == ROUTE_ROAD)          ch = 'R';
                     else if (rt == ROUTE_TRAIL)         ch = 'T';
                     else if (t == TILE_ROAD_BRIDGE ||
                              t == TILE_WASTE_BRIDGE)    ch = 'B';

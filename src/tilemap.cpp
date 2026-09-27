@@ -2851,6 +2851,12 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 // track know which ground it crosses and lets
                                 // that ground draw underneath it.
                                 map->route[py2][px2] = route_kind;
+                                if (!(onnet[pi] & 3)) { onnet[pi] |= 2; nettouched.push_back(pi); }
+                                if (!g_route_owner.empty()) {
+                                    uint16_t o = g_route_owner[pi];
+                                    if (o && o != (uint16_t)(cur_edge + 1)) g_route_multi[pi] = 1;
+                                    g_route_owner[pi] = (uint16_t)(cur_edge + 1);
+                                }
                                 // Nothing grows on a trail. Trees, dead trees,
                                 // rocks and ore are all scattered long before
                                 // the route through them is known, so they are
@@ -2946,6 +2952,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                     // goes, which would leave a reference dangling.
                     for (size_t ei = 0; ei < edges.size(); ei++) {
                         int from = edges[ei].first, to = edges[ei].second;
+                        cur_edge = ei;
                         s_trail_edges++;
                         // Two dungeons close enough to share an anchor: there
                         // is nothing to route, and they are already joined.
@@ -2972,12 +2979,100 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // attempt that hugs it for its whole length.
                         int fex = from % MAP_WIDTH, fey = from / MAP_WIDTH;
                         int tex = to   % MAP_WIDTH, tey = to   / MAP_WIDTH;
+
+                        // An edge is a BRANCH off the track already laid, not
+                        // a second full route from `from`. Every edge used to
+                        // be routed and painted on its own, and the spanning
+                        // tree made that ugly three ways at once: edges fanning
+                        // out of one anchor shared their first stretch and
+                        // painted it two or three times over (a wedge six or
+                        // seven wide), edges heading the same way ran side by
+                        // side a few tiles apart, and two of them crossing the
+                        // same channel laid decks next to each other until the
+                        // channel was one slab. All of it is one mistake — a
+                        // track that already goes your way is not followed, it
+                        // is duplicated — so this is one rule: the search
+                        // runs from `to` outward and stops at the first tile
+                        // of the network reachable from `from` that it
+                        // touches, and the path it finds is the shortest
+                        // branch from wherever that network comes closest. A
+                        // road that meets a road joins it. (Searching from the
+                        // node rather than seeding every network tile at
+                        // distance zero finds the same branch and costs one
+                        // source instead of thirty thousand; measured, the
+                        // seeded form added three seconds to a world.)
+                        //
+                        // Reachable from `from`, not the whole network: an
+                        // earlier edge that would not route leaves its node
+                        // off the track, and a road retry joins two separate
+                        // pieces. Branching from a piece `from` is not on
+                        // would paint a stub that joins nothing to it. Decks
+                        // are walked through so the far side of a bridge
+                        // counts, but never started from: no branch begins
+                        // mid-bridge.
+                        //
+                        // Track of EITHER kind counts. A trail that reaches a
+                        // road has arrived: on the ground a worn track is a
+                        // worn track, and a trail laid a tile beside a road
+                        // rather than into it read as the two avoiding each
+                        // other. Roads are laid before trails for this reason
+                        // -- a side track branches off the main road, not the
+                        // other way round -- and a trail can only meet a road
+                        // where the road runs through its own region, so this
+                        // never pulls a trail out of the wasteland.
+                        nettouched.clear();
+                        netq.clear();
+                        auto net_visit = [&](int t, bool deck) {
+                            if (onnet[t] & 4) return;                 // seen this flood
+                            if (!(onnet[t] & 3)) { onnet[t] |= deck ? 1 : 2; nettouched.push_back(t); }
+                            onnet[t] |= 4;
+                            netq.push_back(t);
+                        };
+                        net_visit(from, false);
+                        for (size_t h = 0; h < netq.size(); h++) {
+                            int t = netq[h];
+                            int qx = t % MAP_WIDTH, qy = t / MAP_WIDTH;
+                            for (int d = 0; d < 4; d++) {
+                                int nx = qx + DX4[d], ny = qy + DY4[d];
+                                if (!in_bounds(nx, ny)) continue;
+                                int ni = ny * MAP_WIDTH + nx;
+                                int tt = map->tiles[ny][nx];
+                                bool deck = tt == TILE_WASTE_BRIDGE || tt == TILE_ROAD_BRIDGE;
+                                if (map->route[ny][nx] == ROUTE_NONE && !deck) continue;
+                                net_visit(ni, deck);
+                            }
+                        }
+                        // Already on the track: an earlier edge ran over this
+                        // node's anchor. Nothing to route, and it is joined.
+                        if (onnet[to] & 3) {
+                            // ...unless it is `from` that has none yet (see
+                            // lay_branch below): then the branch runs from it.
+                            if (map->route[from / MAP_WIDTH][from % MAP_WIDTH] == ROUTE_NONE) {
+                                onnet[to] |= 2;   // it is, whichever network laid it
+                            } else {
+                                for (int t : netq) onnet[t] &= 3;
+                                for (int t : nettouched) onnet[t] = 0;
+                                finish_edge(ei, true);
+                                continue;
+                            }
+                        }
+
+                        // Lay one branch: from `start` outward to the nearest
+                        // tile of the network, smoothed, drifted and painted.
+                        // Returns whether it routed. Called for `to`, and again
+                        // for `from` when the first branch left it with no
+                        // track: the root of a component is `from` of its first
+                        // edge and `to` of none, and now that a branch may stop
+                        // at a road instead of at `from`, the root can be left
+                        // standing on bare ground.
+                        auto lay_branch = [&](int start) -> bool {
                         int end_free = ENDPOINT_FREE;
                         auto near_end = [&](int x, int y) {
                             return (abs(x - fex) <= end_free && abs(y - fey) <= end_free)
                                 || (abs(x - tex) <= end_free && abs(y - tey) <= end_free);
                         };
                         bool found = false;
+                        int  hit   = -1;   // the network tile the branch reached
                         path.clear();
                         // Two attempts, strict then as before.
                         //
@@ -3004,10 +3099,11 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         int margin_min = (pass == 0) ? 1 : 0;
                         end_free       = (pass == 0) ? 2 : ENDPOINT_FREE;
                         for (int margin = EDGE_CLEARANCE; margin >= margin_min && !found; margin--) {
+                            // From the node being joined, out toward the track.
                             route.clear();
-                            route.push_back(from);
-                            prev[from] = from;
-                            touched.push_back(from);
+                            route.push_back(start);
+                            prev[start] = start;
+                            touched.push_back(start);
                             for (size_t h = 0; h < route.size() && !found; h++) {
                                 int qx = route[h] % MAP_WIDTH, qy = route[h] / MAP_WIDTH;
                                 // Vary which direction is tried first. Every
@@ -3047,12 +3143,48 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     if (in_bounds(nx, ny)) {
                                         int ni = ny * MAP_WIDTH + nx;
                                         int run = on_lava ? runlen[route[h]] : 0;
+                                        // Across the direction of travel.
+                                        int sx = DY4[d], sy = DX4[d];
+                                        auto both_sides = [&](int px, int py) {
+                                            return in_bounds(px + sx, py + sy) && is_lava(px + sx, py + sy) &&
+                                                   in_bounds(px - sx, py - sy) && is_lava(px - sx, py - sy);
+                                        };
                                         bool ok = false;
                                         if (incomp[ni]) {
-                                            ok = true;                 // ground, either side
+                                            // Ground. Landing from a span is
+                                            // only allowed if the span crossed
+                                            // a channel somewhere along it --
+                                            // a route walking a bank used to
+                                            // hop a one-tile bulge of lava and
+                                            // leave a two-tile deck on the
+                                            // shore for it. A channel crossed
+                                            // square has lava either side on
+                                            // every tile; crossed at an angle,
+                                            // on its middle ones; a bulge on
+                                            // none.
+                                            ok = !on_lava || spanok[route[h]];
                                         } else if (spannable(nx, ny) && run < BRIDGE_MAX
                                                    && (on_lava || cool[route[h]] == 0)) {
-                                            ok = true;                 // another tile of channel
+                                            // Another tile of channel -- which
+                                            // makes the tile being LEFT an
+                                            // interior tile of the span, and an
+                                            // interior tile has to have channel
+                                            // on both sides across the direction
+                                            // of travel. A span is a crossing.
+                                            // Without this the search, which the
+                                            // rim margin does not reach out over
+                                            // lava, would run down a channel
+                                            // along its bank for as long as a
+                                            // bridge may be: a deck laid
+                                            // lengthwise beside the shore, two
+                                            // wide where the third column was
+                                            // ground, turning corners with the
+                                            // bank. Only the first and last tile
+                                            // of a span may touch the bank,
+                                            // which is what lets a straight
+                                            // crossing still cut a channel that
+                                            // runs at an angle.
+                                            ok = !on_lava || both_sides(qx, qy);
                                         }
                                         // Keeping a tile of clearance from the
                                         // GAP as well as from the rim was tried
@@ -3069,11 +3201,16 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                         // narrow to 3.8% and their worst stretch
                                         // from 18 tiles to 77, to buy the trail
                                         // 0.7 of a point. Left alone deliberately.
+                                        // The margin is never held against the
+                                        // network itself: the track is wherever
+                                        // it already is.
                                         if (ok && prev[ni] == -1 &&
                                             !(nearedge[ni] && nearedge[ni] <= margin
-                                              && ni != to && !near_end(nx, ny))) {
+                                              && (onnet[ni] & 3) != 2 && !near_end(nx, ny))) {
                                             prev[ni] = route[h];
                                             runlen[ni] = incomp[ni] ? 0 : (uint8_t)(run + 1);
+                                            spanok[ni] = incomp[ni] ? 0
+                                                : (uint8_t)((on_lava ? spanok[route[h]] : 0) | (both_sides(nx, ny) ? 1 : 0));
                                             // Landing from a crossing starts the
                                             // debt; walking pays it off a tile
                                             // at a time.
@@ -3083,21 +3220,28 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                                 : 0;
                                             touched.push_back(ni);
                                             route.push_back(ni);
-                                            if (ni == to) { found = true; break; }
+                                            if ((onnet[ni] & 3) == 2) { found = true; hit = ni; break; }
                                         }
                                     }
                                     if (on_lava) break;   // the one direction, and no other
                                 }
                             }
+                            // Walk the chain from the tile beside the network
+                            // back to `to`: that is already the branch in
+                            // painting order, network end first. The network
+                            // tile itself is on the track and is not part of
+                            // the branch, as `from` never was.
                             if (found)
-                                for (int cur = to; cur != from; cur = prev[cur])
+                                for (int cur = prev[hit]; ; cur = prev[cur]) {
                                     path.push_back(cur);
-                            for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; }
+                                    if (cur == start) break;
+                                }
+                            for (int t2 : touched) { prev[t2] = -1; runlen[t2] = 0; cool[t2] = 0; spanok[t2] = 0; }
                             touched.clear();
                         }
                         }
-                        if (!found) { s_trail_unroutable++; finish_edge(ei, false); continue; }
-                        std::reverse(path.begin(), path.end());
+                        if (!found) return false;
+                        // (The chain above is already network-to-node order.)
                         // Short paths are drawn too. Skipping them used to be
                         // the tidy option — the smoothing filter reads two
                         // points either side and has nothing to work with — but
@@ -3157,6 +3301,21 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             }
                             fxs.swap(nx2); fys.swap(ny2);
                         }
+                        // Displaced into a second pair of arrays, never in
+                        // place. The offset is taken along the perpendicular
+                        // to the chord between a point's two neighbours, and
+                        // the chord has to be the SMOOTHED line's: with the
+                        // previous point already moved two tiles sideways, the
+                        // chord swung through forty-five degrees or more, the
+                        // perpendicular swung with it, and the next point was
+                        // thrown off in a different direction from the one
+                        // before it. Consecutive centres then stood three tiles
+                        // apart across the track, and the brush, which fills
+                        // between consecutive centres, laid a band six or seven
+                        // wide wherever the drift was near its clamp and three
+                        // wide where it passed through zero — the swelling and
+                        // narrowing that ran along every road.
+                        std::vector<float> dxs = fxs, dys = fys;
                         float drift = 0.0f, dvel = 0.0f;
                         for (size_t i = 1; i + 1 < path.size(); i++) {
                             // A pinned point takes no drift, and the wander is
@@ -5232,84 +5391,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         }
     }
 
-    GEN_STAGE(map, "before Wasteland trails");
-    // --- Wasteland trails between dungeons ---
-    // Paths worn between the dungeon mouths of a wasteland, so the biome reads
-    // as somewhere people go rather than somewhere with routes drawn on it. A
-    // wasteland with fewer than two dungeons gets nothing: there is nothing to
-    // connect.
-    //
-    // Runs at the very end because dungeon entrances are the last thing placed.
-    // Everything the trail has to route around — cliffs, towns — and everything
-    // it clears out of its way or bridges over is already on the map by now.
-    //
-    // The dungeons of a region are joined by a minimum spanning tree, so every
-    // one is reachable and no pair is linked twice. A chain visiting them in
-    // turn would double back across the region; a tree branches the way tracks
-    // between places actually do.
-    {
-        const int EDGE_CLEARANCE = 6;      // tiles the trail would rather keep from the border
-        const int ENDPOINT_FREE  = 10;     // radius around a dungeon where that is waived
-        const int ANCHOR_SEARCH  = 8;      // how far off a dungeon to find ground
-
-        // The citadel's moat is the one lava no bridge may span. Crossing it
-        // would hand over the way in that the ring exists to withhold.
-        const CastlePlacement& citadel = map->castles[2];
-        int moat_cx = citadel.x + CASTLE_W / 2, moat_cy = citadel.y + CASTLE_H / 2;
-        auto in_moat = [&](int x, int y) {
-            if (citadel.x < 0) return false;
-            int dx = x - moat_cx, dy = y - moat_cy;
-            return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
-        };
-        auto is_lava = [&](int x, int y) {
-            int t = map->tiles[y][x];
-            return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
-        };
-
-        // Ground a trail can be laid on. Cliffs are excluded here rather than
-        // left to the brush: routing over ground that cannot be painted tears
-        // a hole in the trail, and mountains are to be gone around anyway.
-        auto is_region = [&](int x, int y) {
-            int t = map->tiles[y][x];
-            // Wasteland, or a stretch of trail already worn across it: a later
-            // edge follows a track that is going its way rather than laying a
-            // second one beside it. That used to be read off the tile the trail
-            // had overwritten; it lives in its own layer now.
-            if (t != TILE_WASTELAND && map->route[y][x] != ROUTE_TRAIL) return false;
-            if (cliff_blocked[y][x]) return false;
-            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
-            return true;
-        };
-
-        // The deck goes over raw lava only, and the trail over bare wasteland.
-        auto raw_lava  = [&](int x, int y) { return map->tiles[y][x] == TILE_LAVA; };
-        auto paint_over = [&](int x, int y) { return map->tiles[y][x] == TILE_WASTELAND; };
-
-        // Where the wasteland runs out under the edge of the track, let that
-        // edge lean onto the ordinary ground beside it rather than stop dead --
-        // a worn path spreads across a boundary, it does not narrow at one.
-        // Everything a trail is routed around stays excluded: cliffs, water,
-        // lava, structures, the hub, and any route already laid.
-        auto spill_over = [&](int x, int y) {
-            int t = map->tiles[y][x];
-            if (t != TILE_GRASS && t != TILE_MEADOW &&
-                t != TILE_SAND  && t != TILE_SNOW) return false;
-            if (cliff_blocked[y][x]) return false;
-            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
-            return true;
-        };
-
-        std::vector<std::pair<int,int>> nodes;
-        for (int i = 0; i < map->num_dungeon_entrances; i++)
-            nodes.push_back({ map->dungeon_entrances[i].x,
-                              map->dungeon_entrances[i].y });
-
-        route_network(map, seed ^ 0x7A11D0u, nodes,
-                      is_region, is_lava, raw_lava, in_moat, paint_over, spill_over,
-                      ROUTE_TRAIL, TILE_WASTE_BRIDGE,
-                      EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, 4, false);
-    }
-
+    // Roads before trails, on purpose: a trail that reaches a road joins it
+    // (route_network branches off track of either kind), and a side track
+    // branches off the main road, not the main road off a side track. Only the
+    // order changed; the moat below is still the last thing to write tiles.
     GEN_STAGE(map, "before Roads");
     // --- Roads between the settlements ---
     //
