@@ -107,6 +107,12 @@ struct DungeonPlayer {
 // censuses the SHIPPED thresholds instead of its own copy of them -- a second
 // copy is exactly how a calibration silently goes stale.
 Material material_for_difficulty(float difficulty);
+// The lowest difficulty that still yields this material: the bottom edge of
+// its band. material_for_difficulty(material_min_difficulty(m)) == m exactly,
+// because the lookup tests strictly below each band's top. The guarantee pass
+// in tilemap.cpp moves one cave system's difficulty here when a world grew no
+// cave of a material at all.
+float material_min_difficulty(Material m);
 // Display name of a material -- "Stone", "Reality Shard", ... Exposed for the
 // same reason as material_for_difficulty(): the debug menu and
 // tools/oreprof.cpp name the tiers from the table the game renders them from,

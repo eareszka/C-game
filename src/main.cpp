@@ -8,6 +8,7 @@
 #include "game_state.h"
 #include "battle.h"
 #include "dungeon.h"
+#include "dungeon_kinds.h"
 #include "platform.h"
 #include "core.h"
 #include "input.h"
@@ -185,23 +186,23 @@ int main(int argc, char *argv[])
     };
     static const int DBG_TYPE_COUNT = DUNGEON_ENT_COUNT;
 
-    // The warp list is those eight types with CAVE expanded into one entry per
-    // ore band. Two caves of the same type still differ: which of MATERIALS
-    // (src/dungeon.cpp) a cave holds is picked from its DungeonEntrance
-    // difficulty, and that material is the whole of the difference, so it is
-    // what the menu has to name to warp you to a particular kind of cave.
+    // The warp list is "any cave" and then every kind of dungeon, commonest
+    // first, straight from DUNGEON_KINDS (include/dungeon_kinds.h) -- the one
+    // table the spawn rates come from, so the menu reads in the order the
+    // world is populated in. A cave is one type but seven entries there: which
+    // of MATERIALS (src/dungeon.cpp) a cave holds is picked from its
+    // DungeonEntrance difficulty, and that material is the whole of the
+    // difference, so it is what the menu has to name to warp you to a
+    // particular kind of cave.
     //
-    // Index layout: 0 = any cave, 1..MAT_COUNT = a cave of material index-1,
-    // then one entry per non-cave type. DUNGEON_ENT_CAVE is 0, so the tail
-    // lands on type (index - MAT_COUNT) with no second table to keep in step.
-    static const int DBG_TARGET_COUNT = MAT_COUNT + DBG_TYPE_COUNT;
+    // Index layout: 0 = any cave, 1.. = DUNGEON_KINDS[index - 1].
+    static const int DBG_TARGET_COUNT = 1 + DUNGEON_KIND_COUNT;
     auto dbg_target_type = [&](int i) -> DungeonEntranceType {
-        return i <= MAT_COUNT ? DUNGEON_ENT_CAVE
-                              : (DungeonEntranceType)(i - MAT_COUNT);
+        return i == 0 ? DUNGEON_ENT_CAVE : DUNGEON_KINDS[i - 1].type;
     };
     // Which material this target insists on, or -1 for "whatever it holds".
     auto dbg_target_ore = [&](int i) {
-        return (i >= 1 && i <= MAT_COUNT) ? i - 1 : -1;
+        return i == 0 ? -1 : DUNGEON_KINDS[i - 1].material;
     };
     // Does this overworld entrance answer to the selected target?
     auto dbg_target_matches = [&](int i, const DungeonEntrance* e) {

@@ -50,7 +50,8 @@ game/
 | Add a new game state | `game_state.h` enum + new `case` in `main.cpp` switch |
 | Change player speed | `overworld.cpp` ~line 60, `dungeon.cpp` `dungeon_player_init` |
 | Add a new tile type | `tilemap.h` enum + style entry in `tilemap.cpp` `tile_styles[]` |
-| Add a new dungeon type | `tilemap.h` `DungeonEntranceType` + 5 places in `tilemap.cpp` + `dungeon.cpp` |
+| Add a new dungeon type | `tilemap.h` `DungeonEntranceType` + 5 places in `tilemap.cpp` + `dungeon.cpp` + a row in `dungeon_kinds.cpp` |
+| Change how common a dungeon kind is | `dungeon_kinds.cpp` `DUNGEON_KINDS[]` targets (cave rows: then `make oreprof`, paste cuts into `dungeon.cpp` `MATERIALS[]`) |
 | Change battle weapon | `battle.h` `WeaponType` enum + `battle.cpp` `weapon_profile()` |
 | Add a new resource | `resource_node.h` `ResourceType` enum + cases in `resource_node.cpp` |
 | Change dungeon room shapes | `dungeon.cpp` carve/decorate functions for that type |
@@ -128,7 +129,11 @@ typedef enum {
 
 **Step 4 — `tilemap.cpp`: wire it into biome selection and tile ID lookup**
 
-Find `pick_entrance_type()` — add your type to the biome condition that makes sense (e.g. SWAMP appears in wetland/river-adjacent tiles). Find `entrance_tile_id()` — add a `case DUNGEON_ENT_SWAMP: return TILE_DUNGEON_SWAMP;`.
+Find `build_entrance_pool()` — add your type to every biome it is native to (e.g. SWAMP appears in wetland/river-adjacent tiles). That list only says *where* it may stand. Find `entrance_tile_id()` — add a `case DUNGEON_ENT_SWAMP: return TILE_DUNGEON_SWAMP;`. If its exterior should differ by biome, `stamp_dungeon_surround()` gets the placement biome.
+
+**Step 4b — `dungeon_kinds.cpp`: give it a place in the rarity order**
+
+`DUNGEON_KINDS` is one table of every kind of dungeon, commonest first, with a per-world target each; the placement draw, the guarantee pass and `dngcensus` all read it. Insert a row where the new type belongs. A `static_assert` fails the build until every non-cave type and every cave material has exactly one row. Then `make dngcensus && ./dngcensus.exe` (from the repo root) to see whether worlds agree with the table — it flags any adjacent pair that came out in the wrong order and reports whether every world grew every kind.
 
 **Step 5 — `dungeon.cpp`: add a palette and layout function**
 ```cpp

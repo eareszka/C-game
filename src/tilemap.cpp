@@ -1,4 +1,6 @@
 #include "tilemap.h"
+#include "dungeon_kinds.h"
+#include "dungeon.h"         // material_min_difficulty, for the guarantee pass
 #include "core.h"
 #include <SDL2/SDL_image.h>
 #include "resource_node.h"
@@ -2021,7 +2023,9 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
         float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
                                (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
         float difficulty = ((dist / max_dist) + 3.0f / 5.0f) * 0.5f;
-        map->dungeon_entrances[0] = { fcx, fcy, 0, DUNGEON_ENT_CAVE, 3, difficulty, 0, -1, -1, -1 };
+        // Biome is TILE_GRASS by fiat: phase 1 runs before any biome is
+        // painted, and the start stands on open ground in every world.
+        map->dungeon_entrances[0] = { fcx, fcy, 0, DUNGEON_ENT_CAVE, 3, difficulty, 0, -1, -1, -1, TILE_GRASS };
         map->num_dungeon_entrances = 1;
     }
 
@@ -2037,7 +2041,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
         float max_dist = sqrtf((float)(MAP_WIDTH/2)*(MAP_WIDTH/2) +
                                (float)(MAP_HEIGHT/2)*(MAP_HEIGHT/2));
         float difficulty = ((dist / max_dist) + 0.0f / 5.0f) * 0.5f;
-        map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1, -1, -1 };
+        map->dungeon_entrances[1] = { gx, gy, 0, DUNGEON_ENT_GRAVEYARD_SM, 0, difficulty, 0, -1, -1, -1, TILE_GRASS };
         map->num_dungeon_entrances = 2;
     }
 
@@ -2116,86 +2120,65 @@ static int biome_of(const Tilemap* map, int tx, int ty) {
     return TILE_GRASS; // default flat
 }
 
-// Picks an entrance type for the given biome + mountain flag.
-// Also sets out_size (0=small, 1=large) — fixed for most types, random for Cave/Ruins.
-// rng_seed is passed by value; advances internally without disturbing the caller's RNG.
+// Which archetypes belong in a biome at all. This is the whole of what a biome
+// decides; how OFTEN each one is drawn is not a property of the biome.
 //
-// The pool is WEIGHTED. It used to be a uniform draw, which left rarity nowhere to
-// live except in a gate in front of the pool: stonehenge needed a 1-in-8 roll
-// merely to JOIN, and then took its chances in a 1-in-3 draw — two stages saying
-// one thing, and impossible to read a rate off. With weights, "rare" and "twice as
-// common as" are numbers in the table below and the mechanism never changes.
-struct Weighted { DungeonEntranceType type; int w; };
-
-// Builds the weighted pool for a biome. Split out from the draw so the guarantee
-// pass further down can ask "is this type native here?" against the same table
-// the odds come from. A second list of which archetype belongs where is exactly
-// the copy that goes stale the first time a weight moves.
-static int build_entrance_pool(int biome, bool is_mountain, Weighted* pool) {
+// It used to be: each biome carried its own weights, and rarity was whatever
+// fell out of weight times biome area, a number nobody could read off and
+// nothing could hold steady across worlds. Now every kind has one per-world
+// target in DUNGEON_KINDS (include/dungeon_kinds.h), and pick_entrance_type
+// draws among a site's native types in proportion to how far each still is
+// from its target. The biome only says who is eligible.
+//
+// No cave here: cave systems are cut into mountains by their own pass, and
+// every site that reaches this table is flat ground (hits_cliff rejects the
+// rest), so the old "add a cave on a mountain" modifier could never fire.
+//
+// Oasis and pyramid are native to snow as well as sand. Desert survives
+// worldgen as one or two large blobs, so a world can simply have too little
+// of it for either to reach its place in the order; snow is a fifth of every
+// world. stamp_dungeon_surround dresses the snow ones differently.
+static int build_entrance_pool(int biome, DungeonEntranceType* pool) {
     int pool_sz = 0;
-    auto add = [&](DungeonEntranceType t, int w) { pool[pool_sz++] = { t, w }; };
+    auto add = [&](DungeonEntranceType t) { pool[pool_sz++] = t; };
 
     switch (biome) {
         case TILE_SNOW:
-            // Snow used to be the large graveyard's alone, and at ~18% of the
-            // sites a world places that was enough to put it ahead of the small
-            // one overall however the flat pool was weighted. Ruins keeps its
-            // half exactly; the other half is now split the same way flat
-            // ground splits it, so the ordering holds per world and not merely
-            // on average.
-            add(DUNGEON_ENT_RUINS,        50);
-            add(DUNGEON_ENT_GRAVEYARD_LG, 20);
-            add(DUNGEON_ENT_GRAVEYARD_SM, 30);
+            add(DUNGEON_ENT_RUINS);
+            add(DUNGEON_ENT_GRAVEYARD_SM);
+            add(DUNGEON_ENT_GRAVEYARD_LG);
+            add(DUNGEON_ENT_OASIS);
+            add(DUNGEON_ENT_PYRAMID);
             break;
         case TILE_WASTELAND:
-            add(DUNGEON_ENT_RUINS, 50);
-            add(DUNGEON_ENT_CAVE,  50);
+            add(DUNGEON_ENT_RUINS);
             break;
         case TILE_SAND:
-            if (!is_mountain) add(DUNGEON_ENT_OASIS, 50);   // oasis removed on mountain
-            add(DUNGEON_ENT_PYRAMID, 50);
+            add(DUNGEON_ENT_OASIS);
+            add(DUNGEON_ENT_PYRAMID);
             break;
         case TILE_TREE:
-            // Forest used to be a hand-rolled 50/25/25 that returned early,
-            // skipping both the mountain modifier below and the size switch at
-            // the end of this function. Same odds, said the same way as every
-            // other biome, and now nothing bypasses the tail.
-            if (!is_mountain) add(DUNGEON_ENT_LARGE_TREE, 50);
-            add(DUNGEON_ENT_GRAVEYARD_SM, 25);
-            add(DUNGEON_ENT_GRAVEYARD_LG, 25);
+            add(DUNGEON_ENT_LARGE_TREE);
+            add(DUNGEON_ENT_GRAVEYARD_SM);
+            add(DUNGEON_ENT_GRAVEYARD_LG);
             break;
         default: // flat (grass/meadow)
-            // Flat ground is about two thirds of every site a world places, so
-            // this row alone decides which graveyard the player meets more of.
-            add(DUNGEON_ENT_GRAVEYARD_SM, 60);
-            add(DUNGEON_ENT_GRAVEYARD_LG, 30);
-            // The two landmarks, deliberately sharing a weight: catacombs is
-            // meant to be exactly as rare as stonehenge, so it is the same
-            // number rather than a second mechanism tuned until it matches.
-            add(DUNGEON_ENT_STONEHENGE, 4);
-            add(DUNGEON_ENT_CATACOMBS,  4);
+            add(DUNGEON_ENT_GRAVEYARD_SM);
+            add(DUNGEON_ENT_GRAVEYARD_LG);
+            add(DUNGEON_ENT_STONEHENGE);
+            add(DUNGEON_ENT_CATACOMBS);
             break;
     }
-
-    // Mountain modifier: add Cave if not already present
-    if (is_mountain) {
-        bool has_cave = false;
-        for (int i = 0; i < pool_sz; i++)
-            if (pool[i].type == DUNGEON_ENT_CAVE) { has_cave = true; break; }
-        if (!has_cave) add(DUNGEON_ENT_CAVE, 50);
-    }
-
-    if (pool_sz == 0) add(DUNGEON_ENT_CAVE, 50); // should never happen
     return pool_sz;
 }
 
 // Whether this archetype belongs in this biome at all. The guarantee pass uses
 // it to keep a forced placement somewhere plausible before it resorts to
 // anywhere at all.
-static bool entrance_native_to_biome(int biome, bool is_mountain, DungeonEntranceType t) {
-    Weighted pool[8];
-    int n = build_entrance_pool(biome, is_mountain, pool);
-    for (int i = 0; i < n; i++) if (pool[i].type == t) return true;
+static bool entrance_native_to_biome(int biome, DungeonEntranceType t) {
+    DungeonEntranceType pool[DUNGEON_ENT_COUNT];
+    int n = build_entrance_pool(biome, pool);
+    for (int i = 0; i < n; i++) if (pool[i] == t) return true;
     return false;
 }
 
@@ -2217,23 +2200,48 @@ static int entrance_size_for(DungeonEntranceType type, unsigned int rng_seed) {
     }
 }
 
-static DungeonEntranceType pick_entrance_type(int biome, bool is_mountain,
-                                               unsigned int rng_seed, int& out_size) {
-    Weighted pool[8];
-    int pool_sz = build_entrance_pool(biome, is_mountain, pool);
+// Draws an archetype for a site, or returns false if every type native to its
+// biome has already reached its per-world target and the site should be left
+// for another kind of ground.
+//
+// The weight of a native type is its RELATIVE deficit, (target - have) / target
+// in thousandths. At the start of a world every weight is 1000 and the draw is
+// uniform among the natives, which is what lets a biome-locked type (ruins,
+// oasis, pyramid, the large tree) claim its share of the few sites it can use
+// before the graveyards, native nearly everywhere, take them. As a type fills
+// up on the ground it has plenty of, its weight falls and the sites it shares
+// go to whichever native is furthest behind — so the counts chase the table's
+// order as far as biome area allows, and a type at target stops being drawn at
+// all rather than overshooting because its biome happened to be large.
+//
+// have_kind is indexed by DUNGEON_KINDS row. rng_seed is passed by value and
+// advanced internally, as before.
+static bool pick_entrance_type(int biome, const int* have_kind, unsigned int rng_seed,
+                               DungeonEntranceType& out_type, int& out_size) {
+    DungeonEntranceType pool[DUNGEON_ENT_COUNT];
+    int w[DUNGEON_ENT_COUNT];
+    int pool_sz = build_entrance_pool(biome, pool);
     int total_w = 0;
-    for (int i = 0; i < pool_sz; i++) total_w += pool[i].w;
+    for (int i = 0; i < pool_sz; i++) {
+        int k = dungeon_kind_for_type(pool[i]);
+        int target = DUNGEON_KINDS[k].target;
+        int left = target - have_kind[k];
+        w[i] = left > 0 ? left * 1000 / target : 0;
+        total_w += w[i];
+    }
+    if (total_w == 0) return false;
 
     rng_seed = rng_seed * 1664525u + 1013904223u;
     int roll = (int)((rng_seed >> 16) % (unsigned)total_w);
-    DungeonEntranceType type = pool[pool_sz - 1].type;   // last entry absorbs rounding
+    DungeonEntranceType type = pool[pool_sz - 1];   // last entry absorbs rounding
     for (int i = 0; i < pool_sz; i++) {
-        roll -= pool[i].w;
-        if (roll < 0) { type = pool[i].type; break; }
+        roll -= w[i];
+        if (roll < 0) { type = pool[i]; break; }
     }
 
+    out_type = type;
     out_size = entrance_size_for(type, rng_seed);
-    return type;
+    return true;
 }
 
 // The yard a graveyard of this kind stands in: fence width and height in tiles.
@@ -2250,11 +2258,17 @@ static void graveyard_yard_size(DungeonEntranceType type, int& span, int& H) {
 //   graveyard → rock tombstones,  stonehenge → rock ring,  pyramid → sand clearing,
 //   oasis → pond neighbors,       large tree → tree overlays,  ruins → scattered debris.
 // cave has no surround — it sits embedded in a clifftop.
-static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int ex, int ey, int sz) {
-    // Only paint on flat biome tiles — skip water, cliffs, structures, other entrances.
+// biome is the site's biome_of() at placement (stored on the entrance record),
+// for the archetypes whose exterior depends on where they stand.
+static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int biome,
+                                   int ex, int ey, int sz) {
+    // Only paint on flat biome tiles — skip water, cliffs, structures, other
+    // entrances, and anything under a drawn cliff face (the ground beneath a
+    // face is still a flat tile, so the id alone does not say).
     auto safe_base = [&](int tx, int ty, int tile_id) {
         if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
         if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        if (tilemap_face_at(tx, ty)) return;
         int base = map->tiles[ty][tx];
         if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
             base != TILE_SAND  && base != TILE_SNOW   && base != TILE_WASTELAND) return;
@@ -2264,6 +2278,7 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int e
     auto safe_ovl = [&](int tx, int ty, int ovl_id) {
         if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
         if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        if (tilemap_face_at(tx, ty)) return;
         int base = map->tiles[ty][tx];
         if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
             base != TILE_SAND  && base != TILE_SNOW   && base != TILE_WASTELAND) return;
@@ -2343,19 +2358,47 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int e
             break;
         }
 
-        case DUNGEON_ENT_PYRAMID:
-            // Desert clearing — 3-tile border of sand around the 2×2 entrance
-            for (int dy = -3; dy < sz+3; dy++)
-                for (int dx = -3; dx < sz+3; dx++)
-                    safe_base(ex+dx, ey+dy, TILE_ROCK);
+        case DUNGEON_ENT_PYRAMID: {
+            // A cleared court three tiles deep around the 2×2 entrance. It is
+            // PATH, a ground tile: it used to be TILE_ROCK as a base tile,
+            // which tile_ground_walkable does not list, so every pyramid stood
+            // inside a solid ring nobody could cross.
+            //
+            // In snow the court is the same, cornered with boulders so a snow
+            // pyramid reads as its own thing at a glance. Placeholder dressing,
+            // like the graveyard fence above, until the two get their own art.
+            const int lo = -3, hi = sz + 2;
+            for (int dy = lo; dy <= hi; dy++)
+                for (int dx = lo; dx <= hi; dx++)
+                    safe_base(ex+dx, ey+dy, TILE_PATH);
+            if (biome == TILE_SNOW) {
+                safe_ovl(ex+lo, ey+lo, TILE_ROCK);
+                safe_ovl(ex+hi, ey+lo, TILE_ROCK);
+                safe_ovl(ex+lo, ey+hi, TILE_ROCK);
+                safe_ovl(ex+hi, ey+hi, TILE_ROCK);
+            }
             break;
+        }
 
         case DUNGEON_ENT_OASIS:
-            // Pond tiles at four cardinal neighbors of the 1×1 entrance
+            // Pond tiles at four cardinal neighbors of the 1×1 entrance. In
+            // snow the pool is ringed with boulders on the diagonals — a
+            // spring breaking through ice rather than a pool in the sand. The
+            // same placeholder status as the pyramid's court.
+            //
+            // Two tiles out, not one: the sweep at the end of generation
+            // (clear_overlays_near_liquid) strips anything standing beside
+            // water, and every tile touching the entrance touches a pond.
             safe_base(ex,   ey-1, TILE_POND);
             safe_base(ex,   ey+1, TILE_POND);
             safe_base(ex-1, ey,   TILE_POND);
             safe_base(ex+1, ey,   TILE_POND);
+            if (biome == TILE_SNOW) {
+                safe_ovl(ex-2, ey-2, TILE_ROCK);
+                safe_ovl(ex+2, ey-2, TILE_ROCK);
+                safe_ovl(ex-2, ey+2, TILE_ROCK);
+                safe_ovl(ex+2, ey+2, TILE_ROCK);
+            }
             break;
 
         case DUNGEON_ENT_LARGE_TREE:
@@ -2395,9 +2438,11 @@ static int entrance_tile_id(DungeonEntranceType type) {
 }
 
 // Join a set of places with worn routes: a minimum spanning tree over them,
-// each edge routed as a shortest path that goes round what it cannot cross and
-// bridges what it can, then smoothed and drifted so it reads as a track rather
-// than a line someone drew.
+// each edge routed as the shortest branch from the track already laid to the
+// place being joined — going round what it cannot cross and bridging what it
+// can — then smoothed and drifted so it reads as a track rather than a line
+// someone drew. The tree says who joins whom and in what order; the ground
+// decides where the branch leaves the network (see the note at the edge loop).
 //
 // Extracted from the wasteland-trail pass so roads between settlements can use
 // the same router. Everything biome-specific is a predicate the caller supplies:
@@ -4462,8 +4507,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // --- Dungeon entrances ---
     if (s_gen_cancel) return;
     // Each entrance derives its type (and therefore interior architecture) from the
-    // biome at its placement position.  Mountain elevation (cliff ≥ 3) acts as a
-    // modifier: adds Cave to the pool, removes Oasis and Large Tree.
+    // biome at its placement position, drawn among that biome's native types by
+    // how far each is from its per-world target (include/dungeon_kinds.h).
     // Difficulty is the straight average of distance-from-center (0–1) and
     // elevation (0–1), computed once at world gen and stored on the entrance.
     // Grid-cell shuffle + MIN_DIST keeps all entrances well separated.
@@ -4498,7 +4543,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // MIN_DIST is exactly the wrong question, while against every entrance
         // placed before the system started it is still the right one. Passing
         // the index the system began at says that in one number.
-        auto door_ok_ex = [&](int ex, int ey, int sz, int min_lvl, int near_from) -> bool {
+        // `allow_tree` lets the footprint stand on ordinary forest trees. Only
+        // the large tree asks for it: it IS a tree, so the ones it replaces
+        // are the point rather than an obstacle, and without this a forest
+        // that is 85% trees has almost nowhere to put one.
+        auto door_ok_ex = [&](int ex, int ey, int sz, int min_lvl, int near_from,
+                              bool allow_tree = false) -> bool {
             if (ex < MARGIN || ey < MARGIN ||
                 ex + sz + MARGIN > MAP_WIDTH ||
                 ey + sz + MARGIN > MAP_HEIGHT)
@@ -4521,7 +4571,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                             base != TILE_GRASS     && base != TILE_MEADOW &&
                             base != TILE_SAND      && base != TILE_SNOW   &&
                             base != TILE_WASTELAND) return false;
-                        if (map->overlay[ty][tx] != 0) return false;
+                        int ovl = map->overlay[ty][tx];
+                        if (ovl != 0 && !(allow_tree && ovl == TILE_TREE)) return false;
                     }
                 }
             }
@@ -4567,8 +4618,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return true;
         };
         // Every ordinary entrance: level-3 tops only, and MIN_DIST against all.
-        auto door_ok = [&](int ex, int ey, int sz) -> bool {
-            return door_ok_ex(ex, ey, sz, 3, map->num_dungeon_entrances);
+        auto door_ok = [&](int ex, int ey, int sz, DungeonEntranceType t) -> bool {
+            return door_ok_ex(ex, ey, sz, 3, map->num_dungeon_entrances,
+                              t == DUNGEON_ENT_LARGE_TREE);
         };
 
         // ── Cave systems ────────────────────────────────────────────────────
@@ -4665,8 +4717,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     }
             }
             // Whether this mountain has a cave, by how many storeys it carries:
-            // every three-storey mountain, a third of the two-storey ones, one
-            // in twenty of the single-storey bumps. Hashed off the world seed
+            // every three-storey mountain, half of the rest. Hashed off the world seed
             // and the landform's own anchor rather than drawn from the placement
             // RNG, so the answer is the same however the rolls around it fall,
             // and the same on every rebuild of the seed.
@@ -4750,7 +4801,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                             (unsigned char)~((1 << CLIFF_LEVELS) - 1);
                     }
                 m->dungeon_entrances[m->num_dungeon_entrances++] = {
-                    tx, ty, size, DUNGEON_ENT_CAVE, lvl, cave_diff, 0, -1, ax, ay
+                    tx, ty, size, DUNGEON_ENT_CAVE, lvl, cave_diff, 0, -1, ax, ay,
+                    biome_of(m, tx, ty)
                 };
             };
 
@@ -4784,13 +4836,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // the cave mouths too by now, so testing it against TARGET directly
         // would let a world full of mountains spend the whole allowance on
         // caves and leave no graveyards anywhere.
+        // How many of each kind this world holds so far, by DUNGEON_KINDS row.
+        // The draw reads it to weight each site's natives by how far they are
+        // from target; place_entrance is the only writer, so the count and the
+        // record can't disagree. Cave rows stay 0 here — cave systems are cut
+        // by the pass above and never drawn — and the guarantee pass recounts
+        // everything from the records anyway.
+        int have_kind[DUNGEON_KIND_COUNT] = {0};
+
         // Stamp the ground, decorate around it, and record the entrance. Shared
         // by the ordinary rolls and the guarantee pass below so the two cannot
         // drift apart on what placing a dungeon means. The aggregate below is
-        // positional and there are already three of them in this file — see the
+        // positional and there are three more of them in this file — see the
         // warning on DungeonEntrance in tilemap.h.
         auto place_entrance = [&](int ex, int ey, DungeonEntranceType ent_type,
-                                  int ent_size, int cliff_lvl) {
+                                  int ent_size, int cliff_lvl, int biome) {
             int sz = ent_size + 1;
 
             // Difficulty: straight average of distance-from-center and elevation
@@ -4814,10 +4874,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         map->overlay[ey + r][ex + c] = 0;
                     }
             }
-            stamp_dungeon_surround(map, ent_type, ex, ey, sz);
+            stamp_dungeon_surround(map, ent_type, biome, ex, ey, sz);
             map->dungeon_entrances[map->num_dungeon_entrances++] = {
-                ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1
+                ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1, biome
             };
+            int k = dungeon_kind_for_type(ent_type);
+            if (k >= 0) have_kind[k]++;
         };
 
         const int ordinary_first = map->num_dungeon_entrances;
@@ -4835,51 +4897,105 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 // Determine biome and cliff level at this position
                 int base_tile = map->tiles[ey][ex];
                 int cliff_lvl = cliff_level_of(base_tile);
-                bool is_mtn   = (cliff_lvl >= 3);
                 int biome     = biome_of(map, ex, ey);
 
-                // Pick entrance type — also determines size for fixed-size archetypes
+                // Pick entrance type — also determines size for fixed-size
+                // archetypes. No draw at all when everything native here is
+                // already at target: the next attempt may land on other ground.
+                DungeonEntranceType ent_type;
                 int ent_size;
                 es = es * 1664525u + 1013904223u;
-                DungeonEntranceType ent_type = pick_entrance_type(biome, is_mtn, es, ent_size);
+                if (!pick_entrance_type(biome, have_kind, es, ent_type, ent_size)) continue;
                 int sz = ent_size + 1; // 1 = small, 2 = large
 
                 // In a hill, not beside one. See hits_cliff.
                 if (hits_cliff(ex, ey, sz)) continue;
 
-                if (!door_ok(ex, ey, sz)) continue;
+                if (!door_ok(ex, ey, sz, ent_type)) continue;
 
-                place_entrance(ex, ey, ent_type, ent_size, cliff_lvl);
+                place_entrance(ex, ey, ent_type, ent_size, cliff_lvl, biome);
                 break;
             }
         }
 
-        // ── Guarantee every archetype exists somewhere ────────────────
-        // Which types a world gets is decided by which biomes its cells
+        // ── Guarantee every KIND exists somewhere ─────────────────────
+        // Which kinds a world gets is decided by which biomes its cells
         // happen to land in, and biome area is luck: measured across 32
         // worlds, three had no pyramid or no oasis at all. Desert survives
         // worldgen only as one or two large blobs (MIN_BIOME_AREA), and a
-        // world's 400 cells can simply miss them. A world short an archetype
-        // is short a whole kind of dungeon, so anything that came out at zero
-        // is placed here.
+        // world's 400 cells can simply miss them. A world short a kind is
+        // short a whole kind of dungeon, so anything that came out at zero is
+        // placed here. Counted over the procedural records only: phase 1's
+        // fixed pair would otherwise make a cave and a small graveyard
+        // trivially present, which is not the question.
         //
-        // Two rounds, and the split is the point. The first considers only
-        // sites the type is native to, so a backfilled oasis still stands in
-        // desert whenever any desert site is free. The second drops that and
-        // takes any site that will hold it, which is what makes this a
-        // guarantee rather than an attempt — it runs only for a type with
-        // nowhere natural left to go.
+        // A kind is a DUNGEON_KINDS row, so the seven cave materials are
+        // seven things to guarantee. A material is a band of cave difficulty,
+        // and the rarest band is a few percent of a world's systems — some
+        // worlds grow none. There is no mountain to cut a new cave into on
+        // demand, so a missing material takes over an existing system
+        // instead: the one whose difficulty is nearest the band, moved to the
+        // band's bottom edge on every mouth it has. Deterministic, no RNG.
+        // Systems with two or more mouths are preferred because a single
+        // mouth can be partnered later, and a pair opens at the HARDER end's
+        // difficulty (dungeon_wiring_for), which would undo the move.
+        //
+        // For a non-cave kind: two rounds, and the split is the point. The
+        // first considers only sites the type is native to, so a backfilled
+        // oasis still stands in desert or snow whenever such a site is free.
+        // The second drops that and takes any site that will hold it, which
+        // is what makes this a guarantee rather than an attempt — it runs only
+        // for a type with nowhere natural left to go.
         {
-            int have[DUNGEON_ENT_COUNT] = {0};
-            for (int i = 0; i < map->num_dungeon_entrances; i++) {
-                int t = (int)map->dungeon_entrances[i].type;
-                if (t >= 0 && t < DUNGEON_ENT_COUNT) have[t]++;
+            int have[DUNGEON_KIND_COUNT] = {0};
+            for (int i = DNG_FIXED_ENTRANCES; i < map->num_dungeon_entrances; i++) {
+                int k = dungeon_kind_of(&map->dungeon_entrances[i]);
+                if (k >= 0) have[k]++;
             }
 
             unsigned int bs = seed ^ 0x5EEDBAC7u;
-            for (int t = 0; t < DUNGEON_ENT_COUNT; t++) {
-                if (have[t]) continue;
-                DungeonEntranceType want = (DungeonEntranceType)t;
+            for (int k = 0; k < DUNGEON_KIND_COUNT; k++) {
+                if (have[k]) continue;
+                const DungeonKindDef& kind = DUNGEON_KINDS[k];
+
+                if (kind.type == DUNGEON_ENT_CAVE) {
+                    Material want_m = (Material)kind.material;
+                    float lo = material_min_difficulty(want_m);
+                    int best = -1; float best_d = 0.0f; bool best_multi = false;
+                    for (int i = DNG_FIXED_ENTRANCES; i < map->num_dungeon_entrances; i++) {
+                        const DungeonEntrance& e = map->dungeon_entrances[i];
+                        if (e.type != DUNGEON_ENT_CAVE || e.cave_anchor_x < 0) continue;
+                        // First mouth of its system only: the others carry the
+                        // same anchor and difficulty and would tie with it.
+                        bool first = true, multi = false;
+                        for (int j = DNG_FIXED_ENTRANCES; j < map->num_dungeon_entrances; j++) {
+                            if (j == i) continue;
+                            const DungeonEntrance& o = map->dungeon_entrances[j];
+                            if (o.cave_anchor_x != e.cave_anchor_x ||
+                                o.cave_anchor_y != e.cave_anchor_y) continue;
+                            multi = true;
+                            if (j < i) { first = false; break; }
+                        }
+                        if (!first) continue;
+                        float d = fabsf(e.difficulty - lo);
+                        if (best < 0 || (multi && !best_multi) ||
+                            (multi == best_multi && d < best_d)) {
+                            best = i; best_d = d; best_multi = multi;
+                        }
+                    }
+                    if (best < 0) continue;   // a world with no cave system at all
+                    const DungeonEntrance& b = map->dungeon_entrances[best];
+                    for (int j = DNG_FIXED_ENTRANCES; j < map->num_dungeon_entrances; j++) {
+                        DungeonEntrance& o = map->dungeon_entrances[j];
+                        if (o.cave_anchor_x == b.cave_anchor_x &&
+                            o.cave_anchor_y == b.cave_anchor_y)
+                            o.difficulty = lo;
+                    }
+                    have[k]++;
+                    continue;
+                }
+
+                DungeonEntranceType want = kind.type;
                 bool placed = false;
                 for (int round = 0; round < 2 && !placed; round++) {
                     for (int tries = 0; tries < 4000 && !placed; tries++) {
@@ -4890,7 +5006,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         int ey = MARGIN + (int)((bs >> 16) % (unsigned)(MAP_HEIGHT - 2*MARGIN));
 
                         int cliff_lvl = cliff_level_of(map->tiles[ey][ex]);
-                        bool is_mtn   = (cliff_lvl >= 3);
                         bs = bs * 1664525u + 1013904223u;
                         int ent_size = entrance_size_for(want, bs);
                         int sz = ent_size + 1;
@@ -4898,12 +5013,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         // Cheapest rejections first: the biome scan is 289 tile
                         // reads and door_ok walks every entrance placed so far.
                         if (hits_cliff(ex, ey, sz)) continue;
-                        if (round == 0 &&
-                            !entrance_native_to_biome(biome_of(map, ex, ey), is_mtn, want))
-                            continue;
-                        if (!door_ok(ex, ey, sz)) continue;
+                        int biome = biome_of(map, ex, ey);
+                        if (round == 0 && !entrance_native_to_biome(biome, want)) continue;
+                        if (!door_ok(ex, ey, sz, want)) continue;
 
-                        place_entrance(ex, ey, want, ent_size, cliff_lvl);
+                        place_entrance(ex, ey, want, ent_size, cliff_lvl, biome);
                         placed = true;
                     }
                 }

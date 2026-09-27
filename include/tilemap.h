@@ -216,10 +216,17 @@ typedef struct {
     // than from each mouth's own position, which is what makes every mouth of
     // one mountain open the same cave. -1,-1 on everything else.
     //
-    // The struct is built with positional aggregate initialisers in three
-    // places, so a field added here silently zero-inits at any site not updated
-    // with it — and 0,0 is a legal tile. All three sites set these explicitly.
+    // The struct is built with positional aggregate initialisers in four
+    // places in tilemap.cpp (phase 1's two fixed entrances, a cave mouth, and
+    // place_entrance), so a field added here silently zero-inits at any site
+    // not updated with it — and 0,0 is a legal tile. All four set every field.
     int cave_anchor_x, cave_anchor_y;
+    // The biome the site read as when it was placed (a TileId: TILE_SNOW,
+    // TILE_SAND, TILE_TREE for forest, TILE_GRASS for open ground, ...). The
+    // ground under the stamp is gone once the entrance tile covers it, and the
+    // exterior of some archetypes depends on where they stand — an oasis in
+    // snow is not dressed like one in sand.
+    int biome;
 } DungeonEntrance;
 
 typedef struct {
@@ -252,8 +259,18 @@ typedef struct {
 // many small landforms that is a few hundred records before the ordinary rolls
 // begin. The array carries both, so it needs room for both.
 #define MAX_DUNGEON_ENTRANCES 2048
+// Phase 1 stamps this many entrances at fixed tiles in every world (a cave and
+// a small graveyard beside the start) before any procedural placement. Anything
+// asking "did this world GROW a kind of dungeon" skips them.
+#define DNG_FIXED_ENTRANCES 2
 
 enum RouteKind { ROUTE_NONE = 0, ROUTE_TRAIL = 1, ROUTE_ROAD = 2 };
+// Route diagnostics for tools/shot.cpp, populated only when ROUTE_OWNER_TRACE
+// is set in the environment before the world is built; null otherwise. One
+// entry per tile: which edge of its network painted it (1-based, 0 = none),
+// and whether more than one edge did.
+const uint16_t* tilemap_debug_route_owner();
+const uint8_t*  tilemap_debug_route_multi();
 
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];

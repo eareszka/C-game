@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus dngportals shot coastprobe
+.PHONY: all run clean tile_editor dngshot dngcensus oreprof dngportals shot coastprobe
 
 all: $(TARGET)
 
@@ -124,6 +124,14 @@ dngcensus: dngcensus$(EXE)
 dngcensus$(EXE): tools/dngcensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Cave difficulty census: which material band each cave system lands in, and
+# the quantile cut points that give the shares in include/dungeon_kinds.h.
+# Same repo-root rule as dngcensus.
+oreprof: oreprof$(EXE)
+
+oreprof$(EXE): tools/oreprof.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/oreprof.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 # Stair audit across every archetype and every way one can be bound to the
 # overworld. Exits non-zero on a broken invariant, so it can gate a build.
 dngportals: dngportals$(EXE)
@@ -153,6 +161,6 @@ coastprobe$(EXE): tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ)
 	$(HEADLESS_CXX) -DGEN_TRACE tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE)
 
 endif

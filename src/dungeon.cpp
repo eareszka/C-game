@@ -87,20 +87,26 @@ struct MaterialDef {
     float       max_difficulty; // upper bound of this material's band
 };
 
-// Thresholds are quantile-calibrated from 3098 cave systems across 8 worlds
-// (tools/oreprof.cpp), NOT a linear split. difficulty averages two normalised
+// Thresholds are quantile-calibrated from 3026 cave systems across 8 worlds
+// (`make oreprof`), NOT a linear split. difficulty averages two normalised
 // terms so it clusters near 0.5, and caves are cut into mountains so its
-// elevation term is never 0: the observed range is only 0.138..0.771, and a
+// elevation term is never 0: the observed range is only 0.142..0.771, and a
 // linear tier = difficulty*7 put 80% of caves in two middle tiers and left
-// Reality Shard unreachable. Re-run oreprof if worldgen changes shape.
+// Reality Shard unreachable.
+//
+// How wide each band is -- what share of a world's caves holds each material
+// -- is not decided here. It is the cave rows of DUNGEON_KINDS
+// (include/dungeon_kinds.h), where every kind of dungeon has its place in one
+// order; oreprof reads those shares and prints the cut points that realise
+// them. Re-run it and paste when that table or the shape of worldgen changes.
 static const MaterialDef MATERIALS[MAT_COUNT] = {
     // name             floor              minimap wall       up to
-    { "Stone",        {108,108,116,255}, { 74, 74, 80,255}, 0.3305f },
-    { "Bronze",       {110, 88, 58,255}, { 92, 74, 48,255}, 0.3973f },
-    { "Emerald",      { 70,105, 78,255}, { 46, 78, 58,255}, 0.4457f },
-    { "Veyrite",      { 90, 80, 74,255}, { 60, 65,100,255}, 0.4920f },
-    { "Dravium",      {110, 64, 60,255}, { 92, 44, 44,255}, 0.5408f },
-    { "Kharvite",     {120,105, 55,255}, {104, 88, 40,255}, 0.6247f },
+    { "Stone",        {108,108,116,255}, { 74, 74, 80,255}, 0.3795f },
+    { "Bronze",       {110, 88, 58,255}, { 92, 74, 48,255}, 0.4515f },
+    { "Emerald",      { 70,105, 78,255}, { 46, 78, 58,255}, 0.4926f },
+    { "Veyrite",      { 90, 80, 74,255}, { 60, 65,100,255}, 0.5551f },
+    { "Dravium",      {110, 64, 60,255}, { 92, 44, 44,255}, 0.5940f },
+    { "Kharvite",     {120,105, 55,255}, {104, 88, 40,255}, 0.6588f },
     { "Reality Shard",{ 30, 28, 34,255}, { 24, 22, 30,255}, 2.0f    },
 };
 
@@ -110,6 +116,13 @@ Material material_for_difficulty(float difficulty) {
     for (int m = 0; m < MAT_COUNT - 1; m++)
         if (difficulty < MATERIALS[m].max_difficulty) return (Material)m;
     return (Material)(MAT_COUNT - 1);
+}
+
+float material_min_difficulty(Material m) {
+    int mi = (int)m;
+    if (mi <= 0) return 0.0f;
+    if (mi >= MAT_COUNT) mi = MAT_COUNT - 1;
+    return MATERIALS[mi - 1].max_difficulty;
 }
 
 const char* material_name(Material m) {

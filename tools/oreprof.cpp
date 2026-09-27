@@ -2,30 +2,36 @@
 //
 //   oreprof.exe [seed ...]        (defaults to a spread of seeds)
 //
-// The material a cave holds is meant to be gated on DungeonEntrance.difficulty
-// -- ((dist/max_dist) + cliff_lvl/5) * 0.5, tilemap.cpp:4574 -- so that a
-// player has to travel out or climb to reach the good stuff. But difficulty is
-// an AVERAGE of two normalised terms, which compresses its range toward the
-// middle, and caves are cut into mountains so their elevation term is never
-// zero. Both push the distribution away from the ends.
+// The material a cave holds is gated on DungeonEntrance.difficulty --
+// ((dist/max_dist) + cliff_lvl/5) * 0.5, the cave_diff formula in tilemap.cpp's
+// cave_place -- so that a player has to travel out or climb to reach the good
+// stuff. But difficulty is an AVERAGE of two normalised terms, which
+// compresses its range toward the middle, and caves are cut into mountains so
+// their elevation term is never zero. Both push the distribution away from the
+// ends.
 //
 // If every cave lands between 0.3 and 0.7 then a linear tier = difficulty*7
 // only ever produces the middle tiers and the ladder is broken at both ends.
 // That is a question about generated worlds, not about the formula, so this
 // measures it: the histogram of cave difficulty, and the resulting tier counts.
 //
-// Build (from MSYS2 MINGW64, links the already-built objects like shot.exe):
-//   g++ -std=c++17 -O2 -Iinclude -w -DSDL_MAIN_HANDLED \
-//       $(pkg-config --cflags sdl2 SDL2_image) -Umain tools/oreprof.cpp \
-//       $(ls src/*.o | grep -v src/main.o) -o oreprof.exe \
-//       $(pkg-config --libs sdl2 SDL2_image | sed 's/-lSDL2main//; s/-mwindows//') \
-//       -lm -lpthread
+// The cut points it prints at the end are what src/dungeon.cpp's MATERIALS
+// carries: each material's share of cave systems is its row in
+// include/dungeon_kinds.h (dungeon_cave_share), and the cut point is the
+// difficulty quantile at that cumulative share. Change the table, run this,
+// paste the cuts. The distribution does not depend on the thresholds, so one
+// run per change of worldgen shape is enough.
+//
+// Build: `make oreprof` from the repo root. Must RUN from the repo root too --
+// tilemap_init_tile_cache() reads assets/tileset.png by relative path (see the
+// note in tools/dngcensus.cpp for why skipping it is not an option).
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include "tilemap.h"
 #include "dungeon.h"
+#include "dungeon_kinds.h"
 
 static Tilemap g_map;
 
@@ -59,8 +65,8 @@ int main(int argc, char** argv) {
     SDL_Renderer* ren = SDL_CreateSoftwareRenderer(surf);
     tilemap_init_tile_cache(ren);
 
-    int tier_tot[7] = {0};
-    int sys_tier_tot[7] = {0};
+    int tier_tot[MAT_COUNT] = {0};
+    int sys_tier_tot[MAT_COUNT] = {0};
     int bucket[10] = {0};
     int mouths_tot = 0, systems_tot = 0;
     static float all_diff[8192]; int n_all = 0;
@@ -70,12 +76,12 @@ int main(int argc, char** argv) {
         tilemap_build_overworld_phase1(&g_map, seeds[si]);
         tilemap_build_overworld_phase2(&g_map, seeds[si]);
 
-        int tier[7] = {0};
+        int tier[MAT_COUNT] = {0};
         int mouths = 0;
         // One cave system = one anchor. Counting mouths would over-weight the
         // mountains, where a single cave opens three or four ways.
-        int ax[512], ay[512]; int sys = 0;
-        int sys_tier[7] = {0};
+        static int ax[MAX_DUNGEON_ENTRANCES], ay[MAX_DUNGEON_ENTRANCES]; int sys = 0;
+        int sys_tier[MAT_COUNT] = {0};
 
         for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
             const DungeonEntrance& e = g_map.dungeon_entrances[i];
@@ -92,7 +98,7 @@ int main(int argc, char** argv) {
             if (e.cave_anchor_x >= 0) {
                 for (int s = 0; s < sys; s++)
                     if (ax[s] == e.cave_anchor_x && ay[s] == e.cave_anchor_y) { known = true; break; }
-                if (!known && sys < 512) { ax[sys] = e.cave_anchor_x; ay[sys] = e.cave_anchor_y; sys++; }
+                if (!known && sys < MAX_DUNGEON_ENTRANCES) { ax[sys] = e.cave_anchor_x; ay[sys] = e.cave_anchor_y; sys++; }
             } else {
                 sys++;   // a flat/wasteland cave is its own system
             }
@@ -100,11 +106,11 @@ int main(int argc, char** argv) {
         }
 
         printf("seed %-9u caves: %3d mouths, %3d systems   tiers by system:", seeds[si], mouths, sys);
-        for (int t = 0; t < 7; t++) printf(" %d:%d", t, sys_tier[t]);
+        for (int t = 0; t < MAT_COUNT; t++) printf(" %d:%d", t, sys_tier[t]);
         printf("\n");
 
         mouths_tot += mouths; systems_tot += sys;
-        for (int t = 0; t < 7; t++) { tier_tot[t] += tier[t]; sys_tier_tot[t] += sys_tier[t]; }
+        for (int t = 0; t < MAT_COUNT; t++) { tier_tot[t] += tier[t]; sys_tier_tot[t] += sys_tier[t]; }
     }
 
     printf("\n=== across %d seeds: %d cave systems (%d mouths) ===\n",
@@ -121,7 +127,7 @@ int main(int argc, char** argv) {
 
     printf("\nmaterial tier by CAVE SYSTEM (what the player actually encounters):\n");
     int empty = 0;
-    for (int t = 0; t < 7; t++) {
+    for (int t = 0; t < MAT_COUNT; t++) {
         float pct = systems_tot ? 100.0f * sys_tier_tot[t] / systems_tot : 0.0f;
         printf("  tier %d %-13s %5d  %5.1f%%  %s\n", t, material_name((Material)t), sys_tier_tot[t], pct,
                sys_tier_tot[t] == 0 ? "<-- UNREACHABLE" : "");
@@ -131,15 +137,18 @@ int main(int argc, char** argv) {
            empty ? "  The ladder has gaps -- the mapping needs to change." : "  Every rung exists.");
     // Quantile cut points. A linear tier = difficulty*7 fails because the
     // distribution is neither uniform nor full-range, so thresholds have to come
-    // from the distribution itself. Target shares descend deliberately: common at
-    // the bottom, rare at the top -- but every rung must exist.
+    // from the distribution itself. The shares are the cave rows of
+    // DUNGEON_KINDS, normalised -- not a copy of them, so this can't drift from
+    // the order the table asks for.
     if (n_all > 0) {
         qsort(all_diff, n_all, sizeof(float), cmpf);
-        static const float SHARE[7] = { 0.25f, 0.22f, 0.20f, 0.15f, 0.10f, 0.06f, 0.02f };
+        printf("\ntarget shares from include/dungeon_kinds.h:");
+        for (int t = 0; t < MAT_COUNT; t++)
+            printf(" %s %.1f%%", material_name((Material)t), 100.0f * dungeon_cave_share((Material)t));
         printf("\ncalibrated cut points from %d systems:\n", n_all);
         float acc = 0.0f;
-        for (int t = 0; t < 6; t++) {
-            acc += SHARE[t];
+        for (int t = 0; t < MAT_COUNT - 1; t++) {
+            acc += dungeon_cave_share((Material)t);
             int idx = (int)(acc * n_all); if (idx >= n_all) idx = n_all - 1;
             printf("  %-13s | %-13s  cut at %.4f   [%.0f%% cumulative]\n",
                    material_name((Material)t), material_name((Material)(t+1)), all_diff[idx], acc * 100.0f);
