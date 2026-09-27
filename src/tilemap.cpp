@@ -4551,20 +4551,23 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Where they stand is a preference with a floor, not luck and not a
     // quota. The rolls used to be uniform over the inland map with no biome
     // test, so a world's villages went wherever the dice fell and nothing
-    // promised a snowfield or a desert one. Now every biome gets one first,
-    // and the rest are rolled with each ground's chance of keeping a roll
-    // set by the table: the open flats keep every roll, forest, desert and
-    // snow keep fewer, the wasteland fewest. The counts come out different
-    // every world -- all ones but the flats, or three in the snow -- which is
-    // the point; only the floor is fixed. The biome is what biome_of() reads
-    // at the footprint's centre, before the stamp covers it.
+    // promised a snowfield or a desert one. Now every ground gets one first,
+    // and each of the rest has its ground DRAWN from the table's weights --
+    // the open flats most often, forest, desert and snow alike, the
+    // wasteland least -- and is then given a site on that ground. Drawing
+    // the ground first, rather than rolling a site and keeping it by its
+    // ground, is what makes every split reachable: rolled sites fall two
+    // thirds on the flats whatever the weights say, and a world with three
+    // villages in the desert could never come up. Now it can, and the counts
+    // differ from world to world; only the floor is fixed. The biome is what
+    // biome_of() reads at the footprint's centre, before the stamp covers it.
     {
-        struct VillageGround { int biome; int keep; };   // keep: chance in 5 of keeping a roll
+        struct VillageGround { int biome; int weight; };   // weight: share of the draws
         static const VillageGround GROUND[] = {
-            { TILE_GRASS,     5 },   // open flat ground, meadow included
-            { TILE_TREE,      2 },   // forest
-            { TILE_SAND,      2 },
-            { TILE_SNOW,      2 },
+            { TILE_GRASS,    16 },   // open flat ground, meadow included
+            { TILE_TREE,      4 },   // forest
+            { TILE_SAND,      4 },
+            { TILE_SNOW,      4 },
             { TILE_WASTELAND, 1 },
         };
         const int NG = (int)(sizeof(GROUND) / sizeof(GROUND[0]));
@@ -4630,24 +4633,23 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             stamp_village_blueprint(map, variant, tx, ty, biome);
         };
 
-        // The floor: one village on each ground, before anything is rolled
-        // for. Rolled first, so it lands somewhere as random as the rest; if
-        // twenty thousand rolls never hit a footprint that fits on that
-        // ground -- the wasteland is a fiftieth of the map, and the coast
-        // biomes mostly lie outside the inland margin -- walk the whole map
-        // in shuffled 150-tile cells for the first site that fits, and if
-        // none fits at the usual clearances, again at half and at a quarter:
-        // the earlier biome guarantee only promises a patch, not a wide one.
-        for (int g = 0; g < NG; g++) {
+        // A village on a given ground. Rolled first, so it lands somewhere as
+        // random as the rest; if twenty thousand rolls never hit a footprint
+        // that fits on that ground -- the wasteland is a fiftieth of the map,
+        // and the coast biomes mostly lie outside the inland margin -- walk
+        // the whole map in shuffled 150-tile cells for the first site that
+        // fits, and if none fits at the usual clearances, again at half and
+        // at a quarter: the earlier biome guarantee only promises a patch,
+        // not a wide one. Returns whether it found anywhere at all.
+        auto place_on = [&](int g) -> bool {
             int want = GROUND[g].biome;
-            bool placed = false;
-            for (int attempt = 0; attempt < 20000 && !placed; attempt++) {
+            for (int attempt = 0; attempt < 20000; attempt++) {
                 int tx, ty; roll_site(MARGIN, tx, ty);
                 if (site_biome(tx, ty) != want) continue;
                 if (!site_ok(tx, ty, MIN_VILLAGE_DIST, MIN_TOWN_VIL_DIST)) continue;
-                place(tx, ty, want); placed = true;
+                place(tx, ty, want);
+                return true;
             }
-            if (placed) continue;
             const int CELL = 150, EDGE = 32;
             const int GW = (MAP_WIDTH - 2*EDGE) / CELL, GH = (MAP_HEIGHT - 2*EDGE) / CELL;
             std::vector<int> cells(GW * GH);
@@ -4657,31 +4659,35 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int j = (int)((vs >> 16) % (unsigned)(i + 1));
                 std::swap(cells[i], cells[j]);
             }
-            for (int relax = 0; relax < 3 && !placed; relax++) {
+            for (int relax = 0; relax < 3; relax++) {
                 int vd = MIN_VILLAGE_DIST >> relax, td = MIN_TOWN_VIL_DIST >> relax;
                 for (int ci : cells) {
                     int x0 = EDGE + (ci % GW) * CELL, y0 = EDGE + (ci / GW) * CELL;
-                    for (int ty = y0; ty < y0 + CELL && !placed; ty += 3)
-                        for (int tx = x0; tx < x0 + CELL && !placed; tx += 3) {
+                    for (int ty = y0; ty < y0 + CELL; ty += 3)
+                        for (int tx = x0; tx < x0 + CELL; tx += 3) {
                             if (site_biome(tx, ty) != want) continue;
                             if (!site_ok(tx, ty, vd, td)) continue;
-                            place(tx, ty, want); placed = true;
+                            place(tx, ty, want);
+                            return true;
                         }
-                    if (placed) break;
                 }
             }
-        }
+            return false;
+        };
 
-        // The rest, rolled: a roll on a given ground is kept with that
-        // ground's chance, so the flats fill fastest and the wasteland
-        // slowest, and the split is different every world.
-        for (int attempt = 0; map->num_villages < TARGET_VILLAGES && attempt < 200000; attempt++) {
-            int tx, ty; roll_site(MARGIN, tx, ty);
-            if (!site_ok(tx, ty, MIN_VILLAGE_DIST, MIN_TOWN_VIL_DIST)) continue;
-            int biome = site_biome(tx, ty);
+        // The floor: one on each ground, before anything is drawn.
+        for (int g = 0; g < NG; g++) place_on(g);
+
+        // The rest: draw the ground by weight, then find it a site. A ground
+        // with nowhere left to stand gives its draw to the flats rather than
+        // leave the world a village short.
+        int total_w = 0;
+        for (int g = 0; g < NG; g++) total_w += GROUND[g].weight;
+        while (map->num_villages < TARGET_VILLAGES) {
             vs = vs * 1664525u + 1013904223u;
-            if ((int)((vs >> 16) % 5u) >= GROUND[ground_of(biome)].keep) continue;
-            place(tx, ty, biome);
+            int roll = (int)((vs >> 16) % (unsigned)total_w), g = NG - 1;
+            for (int i = 0; i < NG; i++) { roll -= GROUND[i].weight; if (roll < 0) { g = i; break; } }
+            if (!place_on(g) && !place_on(ground_of(TILE_GRASS))) break;
         }
     }
 
