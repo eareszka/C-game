@@ -378,6 +378,9 @@ void tilemap_cancel_gen();
 void tilemap_reset_gen_cancel();
 
 bool tilemap_face_at(int x, int y);
+// The plateau level a tile stands at, 0 for the flat. For the tools' ground
+// dumps, which otherwise cannot tell a plateau top from the field below.
+int  tilemap_cliff_elev_at(int x, int y);
 
 // Why the coastal town's shore search kept or threw away each window it looked
 // at. Every window the search considers lands in exactly one of these counts,

@@ -16,6 +16,22 @@ its bank from the ground around it:
     cols 74-76  sand
     cols 77-79  wasteland  -- identity copy, byte-for-byte
     cols 80-82  snow
+    cols 83-142 seams: for each bank, four 3x3 blocks (north, south, west,
+                east), see seam() below
+
+SEAMS. A track's bank is the ground under each tile, so where the ground changes
+the track changed colour at one tile boundary: a hard cut across the stroke. The
+ground itself blends its biomes with a dotted fringe, and the track now does the
+same with baked cells. A seam cell is a bank's nine-slice cell masked to a dither
+that is half dense along one side of the cell and fades to nothing at the far
+side. Drawn over a tile of the OTHER bank on the side that faces this one, the
+two tiles either side of a ground change each carry half of a two-tile gradient
+and the join reads as one track worn across two grounds. The mask keeps only
+pixels the cell's art has, so the carved edge is untouched, and because every
+bank shares the master's footprint the seam cell for bank B fits over any bank's
+cell of the same nine-slice position.
+
+    (bank, side, cell) -> col SEAM_COL0 + (bank * 4 + side) * 3 + cell col
 
 Wasteland is generated rather than special-cased for the same reason MAT_VEYRITE is
 in tools/gen_cave_tiles.py: keeping the rule uniform costs one bank of atlas space
@@ -52,6 +68,8 @@ MASTER_ROW0 = 5
 BANK_COLS = 3        # a nine-slice is three by three
 BANK_ROWS = 3
 OUT_COL0 = 68        # first generated bank; clear of the cave art at cols 33-67
+SEAM_COL0 = 83       # first seam block, right after the last bank
+SIDES = ['north', 'south', 'west', 'east']   # the TrailSeamSide order in tilemap.cpp
 
 # Order is the TrailBank enum in src/tilemap.cpp. The index IS the bank number.
 BIOMES = ['grass', 'meadow', 'sand', 'wasteland', 'snow']
@@ -115,6 +133,59 @@ def carve(block):
     return out
 
 
+def seam(block, side):
+    """A bank's block masked to a half-density dither along `side` of EACH CELL,
+    fading to nothing at the cell's far side.
+
+    Half density at the seam, not full: the tile across the seam draws the
+    matching half from its side, so the two together run 0 -> 50/50 -> 100
+    across two tiles with no jump at the boundary between them. Per cell rather
+    than per block because the seam is between tiles, whatever nine-slice role
+    the tile plays. Same deterministic hash as carve(), salted by side so the
+    four masks of one cell are not the same dots rotated.
+    """
+    out = block.copy()
+    h, w = out.shape[0], out.shape[1]
+    art = footprint(block)
+    for py in range(h):
+        for px in range(w):
+            if not art[py, px]:
+                continue
+            cx, cy = px % CELL, py % CELL
+            if side == 'north':   d = cy
+            elif side == 'south': d = CELL - 1 - cy
+            elif side == 'west':  d = cx
+            else:                 d = CELL - 1 - cx
+            density = 0.5 * (1.0 - d / float(CELL))
+            if mix(px, py, SIDES.index(side)) / 65535.0 >= density:
+                out[py, px, :3] = KEY
+    return out
+
+
+def mix(px, py, salt):
+    """A well-mixed 16-bit hash of a pixel position.
+
+    carve() gets away with xor-ing scaled coordinates because its band is four
+    pixels deep; across a whole cell that hash runs in arithmetic progressions
+    along a row and the dots line up into streaks. This stirs the bits the way
+    the C++ side's hashes do, so the dither reads as scatter.
+    """
+    h = (px * 0x9E3779B1) ^ (py * 0x85EBCA77) ^ (salt * 0xC2B2AE3D)
+    h &= 0xFFFFFFFF
+    h ^= h >> 15; h = (h * 0x2C1B3C6D) & 0xFFFFFFFF
+    h ^= h >> 12; h = (h * 0x297A2D39) & 0xFFFFFFFF
+    h ^= h >> 15
+    return h & 0xFFFF
+
+
+def stamp_seams(sheet, i, bank_block):
+    """The four seam blocks of bank i, cut from `bank_block`."""
+    for si, side in enumerate(SIDES):
+        scol = SEAM_COL0 + (i * len(SIDES) + si) * BANK_COLS
+        sheet[MASTER_ROW0 * CELL:(MASTER_ROW0 + BANK_ROWS) * CELL,
+              scol * CELL:(scol + BANK_COLS) * CELL] = seam(bank_block, side)
+
+
 def ramp_at(ramp, t):
     """Sample a ramp at t in [0,1], linearly between its stops."""
     t = min(max(t, 0.0), 1.0) * (len(ramp) - 1)
@@ -174,10 +245,17 @@ def main():
     ap.add_argument('--no-carve', action='store_true',
                     help='leave the banks fully opaque, as before the track was '
                          'drawn over the ground instead of into it')
+    ap.add_argument('--seams-only', action='store_true',
+                    help='leave the five banks exactly as they are in the sheet '
+                         'and cut the seam blocks from them. The shipped banks '
+                         'were carved by an earlier revision of carve() (652 '
+                         'keyed pixels a bank against the 332 this one makes), '
+                         'so restamping them changes art that has been looked '
+                         'at and accepted; this is how to add seams without.')
     a = ap.parse_args()
 
     sheet = np.array(Image.open(a.sheet))
-    need = (OUT_COL0 + len(BIOMES) * BANK_COLS) * CELL
+    need = (SEAM_COL0 + len(BIOMES) * len(SIDES) * BANK_COLS) * CELL
     if sheet.shape[1] < need:
         raise SystemExit('sheet is only %d px wide, need %d' % (sheet.shape[1], need))
 
@@ -198,6 +276,13 @@ def main():
         if a.only and name != a.only:
             continue
         col0 = OUT_COL0 + i * BANK_COLS
+        if a.seams_only:
+            out = block_at(sheet, col0).copy()
+            stamp_seams(sheet, i, out)
+            print('  %-10s cols %2d-%2d kept; seams cols %2d-%2d' % (
+                name, col0, col0 + BANK_COLS - 1, SEAM_COL0 + i * len(SIDES) * BANK_COLS,
+                SEAM_COL0 + (i + 1) * len(SIDES) * BANK_COLS - 1))
+            continue
         ramp = None if a.identity else RAMPS[name]
         out = recolour(master, ramp)
         # Recolouring must never move a pixel between art and colour key: the
@@ -210,6 +295,9 @@ def main():
               col0 * CELL:(col0 + BANK_COLS) * CELL] = out
         print('  %-10s cols %2d-%2d%s' % (name, col0, col0 + BANK_COLS - 1,
                                           '   (identity)' if ramp is None else ''))
+        stamp_seams(sheet, i, out)
+        print('  %-10s seams cols %2d-%2d' % ('', SEAM_COL0 + i * len(SIDES) * BANK_COLS,
+                                             SEAM_COL0 + (i + 1) * len(SIDES) * BANK_COLS - 1))
 
     if a.preview:
         preview(a.preview, sheet)

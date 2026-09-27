@@ -58,6 +58,7 @@ SCREE_ROW0 = 48      # ... and of the spill of grains below a foot
 SCREE_STEPS = 2      # how many tiles below the rock the spill reaches
 BANK_ROW0  = 64      # ... and of the narrow bank the band thins to at a flank
 HAZE_ROW0  = 128     # ... and of the mask that pales the ground on top of it
+LOW_ROW0   = 160     # ... and of its complement: the sliver of a rim tile beyond the line
 NCASE      = 16
 
 # How far the rock reaches out from the outline on a bank, in pixels, class by
@@ -572,6 +573,30 @@ def haze_cell(case, bx, by):
     return img
 
 
+def low_cell(case, bx, by):
+    """Where the ground BELOW lies in a rim cell: everything the haze is not.
+
+    A plateau's surface is drawn across the whole of its rim tile, but the
+    outline wanders inside the tile grid, and the strip between line and grid
+    is the level below. Drawn in the top's colour it showed as a staircase of
+    the top's green outside the lip wherever the ground below was another
+    biome. The game paints this mask in the lower ground's colour before the
+    rock goes on. Cut from the same field as haze_cell so the two meet at the
+    line exactly; case 0 is all ground below, case 15 none.
+    """
+    img = np.zeros((CELL, CELL, 3), dtype=np.uint8)
+    img[:, :] = (255, 255, 255)
+    if case == 0:
+        return img
+    lx, ly, px, py = padded_grid(bx, by)
+    u = (lx + 0.5) / CELL
+    v = (ly + 0.5) / CELL
+    vein, _ = cleft_dist(px, py)
+    high = corner_blend(case, u, v) - 0.5 - grain_shift(px, py, vein) > 0.0
+    img[crop(high)] = KEY
+    return img
+
+
 # ------------------------------------------------------------------- sheet
 
 def stamp(sheet, row0, maker, rows=NCASE):
@@ -718,11 +743,28 @@ def main():
     ap.add_argument('--sheet', default='assets/tileset.png')
     ap.add_argument('--preview')
     ap.add_argument('--no-write', action='store_true')
+    ap.add_argument('--only-low', action='store_true',
+                    help='stamp only the below-the-line mask at LOW_ROW0 and '
+                         'touch nothing else: the shipped rock, outline, spill, '
+                         'bank and haze rows are art that has been looked at, '
+                         'and a restamp changes them')
     a = ap.parse_args()
+
+    if a.only_low:
+        sheet = np.array(Image.open(a.sheet))          # channels as they are
+        low = np.zeros((NCASE * CELL, BLOCK * BLOCK * CELL, sheet.shape[2]), dtype=np.uint8)
+        low[:, :, 3:] = 255
+        stamp(low[:, :, :3], 0, low_cell)
+        sheet[LOW_ROW0 * CELL:(LOW_ROW0 + NCASE) * CELL, :BLOCK * BLOCK * CELL] = low
+        if not a.no_write:
+            Image.fromarray(sheet).save(a.sheet)
+            print('wrote %s: below-the-line mask rows %d-%d, nothing else touched'
+                  % (a.sheet, LOW_ROW0, LOW_ROW0 + NCASE - 1))
+        return
 
     img = Image.open(a.sheet).convert('RGB')
     sheet = np.array(img)
-    need = (HAZE_ROW0 + NCASE) * CELL
+    need = (LOW_ROW0 + NCASE) * CELL
     if sheet.shape[0] < need:
         raise SystemExit('sheet is only %d px tall, need %d' % (sheet.shape[0], need))
     # The banks are stamped one set of sixteen rows after another from BANK_ROW0,
@@ -744,6 +786,7 @@ def main():
         stamp(sheet, BANK_ROW0 + k * NCASE,
               lambda case, bx, by, r=reach: edge_cell(case, bx, by, r))
     stamp(sheet, HAZE_ROW0, haze_cell)
+    stamp(sheet, LOW_ROW0, low_cell)
 
     if a.preview:
         preview(a.preview, sheet)

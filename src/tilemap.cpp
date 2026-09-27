@@ -2524,6 +2524,21 @@ static int entrance_tile_id(DungeonEntranceType type) {
 // The names are the wasteland's because the code is, unchanged, and renaming a
 // six-hundred-line body is how a refactor that was meant to change nothing ends
 // up changing something.
+// Which edge painted each route tile, and which tiles more than one edge
+// painted. A diagnostic for tools/shot.cpp's SHOT_TRAIL view, allocated only
+// when ROUTE_OWNER_TRACE is set in the environment, so the game never pays for
+// it. It exists because "is this wide stretch one stroke or two" cannot be
+// answered from the finished route layer, and the two have different causes:
+// one stroke too wide is the painter, two side by side is the planner.
+static std::vector<uint16_t> g_route_owner;
+static std::vector<uint8_t>  g_route_multi;
+const uint8_t* tilemap_debug_route_multi() {
+    return g_route_multi.empty() ? nullptr : g_route_multi.data();
+}
+const uint16_t* tilemap_debug_route_owner() {
+    return g_route_owner.empty() ? nullptr : g_route_owner.data();
+}
+
 template <typename InRegion, typename IsGap, typename IsRawGap,
           typename Forbidden, typename Paintable, typename Spillable>
 static void route_network(Tilemap* map, unsigned int route_seed,
@@ -2537,6 +2552,12 @@ static void route_network(Tilemap* map, unsigned int route_seed,
         s_route_nodes = (int)nodes.size();
         s_route_anchors = 0;
         s_route_lone = 0;
+        // Owners restart per network (edge numbers are per call); the
+        // multi-edge marks accumulate across both, since a tile is a tile.
+        if (getenv("ROUTE_OWNER_TRACE")) {
+            g_route_owner.assign((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+            if (g_route_multi.empty()) g_route_multi.assign((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        }
         s_trail_edges = s_trail_unroutable = s_trail_tooshort = 0;
         // Asked for rather than required: the
         // router gives it up a tile at a time until a way through appears, so
@@ -2553,11 +2574,38 @@ static void route_network(Tilemap* map, unsigned int route_seed,
         // How many tiles of lava the route has crossed to reach this one, so a
         // crossing can be cut off once it is longer than a bridge should be.
         std::vector<uint8_t> runlen((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        // Whether the span so far has passed a tile with channel on both sides
+        // across the travel: proof that it is crossing a channel and not just
+        // stepping over a bulge in the bank. A landing without it is refused.
+        std::vector<uint8_t> spanok((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         // And how much ground it still owes before it may cross again. Two
         // crossings back to back meet at a corner and fuse into one L-shaped
         // deck, which is neither three wide nor going one way.
         std::vector<uint8_t> cool((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
         std::vector<int> comp, route, touched, path, rimq;
+        // The track already laid that an edge may branch from: 2 on a tile a
+        // branch may start from, 1 on a deck (walked through, never started
+        // from), 0 elsewhere. nettouched is what to clear afterwards.
+        // Bits 1-2: 2 on a tile a branch may end at, 1 on a deck (walked
+        // through, never ended on). Bit 4: seen by the flood this edge, which
+        // is separate so the flood can pass THROUGH a tile the other network
+        // pre-marked without disturbing that mark -- otherwise two pieces of
+        // trail joined only by a road could not see each other, and the next
+        // node routed to the road sixty tiles away instead of the trail three
+        // tiles away, side by side with it the whole way.
+        std::vector<int> nettouched, netq;
+        std::vector<uint8_t> onnet((size_t)MAP_WIDTH * MAP_HEIGHT, 0);
+        // For a network that does not have to hold itself together (trails),
+        // every tile the OTHER network laid is somewhere a branch may end: a
+        // trail that reaches a road has arrived. Marked once and never
+        // cleared -- the per-edge flood only touches tiles it found at zero.
+        // Roads keep to their own network: their retries join two separate
+        // pieces by reachability, and a foreign track would fake a join.
+        if (!connect_all)
+            for (int y = 0; y < MAP_HEIGHT; y++)
+                for (int x = 0; x < MAP_WIDTH; x++)
+                    if (map->route[y][x] != ROUTE_NONE && map->route[y][x] != route_kind)
+                        onnet[(size_t)y * MAP_WIDTH + x] = 2;
         unsigned int ts = route_seed;
 
         // A bridge is a straight run and nothing else: one direction, three
@@ -2798,7 +2846,22 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (int dy = -1; dy <= 1; dy++)
                                 for (int dx = -1; dx <= 1; dx++) {
                                     int nx = qx + dx, ny = qy + dy;
-                                    if (!in_this(nx, ny)) continue;
+                                    // The depth spreads over the gap as well as
+                                    // the ground. A channel is not a rim, but
+                                    // a channel running INSIDE the clearance
+                                    // band is inside the band, and leaving it
+                                    // out gave the strict pass a loophole: the
+                                    // ground beside a cliff was refused, the
+                                    // lava beside it was not, so a route that
+                                    // could have walked three tiles of bank
+                                    // crossed the channel instead and joined
+                                    // the network on the far side -- a second
+                                    // deck four tiles from the first, at every
+                                    // cave mouth a channel passes. Refused in
+                                    // the strict pass, the crossing falls to
+                                    // the lenient one, which takes the bank.
+                                    if (!in_this(nx, ny) &&
+                                        !(in_bounds(nx, ny) && spannable(nx, ny))) continue;
                                     size_t ni = (size_t)ny * MAP_WIDTH + nx;
                                     if (nearedge[ni]) continue;
                                     nearedge[ni] = (uint8_t)(depth + 1);
@@ -2807,6 +2870,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         }
                     }
 
+                    size_t cur_edge = 0;   // which edge is painting, for the owner trace
                     auto paint_trail = [&](int ix, int iy) {
                         // Radius one, so the stroke is three tiles at its
                         // narrowest and only widens where it turns. Three is
@@ -3371,12 +3435,13 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 float py2 = fys[i] + tx2 / len2 * drift * s;
                                 int ix = (int)px2, iy = (int)py2;
                                 if (!in_this(ix, iy)) continue;
-                                fxs[i] = px2; fys[i] = py2;
+                                dxs[i] = px2; dys[i] = py2;
                                 taken = s;
                                 break;
                             }
                             drift *= taken;
                         }
+                        fxs.swap(dxs); fys.swap(dys);
 
                         // Draw between consecutive centres rather than stamping
                         // at each: smoothing and drift move points by a few
@@ -3411,10 +3476,22 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             }
                             lastx = ix; lasty = iy;
                         }
+                        return true;
+                        };
+
+                        bool laid = lay_branch(to);
+                        if (laid && map->route[from / MAP_WIDTH][from % MAP_WIDTH] == ROUTE_NONE)
+                            lay_branch(from);
+                        for (int t : netq) onnet[t] &= 3;
+                        for (int t : nettouched) onnet[t] = 0;
+                        if (!laid) { s_trail_unroutable++; finish_edge(ei, false); continue; }
                         finish_edge(ei, true);
                     }
                 }
                 for (int c : comp) { incomp[c] = 0; nearedge[c] = 0; }
+                // The depth also sits on gap tiles outside comp; a channel is
+                // shared with the wasteland across it.
+                for (int c : rimq) nearedge[c] = 0;
             }
         }
 }
@@ -3605,7 +3682,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     GEN_STAGE(map, "before Cliff blocked prepass");
     // --- Cliff blocked prepass ---
     const int CLIFF_CLEAR = 20;
-    memset(cliff_blocked, 0, sizeof(cliff_blocked));
+    memset(water_keepout, 0, sizeof(water_keepout));
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int t = map->tiles[y][x];
@@ -3616,7 +3693,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int x1 = x + CLIFF_CLEAR < MAP_WIDTH  ? x + CLIFF_CLEAR : MAP_WIDTH  - 1;
             for (int by = y0; by <= y1; by++)
                 for (int bx = x0; bx <= x1; bx++)
-                    cliff_blocked[by][bx] = true;
+                    water_keepout[by][bx] = true;
         }
     }
 
@@ -3891,6 +3968,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Biomes are fully settled above; place_cliffs reads the biome under each tile
     // and selects the matching cliff variant (snow/wasteland/plain) directly.
     place_cliffs(map, seed, cx, cy, hw, hw*hw, MAP_WIDTH * MAP_WIDTH);
+    build_cliff_near();
 
     GEN_STAGE(map, "before Trees");
     // --- Trees ---
@@ -4068,10 +4146,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         for (int y = 1; y < MAP_HEIGHT - 1; y++) {
             for (int x = 1; x < MAP_WIDTH - 1; x++) {
                 if (map->tiles[y][x] != TILE_WASTELAND) continue;
-                // cliff_blocked is the keep-away-from-water mask despite the
-                // name; tilemap_face_at is the one that answers "is a wall drawn
-                // over this tile".
-                if (cliff_blocked[y][x]) continue;
+                // Off the water, and not under a wall -- two different masks.
+                if (water_keepout[y][x]) continue;
                 if (tilemap_face_at(x, y)) continue;
                 if (map->overlay[y][x] != 0) continue;
                 int ddx = x - cx, ddy = y - cy;
@@ -4091,7 +4167,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int lx = 1 + (int)((ps >> 16) % (MAP_WIDTH  - 2));
             ps = ps * 1664525u + 1013904223u;
             int ly = 1 + (int)((ps >> 16) % (MAP_HEIGHT - 2));
-            if (map->tiles[ly][lx] != TILE_MEADOW || cliff_blocked[ly][lx]) continue;
+            if (map->tiles[ly][lx] != TILE_MEADOW || water_keepout[ly][lx]) continue;
             ps = ps * 1664525u + 1013904223u;
             float angle = (float)((ps >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
             ps = ps * 1664525u + 1013904223u;
@@ -4105,7 +4181,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int lx = 1 + (int)((ps >> 16) % (MAP_WIDTH  - 2));
             ps = ps * 1664525u + 1013904223u;
             int ly = 1 + (int)((ps >> 16) % (MAP_HEIGHT - 2));
-            if (map->tiles[ly][lx] != TILE_MEADOW || cliff_blocked[ly][lx]) continue;
+            if (map->tiles[ly][lx] != TILE_MEADOW || water_keepout[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_MEADOW, TILE_POND);
         }
     }
@@ -5477,8 +5553,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             if (s_cliff_elev[y][x] || tilemap_face_at(x, y)) return false;
             return true;
         };
+        // The route stays off the faces (road_region), but the stroke is
+        // three wide and its outer tiles land wherever the brush puts them --
+        // under a wall, if the route runs a tile from one. Not there.
         auto road_paint_over = [&](int x, int y) {
             int t = map->tiles[y][x];
+            if (tilemap_face_at(x, y)) return false;
             return t == TILE_GRASS || t == TILE_MEADOW || t == TILE_SAND ||
                    t == TILE_SNOW  || t == TILE_WASTELAND;
         };
@@ -5506,6 +5586,138 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                       ROUTE_ROAD, TILE_ROAD_BRIDGE,
                       ROAD_EDGE_CLEARANCE, ROAD_ENDPOINT_FREE, ROAD_ANCHOR_SEARCH,
                       ROAD_BRIDGE_MAX, ROAD_BRIDGE_GAP, true);
+    }
+
+    GEN_STAGE(map, "before Wasteland trails");
+    // --- Wasteland trails between dungeons ---
+    // Paths worn between the dungeon mouths of a wasteland, so the biome reads
+    // as somewhere people go rather than somewhere with routes drawn on it. A
+    // wasteland with fewer than two dungeons gets nothing: there is nothing to
+    // connect.
+    //
+    // Runs at the very end because dungeon entrances are the last thing placed.
+    // Everything the trail has to route around — cliffs, towns — and everything
+    // it clears out of its way or bridges over is already on the map by now.
+    //
+    // The dungeons of a region are joined by a minimum spanning tree, so every
+    // one is reachable and no pair is linked twice. A chain visiting them in
+    // turn would double back across the region; a tree branches the way tracks
+    // between places actually do.
+    {
+        const int EDGE_CLEARANCE = 6;      // tiles the trail would rather keep from the border
+        const int ENDPOINT_FREE  = 10;     // radius around a dungeon where that is waived
+        const int ANCHOR_SEARCH  = 8;      // how far off a dungeon to find ground
+        // Ground a trail must cover between one crossing and the next. Four
+        // let a trail through a braid of lava streams lay a deck every few
+        // tiles -- three or four bridges in a row where the channels ran
+        // side by side, which reads as a cluster of bridges rather than a
+        // track that happens to cross water. At ten the search has to find a
+        // stretch between channels wide enough to walk, or go round.
+        const int TRAIL_BRIDGE_GAP = 10;
+
+        // The citadel's moat is the one lava no bridge may span. Crossing it
+        // would hand over the way in that the ring exists to withhold.
+        const CastlePlacement& citadel = map->castles[2];
+        int moat_cx = citadel.x + CASTLE_W / 2, moat_cy = citadel.y + CASTLE_H / 2;
+        auto in_moat = [&](int x, int y) {
+            if (citadel.x < 0) return false;
+            int dx = x - moat_cx, dy = y - moat_cy;
+            return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
+        };
+        auto is_lava = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            return t == TILE_LAVA || t == TILE_WASTE_BRIDGE;
+        };
+
+        // Ground a trail can be laid on. Cliffs are excluded here rather than
+        // left to the brush: routing over ground that cannot be painted tears
+        // a hole in the trail, and mountains are to be gone around anyway.
+        auto is_region = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            // Wasteland, or a stretch of trail already worn across it: a later
+            // edge follows a track that is going its way rather than laying a
+            // second one beside it. That used to be read off the tile the trail
+            // had overwritten; it lives in its own layer now.
+            if (t != TILE_WASTELAND && map->route[y][x] != ROUTE_TRAIL) return false;
+            if (water_keepout[y][x]) return false;
+            // A wall is drawn over the tile: not ground a track can run on,
+            // whatever the tile id underneath says. Plateau tops carry their
+            // own ids and are excluded by the test above; the faces are the
+            // part that needs asking for. Left out of the region they are
+            // rim, so the clearance margin keeps the route off them rather
+            // than the brush clipping against them.
+            if (tilemap_face_at(x, y)) return false;
+            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
+            return true;
+        };
+
+        // The deck goes over raw lava only, and the trail over bare wasteland.
+        auto raw_lava  = [&](int x, int y) { return map->tiles[y][x] == TILE_LAVA; };
+        auto paint_over = [&](int x, int y) { return map->tiles[y][x] == TILE_WASTELAND; };
+
+        // Where the wasteland runs out under the edge of the track, let that
+        // edge lean onto the ordinary ground beside it rather than stop dead --
+        // a worn path spreads across a boundary, it does not narrow at one.
+        // Everything a trail is routed around stays excluded: cliffs, water,
+        // lava, structures, the hub, and any route already laid.
+        auto spill_over = [&](int x, int y) {
+            int t = map->tiles[y][x];
+            if (t != TILE_GRASS && t != TILE_MEADOW &&
+                t != TILE_SAND  && t != TILE_SNOW) return false;
+            if (water_keepout[y][x]) return false;
+            if (tilemap_face_at(x, y)) return false;
+            if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
+            return true;
+        };
+
+        // Only entrances a trail can actually deliver the player to: ones with
+        // level, walkable ground against their footprint. A cave system opens
+        // a mouth on top of every storey as well as one cut into the foot of
+        // its wall, and the top mouths used to be nodes too. They cannot be
+        // reached from the ground, and their anchors -- the nearest wasteland
+        // tile -- sat at the mountain's foot, so the trail led the player up to
+        // a wall with nothing there. The test is the ground, not the record's
+        // cliff_level: the foot mouth is cut INTO the level-1 wall and carries
+        // that level, yet you walk into it from the flat.
+        //
+        // The tile it finds is where the trail is aimed: the approach, not
+        // the entrance's top-left corner. Aimed at the corner, the anchor
+        // search took the nearest wasteland tile to that corner, which for a
+        // mouth cut into a wall is the tile BESIDE it, and the spur ended
+        // next to the door instead of at it. The ring is walked south row
+        // first because a wall mouth is entered from the south; for an
+        // entrance standing on open ground any side is as good as another.
+        auto on_ground = [&](const DungeonEntrance& e, int& ax, int& ay) {
+            int s = e.size + 1;
+            // Sides in order: south row, north row, west column, east column.
+            // The rows take the corners; the columns only the tiles between.
+            for (int side = 0; side < 4; side++) {
+                for (int k = -1; k <= s; k++) {
+                    int dx, dy;
+                    if (side < 2) { dy = side == 0 ? s : -1; dx = k; }
+                    else          { dx = side == 2 ? -1 : s; dy = k; if (k < 0 || k >= s) continue; }
+                    int nx = e.x + dx, ny = e.y + dy;
+                    if (!in_bounds(nx, ny)) continue;
+                    if (s_cliff_elev[ny][nx] || tilemap_face_at(nx, ny)) continue;
+                    if (!tilemap_is_walkable(map, nx, ny)) continue;
+                    ax = nx; ay = ny;
+                    return true;
+                }
+            }
+            return false;
+        };
+        std::vector<std::pair<int,int>> nodes;
+        for (int i = 0; i < map->num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = map->dungeon_entrances[i];
+            int ax, ay;
+            if (!on_ground(e, ax, ay)) continue;
+            nodes.push_back({ ax, ay });
+        }
+
+        route_network(map, seed ^ 0x7A11D0u, nodes,
+                      is_region, is_lava, raw_lava, in_moat, paint_over, spill_over,
+                      ROUTE_TRAIL, TILE_WASTE_BRIDGE,
+                      EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, 10, TRAIL_BRIDGE_GAP, false);
     }
 
     // The citadel's moat, laid again over whatever has happened since it was
@@ -5879,6 +6091,15 @@ static int biome_at(const Tilemap* map, int x, int y) {
     if (!in_bounds(x, y)) return -1;
     int t = map->tiles[y][x];
     if (t >= TILE_TOWN0_BASE) return 0;  // town cells paint grass behind themselves
+    // A plateau top is the ground it is a plateau of -- the same grass, snow
+    // or waste as the field below, standing higher (cliff_top_cover draws it
+    // so). Left out of the biome table it took no part in biome edges, and
+    // two tops of different ground met at a hard staircase where the flat
+    // ground beside them mixed with a fringe. biome_fringe keeps a top from
+    // blending with the ground below its rim by comparing elevation.
+    if (t == TILE_CLIFF || (t >= TILE_CLIFF_2 && t <= TILE_CLIFF_5))   t = TILE_GRASS;
+    else if (t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)        t = TILE_SNOW;
+    else if (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5)       t = TILE_WASTELAND;
     for (int i = 0; i < NUM_GROUND_BIOMES; i++)
         for (int j = 0; j < MAX_BIOME_TILES && s_biomes[i].tiles[j] >= 0; j++)
             if (s_biomes[i].tiles[j] == t) return i;
@@ -6157,9 +6378,19 @@ static int scatter_variant(int x, int y, const GroundCover* cover) {
 // cave materials use. KEEP IN SYNC with that script's MASTER_COL0 / OUT_COL0 /
 // BANK_COLS and the order of its BIOMES list.
 static const int TRAIL_MASTER_COL0 = 24;
+static const int TRAIL_MASTER_ROW0 = 5;
 static const int TRAIL_BANK_COL0   = 68;
 static const int TRAIL_BANK_COLS   = 3;
 enum TrailBank { TB_GRASS = 0, TB_MEADOW, TB_SAND, TB_WASTELAND, TB_SNOW, TB_COUNT };
+// Where a track crosses from one ground to another its bank changes at a tile
+// boundary, and that used to be a hard cut across the stroke. The seam cells
+// are each bank's nine-slice cut to a dither that is half dense along one
+// side of the cell and fades across it; drawn over the tile of the OTHER bank
+// on the side facing this one, the two tiles either side of the change each
+// carry half of a two-tile gradient. Baked by tools/gen_trail_tiles.py at
+// SEAM_COL0, four 3x3 blocks per bank in TrailSeamSide order; KEEP IN SYNC.
+static const int TRAIL_SEAM_COL0   = 83;
+enum TrailSeamSide { TS_NORTH = 0, TS_SOUTH, TS_WEST, TS_EAST, TS_COUNT };
 
 // Which ground this stretch of track is worn through. The track no longer
 // overwrites what it was laid on, so this is simply the tile underneath -- it
@@ -6181,13 +6412,18 @@ static int trail_bank_at(const Tilemap* map, int x, int y) {
 
 // Which of the nine cells a track tile shows, from its neighbours in the route
 // layer. Same shape as nineslice_variant below, but a track is no longer a
-// ground cover, so that function's pointer-identity test cannot answer it --
-// and a trail meeting a road must still read as two tracks, which comparing the
-// route kind gives for free.
+// ground cover, so that function's pointer-identity test cannot answer it.
+//
+// A neighbour of EITHER kind counts as the same track. The two networks are
+// different things to the router -- trails join dungeons, roads join
+// settlements -- but on the ground a worn track is a worn track, and where a
+// road runs into a trail or crosses one the two should read as one surface
+// meeting, not as two strips each drawing its border against the other. Both
+// draw from the same nine-slice in the bank of the ground beneath them, so
+// once the border is gone the join is invisible.
 static int route_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
-    uint8_t mine = map->route[y][x];
     auto same = [&](int nx, int ny) {
-        return in_bounds(nx, ny) && map->route[ny][nx] == mine;
+        return in_bounds(nx, ny) && map->route[ny][nx] != ROUTE_NONE;
     };
     bool n = same(x, y - 1), so = same(x, y + 1);
     bool w = same(x - 1, y), e  = same(x + 1, y);
@@ -6210,6 +6446,29 @@ static int route_cell(const Tilemap* map, int x, int y) {
     return route_variant(map, x, y, rc)
          + trail_bank_at(map, x, y) * TRAIL_BANK_COLS
          + TRAIL_BANK_COL0 - TRAIL_MASTER_COL0;
+}
+
+// The seam cells a track tile draws over its own: one per side whose
+// neighbour is track on different ground, in that neighbour's bank and this
+// tile's nine-slice position. Returns how many were written to `out`.
+static int route_seam_cells(const Tilemap* map, int x, int y, int* out) {
+    const GroundCover* rc = (map->route[y][x] == ROUTE_ROAD) ? &COVER_ROAD : &COVER_TRAIL;
+    int v    = route_variant(map, x, y, rc) - TILE_TOWN0_BASE;
+    int vcol = v % TOWN0_SHEET_COLS - TRAIL_MASTER_COL0;
+    int vrow = v / TOWN0_SHEET_COLS - TRAIL_MASTER_ROW0;
+    int mine = trail_bank_at(map, x, y);
+    static const int SDX[TS_COUNT] = { 0, 0, -1, 1 };
+    static const int SDY[TS_COUNT] = { -1, 1, 0, 0 };
+    int n = 0;
+    for (int s = 0; s < TS_COUNT; s++) {
+        int nx = x + SDX[s], ny = y + SDY[s];
+        if (!in_bounds(nx, ny) || map->route[ny][nx] == ROUTE_NONE) continue;
+        int theirs = trail_bank_at(map, nx, ny);
+        if (theirs == mine) continue;
+        out[n++] = sheet_cell(TRAIL_SEAM_COL0 + (theirs * TS_COUNT + s) * TRAIL_BANK_COLS + vcol,
+                              TRAIL_MASTER_ROW0 + vrow);
+    }
+    return n;
 }
 
 static int nineslice_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
@@ -6316,6 +6575,14 @@ static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 // the colour. The mask puts the change of ground exactly under the line that
 // marks it.
 static const int CLIFF_HAZE_ROW0 = 128;   // moved past the fourth bank class
+// The complement of the haze mask: the part of a rim tile that lies OUTSIDE
+// its storey's outline. A plateau's surface is drawn over the whole of its
+// rim tile, but the outline wanders inside the tile grid, and the sliver
+// between line and grid is ground of the level below -- drawn in the top's
+// colour it showed as a staircase of the top's green outside the lip wherever
+// the ground below was a different biome. Same field as the haze, so the two
+// meet at the line exactly. Baked by tools/gen_cliff_tiles.py; KEEP IN SYNC.
+static const int CLIFF_LOW_ROW0  = 160;
 // The wash is per biome, because "paler" is only a step on ground that has room
 // to get paler. Measured off the sheet, the three ground cells sit at grass
 // (63,202,64), snow (246,237,215) and waste (36,6,0) — a mid green, an almost
@@ -6721,7 +6988,11 @@ static void biome_fringe(const Tilemap* map, int x, int y, EdgeFringe* out) {
     out->variant = (int)(cover_hash(x, y, 0xF7149E00u) % EDGE_VARIANTS);
 
     for (int i = 0; i < 8; i++) {
-        int b = biome_at(map, x + EDGE_NB[i][0], y + EDGE_NB[i][1]);
+        int nx = x + EDGE_NB[i][0], ny = y + EDGE_NB[i][1];
+        // Only ground on the same level mixes. Across a rim the wall is what
+        // separates the two, and the rock art draws that join.
+        if (in_bounds(nx, ny) && s_cliff_elev[ny][nx] != s_cliff_elev[y][x]) continue;
+        int b = biome_at(map, nx, ny);
         if (b < 0 || b == mine) continue;
         int slot = -1;
         for (int j = 0; j < out->count; j++)
@@ -6772,16 +7043,58 @@ static void push_layer(EdgeLayers* out, int kind, int config, int variant,
     l->r = r; l->g = g; l->b = b;
 }
 
-static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out) {
+// The colour a neighbour's fringe is painted in on a tile standing L storeys
+// up. Everything on the tile takes the tile's own elevation wash afterwards,
+// L times, and the wash differs by biome -- a strong pale one over plain
+// ground, a faint warm one over wasteland -- so a dot painted in the
+// neighbour's flat colour ends up a different shade from the neighbour's own
+// washed surface a tile away: grass dots on wasteland brighter than the grass
+// beside them, wasteland dots on grass greyish. Dense at the boundary, that
+// read as a lighter square on each side of every biome edge on a plateau.
+//
+// So the fringe is painted AFTER the wash, in the neighbour's finished colour:
+// its flat colour washed L times by its own haze. A wash is affine,
+// c' = h + (c - h) * (1 - a), so that is one line. The one tile that cannot
+// wait is a tile carrying a track, because the track has to cover the fringe
+// and the track itself takes the wash; there the fringe goes on first, at the
+// colour which the HOST's L washes carry to the neighbour's finished colour
+// (the inverse of the same line). That inverse is not always in gamut -- two
+// plain washes lift everything to 85 or more, and washed wasteland is darker
+// than that -- which is exactly why the general case does not go first.
+static void fringe_colour(int host, int other, int L, bool before_wash,
+                          uint8_t* r, uint8_t* g, uint8_t* b) {
+    const GroundBiome& o = s_biomes[other];
+    float c[3] = { (float)o.r, (float)o.g, (float)o.b };
+    if (L > 0) {
+        const CliffHaze* hh = cliff_haze_for(s_biomes[host].tiles[0]);
+        const CliffHaze* ho = cliff_haze_for(o.tiles[0]);
+        float kh = 1.0f - hh->a / 255.0f, ko = 1.0f - ho->a / 255.0f;
+        float hhc[3] = { (float)hh->r, (float)hh->g, (float)hh->b };
+        float hoc[3] = { (float)ho->r, (float)ho->g, (float)ho->b };
+        float kh_L = 1.0f, ko_L = 1.0f;
+        for (int i = 0; i < L; i++) { kh_L *= kh; ko_L *= ko; }
+        for (int i = 0; i < 3; i++) {
+            float v = hoc[i] + (c[i] - hoc[i]) * ko_L;          // the neighbour's surface
+            if (before_wash) v = hhc[i] + (v - hhc[i]) / kh_L;  // what the host's washes make that
+            c[i] = v < 0.0f ? 0.0f : v > 255.0f ? 255.0f : v;
+        }
+    }
+    *r = (uint8_t)(c[0] + 0.5f); *g = (uint8_t)(c[1] + 0.5f); *b = (uint8_t)(c[2] + 0.5f);
+}
+
+static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out,
+                              bool before_wash) {
     out->count = 0;
     int mine = biome_at(map, x, y);
     if (mine < 0) return;
     EdgeFringe fr;
     biome_fringe(map, x, y, &fr);
+    int L = s_cliff_elev[y][x];
 
     for (int i = 0; i < fr.count; i++) {
         int other = fr.biome[i], cfg = fr.config[i];
-        const GroundBiome& o = s_biomes[other];
+        GroundBiome o = s_biomes[other];
+        fringe_colour(mine, other, L, before_wash, &o.r, &o.g, &o.b);
 
         // One of the pair draws its own border, so leave the join alone rather
         // than laying a second one over the top of it.
@@ -6808,9 +7121,9 @@ static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out)
 // Paint them. Runs after the tile has drawn itself, so everything here goes
 // over the top — the tile keeps its tufts.
 static void draw_biome_edges(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
-                             int sx, int sy, int size) {
+                             int sx, int sy, int size, bool before_wash) {
     EdgeLayers ls;
-    biome_edge_layers(map, x, y, &ls);
+    biome_edge_layers(map, x, y, &ls, before_wash);
     SDL_Rect dst = { sx, sy, size, size };
 
     for (int i = 0; i < ls.count; i++) {
@@ -6928,14 +7241,53 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
                 else if (!is_cliff)
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
-                draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
+                // The fringe of neighbouring ground goes on after the wash
+                // below, in the neighbour's finished colour (fringe_colour) --
+                // except under a track, which has to cover it and takes the
+                // wash itself, so there it goes on now.
+                bool track = map->route[y][x] != ROUTE_NONE;
+                if (track)
+                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size, true);
                 // The track, worn over that ground and over its fringe. Drawn
                 // here rather than written into the tile, so the ground keeps
                 // drawing underneath: the seam between two biomes now runs on
                 // beneath a road instead of being erased by it, and shows
                 // through wherever the track's own art is keyed out.
-                if (map->route[y][x])
+                if (track) {
                     blit_tile(renderer, route_cell(map, x, y), screen_x, screen_y, draw_size);
+                    // Then the blend toward any neighbouring track on other
+                    // ground, so the bank change spreads across two tiles
+                    // instead of cutting at one boundary.
+                    int seam[TS_COUNT];
+                    int ns = route_seam_cells(map, x, y, seam);
+                    for (int i = 0; i < ns; i++)
+                        blit_tile(renderer, seam[i], screen_x, screen_y, draw_size);
+                }
+                // The sliver of this rim tile beyond its own outline is the
+                // ground of the level below, in that ground's colour. Before
+                // the haze and the rock, both of which go over it.
+                if (s_town0_tex && is_body) {
+                    int L  = cliff_body_elev(tile_id);
+                    int hc = cliff_high_code(x, y, L);
+                    if (hc && hc != 15) {
+                        // The nearest lower neighbour's ground: edges first,
+                        // then corners, so a straight rim reads its own foot.
+                        static const int ORDER[8] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+                        int b = -1;
+                        for (int k = 0; k < 8 && b < 0; k++) {
+                            int nx = x + EDGE_NB[ORDER[k]][0], ny = y + EDGE_NB[ORDER[k]][1];
+                            if (!in_bounds(nx, ny) || s_cliff_elev[ny][nx] >= L) continue;
+                            b = biome_at(map, nx, ny);
+                        }
+                        if (b >= 0) {
+                            SDL_SetTextureColorMod(s_town0_tex, (Uint8)s_biomes[b].r,
+                                                   (Uint8)s_biomes[b].g, (Uint8)s_biomes[b].b);
+                            blit_tile(renderer, cliff_cell(CLIFF_LOW_ROW0, hc, x, y),
+                                      screen_x, screen_y, draw_size);
+                            SDL_SetTextureColorMod(s_town0_tex, 255, 255, 255);
+                        }
+                    }
+                }
                 // Standing high pales the ground you stand on — see
                 // CLIFF_HAZE_A. After the cover and its edges, so the whole
                 // surface goes; before the cliff art, so the rock does not.
@@ -6955,6 +7307,8 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     SDL_SetTextureColorMod(s_town0_tex, 255, 255, 255);
                     SDL_SetTextureAlphaMod(s_town0_tex, 255);
                 }
+                if (!track)
+                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size, false);
                 for (int li = 0; li < n_layers; li++)
                     blit_tile(renderer, layers[li], screen_x, screen_y, draw_size);
                 if (!is_cliff && is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
@@ -7535,6 +7889,10 @@ void tilemap_update(float /*dt*/) {
 // is what the art asks; see CLIFF_FACE_DRAW.
 bool tilemap_face_at(int x, int y) {
     return in_bounds(x, y) && (s_cliff_face[y][x] & ((1 << CLIFF_LEVELS) - 1)) != 0;
+}
+
+int tilemap_cliff_elev_at(int x, int y) {
+    return in_bounds(x, y) ? (int)s_cliff_elev[y][x] : 0;
 }
 
 // Whether the tile's own ground can be stood on, with nothing said about what
