@@ -82,6 +82,11 @@ int main(int argc, char** argv) {
 
     int dung_tot[NKIND + 1] = {0};    // caves counted as systems
     int cave_sys_tot = 0, cave_mouth_tot = 0;
+    // Villages by the ground they stand in, in the order of the quota table
+    // in tilemap.cpp's village pass: flats, forest, sand, snow, wasteland.
+    static const int VIL_BIOME[5] = { TILE_GRASS, TILE_TREE, TILE_SAND, TILE_SNOW, TILE_WASTELAND };
+    static const char* VIL_NAME[5] = { "flat", "forest", "sand", "snow", "waste" };
+    int vil_tot[5] = {0}, vil_all_seeds = 0;
     int seeds_with[NKIND + 1] = {0};  // seeds where this kind spawned PROCEDURALLY
     int full_seeds = 0, complete_seeds = 0;
 
@@ -169,6 +174,17 @@ int main(int argc, char** argv) {
             if (proc[k] > 0) seeds_with[k]++;
         }
         cave_sys_tot += sys; cave_mouth_tot += mouths;
+
+        int vil[5] = {0};
+        for (int i = 0; i < g_map.num_villages; i++)
+            for (int b = 0; b < 5; b++)
+                if (g_map.villages[i].biome == VIL_BIOME[b]) { vil[b]++; break; }
+        bool every = true;
+        for (int b = 0; b < 5; b++) { vil_tot[b] += vil[b]; if (!vil[b]) every = false; }
+        if (every) vil_all_seeds++;
+        printf("%-10s villages %2d:", "", g_map.num_villages);
+        for (int b = 0; b < 5; b++) printf(" %s %d", VIL_NAME[b], vil[b]);
+        printf("%s\n", every ? "" : "   <-- a biome with none");
     }
 
     int grand = 0;
@@ -203,6 +219,10 @@ int main(int argc, char** argv) {
     if (!broken) printf("\nEvery adjacent pair is in table order.\n");
 
     if (dung_tot[NKIND]) printf("\n%d entrances had a kind outside the table.\n", dung_tot[NKIND]);
+
+    printf("\nvillages per seed by ground:");
+    for (int b = 0; b < 5; b++) printf(" %s %.1f", VIL_NAME[b], (double)vil_tot[b] / nseeds);
+    printf("\n%d of %d seeds have a village in every biome.\n", vil_all_seeds, nseeds);
 
     printf("\n%d of %d seeds contain all %d kinds.%s\n", complete_seeds, nseeds, NKIND,
            complete_seeds == nseeds ? "  Every kind spawns in every world."

@@ -1907,7 +1907,8 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
     map->towns[town_idx] = { tx, ty, town_idx };
 }
 
-static void stamp_village_blueprint(Tilemap* map, int variant, int tx, int ty) {
+// `biome` is what the site read as before the stamp; the stamp erases it.
+static void stamp_village_blueprint(Tilemap* map, int variant, int tx, int ty, int biome) {
     // Pre-fill footprint with the village placeholder (orange/black until sprites are added)
     for (int dy = 0; dy < VILLAGE_H; dy++)
         for (int dx = 0; dx < VILLAGE_W; dx++) {
@@ -1940,7 +1941,7 @@ static void stamp_village_blueprint(Tilemap* map, int variant, int tx, int ty) {
         }
     }
     int vi = map->num_villages++;
-    map->villages[vi] = { tx, ty, variant };
+    map->villages[vi] = { tx, ty, variant, biome };
 }
 
 // The wasteland citadel stands inside a ring of lava with no way across it, so
@@ -4543,59 +4544,144 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     GEN_STAGE(map, "before Villages");
     // --- Villages ---
-    // 10-15 small settlements scattered across the map.
-    // Dungeons are allowed inside village footprints (no tile pre-fill, so
-    // underlying terrain stays and door_ok accepts it normally).
+    // Twelve small settlements. Dungeons are allowed inside village
+    // footprints: the stamp fills the footprint with the placeholder tile,
+    // and door_ok accepts that tile.
+    //
+    // Where they stand is a preference with a floor, not luck and not a
+    // quota. The rolls used to be uniform over the inland map with no biome
+    // test, so a world's villages went wherever the dice fell and nothing
+    // promised a snowfield or a desert one. Now every biome gets one first,
+    // and the rest are rolled with each ground's chance of keeping a roll
+    // set by the table: the open flats keep every roll, forest, desert and
+    // snow keep fewer, the wasteland fewest. The counts come out different
+    // every world -- all ones but the flats, or three in the snow -- which is
+    // the point; only the floor is fixed. The biome is what biome_of() reads
+    // at the footprint's centre, before the stamp covers it.
     {
+        struct VillageGround { int biome; int keep; };   // keep: chance in 5 of keeping a roll
+        static const VillageGround GROUND[] = {
+            { TILE_GRASS,     5 },   // open flat ground, meadow included
+            { TILE_TREE,      2 },   // forest
+            { TILE_SAND,      2 },
+            { TILE_SNOW,      2 },
+            { TILE_WASTELAND, 1 },
+        };
+        const int NG = (int)(sizeof(GROUND) / sizeof(GROUND[0]));
         const int TARGET_VILLAGES   = 12;
         const int MIN_VILLAGE_DIST  = 150; // village-to-village (TL corner distance)
         const int MIN_TOWN_VIL_DIST = 300; // village-to-town
         const int MARGIN = 450; // ocean band is up to ~420 tiles wide; keep villages inland
+        static_assert(sizeof(map->villages) / sizeof(map->villages[0]) >= 12,
+                      "the village array is smaller than TARGET_VILLAGES");
 
+        // Ground a village can stand on: no water, no lava, no pond, no cliff
+        // of any kind -- the tops by their ids, the faces by the mask, since a
+        // face is drawn over ordinary ground and the id under it says nothing.
         auto village_footprint_ok = [&](int tx, int ty) -> bool {
             for (int dy = 0; dy < VILLAGE_H; dy++)
                 for (int dx = 0; dx < VILLAGE_W; dx++) {
                     int bt = map->tiles[ty+dy][tx+dx];
-                    if (bt == TILE_WATER || bt == TILE_RIVER) return false;
+                    if (bt == TILE_WATER || bt == TILE_RIVER ||
+                        bt == TILE_LAVA  || bt == TILE_POND) return false;
                     if (is_cliff(bt)) return false;
+                    if (tilemap_face_at(tx+dx, ty+dy)) return false;
                 }
             return true;
+        };
+        auto ground_of = [&](int biome) {
+            for (int g = 0; g < NG; g++) if (GROUND[g].biome == biome) return g;
+            return 0;   // anything else counts as the flats
+        };
+        // Every test but the ground's, with the clearances as given so the
+        // floor below can relax them.
+        auto site_ok = [&](int tx, int ty, int vil_dist, int town_dist) -> bool {
+            if (tx < 1 || ty < 1 || tx + VILLAGE_W >= MAP_WIDTH - 1 || ty + VILLAGE_H >= MAP_HEIGHT - 1)
+                return false;
+            int ddx = tx - cx, ddy = ty - cy;
+            if (ddx*ddx + ddy*ddy <= (hw+VILLAGE_H)*(hw+VILLAGE_H)) return false;  // the hub
+            if (!village_footprint_ok(tx, ty)) return false;
+            for (int i = 0; i < 3; i++) {
+                if (map->towns[i].x < 0) continue;
+                int dx2 = map->towns[i].x - tx, dy2 = map->towns[i].y - ty;
+                if (dx2*dx2 + dy2*dy2 < town_dist*town_dist) return false;
+            }
+            for (int i = 0; i < map->num_villages; i++) {
+                int dx2 = map->villages[i].x - tx, dy2 = map->villages[i].y - ty;
+                if (dx2*dx2 + dy2*dy2 < vil_dist*vil_dist) return false;
+            }
+            return true;
+        };
+        auto site_biome = [&](int tx, int ty) {
+            return biome_of(map, tx + VILLAGE_W / 2, ty + VILLAGE_H / 2);
         };
 
         map->num_villages = 0;
         unsigned int vs = seed ^ 0xA71B4C03u;
-
-        for (int attempt = 0; map->num_villages < TARGET_VILLAGES && attempt < 200000; attempt++) {
+        auto roll_site = [&](int margin, int& tx, int& ty) {
             vs = vs * 1664525u + 1013904223u;
-            int tx = MARGIN + (int)((vs >> 16) % (unsigned)(MAP_WIDTH  - 2*MARGIN));
+            tx = margin + (int)((vs >> 16) % (unsigned)(MAP_WIDTH  - 2*margin));
             vs = vs * 1664525u + 1013904223u;
-            int ty = MARGIN + (int)((vs >> 16) % (unsigned)(MAP_HEIGHT - 2*MARGIN));
-
-            // Stay outside the center hub area
-            int ddx = tx - cx, ddy = ty - cy;
-            if (ddx*ddx + ddy*ddy <= (hw+VILLAGE_H)*(hw+VILLAGE_H)) continue;
-
-            if (!village_footprint_ok(tx, ty)) continue;
-
-            // Far from all towns
-            bool ok = true;
-            for (int i = 0; i < 3 && ok; i++) {
-                if (map->towns[i].x < 0) continue;
-                int dx2 = map->towns[i].x - tx, dy2 = map->towns[i].y - ty;
-                if (dx2*dx2 + dy2*dy2 < MIN_TOWN_VIL_DIST*MIN_TOWN_VIL_DIST) ok = false;
-            }
-            if (!ok) continue;
-
-            // Far from all existing villages
-            for (int i = 0; i < map->num_villages && ok; i++) {
-                int dx2 = map->villages[i].x - tx, dy2 = map->villages[i].y - ty;
-                if (dx2*dx2 + dy2*dy2 < MIN_VILLAGE_DIST*MIN_VILLAGE_DIST) ok = false;
-            }
-            if (!ok) continue;
-
+            ty = margin + (int)((vs >> 16) % (unsigned)(MAP_HEIGHT - 2*margin));
+        };
+        auto place = [&](int tx, int ty, int biome) {
             vs = vs * 1664525u + 1013904223u;
             int variant = (int)((vs >> 16) % NUM_VILLAGE_VARIANTS);
-            stamp_village_blueprint(map, variant, tx, ty);
+            stamp_village_blueprint(map, variant, tx, ty, biome);
+        };
+
+        // The floor: one village on each ground, before anything is rolled
+        // for. Rolled first, so it lands somewhere as random as the rest; if
+        // twenty thousand rolls never hit a footprint that fits on that
+        // ground -- the wasteland is a fiftieth of the map, and the coast
+        // biomes mostly lie outside the inland margin -- walk the whole map
+        // in shuffled 150-tile cells for the first site that fits, and if
+        // none fits at the usual clearances, again at half and at a quarter:
+        // the earlier biome guarantee only promises a patch, not a wide one.
+        for (int g = 0; g < NG; g++) {
+            int want = GROUND[g].biome;
+            bool placed = false;
+            for (int attempt = 0; attempt < 20000 && !placed; attempt++) {
+                int tx, ty; roll_site(MARGIN, tx, ty);
+                if (site_biome(tx, ty) != want) continue;
+                if (!site_ok(tx, ty, MIN_VILLAGE_DIST, MIN_TOWN_VIL_DIST)) continue;
+                place(tx, ty, want); placed = true;
+            }
+            if (placed) continue;
+            const int CELL = 150, EDGE = 32;
+            const int GW = (MAP_WIDTH - 2*EDGE) / CELL, GH = (MAP_HEIGHT - 2*EDGE) / CELL;
+            std::vector<int> cells(GW * GH);
+            for (int i = 0; i < GW * GH; i++) cells[i] = i;
+            for (int i = GW * GH - 1; i > 0; i--) {
+                vs = vs * 1664525u + 1013904223u;
+                int j = (int)((vs >> 16) % (unsigned)(i + 1));
+                std::swap(cells[i], cells[j]);
+            }
+            for (int relax = 0; relax < 3 && !placed; relax++) {
+                int vd = MIN_VILLAGE_DIST >> relax, td = MIN_TOWN_VIL_DIST >> relax;
+                for (int ci : cells) {
+                    int x0 = EDGE + (ci % GW) * CELL, y0 = EDGE + (ci / GW) * CELL;
+                    for (int ty = y0; ty < y0 + CELL && !placed; ty += 3)
+                        for (int tx = x0; tx < x0 + CELL && !placed; tx += 3) {
+                            if (site_biome(tx, ty) != want) continue;
+                            if (!site_ok(tx, ty, vd, td)) continue;
+                            place(tx, ty, want); placed = true;
+                        }
+                    if (placed) break;
+                }
+            }
+        }
+
+        // The rest, rolled: a roll on a given ground is kept with that
+        // ground's chance, so the flats fill fastest and the wasteland
+        // slowest, and the split is different every world.
+        for (int attempt = 0; map->num_villages < TARGET_VILLAGES && attempt < 200000; attempt++) {
+            int tx, ty; roll_site(MARGIN, tx, ty);
+            if (!site_ok(tx, ty, MIN_VILLAGE_DIST, MIN_TOWN_VIL_DIST)) continue;
+            int biome = site_biome(tx, ty);
+            vs = vs * 1664525u + 1013904223u;
+            if ((int)((vs >> 16) % 5u) >= GROUND[ground_of(biome)].keep) continue;
+            place(tx, ty, biome);
         }
     }
 

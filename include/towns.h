@@ -386,8 +386,10 @@ static const char** all_towns_coll[3] = {
 
 // ---------------------------------------------------------------------------
 // Village blueprints — 4 variants, randomly assigned per village.
-// Villages are smaller than towns and don't pre-fill with blueprint marker,
-// so undesigned cells leave the underlying terrain unchanged.
+// Villages are smaller than towns. The stamp fills the whole footprint with
+// TILE_VILLAGE_PLACEHOLDER first, so an undesigned cell is placeholder, not
+// the terrain that was there; the terrain's biome survives only as the
+// VillagePlacement's `biome` field.
 // ---------------------------------------------------------------------------
 static const char* village_0[] = { nullptr };
 static const char* village_1[] = { nullptr };

@@ -245,6 +245,10 @@ typedef struct {
 typedef struct {
     int x, y;    // top-left tile coordinate where the village was stamped
     int variant; // which of the village blueprint variants was used
+    int biome;   // biome_of() at the footprint's centre before the stamp: TILE_GRASS
+                 // (open flat ground, meadow included), TILE_TREE (forest),
+                 // TILE_SAND, TILE_SNOW or TILE_WASTELAND. The stamp covers the
+                 // ground, so this is the only record of what it stood in.
 } VillagePlacement;
 
 typedef struct {
