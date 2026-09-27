@@ -254,8 +254,8 @@ int main(int argc, char *argv[])
     int  dbg_tour     = -1;
 
     bool dbg_open     = false;
-    // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid
-    static const int DBG_ROW_COUNT = 7;
+    // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam
+    static const int DBG_ROW_COUNT = 8;
     int  dbg_sel      = 0;
     int  dbg_target   = 0;
     bool dbg_noclip   = false;
@@ -469,6 +469,25 @@ int main(int argc, char *argv[])
             if (dbg_sel == 6 && dbg_confirm)
                 dbg_grid = !dbg_grid;
 
+            // Row 7: stand three tiles short of the seam, on the nearest
+            // walkable tile to the middle of it, so the crossing can be tried
+            // in seconds. The seam is the far edge of the wrap axis.
+            if (dbg_sel == 7 && dbg_confirm && state == STATE_OVERWORLD) {
+                int sx = MAP_WIDTH / 2, sy = MAP_HEIGHT / 2;
+                if (map->wrap_axis == WRAP_X) sx = MAP_WIDTH  - 4;
+                else                          sy = MAP_HEIGHT - 4;
+                for (int d = 0; d < MAP_WIDTH / 2; d++) {
+                    int ax = sx, ay = sy;
+                    if (map->wrap_axis == WRAP_X) ay = MAP_HEIGHT / 2 + ((d & 1) ? d / 2 : -(d / 2));
+                    else                          ax = MAP_WIDTH  / 2 + ((d & 1) ? d / 2 : -(d / 2));
+                    if (!tilemap_is_walkable(map, ax, ay)) continue;
+                    ow.x = ax * TILE_SIZE + TILE_SIZE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
+                    ow.y = ay * TILE_SIZE + TILE_SIZE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+                    break;
+                }
+                dbg_open = false;
+            }
+
             if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
                 dbg_open = false;
         }
@@ -534,7 +553,7 @@ int main(int argc, char *argv[])
                         if (e->gravestones_spawned) continue;
                         float ex = (float)(e->x * TILE_SIZE + TILE_SIZE / 2);
                         float ey = (float)(e->y * TILE_SIZE + TILE_SIZE / 2);
-                        float ddx = px - ex, ddy = py - ey;
+                        float ddx = wrap_dpx(px - ex), ddy = wrap_dpy(py - ey);
                         if (ddx*ddx + ddy*ddy < SPAWN_RANGE * SPAWN_RANGE) {
                             // SM hides its entrance under one of a scattered
                             // handful; the two larger scales lay theirs out in
@@ -623,8 +642,8 @@ int main(int argc, char *argv[])
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
-                        int etx = (int)((ow.x + player.width  * 0.5f) / TILE_SIZE);
-                        int ety = (int)((ow.y + player.height - 8.0f) / TILE_SIZE);
+                        int etx = wrap_x((int)((ow.x + player.width  * 0.5f) / TILE_SIZE));
+                        int ety = wrap_y((int)((ow.y + player.height - 8.0f) / TILE_SIZE));
 
                         // Find the DungeonEntrance record we're standing on.
                         int cur_ent_idx = -1;
@@ -1351,6 +1370,16 @@ int main(int argc, char *argv[])
             {
                 const char* gr = dbg_grid ? "GRID: ON " : "GRID: OFF";
                 draw_row(6, gr, dbg_sel == 6);
+            }
+
+            // Row 7: warp to the seam, and which way the world wraps
+            {
+                static const char* SIDE[4] = { "W", "E", "N", "S" };
+                char sb[64];
+                SDL_snprintf(sb, sizeof(sb), "WARP TO SEAM (OCEAN %s, WRAP %s)",
+                             SIDE[map->ocean_side & 3],
+                             map->wrap_axis == WRAP_X ? "E-W" : "N-S");
+                draw_row(7, sb, dbg_sel == 7);
             }
 
             draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",

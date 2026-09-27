@@ -1,4 +1,5 @@
 #include "resource_node.h"
+#include "tilemap.h"   // wrap_dpx/wrap_dpy: a node is measured to through its nearest image
 #include <math.h>
 
 static int abs_int(int v) 
@@ -140,8 +141,8 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
         const ResourceNode* n = &list->nodes[i];
         if (!n->alive) continue;
 
-        int screen_x = (int)((n->x - cam->x) * z);
-        int screen_y = (int)((n->y - cam->y) * z);
+        int screen_x = cam_screen_x(cam, n->x);
+        int screen_y = cam_screen_y(cam, n->y);
         int w = (int)(n->width * z);
         int h = (int)(n->height * z);
 
@@ -233,7 +234,7 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
 
         float cx = n->x + n->width  * 0.5f;
         float cy = n->y + n->height * 0.5f;
-        float dx = cx - player_x, dy = cy - player_y;
+        float dx = wrap_dpx(cx - player_x), dy = wrap_dpy(cy - player_y);
         if (dx*dx + dy*dy > radius * radius) continue;
 
         // Half-open span, so a node is struck exactly once per turn however the
@@ -269,7 +270,7 @@ float resource_nodes_first_along(const ResourceNodeList* list, float px, float p
         float cx = n->x + n->width  * 0.5f;
         float cy = n->y + n->height * 0.5f;
         float along, side;
-        thrust_project(angle, cx - px, cy - py, &along, &side);
+        thrust_project(angle, wrap_dpx(cx - px), wrap_dpy(cy - py), &along, &side);
 
         if (along < 0.0f || along > max_reach) continue;
         if (side < -half_width || side > half_width) continue;
@@ -290,7 +291,7 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
         float cx = n->x + n->width  * 0.5f;
         float cy = n->y + n->height * 0.5f;
         float along, side;
-        thrust_project(angle, cx - px, cy - py, &along, &side);
+        thrust_project(angle, wrap_dpx(cx - px), wrap_dpy(cy - py), &along, &side);
 
         if (along < from || along >= to) continue;
         if (side < -half_width || side > half_width) continue;
@@ -313,8 +314,9 @@ int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float 
         if (!n->alive) continue;
 
         // Node box grown by the object's radius.
-        if (x < n->x - radius || x > n->x + n->width  + radius) continue;
-        if (y < n->y - radius || y > n->y + n->height + radius) continue;
+        float rx = wrap_dpx(x - n->x), ry = wrap_dpy(y - n->y);
+        if (rx < -radius || rx > n->width  + radius) continue;
+        if (ry < -radius || ry > n->height + radius) continue;
 
         n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
         int destroyed = 0;
@@ -340,8 +342,8 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
 
         float cx = n->x + n->width  * 0.5f;
         float cy = n->y + n->height * 0.5f;
-        int dx = (int)(cx - player_x);
-        int dy = (int)(cy - player_y);
+        int dx = (int)wrap_dpx(cx - player_x);
+        int dy = (int)wrap_dpy(cy - player_y);
         if (abs_int(dx) > range || abs_int(dy) > range) continue;
 
         n->hp -= weapon_harvest_damage(weapon, node_target(n->type));

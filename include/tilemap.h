@@ -9,6 +9,13 @@
 #define MAP_HEIGHT 3000
 #define TILE_SIZE  32
 
+// The shape of the world. Two opposite edges are hard borders -- the ocean and
+// the mountain edge across from it -- and the other two are joined: walk off
+// one and you arrive at the other, and the ground carries on as if the edge
+// were any other stretch of it. Which pair is joined follows the ocean, so it
+// is rolled with the seed in phase 1 and read from the map from then on.
+typedef enum WrapAxis { WRAP_X = 0, WRAP_Y = 1 } WrapAxis;
+
 enum TileId {
     TILE_GRASS   = 0,
     TILE_PATH    = 1,
@@ -291,6 +298,8 @@ typedef struct Tilemap {
     // paths depend on it being one.
     uint8_t route[MAP_HEIGHT][MAP_WIDTH];
     float cliff_peak_x, cliff_peak_y; // debug: gradient peak for minimap dot
+    int ocean_side;                   // 0=W 1=E 2=N 3=S; the edge across from it is the mountain edge
+    int wrap_axis;                    // WrapAxis: WRAP_X for a N/S ocean, WRAP_Y for a W/E one
     DungeonEntrance dungeon_entrances[MAX_DUNGEON_ENTRANCES];
     int num_dungeon_entrances;
     TownPlacement    towns[3];         // filled during phase2
@@ -380,6 +389,23 @@ bool minimap_click_to_world(int screen_w, int screen_h, int mx, int my,
 // Signal the background generation thread to abort early (call before join on shutdown).
 void tilemap_cancel_gen();
 void tilemap_reset_gen_cancel();
+
+// The wrap, as everything that looks past a tile reads it. The arrays are
+// indexed by canonical coordinates, 0..MAP-1; a neighbour, an offset or a
+// delta is brought back to canonical on the wrap axis and left alone on the
+// other. Anything that used to ask "is this inside the array" of a neighbour
+// asks in_world() instead: it wraps the wrap-axis coordinate in place and
+// answers for the hard-border one. Deltas come back in (-half, half], so the
+// nearest image of a thing is the one measured to, drawn at, and struck.
+int   wrap_x(int x);
+int   wrap_y(int y);
+bool  in_world(int* x, int* y);
+int   wrap_dx(int dx);
+int   wrap_dy(int dy);
+float wrap_dpx(float dx);     // the same, in pixels
+float wrap_dpy(float dy);
+float wrap_px(float px);      // a pixel position back to canonical
+float wrap_py(float py);
 
 bool tilemap_face_at(int x, int y);
 // The plateau level a tile stands at, 0 for the flat. For the tools' ground

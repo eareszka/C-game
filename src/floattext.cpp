@@ -39,8 +39,8 @@ void floattext_update_draw(FloatText* ft, float dt, const Camera* cam, SDL_Rende
         return;
     }
 
-    int sx = (int)((ft->wx - cam->x) * cam->zoom);
-    int sy = (int)((ft->wy - cam->y) * cam->zoom) - (int)ft->drift;
+    int sx = cam_screen_x(cam, ft->wx);
+    int sy = cam_screen_y(cam, ft->wy) - (int)ft->drift;
     sx -= text_width(ft->text, 1) / 2;
     float a = ft->life;
     draw_text(ren, ft->text, sx, sy, 1,

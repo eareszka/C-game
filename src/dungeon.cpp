@@ -2446,13 +2446,18 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
     // the mouths average out. It lays the chambers out to match, so the
     // south-face mouth opens into the south of the cave and a north top into the
     // north of it.
+    // Measured from the first mouth through the wrap, so a mountain lying
+    // across the seam is still one shape and not two halves a world apart.
     if (w.n_mouths >= 2) {
         int sx = 0, sy = 0;
-        for (int m = 0; m < w.n_mouths; m++) { sx += w.mouth_ow_x[m]; sy += w.mouth_ow_y[m]; }
+        for (int m = 0; m < w.n_mouths; m++) {
+            sx += wrap_dx(w.mouth_ow_x[m] - w.mouth_ow_x[0]);
+            sy += wrap_dy(w.mouth_ow_y[m] - w.mouth_ow_y[0]);
+        }
         sx /= w.n_mouths; sy /= w.n_mouths;
         for (int m = 0; m < w.n_mouths; m++) {
-            w.want_ox[m] = w.mouth_ow_x[m] - sx;
-            w.want_oy[m] = w.mouth_ow_y[m] - sy;
+            w.want_ox[m] = wrap_dx(w.mouth_ow_x[m] - w.mouth_ow_x[0]) - sx;
+            w.want_oy[m] = wrap_dy(w.mouth_ow_y[m] - w.mouth_ow_y[0]) - sy;
         }
     }
 
@@ -2510,12 +2515,12 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
             w.entry_ow_x = ax; w.entry_ow_y = ay;
             w.exit_ow_x  = bx; w.exit_ow_y  = by;
             w.from_exit     = 0;
-            w.connect_angle = atan2f((float)(by - ay), (float)(bx - ax));
+            w.connect_angle = atan2f((float)wrap_dy(by - ay), (float)wrap_dx(bx - ax));
         } else {
             w.entry_ow_x = bx; w.entry_ow_y = by;
             w.exit_ow_x  = ax; w.exit_ow_y  = ay;
             w.from_exit     = 1;
-            w.connect_angle = atan2f((float)(ay - by), (float)(ax - bx));
+            w.connect_angle = atan2f((float)wrap_dy(ay - by), (float)wrap_dx(ax - bx));
         }
     }
     // 4. Otherwise solo, which is what the defaults above already say.

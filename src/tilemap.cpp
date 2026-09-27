@@ -256,8 +256,77 @@ static SDL_Texture* s_shore_in_tex[256][EDGE_VARIANTS]  = {};  // shallows insid
 
 // ---------------------------------------------------------------------------
 
+// Inside the array. Only for the passes that walk the whole map, or that mean
+// the array's edge and not the world's; anything asking after a neighbour or
+// an offset goes through in_world() below, which knows two of the edges join.
 static bool in_bounds(int x, int y) {
     return x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT;
+}
+
+// Which axis joins, as phase 1 chose it. A file static beside the map's own
+// field because the drawing and collision helpers are static and take no map,
+// and the tools that link this file build one world at a time.
+static int s_wrap_axis = WRAP_X;
+
+int wrap_x(int x) {
+    if (s_wrap_axis != WRAP_X) return x;
+    x %= MAP_WIDTH;
+    return x < 0 ? x + MAP_WIDTH : x;
+}
+int wrap_y(int y) {
+    if (s_wrap_axis != WRAP_Y) return y;
+    y %= MAP_HEIGHT;
+    return y < 0 ? y + MAP_HEIGHT : y;
+}
+bool in_world(int* x, int* y) {
+    if (s_wrap_axis == WRAP_X) {
+        *x = wrap_x(*x);
+        return *y >= 0 && *y < MAP_HEIGHT;
+    }
+    *y = wrap_y(*y);
+    return *x >= 0 && *x < MAP_WIDTH;
+}
+int wrap_dx(int dx) {
+    if (s_wrap_axis != WRAP_X) return dx;
+    dx %= MAP_WIDTH;
+    if (dx >  MAP_WIDTH / 2) dx -= MAP_WIDTH;
+    if (dx <= -MAP_WIDTH / 2) dx += MAP_WIDTH;
+    return dx;
+}
+int wrap_dy(int dy) {
+    if (s_wrap_axis != WRAP_Y) return dy;
+    dy %= MAP_HEIGHT;
+    if (dy >  MAP_HEIGHT / 2) dy -= MAP_HEIGHT;
+    if (dy <= -MAP_HEIGHT / 2) dy += MAP_HEIGHT;
+    return dy;
+}
+float wrap_dpx(float dx) {
+    if (s_wrap_axis != WRAP_X) return dx;
+    const float W = (float)MAP_WIDTH * TILE_SIZE;
+    dx = fmodf(dx, W);
+    if (dx >  W * 0.5f) dx -= W;
+    if (dx <= -W * 0.5f) dx += W;
+    return dx;
+}
+float wrap_dpy(float dy) {
+    if (s_wrap_axis != WRAP_Y) return dy;
+    const float H = (float)MAP_HEIGHT * TILE_SIZE;
+    dy = fmodf(dy, H);
+    if (dy >  H * 0.5f) dy -= H;
+    if (dy <= -H * 0.5f) dy += H;
+    return dy;
+}
+float wrap_px(float px) {
+    if (s_wrap_axis != WRAP_X) return px;
+    const float W = (float)MAP_WIDTH * TILE_SIZE;
+    px = fmodf(px, W);
+    return px < 0.0f ? px + W : px;
+}
+float wrap_py(float py) {
+    if (s_wrap_axis != WRAP_Y) return py;
+    const float H = (float)MAP_HEIGHT * TILE_SIZE;
+    py = fmodf(py, H);
+    return py < 0.0f ? py + H : py;
 }
 
 // Generation tracing. Worldgen runs two dozen passes over the whole map, so
@@ -294,7 +363,7 @@ static bool overlay_site_dry(const Tilemap* map, int tx, int ty) {
     for (int dy = -1; dy <= 1; dy++)
         for (int dx = -1; dx <= 1; dx++) {
             int nx = tx + dx, ny = ty + dy;
-            if (in_bounds(nx, ny) && tile_id_is_liquid(map->tiles[ny][nx])) return false;
+            if (in_world(&nx, &ny) && tile_id_is_liquid(map->tiles[ny][nx])) return false;
         }
     return true;
 }
@@ -884,7 +953,7 @@ static float cliff_facing(int x, int y, int L) {
     for (int dy = -CLIFF_BANK_R; dy <= CLIFF_BANK_R; dy++)
         for (int dx = -CLIFF_BANK_R; dx <= CLIFF_BANK_R; dx++) {
             int px = x + dx, py = y + dy;
-            if (!in_bounds(px, py) || s_cliff_elev[py][px] < L) continue;
+            if (!in_world(&px, &py) || s_cliff_elev[py][px] < L) continue;
             n++; sx += dx; sy += dy;
         }
     if (!n) return -1.0f;
@@ -2033,7 +2102,16 @@ static void stamp_castle_blueprint(Tilemap* map, int type, int tx, int ty) {
 }
 
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
-    (void)seed;
+    // Which edge the ocean takes (0=W, 1=E, 2=N, 3=S), and with it which pair
+    // of edges joins: the ocean and the edge across from it are the borders,
+    // the other two wrap. Rolled here rather than in phase 2 so the runtime
+    // has the shape of the world before the world is finished.
+    unsigned int side_seed = seed ^ 0x5EA5EDEEu;
+    side_seed = side_seed * 1664525u + 1013904223u;
+    map->ocean_side = (int)((side_seed >> 16) % 4);
+    map->wrap_axis  = (map->ocean_side <= 1) ? WRAP_Y : WRAP_X;
+    s_wrap_axis     = map->wrap_axis;
+
     const int cx = MAP_WIDTH  / 2;
     const int cy = MAP_HEIGHT / 2;
     const int hw = 90;
@@ -3504,10 +3582,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     const int cy = MAP_HEIGHT / 2;
     const int hw = 90;
 
-    // Pick which edge the ocean occupies (0=W, 1=E, 2=N, 3=S)
-    unsigned int side_seed = seed ^ 0x5EA5EDEEu;
-    side_seed = side_seed * 1664525u + 1013904223u;
-    int ocean_side = (int)((side_seed >> 16) % 4);
+    // Which edge the ocean occupies (0=W, 1=E, 2=N, 3=S): phase 1's roll.
+    const int ocean_side = map->ocean_side;
 
     GEN_STAGE(map, "before Ocean");
     // --- Ocean ---
@@ -6173,7 +6249,7 @@ static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]
 
 // Index into s_biomes, or -1 for a tile that takes no part in biome edges.
 static int biome_at(const Tilemap* map, int x, int y) {
-    if (!in_bounds(x, y)) return -1;
+    if (!in_world(&x, &y)) return -1;
     int t = map->tiles[y][x];
     if (t >= TILE_TOWN0_BASE) return 0;  // town cells paint grass behind themselves
     // A plateau top is the ground it is a plateau of -- the same grass, snow
@@ -6373,12 +6449,12 @@ static int tuft_variant(const Tilemap* map, int x, int y, const GroundCover* cov
     // biome edge and a green half ends up against a pink one. The edge lip does
     // not enter into it — a lipped tile still draws its own variant underneath.
     auto pairs_with = [&](int nx) { return tile_cover(map, nx, y) == cover; };
-    bool left_starts = x > 0 && pairs_with(x - 1)
-                             && cover_clump_raw(x - 1, y)
-                             && !(x > 1 && cover_clump_raw(x - 2, y));
+    // The raw roll is read at the canonical tile, so the two tiles either side
+    // of the seam agree about which of them starts the pair.
+    auto raw = [&](int nx) { int ny = y; return in_world(&nx, &ny) && cover_clump_raw(nx, ny); };
+    bool left_starts = pairs_with(x - 1) && raw(x - 1) && !raw(x - 2);
     if (left_starts) return cover->v[1];
-    if (cover_clump_raw(x, y) && !(x > 0 && cover_clump_raw(x - 1, y))
-                              && pairs_with(x + 1))
+    if (raw(x) && !raw(x - 1) && pairs_with(x + 1))
         return cover->v[0];
 
     // Of the tiles left over, ~53% plain and the rest split between the three
@@ -6408,7 +6484,7 @@ static inline bool cover_dune_raw(int x, int y) {
 // It is slightly conservative — a start can be suppressed by a raw neighbour
 // that was itself suppressed — which costs a few dunes and no correctness.
 static bool cover_dune_start(const Tilemap* map, int x, int y, const GroundCover* cover) {
-    if (!cover_dune_raw(x, y)) return false;
+    if (!in_world(&x, &y) || !cover_dune_raw(x, y)) return false;
     // All four cells have to be drawing this same cover, or the dune runs off
     // the edge of the desert and leaves part of an oval on the grass. The
     // origin included: this is asked of neighbouring tiles too, and one of
@@ -6420,7 +6496,8 @@ static bool cover_dune_start(const Tilemap* map, int x, int y, const GroundCover
     for (int dy = -1; dy <= 1; dy++)
         for (int dx = -1; dx <= 1; dx++) {
             bool earlier = (dy < 0) || (dy == 0 && dx < 0);
-            if (earlier && cover_dune_raw(x + dx, y + dy)) return false;
+            int nx = x + dx, ny = y + dy;
+            if (earlier && in_world(&nx, &ny) && cover_dune_raw(nx, ny)) return false;
         }
     return true;
 }
@@ -6508,7 +6585,7 @@ static int trail_bank_at(const Tilemap* map, int x, int y) {
 // once the border is gone the join is invisible.
 static int route_variant(const Tilemap* map, int x, int y, const GroundCover* cover) {
     auto same = [&](int nx, int ny) {
-        return in_bounds(nx, ny) && map->route[ny][nx] != ROUTE_NONE;
+        return in_world(&nx, &ny) && map->route[ny][nx] != ROUTE_NONE;
     };
     bool n = same(x, y - 1), so = same(x, y + 1);
     bool w = same(x - 1, y), e  = same(x + 1, y);
@@ -6547,7 +6624,7 @@ static int route_seam_cells(const Tilemap* map, int x, int y, int* out) {
     int n = 0;
     for (int s = 0; s < TS_COUNT; s++) {
         int nx = x + SDX[s], ny = y + SDY[s];
-        if (!in_bounds(nx, ny) || map->route[ny][nx] == ROUTE_NONE) continue;
+        if (!in_world(&nx, &ny) || map->route[ny][nx] == ROUTE_NONE) continue;
         int theirs = trail_bank_at(map, nx, ny);
         if (theirs == mine) continue;
         out[n++] = sheet_cell(TRAIL_SEAM_COL0 + (theirs * TS_COUNT + s) * TRAIL_BANK_COLS + vcol,
@@ -6825,12 +6902,12 @@ static inline bool cliff_cell_ink(int row0, int code, int x, int y, int ax, int 
 // Everything that decides what rock to draw goes through here; what the ground
 // is walked on by is the low bits, and reads them through tilemap_face_at().
 static inline bool cliff_face_at(int x, int y, int L) {
-    return in_bounds(x, y) && (s_cliff_face[y][x] & (1 << (L - 1 + CLIFF_FACE_DRAW))) != 0;
+    return in_world(&x, &y) && (s_cliff_face[y][x] & (1 << (L - 1 + CLIFF_FACE_DRAW))) != 0;
 }
 
 // The same, over the heights themselves rather than over the band below them.
 static inline bool cliff_high_at(int x, int y, int L) {
-    return in_bounds(x, y) && s_cliff_elev[y][x] >= L;
+    return in_world(&x, &y) && s_cliff_elev[y][x] >= L;
 }
 
 // The four corners of a tile, as the four bits the set is indexed by.
@@ -7076,7 +7153,7 @@ static void biome_fringe(const Tilemap* map, int x, int y, EdgeFringe* out) {
         int nx = x + EDGE_NB[i][0], ny = y + EDGE_NB[i][1];
         // Only ground on the same level mixes. Across a rim the wall is what
         // separates the two, and the rock art draws that join.
-        if (in_bounds(nx, ny) && s_cliff_elev[ny][nx] != s_cliff_elev[y][x]) continue;
+        if (in_world(&nx, &ny) && s_cliff_elev[ny][nx] != s_cliff_elev[y][x]) continue;
         int b = biome_at(map, nx, ny);
         if (b < 0 || b == mine) continue;
         int slot = -1;
@@ -7234,23 +7311,31 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
     int draw_size = (int)(TILE_SIZE * z);
     if (draw_size < 1) draw_size = 1;
 
-    int start_x = (int)(cam->x / TILE_SIZE);
-    int start_y = (int)(cam->y / TILE_SIZE);
+    int start_x = (int)floorf(cam->x / TILE_SIZE);
+    int start_y = (int)floorf(cam->y / TILE_SIZE);
     int tiles_wide = (int)(cam->screen_w / z / TILE_SIZE) + 2;
     int tiles_tall = (int)(cam->screen_h / z / TILE_SIZE) + 2;
     int end_x = start_x + tiles_wide;
     int end_y = start_y + tiles_tall;
 
-    if (start_x < 0)         start_x = 0;
-    if (start_y < 0)         start_y = 0;
-    if (end_x > MAP_WIDTH)   end_x = MAP_WIDTH;
-    if (end_y > MAP_HEIGHT)  end_y = MAP_HEIGHT;
+    // Clamped on the hard-border axis only. On the wrap axis the view runs
+    // straight over the seam: the loop walks the unwrapped range, places each
+    // tile by its unwrapped coordinate, and reads it by its canonical one.
+    if (s_wrap_axis != WRAP_X) {
+        if (start_x < 0)        start_x = 0;
+        if (end_x > MAP_WIDTH)  end_x = MAP_WIDTH;
+    }
+    if (s_wrap_axis != WRAP_Y) {
+        if (start_y < 0)        start_y = 0;
+        if (end_y > MAP_HEIGHT) end_y = MAP_HEIGHT;
+    }
 
-    for (int y = start_y; y < end_y; y++) {
-        for (int x = start_x; x < end_x; x++) {
+    for (int uy = start_y; uy < end_y; uy++) {
+        for (int ux = start_x; ux < end_x; ux++) {
+            const int x = wrap_x(ux), y = wrap_y(uy);
             bool is_depth = (map->depth_layer[y][x] != 0);
-            int screen_x = (int)((x * TILE_SIZE - cam->x) * z);
-            int screen_y = (int)((y * TILE_SIZE - cam->y) * z);
+            int screen_x = (int)((ux * TILE_SIZE - cam->x) * z);
+            int screen_y = (int)((uy * TILE_SIZE - cam->y) * z);
 
             // Helper: compute jitter offset for a tree tile
             auto tree_jox = [&](int tx, int ty2) -> int {
@@ -7280,11 +7365,13 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // Depth pass: town tile only — grass already drawn in base pass, before player
                 if (is_depth) blit_tile(renderer, map->tiles[y][x], screen_x, screen_y, draw_size);
                 // Draw canopy for any 2-tile tree whose trunk is in the row below (y+1).
-                if (y + 1 < MAP_HEIGHT && map->overlay[y+1][x] == TILE_TREE) {
-                    draw_tree_canopy(x, y + 1, screen_x, screen_y);
+                int bx = x, by = y + 1;
+                bool below = in_world(&bx, &by);
+                if (below && map->overlay[by][bx] == TILE_TREE) {
+                    draw_tree_canopy(bx, by, screen_x, screen_y);
                 }
-                if (y + 1 < MAP_HEIGHT && map->overlay[y+1][x] == TILE_DEAD_TREE) {
-                    int jox = tree_jox(x, y+1);
+                if (below && map->overlay[by][bx] == TILE_DEAD_TREE) {
+                    int jox = tree_jox(bx, by);
                     SDL_Rect src_top = { 20 * 16, 0 * 16, 16, 16 };
                     SDL_Rect dst_top = { screen_x + jox, screen_y, draw_size, draw_size };
                     if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_top, &dst_top);
@@ -7361,7 +7448,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                         int b = -1;
                         for (int k = 0; k < 8 && b < 0; k++) {
                             int nx = x + EDGE_NB[ORDER[k]][0], ny = y + EDGE_NB[ORDER[k]][1];
-                            if (!in_bounds(nx, ny) || s_cliff_elev[ny][nx] >= L) continue;
+                            if (!in_world(&nx, &ny) || s_cliff_elev[ny][nx] >= L) continue;
                             b = biome_at(map, nx, ny);
                         }
                         if (b >= 0) {
@@ -7481,14 +7568,20 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     int   tsz = (int)(TILE_SIZE * z);
     if (tsz < 1) tsz = 1;
 
-    int tx0 = (int)(cam->x / TILE_SIZE) - 1;
-    int ty0 = (int)(cam->y / TILE_SIZE) - 1;
+    int tx0 = (int)floorf(cam->x / TILE_SIZE) - 1;
+    int ty0 = (int)floorf(cam->y / TILE_SIZE) - 1;
     int tx1 = tx0 + (int)(cam->screen_w / tsz) + 3;
     int ty1 = ty0 + (int)(cam->screen_h / tsz) + 3;
-    if (tx0 < 0) tx0 = 0;
-    if (ty0 < 0) ty0 = 0;
-    if (tx1 > MAP_WIDTH)  tx1 = MAP_WIDTH;
-    if (ty1 > MAP_HEIGHT) ty1 = MAP_HEIGHT;
+    // Clamped on the hard-border axis only, as the tile draw is: the cells
+    // are placed unwrapped and their labels read from the canonical tile.
+    if (s_wrap_axis != WRAP_X) {
+        if (tx0 < 0) tx0 = 0;
+        if (tx1 > MAP_WIDTH)  tx1 = MAP_WIDTH;
+    }
+    if (s_wrap_axis != WRAP_Y) {
+        if (ty0 < 0) ty0 = 0;
+        if (ty1 > MAP_HEIGHT) ty1 = MAP_HEIGHT;
+    }
 
     SDL_SetRenderDrawColor(renderer, 0, 255, 0, 110);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
@@ -7507,7 +7600,7 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
             for (int tx = tx0; tx < tx1; tx++) {
                 int sx = (int)((tx * TILE_SIZE - cam->x) * z);
                 int sy = (int)((ty * TILE_SIZE - cam->y) * z);
-                int tile_id = map->tiles[ty][tx];
+                int tile_id = map->tiles[wrap_y(ty)][wrap_x(tx)];
                 char buf[16];
                 if (tile_id >= TILE_OW0_BASE) {
                     int idx = tile_id - TILE_OW0_BASE;
@@ -7777,7 +7870,8 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     if (t == TILE_GOLD_ORE)  return 5;
     if (t == TILE_DEAD_TREE) return 3;
     if (t == TILE_TREE) {
-        bool paired = (ty > 0 && map->overlay[ty-1][tx] == TILE_TREE);
+        int ax = tx, ay = ty - 1;
+        bool paired = in_world(&ax, &ay) && map->overlay[ay][ax] == TILE_TREE;
         return paired ? 4 : 2;
     }
     return 0;
@@ -7827,21 +7921,44 @@ static int tilemap_strike(Tilemap* map, int tx, int ty, WeaponType weapon, Harve
     return 0;
 }
 
+// The tile box `r` pixels around a point. Clamped only on the hard-border
+// axis: on the wrap axis it is walked unwrapped, so every distance measured in
+// it is in one frame, and each tile is read through in_world().
+static void tile_box(float px, float py, int r,
+                     int* tx0, int* ty0, int* tx1, int* ty1) {
+    *tx0 = (int)floorf((px - r) / TILE_SIZE);
+    *ty0 = (int)floorf((py - r) / TILE_SIZE);
+    *tx1 = (int)floorf((px + r) / TILE_SIZE);
+    *ty1 = (int)floorf((py + r) / TILE_SIZE);
+    if (s_wrap_axis != WRAP_X) {
+        if (*tx0 < 0)          *tx0 = 0;
+        if (*tx1 >= MAP_WIDTH) *tx1 = MAP_WIDTH - 1;
+    }
+    if (s_wrap_axis != WRAP_Y) {
+        if (*ty0 < 0)           *ty0 = 0;
+        if (*ty1 >= MAP_HEIGHT) *ty1 = MAP_HEIGHT - 1;
+    }
+}
+
+// A harvestable tile at an unwrapped position, with its canonical index.
+static bool harvestable_at(const Tilemap* map, int ux, int uy, int* tx, int* ty) {
+    *tx = ux; *ty = uy;
+    return in_world(tx, ty) && tile_is_harvestable(map->overlay[*ty][*tx]);
+}
+
 int tilemap_sweep(Tilemap* map, float px, float py, float radius,
                   float start_ang, float rel0, float rel1,
                   WeaponType weapon, HarvestResult* out) {
-    int r = (int)radius;
-    int tx0 = (int)((px - r) / TILE_SIZE); if (tx0 < 0) tx0 = 0;
-    int ty0 = (int)((py - r) / TILE_SIZE); if (ty0 < 0) ty0 = 0;
-    int tx1 = (int)((px + r) / TILE_SIZE); if (tx1 >= MAP_WIDTH)  tx1 = MAP_WIDTH  - 1;
-    int ty1 = (int)((py + r) / TILE_SIZE); if (ty1 >= MAP_HEIGHT) ty1 = MAP_HEIGHT - 1;
+    int tx0, ty0, tx1, ty1;
+    tile_box(px, py, (int)radius, &tx0, &ty0, &tx1, &ty1);
 
     int struck = 0;
-    for (int ty = ty0; ty <= ty1; ty++) {
-        for (int tx = tx0; tx <= tx1; tx++) {
-            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
-            float cx = (tx + 0.5f) * TILE_SIZE;
-            float cy = (ty + 0.5f) * TILE_SIZE;
+    for (int uy = ty0; uy <= ty1; uy++) {
+        for (int ux = tx0; ux <= tx1; ux++) {
+            int tx, ty;
+            if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
+            float cx = (ux + 0.5f) * TILE_SIZE;
+            float cy = (uy + 0.5f) * TILE_SIZE;
             float dx = cx - px, dy = cy - py;
             if (dx*dx + dy*dy > radius * radius) continue;
             float rel = sweep_relative_angle(start_ang, dx, dy);
@@ -7853,27 +7970,18 @@ int tilemap_sweep(Tilemap* map, float px, float py, float radius,
     return struck;
 }
 
-// Tile bounds of the box that could contain anything within `reach` of (px,py).
-static void thrust_tile_bounds(float px, float py, float reach,
-                               int* tx0, int* ty0, int* tx1, int* ty1) {
-    int r = (int)reach + TILE_SIZE;
-    *tx0 = (int)((px - r) / TILE_SIZE); if (*tx0 < 0) *tx0 = 0;
-    *ty0 = (int)((py - r) / TILE_SIZE); if (*ty0 < 0) *ty0 = 0;
-    *tx1 = (int)((px + r) / TILE_SIZE); if (*tx1 >= MAP_WIDTH)  *tx1 = MAP_WIDTH  - 1;
-    *ty1 = (int)((py + r) / TILE_SIZE); if (*ty1 >= MAP_HEIGHT) *ty1 = MAP_HEIGHT - 1;
-}
-
 float tilemap_first_along(const Tilemap* map, float px, float py,
                           float angle, float half_width, float max_reach) {
     int tx0, ty0, tx1, ty1;
-    thrust_tile_bounds(px, py, max_reach, &tx0, &ty0, &tx1, &ty1);
+    tile_box(px, py, (int)max_reach + TILE_SIZE, &tx0, &ty0, &tx1, &ty1);
 
     float best = -1.0f;
-    for (int ty = ty0; ty <= ty1; ty++) {
-        for (int tx = tx0; tx <= tx1; tx++) {
-            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
-            float cx = (tx + 0.5f) * TILE_SIZE;
-            float cy = (ty + 0.5f) * TILE_SIZE;
+    for (int uy = ty0; uy <= ty1; uy++) {
+        for (int ux = tx0; ux <= tx1; ux++) {
+            int tx, ty;
+            if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
+            float cx = (ux + 0.5f) * TILE_SIZE;
+            float cy = (uy + 0.5f) * TILE_SIZE;
             float along, side;
             thrust_project(angle, cx - px, cy - py, &along, &side);
             if (along < 0.0f || along > max_reach) continue;
@@ -7888,14 +7996,15 @@ int tilemap_thrust(Tilemap* map, float px, float py, float angle,
                    float half_width, float from, float to,
                    WeaponType weapon, HarvestResult* out) {
     int tx0, ty0, tx1, ty1;
-    thrust_tile_bounds(px, py, to, &tx0, &ty0, &tx1, &ty1);
+    tile_box(px, py, (int)to + TILE_SIZE, &tx0, &ty0, &tx1, &ty1);
 
     int struck = 0;
-    for (int ty = ty0; ty <= ty1; ty++) {
-        for (int tx = tx0; tx <= tx1; tx++) {
-            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
-            float cx = (tx + 0.5f) * TILE_SIZE;
-            float cy = (ty + 0.5f) * TILE_SIZE;
+    for (int uy = ty0; uy <= ty1; uy++) {
+        for (int ux = tx0; ux <= tx1; ux++) {
+            int tx, ty;
+            if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
+            float cx = (ux + 0.5f) * TILE_SIZE;
+            float cy = (uy + 0.5f) * TILE_SIZE;
             float along, side;
             thrust_project(angle, cx - px, cy - py, &along, &side);
             if (along < from || along >= to) continue;
@@ -7909,28 +8018,26 @@ int tilemap_thrust(Tilemap* map, float px, float py, float angle,
 
 int tilemap_strike_point(Tilemap* map, float x, float y,
                          WeaponType weapon, HarvestResult* out) {
-    int tx = (int)(x / TILE_SIZE);
-    int ty = (int)(y / TILE_SIZE);
-    if (tx < 0 || tx >= MAP_WIDTH || ty < 0 || ty >= MAP_HEIGHT) return 0;
-    if (!tile_is_harvestable(map->overlay[ty][tx])) return 0;
+    int tx, ty;
+    if (!harvestable_at(map, (int)floorf(x / TILE_SIZE), (int)floorf(y / TILE_SIZE), &tx, &ty))
+        return 0;
     tilemap_strike(map, tx, ty, weapon, out);
     return 1;
 }
 
 int tilemap_try_hit(Tilemap* map, float px, float py, int range,
                     WeaponType weapon, HarvestResult* out) {
-    int tx0 = (int)((px - range) / TILE_SIZE); if (tx0 < 0) tx0 = 0;
-    int ty0 = (int)((py - range) / TILE_SIZE); if (ty0 < 0) ty0 = 0;
-    int tx1 = (int)((px + range) / TILE_SIZE); if (tx1 >= MAP_WIDTH)  tx1 = MAP_WIDTH  - 1;
-    int ty1 = (int)((py + range) / TILE_SIZE); if (ty1 >= MAP_HEIGHT) ty1 = MAP_HEIGHT - 1;
+    int tx0, ty0, tx1, ty1;
+    tile_box(px, py, range, &tx0, &ty0, &tx1, &ty1);
 
     // A sweeping weapon takes everything in the box; anything else takes only
     // the nearest tile, which is the original single-target behaviour.
     if (weapon_sweeps(weapon)) {
         int struck = 0;
-        for (int ty = ty0; ty <= ty1; ty++) {
-            for (int tx = tx0; tx <= tx1; tx++) {
-                if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
+        for (int uy = ty0; uy <= ty1; uy++) {
+            for (int ux = tx0; ux <= tx1; ux++) {
+                int tx, ty;
+                if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
                 tilemap_strike(map, tx, ty, weapon, out);
                 struck++;
             }
@@ -7940,11 +8047,12 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range,
 
     float best_dist2 = (float)(range * range) * 2.0f + 1.0f;
     int best_tx = -1, best_ty = -1;
-    for (int ty = ty0; ty <= ty1; ty++) {
-        for (int tx = tx0; tx <= tx1; tx++) {
-            if (!tile_is_harvestable(map->overlay[ty][tx])) continue;
-            float dx = (tx + 0.5f) * TILE_SIZE - px;
-            float dy = (ty + 0.5f) * TILE_SIZE - py;
+    for (int uy = ty0; uy <= ty1; uy++) {
+        for (int ux = tx0; ux <= tx1; ux++) {
+            int tx, ty;
+            if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
+            float dx = (ux + 0.5f) * TILE_SIZE - px;
+            float dy = (uy + 0.5f) * TILE_SIZE - py;
             float d2 = dx*dx + dy*dy;
             if (d2 < best_dist2) { best_dist2 = d2; best_tx = tx; best_ty = ty; }
         }
@@ -7973,11 +8081,11 @@ void tilemap_update(float /*dt*/) {
 // could close — rather than the tiles the band is drawn from, which is less and
 // is what the art asks; see CLIFF_FACE_DRAW.
 bool tilemap_face_at(int x, int y) {
-    return in_bounds(x, y) && (s_cliff_face[y][x] & ((1 << CLIFF_LEVELS) - 1)) != 0;
+    return in_world(&x, &y) && (s_cliff_face[y][x] & ((1 << CLIFF_LEVELS) - 1)) != 0;
 }
 
 int tilemap_cliff_elev_at(int x, int y) {
-    return in_bounds(x, y) ? (int)s_cliff_elev[y][x] : 0;
+    return in_world(&x, &y) ? (int)s_cliff_elev[y][x] : 0;
 }
 
 // Whether the tile's own ground can be stood on, with nothing said about what
@@ -8033,7 +8141,7 @@ static bool tile_ground_walkable(const Tilemap* map, int tile_x, int tile_y) {
 }
 
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
-    if (!in_bounds(tile_x, tile_y)) return false;
+    if (!in_world(&tile_x, &tile_y)) return false;
 
     // The cliff, coarsely: any tile it reaches is refused whole. That is a good
     // deal more ground than it actually closes — the exact answer is per pixel
@@ -8078,8 +8186,13 @@ static int field_owner_at(const Tilemap* map, int tx, int ty, float px, float py
 
 bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     const Tilemap* map = static_cast<const Tilemap*>(vmap);
-    int tx = (int)(px / TILE_SIZE);
-    int ty = (int)(py / TILE_SIZE);
+    // Canonical first: the hitbox's samples run over the seam as the player
+    // does, and the sub-tile arithmetic below wants the pixel and its tile in
+    // the same frame. Off the hard border is solid; that is the border.
+    px = wrap_px(px);
+    py = wrap_py(py);
+    int tx = (int)floorf(px / TILE_SIZE);
+    int ty = (int)floorf(py / TILE_SIZE);
     if (!in_bounds(tx, ty)) return true;
 
     // Solid ground cover — water and lava — is drawn along the smoothed field

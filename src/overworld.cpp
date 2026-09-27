@@ -94,16 +94,21 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                            dx * ow->speed * dt, dy * ow->speed * dt, ow_solid))
                 player->is_moving = 0;
         }
+        // Kept canonical on the wrap axis. Beyond the seam is the same world,
+        // and everything indexed by position wants it as 0..width; the camera
+        // is not, and follows the player through the seam on its own.
+        ow->x = wrap_px(ow->x);
+        ow->y = wrap_py(ow->y);
     }
 
     // Dungeon entrance detection
     {
         float feet_x = ow->x + (HB_X1 + HB_X2) * 0.5f;
         float feet_y = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
-        int tx = (int)(feet_x / TILE_SIZE);
-        int ty = (int)(feet_y / TILE_SIZE);
+        int tx = (int)floorf(feet_x / TILE_SIZE);
+        int ty = (int)floorf(feet_y / TILE_SIZE);
         ow->at_dungeon_entrance = 0;
-        if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT) {
+        if (in_world(&tx, &ty)) {
             int tile = map->tiles[ty][tx];
             if (tile == TILE_DUNGEON || (tile >= TILE_DUNGEON_CAVE && tile <= TILE_DUNGEON_LARGE_TREE)) {
                 ow->at_dungeon_entrance = 1;
@@ -122,7 +127,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         // Interior door detection — on the door tiles or the tile row below them.
         // Biased 8px left: the feet hitbox sits right of the sprite centre, so
         // an unshifted check makes doors detect too far to the right visually.
-        int door_tx = (int)((feet_x + 8.0f) / TILE_SIZE);
+        int door_tx = wrap_x((int)floorf((feet_x + 8.0f) / TILE_SIZE));
         ow->at_interior_door = 0;
         for (int i = 0; i < map->num_doors; i++) {
             const InteriorDoor& d = map->doors[i];
@@ -141,8 +146,8 @@ void player_draw(const Player* player, float world_x, float world_y,
                  const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite)
 {
     float z  = cam->zoom;
-    int sx = (int)((world_x - cam->x) * z);
-    int sy = (int)((world_y - cam->y) * z);
+    int sx = cam_screen_x(cam, world_x);
+    int sy = cam_screen_y(cam, world_y);
 
     int frame;
     if (player->facing >= 8)

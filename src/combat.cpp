@@ -159,8 +159,10 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
             // The visible world rectangle; leaving it retires the object.
             float vw = cam->screen_w / cam->zoom;
             float vh = cam->screen_h / cam->zoom;
-            if (ws->throw_x < cam->x - tw.radius || ws->throw_x > cam->x + vw + tw.radius ||
-                ws->throw_y < cam->y - tw.radius || ws->throw_y > cam->y + vh + tw.radius)
+            float rx = wrap_dpx(ws->throw_x - cam->x);
+            float ry = wrap_dpy(ws->throw_y - cam->y);
+            if (rx < -tw.radius || rx > vw + tw.radius ||
+                ry < -tw.radius || ry > vh + tw.radius)
                 ws->throw_live = 0;
         }
     }
@@ -186,8 +188,8 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
     // Thrown object: a small blade tumbling end over end as it flies.
     if (ws->throw_live) {
         float z = cam->zoom;
-        int cx = (int)((ws->throw_x - cam->x) * z);
-        int cy = (int)((ws->throw_y - cam->y) * z);
+        int cx = cam_screen_x(cam, ws->throw_x);
+        int cy = cam_screen_y(cam, ws->throw_y);
         float r = weapon_throw_profile(ws->throw_weapon).radius * z;
         float spin = (float)SDL_GetTicks() * 0.018f;
 
@@ -211,8 +213,8 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
     if (weapon_thrusts(ws->swing_weapon)) {
         ThrustProfile tp = weapon_thrust_profile(ws->swing_weapon);
         float z  = cam->zoom;
-        int cx = (int)((px - cam->x) * z);
-        int cy = (int)((py - cam->y) * z);
+        int cx = cam_screen_x(cam, px);
+        int cy = cam_screen_y(cam, py);
 
         float prog = ws->swing_t / tp.seconds;
         if (prog > 1.0f) prog = 1.0f;
@@ -244,8 +246,8 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
     if (sp.span <= 0.0f) return;
 
     float z = cam->zoom;
-    int cx = (int)((px - cam->x) * z);
-    int cy = (int)((py - cam->y) * z);
+    int cx = cam_screen_x(cam, px);
+    int cy = cam_screen_y(cam, py);
     float r = sp.radius * z;
 
     float prog = ws->swing_t / sp.seconds;

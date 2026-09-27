@@ -176,20 +176,21 @@ int main(int argc, char** argv)
                    want_x, want_y, tw, th);
             for (int y = want_y; y < want_y + th; y++) {
                 printf("  %5d ", y);
-                for (int x = want_x; x < want_x + tw; x++) {
+                for (int ux = want_x; ux < want_x + tw; ux++) {
                     char ch = '?';
-                    if (x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT) {
-                        putchar(' '); continue;
-                    }
-                    int t = g_map.tiles[y][x];
-                    uint8_t rt = g_map.route[y][x];
+                    // Through the wrap, so a window laid over the seam prints
+                    // the far side of the world where it belongs.
+                    int x = ux, yy = y;
+                    if (!in_world(&x, &yy)) { putchar(' '); continue; }
+                    int t = g_map.tiles[yy][x];
+                    uint8_t rt = g_map.route[yy][x];
                     // Under ROUTE_OWNER_TRACE the route tiles print the edge
                     // that painted them instead of R/T -- modulo 36, as
                     // 0-9a-z, so two strokes lying together read as two
                     // characters and edge 11 does not print as edge 1.
                     const uint16_t* owner = tilemap_debug_route_owner();
                     if (rt && owner) {
-                        int o = (owner[(size_t)y * MAP_WIDTH + x] - 1) % 36;
+                        int o = (owner[(size_t)yy * MAP_WIDTH + x] - 1) % 36;
                         ch = (char)(o < 10 ? '0' + o : 'a' + (o - 10));
                     }
                     else if (rt == ROUTE_ROAD)          ch = 'R';
@@ -203,7 +204,7 @@ int main(int argc, char** argv)
                     else if (t >= TILE_TOWN0_BASE || t == TILE_BLUEPRINT ||
                              t == TILE_VILLAGE_PLACEHOLDER ||
                              t == TILE_CASTLE_PLACEHOLDER) ch = 'O';
-                    else if (tilemap_face_at(x, y)) ch = '#';
+                    else if (tilemap_face_at(x, yy)) ch = '#';
                     else if (t == TILE_GRASS || t == TILE_MEADOW || t == TILE_SAND ||
                              t == TILE_SNOW  || t == TILE_WASTELAND) ch = '.';
                     putchar(ch);

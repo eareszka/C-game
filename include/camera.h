@@ -11,4 +11,10 @@ typedef struct Camera {
 
 void camera_center_on(Camera* cam, float target_x, float target_y);
 
+// Screen position of a world point, taken through the nearest image of it on
+// the world's wrap axis: a thing just over the seam draws beside the player
+// rather than a world away. Everything that is not a tile is placed with these.
+int cam_screen_x(const Camera* cam, float world_x);
+int cam_screen_y(const Camera* cam, float world_y);
+
 #endif
