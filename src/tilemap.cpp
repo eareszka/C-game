@@ -2182,10 +2182,11 @@ static int biome_of(const Tilemap* map, int tx, int ty) {
 // every site that reaches this table is flat ground (hits_cliff rejects the
 // rest), so the old "add a cave on a mountain" modifier could never fire.
 //
-// Oasis and pyramid are native to snow as well as sand. Desert survives
-// worldgen as one or two large blobs, so a world can simply have too little
-// of it for either to reach its place in the order; snow is a fifth of every
-// world. stamp_dungeon_surround dresses the snow ones differently.
+// Oasis is native to snow as well as sand, and pyramid to open flat ground
+// as well. Desert survives worldgen as one or two large blobs, so a world can
+// simply have too little of it for either to reach its place in the order;
+// snow is a fifth of every world and flat ground two thirds.
+// stamp_dungeon_surround dresses a snow oasis differently.
 static int build_entrance_pool(int biome, DungeonEntranceType* pool) {
     int pool_sz = 0;
     auto add = [&](DungeonEntranceType t) { pool[pool_sz++] = t; };
@@ -2196,7 +2197,6 @@ static int build_entrance_pool(int biome, DungeonEntranceType* pool) {
             add(DUNGEON_ENT_GRAVEYARD_SM);
             add(DUNGEON_ENT_GRAVEYARD_LG);
             add(DUNGEON_ENT_OASIS);
-            add(DUNGEON_ENT_PYRAMID);
             break;
         case TILE_WASTELAND:
             add(DUNGEON_ENT_RUINS);
@@ -2213,6 +2213,7 @@ static int build_entrance_pool(int biome, DungeonEntranceType* pool) {
         default: // flat (grass/meadow)
             add(DUNGEON_ENT_GRAVEYARD_SM);
             add(DUNGEON_ENT_GRAVEYARD_LG);
+            add(DUNGEON_ENT_PYRAMID);
             add(DUNGEON_ENT_STONEHENGE);
             add(DUNGEON_ENT_CATACOMBS);
             break;
@@ -2410,29 +2411,21 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
             // A cleared court three tiles deep around the 2×2 entrance. It is
             // PATH, a ground tile: it used to be TILE_ROCK as a base tile,
             // which tile_ground_walkable does not list, so every pyramid stood
-            // inside a solid ring nobody could cross.
-            //
-            // In snow the court is the same, cornered with boulders so a snow
-            // pyramid reads as its own thing at a glance. Placeholder dressing,
-            // like the graveyard fence above, until the two get their own art.
+            // inside a solid ring nobody could cross. The same court on sand
+            // and on open flat ground.
             const int lo = -3, hi = sz + 2;
             for (int dy = lo; dy <= hi; dy++)
                 for (int dx = lo; dx <= hi; dx++)
                     safe_base(ex+dx, ey+dy, TILE_PATH);
-            if (biome == TILE_SNOW) {
-                safe_ovl(ex+lo, ey+lo, TILE_ROCK);
-                safe_ovl(ex+hi, ey+lo, TILE_ROCK);
-                safe_ovl(ex+lo, ey+hi, TILE_ROCK);
-                safe_ovl(ex+hi, ey+hi, TILE_ROCK);
-            }
             break;
         }
 
         case DUNGEON_ENT_OASIS:
             // Pond tiles at four cardinal neighbors of the 1×1 entrance. In
             // snow the pool is ringed with boulders on the diagonals — a
-            // spring breaking through ice rather than a pool in the sand. The
-            // same placeholder status as the pyramid's court.
+            // spring breaking through ice rather than a pool in the sand.
+            // Placeholder dressing, like the graveyard fence above, until it
+            // gets its own art.
             //
             // Two tiles out, not one: the sweep at the end of generation
             // (clear_overlays_near_liquid) strips anything standing beside

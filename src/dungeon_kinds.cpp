@@ -14,8 +14,8 @@ constexpr DungeonKindDef DUNGEON_KINDS[DUNGEON_KIND_COUNT] = {
     { "veyrite",       DUNGEON_ENT_CAVE,          MAT_VEYRITE,        43 },
     { "grv_lg",        DUNGEON_ENT_GRAVEYARD_LG,  -1,                 36 },
     { "ruins",         DUNGEON_ENT_RUINS,         -1,                 30 },
-    { "oasis",         DUNGEON_ENT_OASIS,         -1,                 24 },
-    { "pyramid",       DUNGEON_ENT_PYRAMID,       -1,                 18 },
+    { "pyramid",       DUNGEON_ENT_PYRAMID,       -1,                 24 },
+    { "oasis",         DUNGEON_ENT_OASIS,         -1,                 18 },
     { "dravium",       DUNGEON_ENT_CAVE,          MAT_DRAVIUM,        10 },
     { "kharvite",      DUNGEON_ENT_CAVE,          MAT_KHARVITE,        8 },
     { "stonehenge",    DUNGEON_ENT_STONEHENGE,    -1,                  6 },
@@ -24,8 +24,8 @@ constexpr DungeonKindDef DUNGEON_KINDS[DUNGEON_KIND_COUNT] = {
 };
 
 // Measured over 32 seeds (`make dngcensus`) against these numbers: the
-// quota-capped kinds land exactly on target every world; tree, ruins, oasis
-// and pyramid come in a little under because their biomes run out of sites
+// quota-capped kinds land exactly on target every world; tree, ruins and
+// oasis come in a little under because their biomes run out of sites
 // before they do; cave rows scale with how many mountains a world grew.
 // That is the order holding on average -- a single world can still swap two
 // neighbours whose counts are within a few of each other.
