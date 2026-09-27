@@ -190,8 +190,23 @@ static const TileStyle tile_styles[] =
 
 static const int NUM_TILE_STYLES = (int)(sizeof(tile_styles) / sizeof(tile_styles[0]));
 
-// Shared between phase1 and phase2 — computed once after rivers are placed.
-static bool  cliff_blocked[MAP_HEIGHT][MAP_WIDTH];
+// Twenty tiles of clearance around every river and sea tile, computed once
+// after rivers are placed and shared between phase1 and phase2. The cliff pass
+// reads it to keep cliffs off the water; the stream, pond, lava and trail
+// passes read it to keep their features off the water too. It says NOTHING
+// about cliffs. It was called cliff_blocked for years, and two passes took the
+// name at its word and used it as the cliff mask -- which is how lava pools and
+// trails came to be laid under the cliff faces. The question "is a wall drawn
+// over this tile" is tilemap_face_at().
+static bool  water_keepout[MAP_HEIGHT][MAP_WIDTH];
+// Within CLIFF_NEAR tiles of any cliff: a plateau top or a drawn face. Built
+// once the cliffs are placed (build_cliff_near), read by the stream brush so a
+// lava pool or a pond keeps a strip of open ground between itself and the
+// rock. Lava laid hard against a plateau's rim reads, from above, as lava on
+// the plateau -- the rim art is the edge seen from above, and a pool touching
+// it looks like it spills over it.
+static uint8_t s_cliff_near[MAP_HEIGHT][MAP_WIDTH];
+static const int CLIFF_NEAR = 2;
 // Snow dilated by the biome fixup's reach: whether a row has snow within
 // SNOW_BUFFER columns, before the second axis is folded in. Map-sized and it
 // does not outlive the pass that fills it, but generation runs once and off the
@@ -411,7 +426,13 @@ static void march_river(Tilemap* map, int sx, int sy,
     }
 }
 
-// Generic short-stream brush: only overwrites `target` tile, never touches cliff_blocked.
+// Generic short-stream brush: only overwrites `target` tile, keeps off the
+// water keep-out, and keeps CLIFF_NEAR tiles clear of any cliff. A face is
+// drawn over ordinary ground, so the tile beneath it still matches `target`;
+// painting it put a pool under the wall, showing through the band's ragged
+// lower edge as lava (or water) lying in the cliff, and a pool laid against a
+// rim looked poured over the plateau. Every stream, pool and pond goes through
+// here -- march_wander paints with this brush -- so this is the one place.
 static void paint_stream_brush(Tilemap* map, int ix, int iy, int brush_r,
                                 int guard_cx, int guard_cy, int guard_r,
                                 int target, int place)
@@ -422,7 +443,8 @@ static void paint_stream_brush(Tilemap* map, int ix, int iy, int brush_r,
             int px = ix+bx, py = iy+by;
             if (!in_bounds(px, py)) continue;
             if (abs(px-guard_cx) <= guard_r && abs(py-guard_cy) <= guard_r) continue;
-            if (cliff_blocked[py][px]) continue;
+            if (water_keepout[py][px]) continue;
+            if (s_cliff_near[py][px]) continue;
             if (map->tiles[py][px] != target) continue;
             map->tiles[py][px] = place;
         }
@@ -611,6 +633,32 @@ static inline bool cliff_is_south_face(int t) {
 // generation, but generation runs once and off the main thread, so they live
 // here rather than on a stack that has to carry them.
 static unsigned char s_cliff_elev[MAP_HEIGHT][MAP_WIDTH];
+
+// Fill s_cliff_near: every tile within CLIFF_NEAR (Chebyshev) of a plateau top
+// or a drawn face. Two separable passes rather than a 5x5 stamp per tile.
+static void build_cliff_near(void) {
+    static uint8_t row_hit[MAP_HEIGHT][MAP_WIDTH];
+    for (int y = 0; y < MAP_HEIGHT; y++)
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            uint8_t hit = 0;
+            for (int dx = -CLIFF_NEAR; dx <= CLIFF_NEAR && !hit; dx++) {
+                int nx = x + dx;
+                if (nx < 0 || nx >= MAP_WIDTH) continue;
+                if (s_cliff_elev[y][nx] || tilemap_face_at(nx, y)) hit = 1;
+            }
+            row_hit[y][x] = hit;
+        }
+    for (int y = 0; y < MAP_HEIGHT; y++)
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            uint8_t hit = 0;
+            for (int dy = -CLIFF_NEAR; dy <= CLIFF_NEAR && !hit; dy++) {
+                int ny = y + dy;
+                if (ny < 0 || ny >= MAP_HEIGHT) continue;
+                if (row_hit[ny][x]) hit = 1;
+            }
+            s_cliff_near[y][x] = hit;
+        }
+}
 static unsigned char s_cliff_scratch[MAP_HEIGHT][MAP_WIDTH];
 static unsigned char s_cliff_mask[MAP_HEIGHT][MAP_WIDTH];
 // Which levels' faces cover a tile, one bit per level — and then the same again
@@ -1216,7 +1264,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         int ddx = px - cx, ddy = py - cy;
         int r2  = ddx*ddx + ddy*ddy;
         if (r2 < min_r2 || r2 >= max_r2 || r2 <= hw*hw) return false;
-        if (cliff_blocked[py][px]) return false;
+        if (water_keepout[py][px]) return false;
         int b = map->tiles[py][px];
         return b == TILE_GRASS || b == TILE_SNOW || b == TILE_WASTELAND;
     };
@@ -3832,7 +3880,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int lx = 1 + (int)((ls >> 16) % (MAP_WIDTH  - 2));
             ls = ls * 1664525u + 1013904223u;
             int ly = 1 + (int)((ls >> 16) % (MAP_HEIGHT - 2));
-            if (map->tiles[ly][lx] != TILE_WASTELAND || cliff_blocked[ly][lx]) continue;
+            if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
             ls = ls * 1664525u + 1013904223u;
             float angle = (float)((ls >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
             ls = ls * 1664525u + 1013904223u;
@@ -3849,7 +3897,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int lx = 1 + (int)((ls >> 16) % (MAP_WIDTH  - 2));
             ls = ls * 1664525u + 1013904223u;
             int ly = 1 + (int)((ls >> 16) % (MAP_HEIGHT - 2));
-            if (map->tiles[ly][lx] != TILE_WASTELAND || cliff_blocked[ly][lx]) continue;
+            if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
         }
 
