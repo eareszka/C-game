@@ -36,6 +36,11 @@ static bool liquid(int t) {
     return t == TILE_WATER || t == TILE_RIVER || t == TILE_POND || t == TILE_LAVA;
 }
 
+static bool structure(int t) {
+    return t >= TILE_TOWN0_BASE || t == TILE_BLUEPRINT ||
+           t == TILE_VILLAGE_PLACEHOLDER || t == TILE_CASTLE_PLACEHOLDER;
+}
+
 // Mismatches between line a and line b across the whole of the other axis.
 static void compare(bool wx, int a, int b, int* out) {
     for (int m = 0; m < M_COUNT; m++) out[m] = 0;
@@ -44,7 +49,11 @@ static void compare(bool wx, int a, int b, int* out) {
         int ax = wx ? a : i, ay = wx ? i : a;
         int bx = wx ? b : i, by = wx ? i : b;
         int ta = g_map.tiles[ay][ax], tb = g_map.tiles[by][bx];
-        if (ta != tb) out[M_TILE]++;
+        // Structures are left out of the tile measure. A footprint may not
+        // straddle the seam but may end on it, and its straight edge there is
+        // a town wall, not a cut in the terrain -- one town lying against the
+        // seam is 156 mismatches and ranks at 100% of interior pairs.
+        if (ta != tb && !structure(ta) && !structure(tb)) out[M_TILE]++;
         if (tilemap_cliff_elev_at(ax, ay) != tilemap_cliff_elev_at(bx, by)) out[M_ELEV]++;
         if ((g_map.route[ay][ax] != 0) != (g_map.route[by][bx] != 0)) out[M_ROUTE]++;
         if (liquid(ta) != liquid(tb)) out[M_LIQUID]++;
@@ -100,7 +109,24 @@ int main(int argc, char** argv) {
             printf("  %-18s", cell);
         }
         printf("\n");
-        if (flag) flagged_seeds++;
+        // Where along the seam the tiles disagree, as runs, so a flagged seed
+        // can be looked at: shot.exe with a window over the run.
+        if (flag) {
+            printf("         tile mismatches along the seam:");
+            int n = wx ? MAP_HEIGHT : MAP_WIDTH, run0 = -1;
+            for (int i = 0; i <= n; i++) {
+                bool diff = false;
+                if (i < n) {
+                    int ax = wx ? L - 1 : i, ay = wx ? i : L - 1;
+                    int bx = wx ? 0 : i,     by = wx ? i : 0;
+                    diff = g_map.tiles[ay][ax] != g_map.tiles[by][bx];
+                }
+                if (diff && run0 < 0) run0 = i;
+                if (!diff && run0 >= 0) { if (i - run0 >= 4) printf(" %d-%d", run0, i - 1); run0 = -1; }
+            }
+            printf("\n");
+            flagged_seeds++;
+        }
     }
     printf("\n%d of %d seeds have a seam measure above the %.0f%% rank of interior pairs.\n",
            flagged_seeds, (int)seeds.size(), RANK_FLAG * 100.0);

@@ -331,6 +331,20 @@ float wrap_py(float py) {
 static inline bool wrapx() { return s_wrap_axis == WRAP_X; }
 static inline bool wrapy() { return s_wrap_axis == WRAP_Y; }
 
+// A margin kept off the edges of the map along one axis: as given on the
+// hard-border axis, none on the joined one, where the edge is only the seam and
+// anything may stand beside it. A footprint still may not straddle the seam --
+// the arrays are canonical, and every stamp writes its rectangle straight in --
+// so these margins are the whole of the rule on both axes: a footprint starting
+// at or after the low margin and ending at or before the high one.
+static inline int margin_x(int m) { return wrapx() ? 0 : m; }
+static inline int margin_y(int m) { return wrapy() ? 0 : m; }
+// A random start for a footprint `w` long on an axis `size` long, keeping
+// `m` off both ends where that axis has ends.
+static inline int roll_span(unsigned int r, int size, int w, int m) {
+    return m + (int)(r % (unsigned)(size - w - 2 * m + 1));
+}
+
 // One step of a marcher along an axis. On the joined axis it goes through
 // the seam; on the other it reports having left the world. The secondary
 // axis of a marcher is held off the border row on the hard axis, as it
@@ -2185,7 +2199,7 @@ static void stamp_castle_moat(Tilemap* map, int tx, int ty, unsigned int seed) {
             for (int dx = -MOAT_HALF; dx <= MOAT_HALF; dx++) {
                 if (dx*dx + dy*dy > MOAT_HALF*MOAT_HALF + 1) continue;
                 int nx = px + dx, ny = py + dy;
-                if (!in_bounds(nx, ny)) continue;
+                if (!in_world(&nx, &ny)) continue;
                 // Over whatever is there — the ring has to be closed, and a
                 // stretch of it declining to paint because the wasteland ran
                 // out is exactly the gap this is guarding against. Not over the
@@ -2524,9 +2538,18 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
     // Only paint on flat biome tiles — skip water, cliffs, structures, other
     // entrances, and anything under a drawn cliff face (the ground beneath a
     // face is still a flat tile, so the id alone does not say).
+    // The surround may spill over the seam; the footprint itself never does,
+    // so it is tested in the unwrapped frame first and the tile is then read
+    // through the wrap. Two tiles off each hard border, as before.
+    auto surround_tile = [&](int& tx, int& ty) -> bool {
+        if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return false;
+        if (!in_world(&tx, &ty)) return false;
+        if (!wrapx() && (tx < 2 || tx >= MAP_WIDTH-2))  return false;
+        if (!wrapy() && (ty < 2 || ty >= MAP_HEIGHT-2)) return false;
+        return true;
+    };
     auto safe_base = [&](int tx, int ty, int tile_id) {
-        if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
-        if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        if (!surround_tile(tx, ty)) return;
         if (tilemap_face_at(tx, ty)) return;
         int base = map->tiles[ty][tx];
         if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
@@ -2535,8 +2558,7 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
         map->overlay[ty][tx] = 0;
     };
     auto safe_ovl = [&](int tx, int ty, int ovl_id) {
-        if (tx < 2 || ty < 2 || tx >= MAP_WIDTH-2 || ty >= MAP_HEIGHT-2) return;
-        if (tx >= ex && tx < ex+sz && ty >= ey && ty < ey+sz) return;
+        if (!surround_tile(tx, ty)) return;
         if (tilemap_face_at(tx, ty)) return;
         int base = map->tiles[ty][tx];
         if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_PATH &&
@@ -2837,10 +2859,10 @@ static void route_network(Tilemap* map, unsigned int route_seed,
         // crossing costs what it is worth.
         auto span_from = [&](int x, int y, int d) {
             int nx = x + DX4[d], ny = y + DY4[d];
-            if (!in_bounds(nx, ny) || !spannable(nx, ny)) return -1;
+            if (!in_world(&nx, &ny) || !spannable(nx, ny)) return -1;
             for (int k = 1; k <= BRIDGE_MAX; k++) {
                 nx += DX4[d]; ny += DY4[d];
-                if (!in_bounds(nx, ny)) return -1;
+                if (!in_world(&nx, &ny)) return -1;
                 if (spannable(nx, ny)) continue;
                 return is_region(nx, ny) ? ny * MAP_WIDTH + nx : -1;
             }
@@ -2872,7 +2894,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                     }
                     for (int d = 0; d < 4; d++) {
                         int nx = qx + DX4[d], ny = qy + DY4[d];
-                        if (!in_bounds(nx, ny)) continue;
+                        if (!in_world(&nx, &ny)) continue;
                         size_t ni = (size_t)ny * MAP_WIDTH + nx;
                         if (seen[ni] || !is_region(nx, ny)) continue;
                         seen[ni] = 1;
@@ -2897,7 +2919,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                     for (int dy = -ANCHOR_SEARCH; dy <= ANCHOR_SEARCH; dy++)
                         for (int dx = -ANCHOR_SEARCH; dx <= ANCHOR_SEARCH; dx++) {
                             int nx = ex + dx, ny = ey + dy;
-                            if (!in_bounds(nx, ny)) continue;
+                            if (!in_world(&nx, &ny)) continue;
                             size_t ni = (size_t)ny * MAP_WIDTH + nx;
                             if (!incomp[ni] || is_lava(nx, ny)) continue;
                             int dd = dx*dx + dy*dy;
@@ -2926,7 +2948,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (size_t b = 0; b < anchors.size(); b++) {
                                 if (intree[b]) continue;
                                 int bx = anchors[b] % MAP_WIDTH, by = anchors[b] / MAP_WIDTH;
-                                double dd = (double)(ax-bx)*(ax-bx) + (double)(ay-by)*(ay-by);
+                                double ddx = wrap_dx(ax - bx), ddy = wrap_dy(ay - by);
+                                double dd = ddx*ddx + ddy*ddy;
                                 if (dd < bestd) { bestd = dd; ba = (int)a; bb = (int)b; }
                             }
                         }
@@ -2962,7 +2985,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         for (int dy = -EDGE_MARGIN; dy <= EDGE_MARGIN; dy++)
                             for (int dx = -EDGE_MARGIN; dx <= EDGE_MARGIN; dx++) {
                                 int nx = px2 + dx, ny = py2 + dy;
-                                if (!in_bounds(nx, ny)) return false;
+                                if (!in_world(&nx, &ny)) return false;
                                 if (!incomp[(size_t)ny * MAP_WIDTH + nx]) return false;
                             }
                         return true;
@@ -2972,7 +2995,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
                         if (is_lava(px2, py2)) continue;   // no track ends mid-bridge
                         if (!is_deep(px2, py2)) continue;
-                        long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                        long wdx = wrap_dx(px2 - ax), wdy = wrap_dy(py2 - ay), dd = wdx*wdx + wdy*wdy;
                         if (dd > bestd) { bestd = dd; pick = c; }
                     }
                     if (pick < 0) {
@@ -2982,7 +3005,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         for (int c : comp) {
                             int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
                             if (is_lava(px2, py2)) continue;
-                            long dd = (long)(px2-ax)*(px2-ax) + (long)(py2-ay)*(py2-ay);
+                            long wdx = wrap_dx(px2 - ax), wdy = wrap_dy(py2 - ay), dd = wdx*wdx + wdy*wdy;
                             if (dd > bestd) { bestd = dd; pick = c; }
                         }
                     }
@@ -3000,7 +3023,11 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                     // the tile for not belonging here — leaving a silent gap
                     // that breaks the trail in two.
                     auto in_this = [&](int x, int y) {
-                        return in_bounds(x, y) && incomp[(size_t)y * MAP_WIDTH + x];
+                        return in_world(&x, &y) && incomp[(size_t)y * MAP_WIDTH + x];
+                    };
+                    // A gap tile at a position that may lie over the seam.
+                    auto lava_at = [&](int x, int y) {
+                        return in_world(&x, &y) && is_lava(x, y);
                     };
 
                     // Keep the route off the wasteland's own border, for the
@@ -3037,7 +3064,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (int dx = -1; dx <= 1; dx++) {
                                 int nx = qx + dx, ny = qy + dy;
                                 if (in_this(nx, ny)) continue;
-                                if (in_bounds(nx, ny) && is_lava(nx, ny)) continue;
+                                if (lava_at(nx, ny)) continue;
                                 onrim = true; break;
                             }
                         if (onrim) { nearedge[c] = 1; rimq.push_back(c); }
@@ -3063,8 +3090,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     // cave mouth a channel passes. Refused in
                                     // the strict pass, the crossing falls to
                                     // the lenient one, which takes the bank.
-                                    if (!in_this(nx, ny) &&
-                                        !(in_bounds(nx, ny) && spannable(nx, ny))) continue;
+                                    if (!in_world(&nx, &ny)) continue;
+                                    if (!in_this(nx, ny) && !spannable(nx, ny)) continue;
                                     size_t ni = (size_t)ny * MAP_WIDTH + nx;
                                     if (nearedge[ni]) continue;
                                     nearedge[ni] = (uint8_t)(depth + 1);
@@ -3084,7 +3111,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (int bx = -1; bx <= 1; bx++) {
                                 if (bx*bx + by*by > 1) continue;
                                 int px2 = ix + bx, py2 = iy + by;
-                                if (!in_bounds(px2, py2)) continue;
+                                if (!in_world(&px2, &py2)) continue;
                                 size_t pi = (size_t)py2 * MAP_WIDTH + px2;
                                 // Never bleed into a neighbouring wasteland
                                 // across a thin barrier: that leaves a scrap of
@@ -3106,9 +3133,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     if (!spillable(px2, py2)) continue;
                                     bool touches = false;
                                     for (int d = 0; d < 4 && !touches; d++) {
-                                        int ax = px2 + DX4[d], ay = py2 + DY4[d];
-                                        touches = in_bounds(ax, ay) &&
-                                                  incomp[(size_t)ay * MAP_WIDTH + ax];
+                                        touches = in_this(px2 + DX4[d], py2 + DY4[d]);
                                     }
                                     if (!touches) continue;
                                 }
@@ -3148,7 +3173,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         for (int k = -1; k <= 1; k++) {
                             int px2 = ix + (axis == 1 ? k : 0);
                             int py2 = iy + (axis == 0 ? k : 0);
-                            if (!in_bounds(px2, py2)) continue;
+                            if (!in_world(&px2, &py2)) continue;
                             if (!is_raw_gap(px2, py2)) continue;
                             if (in_moat(px2, py2)) continue;
                             map->tiles[py2][px2]   = bridge_tile;
@@ -3204,7 +3229,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 if (dsu_find(a2) == dsu_find(b2)) continue;
                                 int ax2 = anchors[a2] % MAP_WIDTH, ay2 = anchors[a2] / MAP_WIDTH;
                                 int bx2 = anchors[b2] % MAP_WIDTH, by2 = anchors[b2] / MAP_WIDTH;
-                                double dd = (double)(ax2-bx2)*(ax2-bx2) + (double)(ay2-by2)*(ay2-by2);
+                                double ddx = wrap_dx(ax2 - bx2), ddy = wrap_dy(ay2 - by2);
+                                double dd = ddx*ddx + ddy*ddy;
                                 if (dd < bestd) { bestd = dd; ba = a2; bb = b2; }
                             }
                         if (ba < 0) { retries_left = 0; return; }
@@ -3301,7 +3327,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             int qx = t % MAP_WIDTH, qy = t / MAP_WIDTH;
                             for (int d = 0; d < 4; d++) {
                                 int nx = qx + DX4[d], ny = qy + DY4[d];
-                                if (!in_bounds(nx, ny)) continue;
+                                if (!in_world(&nx, &ny)) continue;
                                 int ni = ny * MAP_WIDTH + nx;
                                 int tt = map->tiles[ny][nx];
                                 bool deck = tt == TILE_WASTE_BRIDGE || tt == TILE_ROAD_BRIDGE;
@@ -3335,8 +3361,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         auto lay_branch = [&](int start) -> bool {
                         int end_free = ENDPOINT_FREE;
                         auto near_end = [&](int x, int y) {
-                            return (abs(x - fex) <= end_free && abs(y - fey) <= end_free)
-                                || (abs(x - tex) <= end_free && abs(y - tey) <= end_free);
+                            return (abs(wrap_dx(x - fex)) <= end_free && abs(wrap_dy(y - fey)) <= end_free)
+                                || (abs(wrap_dx(x - tex)) <= end_free && abs(wrap_dy(y - tey)) <= end_free);
                         };
                         bool found = false;
                         int  hit   = -1;   // the network tile the branch reached
@@ -3399,7 +3425,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 int fixed_d = -1;
                                 if (on_lava) {
                                     int p = prev[route[h]];
-                                    int ddx = qx - p % MAP_WIDTH, ddy = qy - p / MAP_WIDTH;
+                                    int ddx = wrap_dx(qx - p % MAP_WIDTH), ddy = wrap_dy(qy - p / MAP_WIDTH);
                                     for (int d = 0; d < 4; d++)
                                         if (DX4[d] == ddx && DY4[d] == ddy) fixed_d = d;
                                 }
@@ -3407,14 +3433,13 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     int d = on_lava ? fixed_d : ((k + rot) & 3);
                                     if (d < 0) break;
                                     int nx = qx + DX4[d], ny = qy + DY4[d];
-                                    if (in_bounds(nx, ny)) {
+                                    if (in_world(&nx, &ny)) {
                                         int ni = ny * MAP_WIDTH + nx;
                                         int run = on_lava ? runlen[route[h]] : 0;
                                         // Across the direction of travel.
                                         int sx = DY4[d], sy = DX4[d];
                                         auto both_sides = [&](int px, int py) {
-                                            return in_bounds(px + sx, py + sy) && is_lava(px + sx, py + sy) &&
-                                                   in_bounds(px - sx, py - sy) && is_lava(px - sx, py - sy);
+                                            return lava_at(px + sx, py + sy) && lava_at(px - sx, py - sy);
                                         };
                                         bool ok = false;
                                         if (incomp[ni]) {
@@ -3523,11 +3548,23 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // region is refused: checking only at the end is too
                         // late, because once a point has drifted out the later
                         // passes carry its neighbours after it.
+                        //
+                        // In an unwrapped frame: each point is its predecessor
+                        // plus the short step between them, so a branch that
+                        // crosses the seam is one continuous line here rather
+                        // than one that leaps the width of the world, and the
+                        // painting below fills between neighbours and not
+                        // across the map. Points are read back through the
+                        // wrap wherever they are tested or painted.
                         std::vector<float> fxs(path.size()), fys(path.size());
                         for (size_t i = 0; i < path.size(); i++) {
-                            fxs[i] = (float)(path[i] % MAP_WIDTH);
-                            fys[i] = (float)(path[i] / MAP_WIDTH);
+                            int px2 = path[i] % MAP_WIDTH, py2 = path[i] / MAP_WIDTH;
+                            if (i == 0) { fxs[i] = (float)px2; fys[i] = (float)py2; continue; }
+                            int qx2 = path[i-1] % MAP_WIDTH, qy2 = path[i-1] / MAP_WIDTH;
+                            fxs[i] = fxs[i-1] + (float)wrap_dx(px2 - qx2);
+                            fys[i] = fys[i-1] + (float)wrap_dy(py2 - qy2);
                         }
+                        const std::vector<float> ox = fxs, oy = fys;   // the routed line, unwrapped
 
                         // Which points are on a bridge, and which way it runs:
                         // -1 for ground, 0 for a span going east-west, 1 for
@@ -3562,7 +3599,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 if (pinned[i]) continue;
                                 float sx2 = (fxs[i-2] + fxs[i-1]*2 + fxs[i]*3 + fxs[i+1]*2 + fxs[i+2]) / 9.0f;
                                 float sy2 = (fys[i-2] + fys[i-1]*2 + fys[i]*3 + fys[i+1]*2 + fys[i+2]) / 9.0f;
-                                if (in_this((int)sx2, (int)sy2)) {
+                                if (in_this((int)floorf(sx2), (int)floorf(sy2))) {
                                     nx2[i] = sx2; ny2[i] = sy2;
                                 }
                             }
@@ -3636,7 +3673,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             for (float s = 1.0f; s > 0.0f; s -= 0.25f) {
                                 float px2 = fxs[i] - ty2 / len2 * drift * s;
                                 float py2 = fys[i] + tx2 / len2 * drift * s;
-                                int ix = (int)px2, iy = (int)py2;
+                                int ix = (int)floorf(px2), iy = (int)floorf(py2);
                                 if (!in_this(ix, iy)) continue;
                                 dxs[i] = px2; dys[i] = py2;
                                 taken = s;
@@ -3651,7 +3688,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // tiles, and where one is carried out of the region it
                         // falls back to the routed original — a jump wide
                         // enough that two brush marks no longer overlap.
-                        int lastx = -1, lasty = -1;
+                        int lastx = 0, lasty = 0;
+                        bool have_last = false;
                         for (size_t i = 0; i < path.size(); i++) {
                             // A span point is laid where the route put it, deck
                             // only, and takes no part in the joining-up below:
@@ -3659,15 +3697,15 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             // diagonally across the deck and cut its corners.
                             if (span[i] >= 0) {
                                 paint_span(path[i] % MAP_WIDTH, path[i] / MAP_WIDTH, span[i]);
-                                lastx = -1;
+                                have_last = false;
                                 continue;
                             }
-                            int ix = (int)fxs[i], iy = (int)fys[i];
+                            int ix = (int)floorf(fxs[i]), iy = (int)floorf(fys[i]);
                             if (!in_this(ix, iy)) {
-                                ix = path[i] % MAP_WIDTH;
-                                iy = path[i] / MAP_WIDTH;
+                                ix = (int)ox[i];
+                                iy = (int)oy[i];
                             }
-                            if (lastx < 0) {
+                            if (!have_last) {
                                 paint_trail(ix, iy);
                             } else {
                                 int dxs = ix - lastx, dys = iy - lasty;
@@ -3677,7 +3715,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                     paint_trail(lastx + dxs * s / steps,
                                                 lasty + dys * s / steps);
                             }
-                            lastx = ix; lasty = iy;
+                            lastx = ix; lasty = iy; have_last = true;
                         }
                         return true;
                         };
@@ -4623,14 +4661,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // failed: it is the difference between a town in a slightly odd place
         // and no town.
         auto scan_any_footprint = [&](int& out_x, int& out_y, int min_dist, int upto) -> bool {
-            for (int ty = TOWN_H; ty + TOWN_H < MAP_HEIGHT - TOWN_H; ty += 8)
-                for (int tx = TOWN_W; tx + TOWN_W < MAP_WIDTH - TOWN_W; tx += 8) {
+            for (int ty = margin_y(TOWN_H); ty + TOWN_H <= MAP_HEIGHT - margin_y(TOWN_H); ty += 8)
+                for (int tx = margin_x(TOWN_W); tx + TOWN_W <= MAP_WIDTH - margin_x(TOWN_W); tx += 8) {
                     int ddx = tx - cx, ddy = ty - cy;
                     if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
                     bool far_enough = true;
                     for (int i = 0; i < upto && far_enough; i++) {
                         if (map->towns[i].x < 0) continue;
-                        int ex = map->towns[i].x - tx, ey = map->towns[i].y - ty;
+                        int ex = wrap_dx(map->towns[i].x - tx), ey = wrap_dy(map->towns[i].y - ty);
                         if (ex*ex + ey*ey < min_dist*min_dist) far_enough = false;
                     }
                     if (!far_enough) continue;
@@ -4709,10 +4747,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 // Requiring only that the footprint stay on the map leaves
                 // exactly the condition that matters: deepest >= COAST_REACH,
                 // or the strip would hang off the wet edge.
-                const int lo_x = (sea_dx < 0) ? 0 : TOWN_W;
-                const int lo_y = (sea_dy < 0) ? 0 : TOWN_H;
-                const int hi_x = (sea_dx > 0) ? MAP_WIDTH  : MAP_WIDTH  - TOWN_W;
-                const int hi_y = (sea_dy > 0) ? MAP_HEIGHT : MAP_HEIGHT - TOWN_H;
+                // Along the joined axis -- which is the coast's own axis --
+                // the only edge is the seam, and the town need only not
+                // straddle it.
+                const int lo_x = (sea_dx < 0) ? 0 : margin_x(TOWN_W);
+                const int lo_y = (sea_dy < 0) ? 0 : margin_y(TOWN_H);
+                const int hi_x = (sea_dx > 0) ? MAP_WIDTH  : MAP_WIDTH  - margin_x(TOWN_W);
+                const int hi_y = (sea_dy > 0) ? MAP_HEIGHT : MAP_HEIGHT - margin_y(TOWN_H);
                 if (tx < lo_x || ty < lo_y ||
                     tx + TOWN_W > hi_x || ty + TOWN_H > hi_y) { tally.bounds++; continue; }
                 int ddx = tx - cx, ddy = ty - cy;
@@ -4770,17 +4811,17 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             bool placed = false;
             for (int attempt = 0; attempt < 50000 && !placed; attempt++) {
                 ts = ts * 1664525u + 1013904223u;
-                int tx = TOWN_W + (int)((ts >> 16) % (unsigned)(MAP_WIDTH  - 2*TOWN_W));
+                int tx = roll_span(ts >> 16, MAP_WIDTH,  TOWN_W, margin_x(TOWN_W));
                 ts = ts * 1664525u + 1013904223u;
-                int ty = TOWN_H + (int)((ts >> 16) % (unsigned)(MAP_HEIGHT - 2*TOWN_H));
+                int ty = roll_span(ts >> 16, MAP_HEIGHT, TOWN_H, margin_y(TOWN_H));
                 int ddx = tx - cx, ddy = ty - cy;
                 if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
                 if (!footprint_ok(tx, ty)) continue;
                 bool far_enough = true;
                 for (int i = 0; i < 2 && far_enough; i++) {
                     if (map->towns[i].x < 0) continue;
-                    int ddx2 = map->towns[i].x - tx;
-                    int ddy2 = map->towns[i].y - ty;
+                    int ddx2 = wrap_dx(map->towns[i].x - tx);
+                    int ddy2 = wrap_dy(map->towns[i].y - ty);
                     if (ddx2*ddx2 + ddy2*ddy2 < MIN_TOWN_DIST*MIN_TOWN_DIST)
                         far_enough = false;
                 }
@@ -4861,18 +4902,20 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // Every test but the ground's, with the clearances as given so the
         // floor below can relax them.
         auto site_ok = [&](int tx, int ty, int vil_dist, int town_dist) -> bool {
-            if (tx < 1 || ty < 1 || tx + VILLAGE_W >= MAP_WIDTH - 1 || ty + VILLAGE_H >= MAP_HEIGHT - 1)
+            if (tx < margin_x(1) || ty < margin_y(1) ||
+                tx + VILLAGE_W > MAP_WIDTH  - margin_x(2) ||
+                ty + VILLAGE_H > MAP_HEIGHT - margin_y(2))
                 return false;
             int ddx = tx - cx, ddy = ty - cy;
             if (ddx*ddx + ddy*ddy <= (hw+VILLAGE_H)*(hw+VILLAGE_H)) return false;  // the hub
             if (!village_footprint_ok(tx, ty)) return false;
             for (int i = 0; i < 3; i++) {
                 if (map->towns[i].x < 0) continue;
-                int dx2 = map->towns[i].x - tx, dy2 = map->towns[i].y - ty;
+                int dx2 = wrap_dx(map->towns[i].x - tx), dy2 = wrap_dy(map->towns[i].y - ty);
                 if (dx2*dx2 + dy2*dy2 < town_dist*town_dist) return false;
             }
             for (int i = 0; i < map->num_villages; i++) {
-                int dx2 = map->villages[i].x - tx, dy2 = map->villages[i].y - ty;
+                int dx2 = wrap_dx(map->villages[i].x - tx), dy2 = wrap_dy(map->villages[i].y - ty);
                 if (dx2*dx2 + dy2*dy2 < vil_dist*vil_dist) return false;
             }
             return true;
@@ -4883,11 +4926,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         map->num_villages = 0;
         unsigned int vs = seed ^ 0xA71B4C03u;
+        // The inland margin is about the ocean, so it is kept only off the
+        // hard borders; along the joined axis a village may stand anywhere
+        // it fits, the seam included.
         auto roll_site = [&](int margin, int& tx, int& ty) {
             vs = vs * 1664525u + 1013904223u;
-            tx = margin + (int)((vs >> 16) % (unsigned)(MAP_WIDTH  - 2*margin));
+            tx = roll_span(vs >> 16, MAP_WIDTH,  VILLAGE_W, margin_x(margin));
             vs = vs * 1664525u + 1013904223u;
-            ty = margin + (int)((vs >> 16) % (unsigned)(MAP_HEIGHT - 2*margin));
+            ty = roll_span(vs >> 16, MAP_HEIGHT, VILLAGE_H, margin_y(margin));
         };
         auto place = [&](int tx, int ty, int biome) {
             vs = vs * 1664525u + 1013904223u;
@@ -4995,8 +5041,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // leaves in it. Asking for the highest ground that exists is what makes
         // the feature do what its comment in include/castles.h says.
         {
-            float px = map->cliff_peak_x / TILE_SIZE;
-            float py = map->cliff_peak_y / TILE_SIZE;
+            // cliff_peak is in tiles already. This divided it by TILE_SIZE
+            // again, which put the target near the map's origin corner and
+            // sent the castle to whatever high ground lay nearest THAT.
+            float px = map->cliff_peak_x;
+            float py = map->cliff_peak_y;
 
             // Open plateau surface, at one level. The tile id alone is not
             // enough: a level's band is drawn over the tops of the levels below
@@ -5029,7 +5078,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 for (int y = 0; y < MAP_HEIGHT; y++) {
                     for (int x = 0; x < MAP_WIDTH; x++) {
                         if (!is_open_top(x, y, lvl)) continue;
-                        float dx = x - px, dy2 = y - py;
+                        float dx = wrap_dpx((x - px) * TILE_SIZE) / TILE_SIZE;
+                        float dy2 = wrap_dpy((y - py) * TILE_SIZE) / TILE_SIZE;
                         top_tiles.push_back({ dx*dx + dy2*dy2, {x, y} });
                     }
                 }
@@ -5075,7 +5125,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     for (int dx = -MOAT_REACH; dx <= MOAT_REACH; dx++) {
                         if (dx*dx + dy*dy > MOAT_REACH * MOAT_REACH) continue;
                         int nx = mx + dx, ny = my + dy;
-                        if (!in_bounds(nx, ny)) return false;
+                        if (!in_world(&nx, &ny)) return false;
                         int t = map->tiles[ny][nx];
                         if (t != TILE_WASTELAND && t != TILE_LAVA) return false;
                     }
@@ -5104,10 +5154,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         // that side instead of by lava — sealed, but only by
                         // accident, and it reads as a moat someone forgot to
                         // finish.
-                        if (tx + CASTLE_W / 2 - MOAT_REACH < 0 ||
-                            ty + CASTLE_H / 2 - MOAT_REACH < 0 ||
-                            tx + CASTLE_W / 2 + MOAT_REACH >= MAP_WIDTH ||
-                            ty + CASTLE_H / 2 + MOAT_REACH >= MAP_HEIGHT) continue;
+                        // The seam is not an edge: a ring may run over it.
+                        if ((!wrapx() && (tx + CASTLE_W / 2 - MOAT_REACH < 0 ||
+                                          tx + CASTLE_W / 2 + MOAT_REACH >= MAP_WIDTH)) ||
+                            (!wrapy() && (ty + CASTLE_H / 2 - MOAT_REACH < 0 ||
+                                          ty + CASTLE_H / 2 + MOAT_REACH >= MAP_HEIGHT))) continue;
                         int waste_count = 0; bool valid = true;
                         for (int dy = 0; dy < CASTLE_H && valid; dy++)
                             for (int dx = 0; dx < CASTLE_W && valid; dx++) {
@@ -5179,9 +5230,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // that is 85% trees has almost nowhere to put one.
         auto door_ok_ex = [&](int ex, int ey, int sz, int min_lvl, int near_from,
                               bool allow_tree = false) -> bool {
-            if (ex < MARGIN || ey < MARGIN ||
-                ex + sz + MARGIN > MAP_WIDTH ||
-                ey + sz + MARGIN > MAP_HEIGHT)
+            if (ex < margin_x(MARGIN) || ey < margin_y(MARGIN) ||
+                ex + sz + margin_x(MARGIN) > MAP_WIDTH ||
+                ey + sz + margin_y(MARGIN) > MAP_HEIGHT)
                 return false;
             for (int dy = 0; dy < sz; dy++) {
                 for (int dx = 0; dx < sz; dx++) {
@@ -5215,8 +5266,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 // by the sixteen-tile cliff keep-out, which every mouth sits
                 // inside by construction.
                 if (map->dungeon_entrances[i].cave_anchor_x >= 0) continue;
-                int ddx = map->dungeon_entrances[i].x - ex;
-                int ddy = map->dungeon_entrances[i].y - ey;
+                int ddx = wrap_dx(map->dungeon_entrances[i].x - ex);
+                int ddy = wrap_dy(map->dungeon_entrances[i].y - ey);
                 if (ddx*ddx + ddy*ddy < MIN_DIST * MIN_DIST) return false;
             }
             // Reject positions inside any town footprint
@@ -5241,7 +5292,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             if (map->castles[2].x >= 0) {
                 int mx = map->castles[2].x + CASTLE_W / 2;
                 int my = map->castles[2].y + CASTLE_H / 2;
-                int nx = (ex + sz / 2) - mx, ny = (ey + sz / 2) - my;
+                int nx = wrap_dx((ex + sz / 2) - mx), ny = wrap_dy((ey + sz / 2) - my);
                 int keep = MOAT_REACH + sz;
                 if (nx*nx + ny*ny <= keep * keep) return false;
             }
@@ -5340,7 +5391,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 for (int dy = -1; dy <= 1; dy++)
                     for (int dx = -1; dx <= 1; dx++) {
                         int px = vx + dx, py = vy + dy;
-                        if (!in_bounds(px, py)) continue;
+                        if (!in_world(&px, &py)) continue;
                         if (!s_cliff_elev[py][px] || s_cliff_scratch[py][px]) continue;
                         s_cliff_scratch[py][px] = 1;
                         if (n < CAVE_CAP) cave_cells[n++] = py * MAP_WIDTH + px;
@@ -5631,9 +5682,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     for (int tries = 0; tries < 4000 && !placed; tries++) {
                         if (map->num_dungeon_entrances >= MAX_DUNGEON_ENTRANCES) break;
                         bs = bs * 1664525u + 1013904223u;
-                        int ex = MARGIN + (int)((bs >> 16) % (unsigned)(MAP_WIDTH  - 2*MARGIN));
+                        int ex = margin_x(MARGIN) + (int)((bs >> 16) % (unsigned)(MAP_WIDTH  - 2*margin_x(MARGIN)));
                         bs = bs * 1664525u + 1013904223u;
-                        int ey = MARGIN + (int)((bs >> 16) % (unsigned)(MAP_HEIGHT - 2*MARGIN));
+                        int ey = margin_y(MARGIN) + (int)((bs >> 16) % (unsigned)(MAP_HEIGHT - 2*margin_y(MARGIN)));
 
                         int cliff_lvl = cliff_level_of(map->tiles[ey][ex]);
                         bs = bs * 1664525u + 1013904223u;
@@ -5784,7 +5835,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 // to be affordable alongside the site already being spent for.
                 int need = (ej->type == ei->type) ? 2 : 1;
                 if (quota[(int)ej->type] < need) continue;
-                int dx = ei->x - ej->x, dy = ei->y - ej->y;
+                int dx = wrap_dx(ei->x - ej->x), dy = wrap_dy(ei->y - ej->y);
                 int d2 = dx*dx + dy*dy;
                 if (d2 < best_d2) { best_d2 = d2; best_j = j; }
             }
@@ -5876,7 +5927,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         int mcx = citadel2.x + CASTLE_W / 2, mcy = citadel2.y + CASTLE_H / 2;
         auto road_forbidden = [&](int x, int y) {
             if (citadel2.x < 0) return false;
-            int dx = x - mcx, dy = y - mcy;
+            int dx = wrap_dx(x - mcx), dy = wrap_dy(y - mcy);
             return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
         };
         // Water is the gap a road bridges, lava is not: a road over a lava
@@ -5968,7 +6019,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         int moat_cx = citadel.x + CASTLE_W / 2, moat_cy = citadel.y + CASTLE_H / 2;
         auto in_moat = [&](int x, int y) {
             if (citadel.x < 0) return false;
-            int dx = x - moat_cx, dy = y - moat_cy;
+            int dx = wrap_dx(x - moat_cx), dy = wrap_dy(y - moat_cy);
             return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
         };
         auto is_lava = [&](int x, int y) {
@@ -6044,7 +6095,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     if (side < 2) { dy = side == 0 ? s : -1; dx = k; }
                     else          { dx = side == 2 ? -1 : s; dy = k; if (k < 0 || k >= s) continue; }
                     int nx = e.x + dx, ny = e.y + dy;
-                    if (!in_bounds(nx, ny)) continue;
+                    if (!in_world(&nx, &ny)) continue;
                     if (s_cliff_elev[ny][nx] || tilemap_face_at(nx, ny)) continue;
                     if (!tilemap_is_walkable(map, nx, ny)) continue;
                     ax = nx; ay = ny;
@@ -8462,7 +8513,9 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         int dy = (int)((rng >> 16) % (unsigned)(RADIUS * 2 + 1)) - RADIUS;
         if (dx == 0 && dy == 0) continue; // entrance position is already taken
 
+        // Canonical, so a stone beside the seam lands on the far side of it.
         int tx = e->x + dx, ty = e->y + dy;
+        if (!in_world(&tx, &ty)) continue;
         if (!tilemap_is_walkable(map, tx, ty)) continue;
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.
@@ -8475,8 +8528,8 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         for (int i = 0; i < resources->count; i++) {
             const ResourceNode* n = &resources->nodes[i];
             if (n->type != RESOURCE_GRAVESTONE) continue;
-            if (fabsf(n->x - wx) < (float)TILE_SIZE * 0.5f &&
-                fabsf(n->y - wy) < (float)TILE_SIZE * 0.5f) {
+            if (fabsf(wrap_dpx(n->x - wx)) < (float)TILE_SIZE * 0.5f &&
+                fabsf(wrap_dpy(n->y - wy)) < (float)TILE_SIZE * 0.5f) {
                 conflict = true;
                 break;
             }
@@ -8540,7 +8593,9 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
     for (int i = 0; i < count; i++) {
         int dx = slots[order[i]][0];
         int dy = slots[order[i]][1];
+        // Canonical, so a stone beside the seam lands on the far side of it.
         int tx = e->x + dx, ty = e->y + dy;
+        if (!in_world(&tx, &ty)) continue;
         if (!tilemap_is_walkable(map, tx, ty)) continue;
         // Same bank clearance the overlays get — a gravestone standing in
         // the shallows reads as a mistake rather than as a graveyard.

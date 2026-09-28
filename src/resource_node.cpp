@@ -162,8 +162,10 @@ bool resource_node_solid(const void* vlist, float px, float py) {
     for (int i = 0; i < list->count; i++) {
         const ResourceNode* n = &list->nodes[i];
         if (!n->alive) continue;
-        if (px >= n->x && px < n->x + n->width &&
-            py >= n->y && py < n->y + n->height) return true;
+        // Through the wrap: the player's hitbox is sampled either side of
+        // the seam as they cross it, and the node is on one side only.
+        float rx = wrap_dpx(px - n->x), ry = wrap_dpy(py - n->y);
+        if (rx >= 0.0f && rx < n->width && ry >= 0.0f && ry < n->height) return true;
     }
     return false;
 }

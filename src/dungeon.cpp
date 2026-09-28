@@ -102,7 +102,7 @@ struct MaterialDef {
 static const MaterialDef MATERIALS[MAT_COUNT] = {
     // name             floor              minimap wall       up to
     { "Stone",        {108,108,116,255}, { 74, 74, 80,255}, 0.3722f },
-    { "Bronze",       {110, 88, 58,255}, { 92, 74, 48,255}, 0.4476f },
+    { "Bronze",       {110, 88, 58,255}, { 92, 74, 48,255}, 0.4520f },
     { "Emerald",      { 70,105, 78,255}, { 46, 78, 58,255}, 0.4935f },
     { "Veyrite",      { 90, 80, 74,255}, { 60, 65,100,255}, 0.5728f },
     { "Dravium",      {110, 64, 60,255}, { 92, 44, 44,255}, 0.6285f },

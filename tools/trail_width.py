@@ -122,13 +122,33 @@ def largest_clump(mask):
     return best, n, where
 
 
-def report(name, mask):
+# The world wraps on one axis (x for a north or south ocean, y for a west or
+# east one), and a track crossing the seam leaves the image at one edge and
+# comes back at the other. Measured as it stands, the image edge is "not
+# track" and every crossing reads as a narrow stump. --wrap x|y pads the image
+# round that axis with its own far side, measures, and crops back, so each tile
+# is counted once and a crossing is as wide as it is.
+WRAP_PAD = 24
+
+
+def wrapped(fn, mask, axis):
+    """fn(mask) computed on the mask padded round `axis`, cropped back."""
+    if axis is None:
+        return fn(mask)
+    ax = 1 if axis == 'x' else 0
+    widths = [(0, 0), (0, 0)]
+    widths[ax] = (WRAP_PAD, WRAP_PAD)
+    out = fn(np.pad(mask, widths, mode='wrap'))
+    return out[:, WRAP_PAD:-WRAP_PAD] if ax == 1 else out[WRAP_PAD:-WRAP_PAD, :]
+
+
+def report(name, mask, axis=None):
     total = int(mask.sum())
     if not total:
         print('  %-6s no tiles' % name)
         return
-    dist = distance_in(mask)
-    ridge = ridge_of(dist, mask)
+    dist = wrapped(distance_in, mask, axis)
+    ridge = wrapped(lambda m: ridge_of(distance_in(m), m), mask, axis)
 
     counts = {}
     for d in dist[ridge].tolist():
@@ -136,9 +156,10 @@ def report(name, mask):
     nridge = sum(counts.values())
 
     # Cardinal neighbours all the same network -- what the nine-slice needs.
-    pad = np.pad(mask, 1, constant_values=False)
-    interior = (mask & pad[:-2, 1:-1] & pad[2:, 1:-1]
-                & pad[1:-1, :-2] & pad[1:-1, 2:])
+    def interior_of(m):
+        pad = np.pad(m, 1, constant_values=False)
+        return m & pad[:-2, 1:-1] & pad[2:, 1:-1] & pad[1:-1, :-2] & pad[1:-1, 2:]
+    interior = wrapped(interior_of, mask, axis)
     gap = mask & ~interior
     worst, nclump, worst_at = largest_clump(gap & (dist == 1) & ridge)
     # And the same for the other direction: the biggest clump of stroke five
@@ -159,14 +180,18 @@ def report(name, mask):
 
 def main():
     im = np.array(Image.open(sys.argv[1]).convert('RGB'))
-    print(sys.argv[1])
+    axis = None
+    for a in sys.argv[2:]:
+        if a.startswith('--wrap='):
+            axis = a.split('=', 1)[1]
+    print(sys.argv[1] + ('  (wrapping in %s)' % axis if axis else ''))
     for name, rgb in NETWORKS:
         own = np.all(im == np.array(rgb, dtype=np.uint8), axis=2)
         # A bridge is a deck laid square across a gap, three wide by
         # construction, and it belongs to whichever stroke runs through it --
         # count it as part of the mask so a crossing is not read as two stumps.
         bridge = np.all(im == np.array(BRIDGE, dtype=np.uint8), axis=2)
-        report(name, own | (bridge & _touches(own)))
+        report(name, own | (bridge & _touches(own)), axis)
 
 
 def _touches(mask):
