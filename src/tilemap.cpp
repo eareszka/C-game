@@ -328,6 +328,24 @@ float wrap_py(float py) {
     py = fmodf(py, H);
     return py < 0.0f ? py + H : py;
 }
+static inline bool wrapx() { return s_wrap_axis == WRAP_X; }
+static inline bool wrapy() { return s_wrap_axis == WRAP_Y; }
+
+// One step of a marcher along an axis. On the joined axis it goes through
+// the seam; on the other it reports having left the world. The secondary
+// axis of a marcher is held off the border row on the hard axis, as it
+// always was, and simply wraps on the joined one.
+static bool march_primary(int* v, int size, bool wraps) {
+    if (!wraps) return *v >= 0 && *v < size;
+    *v %= size;
+    if (*v < 0) *v += size;
+    return true;
+}
+static void march_secondary(int* v, int size, bool wraps) {
+    if (wraps) { *v %= size; if (*v < 0) *v += size; return; }
+    if (*v < 1)        *v = 1;
+    if (*v >= size - 1) *v = size - 2;
+}
 
 // Generation tracing. Worldgen runs two dozen passes over the whole map, so
 // when a shape in the finished world looks wrong there is no reading your way
@@ -392,7 +410,7 @@ static void clear_overlays_near_liquid(Tilemap* map) {
             bool dry = overlay_site_dry(map, x, y);
             // A tree's canopy is drawn one tile up, so that tile needs the same
             // clearance or the crown hangs out over the water.
-            if (dry && (ov == TILE_TREE || ov == TILE_DEAD_TREE) && y > 0)
+            if (dry && (ov == TILE_TREE || ov == TILE_DEAD_TREE))
                 dry = overlay_site_dry(map, x, y - 1);
             if (!dry) map->overlay[y][x] = 0;
         }
@@ -415,7 +433,7 @@ static void paint_river_brush(Tilemap* map, int ix, int iy, int brush_r,
         for (int bx = -brush_r; bx <= brush_r; bx++) {
             if (bx*bx + by*by > brush_r*brush_r) continue;
             int px = ix + bx, py = iy + by;
-            if (!in_bounds(px, py)) continue;
+            if (!in_world(&px, &py)) continue;
             if (abs(px - guard_cx) <= guard_r && abs(py - guard_cy) <= guard_r) continue;
             map->tiles[py][px] = TILE_RIVER;
         }
@@ -458,20 +476,18 @@ static void march_river(Tilemap* map, int sx, int sy,
 
         if (primary_x) {
             rx += sign_x;
-            if (rx < 0 || rx >= MAP_WIDTH) break;
+            if (!march_primary(&rx, MAP_WIDTH, wrapx())) break;
             acc += ratio;
             int sec = (int)acc; acc -= sec;
             ry += sign_y * sec + jitter;
-            if (ry < 1)             ry = 1;
-            if (ry >= MAP_HEIGHT-1) ry = MAP_HEIGHT - 2;
+            march_secondary(&ry, MAP_HEIGHT, wrapy());
         } else {
             ry += sign_y;
-            if (ry < 0 || ry >= MAP_HEIGHT) break;
+            if (!march_primary(&ry, MAP_HEIGHT, wrapy())) break;
             acc += ratio;
             int sec = (int)acc; acc -= sec;
             rx += sign_x * sec + jitter;
-            if (rx < 1)            rx = 1;
-            if (rx >= MAP_WIDTH-1) rx = MAP_WIDTH - 2;
+            march_secondary(&rx, MAP_WIDTH, wrapx());
         }
 
         paint_river_brush(map, rx, ry, brush_r, guard_cx, guard_cy, guard_r);
@@ -510,7 +526,7 @@ static void paint_stream_brush(Tilemap* map, int ix, int iy, int brush_r,
         for (int bx = -brush_r; bx <= brush_r; bx++) {
             if (bx*bx + by*by > brush_r*brush_r) continue;
             int px = ix+bx, py = iy+by;
-            if (!in_bounds(px, py)) continue;
+            if (!in_world(&px, &py)) continue;
             if (abs(px-guard_cx) <= guard_r && abs(py-guard_cy) <= guard_r) continue;
             if (water_keepout[py][px]) continue;
             if (s_cliff_near[py][px]) continue;
@@ -546,8 +562,11 @@ static void march_wander(Tilemap* map, int sx, int sy, float angle,
         angle += turn;
         fx += cosf(angle);
         fy += sinf(angle);
+        if (wrapx()) { if (fx < 0.0f) fx += MAP_WIDTH;  else if (fx >= MAP_WIDTH)  fx -= MAP_WIDTH;  }
+        if (wrapy()) { if (fy < 0.0f) fy += MAP_HEIGHT; else if (fy >= MAP_HEIGHT) fy -= MAP_HEIGHT; }
         int ix = (int)fx, iy = (int)fy;
-        if (ix < 1 || iy < 1 || ix >= MAP_WIDTH - 1 || iy >= MAP_HEIGHT - 1) break;
+        if (!wrapx() && (ix < 1 || ix >= MAP_WIDTH  - 1)) break;
+        if (!wrapy() && (iy < 1 || iy >= MAP_HEIGHT - 1)) break;
         paint_stream_brush(map, ix, iy, brush_r, guard_cx, guard_cy, guard_r, target, place);
     }
 }
@@ -587,16 +606,16 @@ static void march_stream(Tilemap* map, int sx, int sy,
         drift -= (float)jitter;
         if (primary_x) {
             rx += sign_x;
-            if (rx < 0 || rx >= MAP_WIDTH) break;
+            if (!march_primary(&rx, MAP_WIDTH, wrapx())) break;
             acc += ratio; int sec = (int)acc; acc -= sec;
             ry += sign_y * sec + jitter;
-            if (ry < 1) ry = 1; if (ry >= MAP_HEIGHT-1) ry = MAP_HEIGHT-2;
+            march_secondary(&ry, MAP_HEIGHT, wrapy());
         } else {
             ry += sign_y;
-            if (ry < 0 || ry >= MAP_HEIGHT) break;
+            if (!march_primary(&ry, MAP_HEIGHT, wrapy())) break;
             acc += ratio; int sec = (int)acc; acc -= sec;
             rx += sign_x * sec + jitter;
-            if (rx < 1) rx = 1; if (rx >= MAP_WIDTH-1) rx = MAP_WIDTH-2;
+            march_secondary(&rx, MAP_WIDTH, wrapx());
         }
         paint_stream_brush(map, rx, ry, brush_r, guard_cx, guard_cy, guard_r, target, place);
         // Only where the stream actually laid something down: a point out on
@@ -606,20 +625,23 @@ static void march_stream(Tilemap* map, int sx, int sy,
     }
 }
 
-// March the west river as a single meandering channel, then fan it into
-// 2-4 branches (delta) as it nears the ocean coast.
+// March the ocean river as a single meandering channel, then fan it into
+// 2-4 branches (delta) as it nears the ocean coast, whichever edge that is.
 static void generate_delta_river(Tilemap* map, int sx, int sy,
                                   float dir_x, float dir_y,
-                                  unsigned int seed,
+                                  unsigned int seed, int ocean_side,
                                   int guard_cx, int guard_cy, int guard_r,
                                   int brush_r, int jitter_range)
 {
     const float PI = 3.14159265f;
     unsigned int s = seed;
 
-    // Where (in x) to begin fanning — random per seed, well before the coast
+    // How far short of the ocean edge to begin fanning -- random per seed,
+    // well before the coast. It used to be a column, which only meant
+    // anything with the ocean to the west; the other three sides got a
+    // trunk that ran into the sea without ever fanning.
     s = s * 1664525u + 1013904223u;
-    int delta_x = 600 + (int)((s >> 16) % 400); // 600..999
+    int delta_depth = 600 + (int)((s >> 16) % 400); // 600..999
 
     // --- Phase 1: single meandering river trunk ---
     int rx = sx, ry = sy;
@@ -641,25 +663,30 @@ static void generate_delta_river(Tilemap* map, int sx, int sy,
 
         if (primary_x) {
             rx += sign_x;
-            if (rx < 0 || rx >= MAP_WIDTH) { rx -= sign_x; break; }
+            if (!march_primary(&rx, MAP_WIDTH, wrapx())) { rx -= sign_x; break; }
             acc += ratio;
             int sec = (int)acc; acc -= sec;
             ry += sign_y * sec + jitter;
-            if (ry < 1)             ry = 1;
-            if (ry >= MAP_HEIGHT-1) ry = MAP_HEIGHT - 2;
+            march_secondary(&ry, MAP_HEIGHT, wrapy());
         } else {
             ry += sign_y;
-            if (ry < 0 || ry >= MAP_HEIGHT) { ry -= sign_y; break; }
+            if (!march_primary(&ry, MAP_HEIGHT, wrapy())) { ry -= sign_y; break; }
             acc += ratio;
             int sec = (int)acc; acc -= sec;
             rx += sign_x * sec + jitter;
-            if (rx < 1)            rx = 1;
-            if (rx >= MAP_WIDTH-1) rx = MAP_WIDTH - 2;
+            march_secondary(&rx, MAP_WIDTH, wrapx());
         }
 
         paint_river_brush(map, rx, ry, brush_r, guard_cx, guard_cy, guard_r);
 
-        if (rx <= delta_x) break; // trunk done, start fanning
+        int to_sea;
+        switch (ocean_side) {
+            case 0:  to_sea = rx;                  break;
+            case 1:  to_sea = MAP_WIDTH  - 1 - rx; break;
+            case 2:  to_sea = ry;                  break;
+            default: to_sea = MAP_HEIGHT - 1 - ry; break;
+        }
+        if (to_sea <= delta_depth) break; // trunk done, start fanning
     }
 
     // --- Phase 2: fan into delta branches from (rx, ry) ---
@@ -711,9 +738,9 @@ static void build_cliff_near(void) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             uint8_t hit = 0;
             for (int dx = -CLIFF_NEAR; dx <= CLIFF_NEAR && !hit; dx++) {
-                int nx = x + dx;
-                if (nx < 0 || nx >= MAP_WIDTH) continue;
-                if (s_cliff_elev[y][nx] || tilemap_face_at(nx, y)) hit = 1;
+                int nx = x + dx, ny = y;
+                if (!in_world(&nx, &ny)) continue;
+                if (s_cliff_elev[ny][nx] || tilemap_face_at(nx, ny)) hit = 1;
             }
             row_hit[y][x] = hit;
         }
@@ -721,9 +748,9 @@ static void build_cliff_near(void) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             uint8_t hit = 0;
             for (int dy = -CLIFF_NEAR; dy <= CLIFF_NEAR && !hit; dy++) {
-                int ny = y + dy;
-                if (ny < 0 || ny >= MAP_HEIGHT) continue;
-                if (row_hit[ny][x]) hit = 1;
+                int nx = x, ny = y + dy;
+                if (!in_world(&nx, &ny)) continue;
+                if (row_hit[ny][nx]) hit = 1;
             }
             s_cliff_near[y][x] = hit;
         }
@@ -771,8 +798,10 @@ static unsigned char s_cliff_face[MAP_HEIGHT][MAP_WIDTH];
 // is a band of rock crossing the view — which reads as a line drawn on the
 // grass, not as ground that is higher. The window is about 50 tiles across, so
 // these are sized to land between roughly twenty and sixty.
-static const int CLIFF_HIGH_G   = 56;   // how far apart the plateau country lies
-static const int CLIFF_ROUGH_G  = 9;    // and the scale of the bites out of its edge
+// Each grid divides the map, so the lattice closes on the joined axis and
+// the field is the same continuous thing across the seam as anywhere else.
+static const int CLIFF_HIGH_G   = 60;   // how far apart the plateau country lies
+static const int CLIFF_ROUGH_G  = 10;   // and the scale of the bites out of its edge
 static const float CLIFF_ROUGH_AMP = 1.00f;  // how deep they bite
 
 // And a third octave, finer again, which is what stops a flank being a ruled
@@ -788,6 +817,9 @@ static const float CLIFF_ROUGH_AMP = 1.00f;  // how deep they bite
 // the octave stops being a texture on the edge and starts deciding where the
 // edge is, which breaks landforms into archipelagos.
 static const int CLIFF_GRAIN_G  = 6;
+static_assert(MAP_WIDTH % CLIFF_HIGH_G == 0 && MAP_WIDTH % CLIFF_ROUGH_G == 0 && MAP_WIDTH % CLIFF_GRAIN_G == 0 &&
+              MAP_HEIGHT % CLIFF_HIGH_G == 0 && MAP_HEIGHT % CLIFF_ROUGH_G == 0 && MAP_HEIGHT % CLIFF_GRAIN_G == 0,
+              "the cliff noise grids must divide the map, or the field tears at the seam");
 static const float CLIFF_GRAIN_AMP = 0.30f;
 
 // No feature of a plateau is thinner than this.
@@ -1000,7 +1032,7 @@ static int cliff_face_depth(int x, int y, int L) {
         int w = (dy <= 1) ? CLIFF_FACE_SIDE : 0;
         for (int dx = -w; dx <= w; dx++) {
             int sx = x - dx, sy = y - dy;
-            if (sx < 0 || sx >= MAP_WIDTH || sy < 0 || sy >= MAP_HEIGHT) continue;
+            if (!in_world(&sx, &sy)) continue;
             if (s_cliff_elev[sy][sx] >= L) return dy;
         }
     }
@@ -1070,15 +1102,26 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
     const int* w = cliff_disk(r, &area);
     const int win = 2*r + 1;
 
+    // On the joined axis the window is the whole map and the disk runs off one
+    // end of a row onto the other: a span that crosses the seam is two
+    // subtractions, and the rows the window wants past the top or bottom are
+    // the ones at the far end. On the hard-border axis everything still stops
+    // at the window, as it did.
+    const bool wx = wrapx(), wy = wrapy();
+    const int  W  = x_hi - x_lo;
+
     // A prefix sum along each row of the window, so the disk's span on that row
-    // is one subtraction. Rows are kept in a ring the height of the window.
+    // is one subtraction. Rows are kept in a ring the height of the window,
+    // keyed by the unwrapped row so the ring's slots stay distinct across the
+    // seam.
     static int prefix[CLIFF_MORPH_RMAX * 2 + 1][MAP_WIDTH + 1];
     auto build = [&](int y) {
         int* dst = prefix[((y % win) + win) % win];
+        const unsigned char* src = s_cliff_elev[wy ? wrap_y(y) : y];
         int acc = 0;
         dst[x_lo] = 0;
         for (int x = x_lo; x < x_hi; x++) {
-            acc += (s_cliff_elev[y][x] != 0);
+            acc += (src[x] != 0);
             dst[x + 1] = acc;
         }
     };
@@ -1092,14 +1135,14 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
     const int* rowp [CLIFF_MORPH_RMAX * 2 + 1];
     int        rowhw[CLIFF_MORPH_RMAX * 2 + 1];
 
-    for (int y = y_lo; y < y_lo + r && y < y_hi; y++) build(y);
+    for (int y = y_lo - (wy ? r : 0); y < y_lo + r && y < y_hi; y++) build(y);
     for (int y = y_lo; y < y_hi; y++) {
-        if (y + r < y_hi) build(y + r);
+        if (wy || y + r < y_hi) build(y + r);
 
         int nrows = 0;
         for (int dy = -r; dy <= r; dy++) {
             int sy = y + dy;
-            if (sy < y_lo || sy >= y_hi) continue;
+            if (!wy && (sy < y_lo || sy >= y_hi)) continue;
             rowp [nrows] = prefix[((sy % win) + win) % win];
             rowhw[nrows] = w[dy + r];
             nrows++;
@@ -1110,9 +1153,16 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
             for (int i = 0; i < nrows; i++) {
                 int hw = rowhw[i];
                 int a = x - hw, b = x + hw + 1;
-                if (a < x_lo) a = x_lo;
-                if (b > x_hi) b = x_hi;
-                if (a < b) acc += rowp[i][b] - rowp[i][a];
+                const int* p = rowp[i];
+                if (wx) {
+                    if (a < x_lo)      acc += p[b] - p[x_lo] + p[x_hi] - p[a + W];
+                    else if (b > x_hi) acc += p[x_hi] - p[a] + p[b - W] - p[x_lo];
+                    else               acc += p[b] - p[a];
+                } else {
+                    if (a < x_lo) a = x_lo;
+                    if (b > x_hi) b = x_hi;
+                    if (a < b) acc += p[b] - p[a];
+                }
             }
             s_cliff_scratch[y][x] = (acc >= need) ? 1 : 0;
         }
@@ -1152,16 +1202,35 @@ static void cliff_smooth_south(const int* cells, int n, int y_lo, int y_hi)
     static int bot[MAP_WIDTH];
     static int smooth[MAP_WIDTH];
 
+    // A component lying across the seam is measured in a frame shifted by half
+    // the map on the joined axis, where it is one piece: its columns are then
+    // contiguous, and its southmost row is a row and not the bottom of the
+    // array. Nothing is written back except through the shift again.
+    bool straddle = false;
+    if (wrapx() || wrapy()) {
+        bool lo = false, hi = false;
+        const int top = wrapx() ? MAP_WIDTH : MAP_HEIGHT;
+        for (int i = 0; i < n; i++) {
+            int v = wrapx() ? cells[i] % MAP_WIDTH : cells[i] / MAP_WIDTH;
+            if (v == 0)       lo = true;
+            if (v == top - 1) hi = true;
+        }
+        straddle = lo && hi;
+    }
+    const int shx = (straddle && wrapx()) ? MAP_WIDTH  / 2 : 0;
+    const int shy = (straddle && wrapy()) ? MAP_HEIGHT / 2 : 0;
+
     int cx_lo = MAP_WIDTH, cx_hi = -1;
     for (int i = 0; i < n; i++) {
-        int x = cells[i] % MAP_WIDTH;
+        int x = (cells[i] % MAP_WIDTH + shx) % MAP_WIDTH;
         if (x < cx_lo) cx_lo = x;
         if (x > cx_hi) cx_hi = x;
     }
     if (cx_lo > cx_hi) return;
     for (int x = cx_lo; x <= cx_hi; x++) bot[x] = -1;
     for (int i = 0; i < n; i++) {
-        int y = cells[i] / MAP_WIDTH, x = cells[i] % MAP_WIDTH;
+        int y = (cells[i] / MAP_WIDTH + shy) % MAP_HEIGHT;
+        int x = (cells[i] % MAP_WIDTH + shx) % MAP_WIDTH;
         if (y > bot[x]) bot[x] = y;
     }
 
@@ -1183,12 +1252,19 @@ static void cliff_smooth_south(const int* cells, int n, int y_lo, int y_hi)
         if (delta >  CLIFF_SOUTH_SMOOTH_MAX) delta =  CLIFF_SOUTH_SMOOTH_MAX;
         if (delta < -CLIFF_SOUTH_SMOOTH_MAX) delta = -CLIFF_SOUTH_SMOOTH_MAX;
         int target = bot[x] + delta;
+        int ax = (x - shx + MAP_WIDTH) % MAP_WIDTH;         // the array's column
         if (target > bot[x])
-            for (int y = bot[x] + 1; y <= target && y < y_hi; y++)
-                s_cliff_elev[y][x] = 1;
+            for (int y = bot[x] + 1; y <= target; y++) {
+                int ay = (y - shy + MAP_HEIGHT) % MAP_HEIGHT;
+                if (!wrapy() && ay >= y_hi) break;
+                s_cliff_elev[ay][ax] = 1;
+            }
         else if (target < bot[x])
-            for (int y = target + 1; y <= bot[x] && y >= y_lo; y++)
-                s_cliff_elev[y][x] = 0;
+            for (int y = target + 1; y <= bot[x]; y++) {
+                int ay = (y - shy + MAP_HEIGHT) % MAP_HEIGHT;
+                if (!wrapy() && ay < y_lo) continue;
+                s_cliff_elev[ay][ax] = 0;
+            }
     }
 }
 
@@ -1240,37 +1316,53 @@ static bool biome_majority_smooth(Tilemap* map, int passes)
     static int colcnt[MAP_WIDTH][NB];      // per column, counts over the window's rows
     static_assert(NB == 5, "colcnt and the count arrays below are sized for five biomes");
 
+    // On the joined axis the filter runs the whole way round and the window
+    // reads through the seam; on the hard-border axis it stops a window short
+    // of the edge, as it did.
+    const bool wx = wrapx(), wy = wrapy();
+    const int  y0 = wy ? 0 : R, y1 = wy ? MAP_HEIGHT : MAP_HEIGHT - R;
+    const int  x0 = wx ? 0 : R, x1 = wx ? MAP_WIDTH  : MAP_WIDTH  - R;
+
     for (int pass = 0; pass < passes; pass++) {
         if (s_gen_cancel) return false;
 
         memset(colcnt, 0, sizeof colcnt);
-        for (int yy = 0; yy <= 2 * R; yy++)
+        for (int dy = -R; dy <= R; dy++) {
+            int yy = wy ? wrap_y(y0 + dy) : y0 + dy;
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int b = biome_index(map->tiles[yy][x]);
                 if (b >= 0) colcnt[x][b]++;
             }
+        }
 
-        for (int y = R; y < MAP_HEIGHT - R; y++) {
-            if (y > R) {
+        for (int y = y0; y < y1; y++) {
+            if (y > y0) {
                 // The window drops the row above it and gains the row below.
+                int oy = wy ? wrap_y(y - R - 1) : y - R - 1;
+                int ny = wy ? wrap_y(y + R)     : y + R;
                 for (int x = 0; x < MAP_WIDTH; x++) {
-                    int o = biome_index(map->tiles[y - R - 1][x]);
+                    int o = biome_index(map->tiles[oy][x]);
                     if (o >= 0) colcnt[x][o]--;
-                    int n = biome_index(map->tiles[y + R][x]);
+                    int n = biome_index(map->tiles[ny][x]);
                     if (n >= 0) colcnt[x][n]++;
                 }
             }
 
             int total[NB] = { 0, 0, 0, 0, 0 };
-            for (int c = 0; c <= 2 * R; c++)
+            for (int dx = -R; dx <= R; dx++) {
+                int c = wx ? wrap_x(x0 + dx) : x0 + dx;
                 for (int b = 0; b < NB; b++) total[b] += colcnt[c][b];
+            }
 
-            for (int x = R; x < MAP_WIDTH - R; x++) {
-                if (x > R)
+            for (int x = x0; x < x1; x++) {
+                if (x > x0) {
+                    int oc = wx ? wrap_x(x - R - 1) : x - R - 1;
+                    int nc = wx ? wrap_x(x + R)     : x + R;
                     for (int b = 0; b < NB; b++) {
-                        total[b] -= colcnt[x - R - 1][b];
-                        total[b] += colcnt[x + R][b];
+                        total[b] -= colcnt[oc][b];
+                        total[b] += colcnt[nc][b];
                     }
+                }
 
                 int cur = map->tiles[y][x];
                 int cb  = biome_index(cur);
@@ -1305,8 +1397,13 @@ static float cliff_value_noise(int px, int py, int gw, int gh, int s)
     float fy = (float)(py % gh) / gh;
     fx = fx * fx * (3.0f - 2.0f * fx);
     fy = fy * fy * (3.0f - 2.0f * fy);
-    float n00 = (float)tile_noise(gx,   gy,   s), n10 = (float)tile_noise(gx+1, gy,   s);
-    float n01 = (float)tile_noise(gx,   gy+1, s), n11 = (float)tile_noise(gx+1, gy+1, s);
+    // The lattice closes on the joined axis: the grid divides the map there,
+    // and the column past the last is the first.
+    int gx1 = gx + 1, gy1 = gy + 1;
+    if (wrapx() && gx1 * gw >= MAP_WIDTH)  gx1 = 0;
+    if (wrapy() && gy1 * gh >= MAP_HEIGHT) gy1 = 0;
+    float n00 = (float)tile_noise(gx,  gy,  s), n10 = (float)tile_noise(gx1, gy,  s);
+    float n01 = (float)tile_noise(gx,  gy1, s), n11 = (float)tile_noise(gx1, gy1, s);
     float top = n00 + fx * (n10 - n00);
     float bot = n01 + fx * (n11 - n01);
     return top + fy * (bot - top);
@@ -1318,16 +1415,24 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                          int min_r2, int max_r2)
 {
     int max_r = (int)sqrtf((float)max_r2) + 1;
-    int y_lo = (cy - max_r > 1)            ? cy - max_r : 1;
-    int y_hi = (cy + max_r < MAP_HEIGHT-1) ? cy + max_r : MAP_HEIGHT - 1;
-    int x_lo = (cx - max_r > 1)            ? cx - max_r : 1;
-    int x_hi = (cx + max_r < MAP_WIDTH-1)  ? cx + max_r : MAP_WIDTH  - 1;
+    // The window: a row short of each hard border, and the whole of the joined
+    // axis, where the border is no border and every pass below reads through
+    // the seam with inwin().
+    int y_lo = wrapy() ? 0          : ((cy - max_r > 1)            ? cy - max_r : 1);
+    int y_hi = wrapy() ? MAP_HEIGHT : ((cy + max_r < MAP_HEIGHT-1) ? cy + max_r : MAP_HEIGHT - 1);
+    int x_lo = wrapx() ? 0          : ((cx - max_r > 1)            ? cx - max_r : 1);
+    int x_hi = wrapx() ? MAP_WIDTH  : ((cx + max_r < MAP_WIDTH-1)  ? cx + max_r : MAP_WIDTH  - 1);
 
-    for (int py = y_lo; py < y_hi; py++)
-        for (int px = x_lo; px < x_hi; px++) {
-            s_cliff_elev[py][px] = 0;
-            s_cliff_face[py][px] = 0;
-        }
+    // The whole grids, not the window: a world rebuilt with the other axis
+    // joined would otherwise keep the last world's border rows.
+    memset(s_cliff_elev, 0, sizeof s_cliff_elev);
+    memset(s_cliff_face, 0, sizeof s_cliff_face);
+
+    auto inwin = [&](int* px, int* py) -> bool {
+        if (wrapx()) *px = wrap_x(*px); else if (*px < x_lo || *px >= x_hi) return false;
+        if (wrapy()) *py = wrap_y(*py); else if (*py < y_lo || *py >= y_hi) return false;
+        return true;
+    };
 
     auto eligible = [&](int px, int py) {
         int ddx = px - cx, ddy = py - cy;
@@ -1455,7 +1560,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                         for (int dy = -1; dy <= 1; dy++)
                             for (int dx = -1; dx <= 1; dx++) {
                                 int nx = vx + dx, ny = vy + dy;
-                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (!inwin(&nx, &ny)) continue;
                                 if (s_cliff_elev[ny][nx] != UNSET) continue;
                                 s_cliff_elev[ny][nx] = 1;
                                 if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
@@ -1529,14 +1634,18 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
 
         // Seed from the window's own border: low ground there is outside by
         // definition, and the border is the only thing "outside" can mean.
-        for (int px = x_lo; px < x_hi; px++) {
-            if (s_cliff_elev[y_lo][px]     < L) s_cliff_scratch[y_lo][px]     = 1;
-            if (s_cliff_elev[y_hi - 1][px] < L) s_cliff_scratch[y_hi - 1][px] = 1;
-        }
-        for (int py = y_lo; py < y_hi; py++) {
-            if (s_cliff_elev[py][x_lo]     < L) s_cliff_scratch[py][x_lo]     = 1;
-            if (s_cliff_elev[py][x_hi - 1] < L) s_cliff_scratch[py][x_hi - 1] = 1;
-        }
+        // The joined edges are not a border, so they seed nothing; low ground
+        // there is outside only if the sweep can reach it round the world.
+        if (!wrapx())
+            for (int py = y_lo; py < y_hi; py++) {
+                if (s_cliff_elev[py][x_lo]     < L) s_cliff_scratch[py][x_lo]     = 1;
+                if (s_cliff_elev[py][x_hi - 1] < L) s_cliff_scratch[py][x_hi - 1] = 1;
+            }
+        if (!wrapy())
+            for (int px = x_lo; px < x_hi; px++) {
+                if (s_cliff_elev[y_lo][px]     < L) s_cliff_scratch[y_lo][px]     = 1;
+                if (s_cliff_elev[y_hi - 1][px] < L) s_cliff_scratch[y_hi - 1][px] = 1;
+            }
 
         // Four-connected, because the high regions are flood-filled eight-
         // connected above. Complementary connectivity is what stops a diagonal
@@ -1548,16 +1657,18 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
             for (int py = y_lo; py < y_hi; py++)
                 for (int px = x_lo; px < x_hi; px++) {
                     if (s_cliff_scratch[py][px] || s_cliff_elev[py][px] >= L) continue;
-                    if ((px > x_lo && s_cliff_scratch[py][px - 1]) ||
-                        (py > y_lo && s_cliff_scratch[py - 1][px])) {
+                    int lx = px - 1, ly = py, ux = px, uy = py - 1;
+                    if ((inwin(&lx, &ly) && s_cliff_scratch[ly][lx]) ||
+                        (inwin(&ux, &uy) && s_cliff_scratch[uy][ux])) {
                         s_cliff_scratch[py][px] = 1; moved = true;
                     }
                 }
             for (int py = y_hi - 1; py >= y_lo; py--)
                 for (int px = x_hi - 1; px >= x_lo; px--) {
                     if (s_cliff_scratch[py][px] || s_cliff_elev[py][px] >= L) continue;
-                    if ((px + 1 < x_hi && s_cliff_scratch[py][px + 1]) ||
-                        (py + 1 < y_hi && s_cliff_scratch[py + 1][px])) {
+                    int rx = px + 1, ry = py, dx = px, dy = py + 1;
+                    if ((inwin(&rx, &ry) && s_cliff_scratch[ry][rx]) ||
+                        (inwin(&dx, &dy) && s_cliff_scratch[dy][dx])) {
                         s_cliff_scratch[py][px] = 1; moved = true;
                     }
                 }
@@ -1594,11 +1705,22 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         static int run_a[MAP_WIDTH > MAP_HEIGHT ? MAP_WIDTH : MAP_HEIGHT];
         static int run_b[MAP_WIDTH > MAP_HEIGHT ? MAP_WIDTH : MAP_HEIGHT];
 
+        // A run that reaches the seam carries on from the other end of the
+        // line: the count coming in from the left starts with however many
+        // high tiles end the line, and the one from the right with however
+        // many begin it. A line high from end to end is one run and is never
+        // thin.
         for (int py = y_lo; py < y_hi; py++) {
-            int acc = 0;
+            int lead = 0, trail = 0;
+            if (wrapx()) {
+                while (lead  < x_hi - x_lo && s_cliff_elev[py][x_lo + lead]      >= L) lead++;
+                if (lead == x_hi - x_lo) continue;
+                while (trail < x_hi - x_lo && s_cliff_elev[py][x_hi - 1 - trail] >= L) trail++;
+            }
+            int acc = trail;
             for (int px = x_lo; px < x_hi; px++)
                 run_a[px] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
-            acc = 0;
+            acc = lead;
             for (int px = x_hi - 1; px >= x_lo; px--)
                 run_b[px] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
             for (int px = x_lo; px < x_hi; px++)
@@ -1607,10 +1729,16 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         }
 
         for (int px = x_lo; px < x_hi; px++) {
-            int acc = 0;
+            int lead = 0, trail = 0;
+            if (wrapy()) {
+                while (lead  < y_hi - y_lo && s_cliff_elev[y_lo + lead][px]      >= L) lead++;
+                if (lead == y_hi - y_lo) continue;
+                while (trail < y_hi - y_lo && s_cliff_elev[y_hi - 1 - trail][px] >= L) trail++;
+            }
+            int acc = trail;
             for (int py = y_lo; py < y_hi; py++)
                 run_a[py] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
-            acc = 0;
+            acc = lead;
             for (int py = y_hi - 1; py >= y_lo; py--)
                 run_b[py] = acc = (s_cliff_elev[py][px] >= L) ? acc + 1 : 0;
             for (int py = y_lo; py < y_hi; py++)
@@ -1647,7 +1775,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                         for (int dy = -1; dy <= 1; dy++)
                             for (int dx = -1; dx <= 1; dx++) {
                                 int nx = vx + dx, ny = vy + dy;
-                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (!inwin(&nx, &ny)) continue;
                                 if (s_cliff_scratch[ny][nx] != 1) continue;
                                 s_cliff_scratch[ny][nx] = 2;
                                 if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
@@ -1677,7 +1805,8 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 // can no longer climb over the back of what it belongs to and
                 // stand outside the outline — which is what put a cap of rock
                 // on the north of every small landform.
-                if (y + 1 < MAP_HEIGHT && s_cliff_elev[y+1][x] >= L) continue;  // its far side
+                { int bx = x, by = y + 1;
+                  if (in_world(&bx, &by) && s_cliff_elev[by][bx] >= L) continue; }  // its far side
                 // The face is the plateau's own outline, pushed downhill: every
                 // tile the sweep can reach, however deep it turned out to be.
                 // How much of that depth is actually drawn is the ramp's
@@ -1762,20 +1891,22 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 for (int x = x_lo; x < x_hi; x++) {
                     if (!(s_cliff_face[y][x] & bit)) continue;
                     int v = s_cliff_scratch[y][x];
-                    if (x > x_lo && (s_cliff_face[y][x-1] & bit)
-                        && s_cliff_scratch[y][x-1] - step > v) v = s_cliff_scratch[y][x-1] - step;
-                    if (y > y_lo && (s_cliff_face[y-1][x] & bit)
-                        && s_cliff_scratch[y-1][x] - step > v) v = s_cliff_scratch[y-1][x] - step;
+                    int lx = x - 1, ly = y, ux = x, uy = y - 1;
+                    if (inwin(&lx, &ly) && (s_cliff_face[ly][lx] & bit)
+                        && s_cliff_scratch[ly][lx] - step > v) v = s_cliff_scratch[ly][lx] - step;
+                    if (inwin(&ux, &uy) && (s_cliff_face[uy][ux] & bit)
+                        && s_cliff_scratch[uy][ux] - step > v) v = s_cliff_scratch[uy][ux] - step;
                     if (v != s_cliff_scratch[y][x]) { s_cliff_scratch[y][x] = (unsigned char)v; moved = true; }
                 }
             for (int y = y_hi - 1; y >= y_lo; y--)
                 for (int x = x_hi - 1; x >= x_lo; x--) {
                     if (!(s_cliff_face[y][x] & bit)) continue;
                     int v = s_cliff_scratch[y][x];
-                    if (x + 1 < x_hi && (s_cliff_face[y][x+1] & bit)
-                        && s_cliff_scratch[y][x+1] - step > v) v = s_cliff_scratch[y][x+1] - step;
-                    if (y + 1 < y_hi && (s_cliff_face[y+1][x] & bit)
-                        && s_cliff_scratch[y+1][x] - step > v) v = s_cliff_scratch[y+1][x] - step;
+                    int rx = x + 1, ry = y, dx = x, dy = y + 1;
+                    if (inwin(&rx, &ry) && (s_cliff_face[ry][rx] & bit)
+                        && s_cliff_scratch[ry][rx] - step > v) v = s_cliff_scratch[ry][rx] - step;
+                    if (inwin(&dx, &dy) && (s_cliff_face[dy][dx] & bit)
+                        && s_cliff_scratch[dy][dx] - step > v) v = s_cliff_scratch[dy][dx] - step;
                     if (v != s_cliff_scratch[y][x]) { s_cliff_scratch[y][x] = (unsigned char)v; moved = true; }
                 }
             if (!moved) break;
@@ -1828,7 +1959,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                         for (int dy = -1; dy <= 1; dy++)
                             for (int dx = -1; dx <= 1; dx++) {
                                 int nx = vx + dx, ny = vy + dy;
-                                if (nx < x_lo || nx >= x_hi || ny < y_lo || ny >= y_hi) continue;
+                                if (!inwin(&nx, &ny)) continue;
                                 if (s_cliff_scratch[ny][nx] != 1) continue;
                                 s_cliff_scratch[ny][nx] = 2;
                                 if (n < CAP) cells[n++] = ny * MAP_WIDTH + nx;
@@ -3584,6 +3715,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     // Which edge the ocean occupies (0=W, 1=E, 2=N, 3=S): phase 1's roll.
     const int ocean_side = map->ocean_side;
+    // The interior the scatter passes work over: a row short of each hard
+    // border, and the whole of the joined axis.
+    const int ix0 = wrapx() ? 0 : 1, ix1 = wrapx() ? MAP_WIDTH  : MAP_WIDTH  - 1;
+    const int iy0 = wrapy() ? 0 : 1, iy1 = wrapy() ? MAP_HEIGHT : MAP_HEIGHT - 1;
 
     GEN_STAGE(map, "before Ocean");
     // --- Ocean ---
@@ -3591,14 +3726,22 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         static int coast_h[MAP_HEIGHT]; // used for W/E oceans (varies along Y)
         static int coast_v[MAP_WIDTH];  // used for N/S oceans (varies along X)
 
+        // The coastline runs along the joined axis, so its smoothing goes
+        // twice round the world and keeps the second lap: the first ends
+        // where the second begins, and the shore meets itself at the seam.
+        auto smooth_round = [](int* coast, int n) {
+            static int raw[MAP_WIDTH > MAP_HEIGHT ? MAP_WIDTH : MAP_HEIGHT];
+            for (int i = 0; i < n; i++) raw[i] = coast[i];
+            float sc = (float)raw[0];
+            for (int i = 1; i < 2 * n; i++) {
+                sc = sc * 0.97f + (float)raw[i % n] * 0.03f;
+                if (i >= n) coast[i % n] = (int)sc;
+            }
+        };
         if (ocean_side == 0 || ocean_side == 1) {
             for (int y = 0; y < MAP_HEIGHT; y++)
                 coast_h[y] = 300 + (tile_noise(0, y, 999) % 120);
-            float sc = (float)coast_h[0];
-            for (int y = 1; y < MAP_HEIGHT; y++) {
-                sc = sc * 0.97f + (float)coast_h[y] * 0.03f;
-                coast_h[y] = (int)sc;
-            }
+            smooth_round(coast_h, MAP_HEIGHT);
             for (int y = 0; y < MAP_HEIGHT; y++) {
                 int depth = coast_h[y];
                 if (ocean_side == 0) { // west
@@ -3612,11 +3755,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         } else {
             for (int x = 0; x < MAP_WIDTH; x++)
                 coast_v[x] = 300 + (tile_noise(x, 0, 999) % 120);
-            float sc = (float)coast_v[0];
-            for (int x = 1; x < MAP_WIDTH; x++) {
-                sc = sc * 0.97f + (float)coast_v[x] * 0.03f;
-                coast_v[x] = (int)sc;
-            }
+            smooth_round(coast_v, MAP_WIDTH);
             for (int x = 0; x < MAP_WIDTH; x++) {
                 int depth = coast_v[x];
                 if (ocean_side == 2) { // north
@@ -3671,7 +3810,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         int jitter_range = (3 + (int)((js >> 16) % 3)) * 6;
         if (i == ocean_idx) {
             generate_delta_river(map, sx, sy, dx, dy,
-                                 seed ^ (unsigned int)(i * 0x1111),
+                                 seed ^ (unsigned int)(i * 0x1111), ocean_side,
                                  cx, cy, guard_r, brush_r, jitter_range);
         } else {
             int max_steps;
@@ -3695,6 +3834,15 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 int three_q = dist * 3 / 4;
                 unsigned int ls = (seed ^ (unsigned int)(0x9999*(i+1))) * 1664525u + 1013904223u;
                 max_steps = half + (int)((ls >> 16) % (three_q - half + 1));
+            } else if (wrapx() ? (fabsf(dx) >= fabsf(dy)) : (fabsf(dy) >= fabsf(dx))) {
+                // Bound for a joined edge. There is no shore to end at, and
+                // a river left to run would go round the world and back
+                // through its own source; it crosses the seam and, some way
+                // past it, peters out as the cliff-side rivers do.
+                int dist = wrapx() ? (dx > 0.0f ? MAP_WIDTH  - sx : sx)
+                                   : (dy > 0.0f ? MAP_HEIGHT - sy : sy);
+                unsigned int ls = (seed ^ (unsigned int)(0x9999*(i+1))) * 1664525u + 1013904223u;
+                max_steps = dist + 300 + (int)((ls >> 16) % 600);
             } else {
                 max_steps = MAP_WIDTH + MAP_HEIGHT;
             }
@@ -3743,10 +3891,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         map->cliff_peak_x = peak_x;
         map->cliff_peak_y = peak_y;
-        float dir_x = peak_x - s_cliff_ref_x, dir_y = peak_y - s_cliff_ref_y;
-        s_cliff_dir_len = sqrtf(dir_x*dir_x + dir_y*dir_y);
-        s_cliff_dir_x = dir_x / s_cliff_dir_len;
-        s_cliff_dir_y = dir_y / s_cliff_dir_len;
+        // The gradient runs straight from the ocean edge to the mountain
+        // edge. It used to lean toward the peak, which put a slope across
+        // the joined axis and a step in it at the seam; the peak still pulls
+        // the wasteland toward itself, through peak_nearness below.
+        s_cliff_dir_x   = (ocean_side == 0) ? 1.0f : (ocean_side == 1) ? -1.0f : 0.0f;
+        s_cliff_dir_y   = (ocean_side == 2) ? 1.0f : (ocean_side == 3) ? -1.0f : 0.0f;
+        s_cliff_dir_len = (ocean_side <= 1) ? (float)MAP_WIDTH : (float)MAP_HEIGHT;
     }
 
     GEN_STAGE(map, "before Cliff blocked prepass");
@@ -3757,13 +3908,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int t = map->tiles[y][x];
             if (t != TILE_RIVER && t != TILE_WATER) continue;
-            int y0 = y - CLIFF_CLEAR > 0         ? y - CLIFF_CLEAR : 0;
-            int y1 = y + CLIFF_CLEAR < MAP_HEIGHT ? y + CLIFF_CLEAR : MAP_HEIGHT - 1;
-            int x0 = x - CLIFF_CLEAR > 0         ? x - CLIFF_CLEAR : 0;
-            int x1 = x + CLIFF_CLEAR < MAP_WIDTH  ? x + CLIFF_CLEAR : MAP_WIDTH  - 1;
-            for (int by = y0; by <= y1; by++)
-                for (int bx = x0; bx <= x1; bx++)
-                    water_keepout[by][bx] = true;
+            for (int by = y - CLIFF_CLEAR; by <= y + CLIFF_CLEAR; by++)
+                for (int bx = x - CLIFF_CLEAR; bx <= x + CLIFF_CLEAR; bx++) {
+                    int kx = bx, ky = by;
+                    if (in_world(&kx, &ky)) water_keepout[ky][kx] = true;
+                }
         }
     }
 
@@ -3773,10 +3922,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Desert: flat areas away from mountains. Snow/wasteland: map edges.
     {
         const int BIOME_GRID = 300;
-        const float max_dist2 = (float)MAP_WIDTH * (float)MAP_WIDTH * 2.0f;
+        // Where desert starts before the mountain and the peak push it back.
+        // It was 16383, the middle of the noise; the edge bands now reach
+        // further into the low ground by the ocean, where desert lives, and
+        // this is what gives it back the same share of the world it had.
+        const int DESERT_BASE = 13000;
+        static_assert(MAP_WIDTH % 300 == 0 && MAP_HEIGHT % 300 == 0, "the biome lattice must close on the joined axis");
+        // The farthest a tile can be from the peak, the short way round: half
+        // the joined axis and the whole of the other. It was the map's full
+        // diagonal when nothing wrapped; measured the short way round, the old
+        // scale left every tile nearer the peak than it used to be, and the
+        // desert the peak suppresses all but vanished.
+        const float max_dist2 = (float)MAP_WIDTH * (float)MAP_WIDTH * 1.25f;
         const float half_map  = (float)MAP_WIDTH * 0.5f;
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+        for (int y = iy0; y < iy1; y++) {
+            for (int x = ix0; x < ix1; x++) {
                 if (map->tiles[y][x] != TILE_GRASS) continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
@@ -3787,18 +3947,21 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (proj < 0.0f) proj = 0.0f;
                 if (proj > 1.0f) proj = 1.0f;
 
-                // Proximity to cliff peak
-                float dpx = (float)x - map->cliff_peak_x;
-                float dpy = (float)y - map->cliff_peak_y;
+                // Proximity to cliff peak, the short way round
+                float dpx = (float)wrap_dx(x - (int)map->cliff_peak_x);
+                float dpy = (float)wrap_dy(y - (int)map->cliff_peak_y);
                 float peak_nearness = 1.0f - (dpx*dpx + dpy*dpy) / max_dist2;
                 if (peak_nearness < 0.0f) peak_nearness = 0.0f;
 
-                // Proximity to any map edge (0=center, 1=edge)
-                int me = x < y ? x : y;
-                int rx = MAP_WIDTH-1-x, ry = MAP_HEIGHT-1-y;
-                if (rx < me) me = rx;
-                if (ry < me) me = ry;
-                float edge_nearness = 1.0f - (float)me / half_map;
+                // Proximity to a hard edge (0=center, 1=edge). The joined
+                // edges are not edges: nothing is near them.
+                int me = wrapx() ? (y < MAP_HEIGHT-1-y ? y : MAP_HEIGHT-1-y)
+                                 : (x < MAP_WIDTH-1-x  ? x : MAP_WIDTH-1-x);
+                // Square-rooted so it covers the same share of the world at
+                // each value as the four-edge measure did: two edges are half
+                // the perimeter, and linear it gave snow half its ground.
+                float edge_u = (float)me / half_map;
+                float edge_nearness = edge_u < 1.0f ? sqrtf(1.0f - edge_u) : 0.0f;
                 if (edge_nearness < 0.0f) edge_nearness = 0.0f;
                 if (edge_nearness > 1.0f) edge_nearness = 1.0f;
 
@@ -3814,13 +3977,17 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (ocean_nearness < 0.0f) ocean_nearness = 0.0f;
                 if (ocean_nearness > 1.0f) ocean_nearness = 1.0f;
 
-                // Coarse biome noise helper
+                // Coarse biome noise helper. The lattice closes on the joined
+                // axis -- the grid divides the map -- so the field is one
+                // continuous thing across the seam.
                 int gx = x / BIOME_GRID, gy = y / BIOME_GRID;
+                int gx1 = (wrapx() && (gx + 1) * BIOME_GRID >= MAP_WIDTH)  ? 0 : gx + 1;
+                int gy1 = (wrapy() && (gy + 1) * BIOME_GRID >= MAP_HEIGHT) ? 0 : gy + 1;
                 float fx = (float)(x % BIOME_GRID) / BIOME_GRID;
                 float fy = (float)(y % BIOME_GRID) / BIOME_GRID;
                 auto bn = [&](unsigned int s) -> int {
-                    float t = tile_noise(gx,gy,s)     + fx*(tile_noise(gx+1,gy,s)    -tile_noise(gx,gy,s));
-                    float b = tile_noise(gx,gy+1,s)   + fx*(tile_noise(gx+1,gy+1,s)  -tile_noise(gx,gy+1,s));
+                    float t = tile_noise(gx,gy,s)   + fx*(tile_noise(gx1,gy,s)  -tile_noise(gx,gy,s));
+                    float b = tile_noise(gx,gy1,s)  + fx*(tile_noise(gx1,gy1,s) -tile_noise(gx,gy1,s));
                     return (int)(t + fy*(b - t));
                 };
 
@@ -3850,7 +4017,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 }
 
                 // Desert vs plains: suppressed near mountains and cliff peak
-                int desert_threshold = 16383
+                int desert_threshold = DESERT_BASE
                     + (int)(proj * proj * 14000)
                     + (int)(peak_nearness * peak_nearness * 14000);
                 int noise4 = bn((unsigned int)(seed ^ 0xC0FFEEu)); // dense forest vs meadow
@@ -3895,35 +4062,50 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // Along each row first: snow anywhere in [x-B, x+B]. Clamped at the map
         // edge, which the result never depends on — the apply loop below reads
         // only the interior, exactly as the box scan did.
+        // On the joined axis the reach runs through the seam: a span that
+        // crosses it is the end of the row plus the start of it.
         static int pre[MAP_WIDTH + 1];
         for (int y = 0; y < MAP_HEIGHT; y++) {
             pre[0] = 0;
             for (int x = 0; x < MAP_WIDTH; x++)
                 pre[x + 1] = pre[x] + (map->tiles[y][x] == TILE_SNOW ? 1 : 0);
             for (int x = 0; x < MAP_WIDTH; x++) {
-                int a = x - SNOW_BUFFER; if (a < 0) a = 0;
-                int b = x + SNOW_BUFFER; if (b > MAP_WIDTH - 1) b = MAP_WIDTH - 1;
-                s_biome_near[y][x] = (unsigned char)(pre[b + 1] - pre[a] > 0);
+                int a = x - SNOW_BUFFER, b = x + SNOW_BUFFER, n;
+                if (wrapx() && a < 0)                n = pre[b + 1] + pre[MAP_WIDTH] - pre[a + MAP_WIDTH];
+                else if (wrapx() && b > MAP_WIDTH-1) n = pre[MAP_WIDTH] - pre[a] + pre[b + 1 - MAP_WIDTH];
+                else {
+                    if (a < 0) a = 0;
+                    if (b > MAP_WIDTH - 1) b = MAP_WIDTH - 1;
+                    n = pre[b + 1] - pre[a];
+                }
+                s_biome_near[y][x] = (unsigned char)(n > 0);
             }
         }
 
         // Then down the columns, as a window that gains a row and loses a row
         // rather than a per-column prefix sum: both are O(map), but this one
         // touches two whole rows in order instead of striding a column at a
-        // time, and the row walk is the one the cache likes.
+        // time, and the row walk is the one the cache likes. The window is
+        // filled with the rows either side of row 0 -- through the seam on
+        // the joined axis, and only what exists on the other -- then slid.
         static int colcount[MAP_WIDTH];
         memset(colcount, 0, sizeof(colcount));
-        for (int y = 0; y < MAP_HEIGHT + SNOW_BUFFER; y++) {
-            int add = y, drop = y - 2 * SNOW_BUFFER - 1;
-            if (add  < MAP_HEIGHT)
-                for (int x = 0; x < MAP_WIDTH; x++) colcount[x] += s_biome_near[add][x];
-            if (drop >= 0)
-                for (int x = 0; x < MAP_WIDTH; x++) colcount[x] -= s_biome_near[drop][x];
-
-            int cy = y - SNOW_BUFFER;   // the row the window is now centred on
-            if (cy < SNOW_BUFFER || cy >= MAP_HEIGHT - SNOW_BUFFER) continue;
+        auto row_in = [&](int r) -> int { if (wrapy()) return wrap_y(r); return (r >= 0 && r < MAP_HEIGHT) ? r : -1; };
+        for (int dy = -SNOW_BUFFER; dy <= SNOW_BUFFER; dy++) {
+            int r = row_in(dy);
+            if (r >= 0) for (int x = 0; x < MAP_WIDTH; x++) colcount[x] += s_biome_near[r][x];
+        }
+        for (int cy = 0; cy < MAP_HEIGHT; cy++) {
+            if (cy > 0) {
+                int add = row_in(cy + SNOW_BUFFER), drop = row_in(cy - SNOW_BUFFER - 1);
+                if (add  >= 0) for (int x = 0; x < MAP_WIDTH; x++) colcount[x] += s_biome_near[add][x];
+                if (drop >= 0) for (int x = 0; x < MAP_WIDTH; x++) colcount[x] -= s_biome_near[drop][x];
+            }
+            // The interior only on the hard axis, exactly as the box scan did.
+            if (!wrapy() && (cy < SNOW_BUFFER || cy >= MAP_HEIGHT - SNOW_BUFFER)) continue;
             if (s_gen_cancel) return;
-            for (int x = SNOW_BUFFER; x < MAP_WIDTH - SNOW_BUFFER; x++) {
+            const int xa = wrapx() ? 0 : SNOW_BUFFER, xb = wrapx() ? MAP_WIDTH : MAP_WIDTH - SNOW_BUFFER;
+            for (int x = xa; x < xb; x++) {
                 if (map->tiles[cy][x] != TILE_SAND) continue;
                 if (colcount[x] > 0) map->tiles[cy][x] = TILE_MEADOW;
             }
@@ -3981,7 +4163,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     int qx = idx % MAP_WIDTH, qy = idx / MAP_WIDTH;
                     for (int d = 0; d < 4; d++) {
                         int nx = qx + DX[d], ny = qy + DY[d];
-                        if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
+                        if (!in_world(&nx, &ny)) continue;
                         if (LABEL(ny,nx) != -1) continue;
                         if (map->tiles[ny][nx] != tile) continue;
                         LABEL(ny,nx) = next_id;
@@ -4003,7 +4185,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (cid < 0 || comps[cid].size >= MIN_BIOME_AREA) continue;
                 for (int d = 0; d < 4; d++) {
                     int nx = x + DX[d], ny = y + DY[d];
-                    if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
+                    if (!in_world(&nx, &ny)) continue;
                     if (LABEL(ny,nx) == cid) continue;
                     int nt = map->tiles[ny][nx];
                     for (int b = 0; b < 5; b++)
@@ -4065,9 +4247,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // whether or not rock is drawn on it, so a tree standing there is one nobody
     // can reach.
     {
-        const int FG = 20; // forest cluster grid size
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+        const int FG = 20; // forest cluster grid size; divides the map, so the lattice closes on the joined axis
+        static_assert(MAP_WIDTH % 20 == 0 && MAP_HEIGHT % 20 == 0, "the forest lattice must close on the joined axis");
+        for (int y = iy0; y < iy1; y++) {
+            for (int x = ix0; x < ix1; x++) {
                 int t = map->tiles[y][x];
                 if (t != TILE_GRASS && t != TILE_MEADOW && t != TILE_SNOW) continue;
                 if (tilemap_face_at(x, y)) continue;
@@ -4079,17 +4262,19 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 } else if (t == TILE_SNOW) {
                     // Thin brush: only inside forest clusters, sparser than temperate forest
                     int gx = x/FG, gy = y/FG;
+                    int gx1 = (wrapx() && (gx+1)*FG >= MAP_WIDTH) ? 0 : gx+1, gy1 = (wrapy() && (gy+1)*FG >= MAP_HEIGHT) ? 0 : gy+1;
                     float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
-                    float top = tile_noise(gx,gy,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy,(int)seed^0xF05)-tile_noise(gx,gy,(int)seed^0xF05));
-                    float bot = tile_noise(gx,gy+1,(int)seed^0xF05) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF05)-tile_noise(gx,gy+1,(int)seed^0xF05));
+                    float top = tile_noise(gx,gy,(int)seed^0xF05) + fx*(tile_noise(gx1,gy,(int)seed^0xF05)-tile_noise(gx,gy,(int)seed^0xF05));
+                    float bot = tile_noise(gx,gy1,(int)seed^0xF05) + fx*(tile_noise(gx1,gy1,(int)seed^0xF05)-tile_noise(gx,gy1,(int)seed^0xF05));
                     int cluster = (int)(top + fy*(bot-top));
                     if (cluster > 20000 && n > 16000)
                         map->overlay[y][x] = TILE_TREE;
                 } else {
                     int gx = x/FG, gy = y/FG;
+                    int gx1 = (wrapx() && (gx+1)*FG >= MAP_WIDTH) ? 0 : gx+1, gy1 = (wrapy() && (gy+1)*FG >= MAP_HEIGHT) ? 0 : gy+1;
                     float fx = (float)(x%FG)/FG, fy = (float)(y%FG)/FG;
-                    float top = tile_noise(gx,gy,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy,(int)seed^0xF04)-tile_noise(gx,gy,(int)seed^0xF04));
-                    float bot = tile_noise(gx,gy+1,(int)seed^0xF04) + fx*(tile_noise(gx+1,gy+1,(int)seed^0xF04)-tile_noise(gx,gy+1,(int)seed^0xF04));
+                    float top = tile_noise(gx,gy,(int)seed^0xF04) + fx*(tile_noise(gx1,gy,(int)seed^0xF04)-tile_noise(gx,gy,(int)seed^0xF04));
+                    float bot = tile_noise(gx,gy1,(int)seed^0xF04) + fx*(tile_noise(gx1,gy1,(int)seed^0xF04)-tile_noise(gx,gy1,(int)seed^0xF04));
                     int cluster = (int)(top + fy*(bot-top));
                     if (n > ((cluster > 16000) ? 5000 : 32400))
                         map->overlay[y][x] = TILE_TREE;
@@ -4104,9 +4289,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         unsigned int s = seed ^ 0xDEAD1;
         for (int i = 0; i < 40000; i++) {
             s = s * 1664525u + 1013904223u;
-            int x = 1 + (int)((s >> 16) % (MAP_WIDTH  - 2));
+            int x = ix0 + (int)((s >> 16) % (unsigned)(ix1 - ix0));
             s = s * 1664525u + 1013904223u;
-            int y = 1 + (int)((s >> 16) % (MAP_HEIGHT - 2));
+            int y = iy0 + (int)((s >> 16) % (unsigned)(iy1 - iy0));
             int ddx = x - cx, ddy = y - cy;
             if (ddx*ddx + ddy*ddy <= hw*hw) continue;
             // Off the face for the same reason the trees are: the ground a band
@@ -4127,8 +4312,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // buries the surface — which is what had it switched off the first time.
 #if 0
     {
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+        for (int y = iy0; y < iy1; y++) {
+            for (int x = ix0; x < ix1; x++) {
                 int t = map->tiles[y][x];
                 int threshold;
                 if      (t == TILE_CLIFF   || t == TILE_CLIFF_SNOW_1 || t == TILE_CLIFF_WASTE_1) threshold = 29491; // ~10%
@@ -4155,8 +4340,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // is the only source of HARVEST_ORE in the world. Switching it off did not
     // thin out a texture, it deleted a resource.
     {
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+        for (int y = iy0; y < iy1; y++) {
+            for (int x = ix0; x < ix1; x++) {
                 int t = map->tiles[y][x];
                 int threshold;
                 if      (t == TILE_CLIFF_3 || t == TILE_CLIFF_SNOW_3 || t == TILE_CLIFF_WASTE_3) threshold = 32127; // ~2%
@@ -4184,9 +4369,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         unsigned int ls = seed ^ 0x1A4A1u;
         for (int i = 0; i < 1200; i++) {
             ls = ls * 1664525u + 1013904223u;
-            int lx = 1 + (int)((ls >> 16) % (MAP_WIDTH  - 2));
+            int lx = ix0 + (int)((ls >> 16) % (unsigned)(ix1 - ix0));
             ls = ls * 1664525u + 1013904223u;
-            int ly = 1 + (int)((ls >> 16) % (MAP_HEIGHT - 2));
+            int ly = iy0 + (int)((ls >> 16) % (unsigned)(iy1 - iy0));
             if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
             ls = ls * 1664525u + 1013904223u;
             float angle = (float)((ls >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
@@ -4201,9 +4386,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         ls = ls ^ 0xB00B5u;
         for (int i = 0; i < 400; i++) {
             ls = ls * 1664525u + 1013904223u;
-            int lx = 1 + (int)((ls >> 16) % (MAP_WIDTH  - 2));
+            int lx = ix0 + (int)((ls >> 16) % (unsigned)(ix1 - ix0));
             ls = ls * 1664525u + 1013904223u;
-            int ly = 1 + (int)((ls >> 16) % (MAP_HEIGHT - 2));
+            int ly = iy0 + (int)((ls >> 16) % (unsigned)(iy1 - iy0));
             if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
         }
@@ -4213,8 +4398,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     GEN_STAGE(map, "before Dead trees scattered in wasteland");
     // --- Dead trees scattered in wasteland (~2%) ---
     {
-        for (int y = 1; y < MAP_HEIGHT - 1; y++) {
-            for (int x = 1; x < MAP_WIDTH - 1; x++) {
+        for (int y = iy0; y < iy1; y++) {
+            for (int x = ix0; x < ix1; x++) {
                 if (map->tiles[y][x] != TILE_WASTELAND) continue;
                 // Off the water, and not under a wall -- two different masks.
                 if (water_keepout[y][x]) continue;
@@ -4234,9 +4419,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         unsigned int ps = seed ^ 0xF0D5u;
         for (int i = 0; i < 1200; i++) {
             ps = ps * 1664525u + 1013904223u;
-            int lx = 1 + (int)((ps >> 16) % (MAP_WIDTH  - 2));
+            int lx = ix0 + (int)((ps >> 16) % (unsigned)(ix1 - ix0));
             ps = ps * 1664525u + 1013904223u;
-            int ly = 1 + (int)((ps >> 16) % (MAP_HEIGHT - 2));
+            int ly = iy0 + (int)((ps >> 16) % (unsigned)(iy1 - iy0));
             if (map->tiles[ly][lx] != TILE_MEADOW || water_keepout[ly][lx]) continue;
             ps = ps * 1664525u + 1013904223u;
             float angle = (float)((ps >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
@@ -4248,9 +4433,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         ps = ps ^ 0xA0D5u;
         for (int i = 0; i < 400; i++) {
             ps = ps * 1664525u + 1013904223u;
-            int lx = 1 + (int)((ps >> 16) % (MAP_WIDTH  - 2));
+            int lx = ix0 + (int)((ps >> 16) % (unsigned)(ix1 - ix0));
             ps = ps * 1664525u + 1013904223u;
-            int ly = 1 + (int)((ps >> 16) % (MAP_HEIGHT - 2));
+            int ly = iy0 + (int)((ps >> 16) % (unsigned)(iy1 - iy0));
             if (map->tiles[ly][lx] != TILE_MEADOW || water_keepout[ly][lx]) continue;
             paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_MEADOW, TILE_POND);
         }
@@ -4279,7 +4464,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 for (int dx = -r; dx <= r; dx++) {
                     if (dx*dx+dy*dy > r*r) continue;
                     int px = fx+dx, py = fy+dy;
-                    if (!in_bounds(px,py)) continue;
+                    if (!in_world(&px,&py)) continue;
                     if (map->tiles[py][px] == replace_id) map->tiles[py][px] = tile_id;
                 }
         };
@@ -4291,9 +4476,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             float n = 1.0f - od/hm; return n < 0.0f ? 0.0f : n;
         };
         auto edge_near = [&](int fx, int fy) -> float {
-            int me = fx<fy?fx:fy, re=MAP_WIDTH-1-fx, rb=MAP_HEIGHT-1-fy;
-            if (re<me) me=re; if (rb<me) me=rb;
-            float n = 1.0f-(float)me/hm; return n<0.0f?0.0f:(n>1.0f?1.0f:n);
+            // The hard edges only; the joined ones are not edges.
+            int me = wrapx() ? (fy < MAP_HEIGHT-1-fy ? fy : MAP_HEIGHT-1-fy)
+                             : (fx < MAP_WIDTH-1-fx  ? fx : MAP_WIDTH-1-fx);
+            float u = (float)me/hm; float n = u < 1.0f ? sqrtf(1.0f-u) : 0.0f; return n>1.0f?1.0f:n;
         };
         auto mtn_proj = [&](int fx, int fy) -> float {
             float p=(((float)fx-s_cliff_ref_x)*s_cliff_dir_x+((float)fy-s_cliff_ref_y)*s_cliff_dir_y)/s_cliff_dir_len;

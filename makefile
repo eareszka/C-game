@@ -139,6 +139,13 @@ dngportals: dngportals$(EXE)
 dngportals$(EXE): tools/dngportals.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngportals.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Is the join where the world wraps as invisible as any other line of it?
+# Same repo-root rule as dngcensus.
+seamcensus: seamcensus$(EXE)
+
+seamcensus$(EXE): tools/seamcensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/seamcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 # Headless overworld screenshot, and the whole-world mask views behind its
 # SHOT_* environment switches.
 shot: shot$(EXE)
