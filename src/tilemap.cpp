@@ -6472,11 +6472,11 @@ static const float SHORE_JITTER  = 0.025f;
 // a border where a river runs into the sea and have it fringe against itself.
 // A biome may also name a shore colour. Where one is set, both sides of that
 // biome's borders fringe in it instead of in each other's ground colour: water
-// gets a rim that holds the waterline apart from whatever it runs along,
-// rather than the void crumbling into the ground.
+// gets a pale rim that reads as shallows and holds the waterline apart from
+// whatever it runs along, rather than blue crumbling into green.
 //
-// The rim is the void's own foam, the lighter violet its ripples are drawn in,
-// so the edge reads as more of the water and not as a band of something else.
+// The pale is tinted blue rather than pure white on purpose -- snow is very near
+// white already, and an untinted rim would vanish along a snow coast.
 // Three independent questions, one flag each:
 //
 //   hard_edge  the boundary is a clean outline rather than two grounds
@@ -6512,7 +6512,7 @@ static GroundBiome s_biomes[] = {
     { { TILE_WASTE_TRAIL, -1, -1, -1 },                &COVER_TRAIL,  false, false, true,  0,0,0,  -1,  -1,  -1 },
     { { TILE_ROAD,      -1, -1, -1 },                  &COVER_ROAD,   false, false, true,  0,0,0,  -1,  -1,  -1 },
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1 },
-    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 100,  72, 128 },
+    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255 },
     { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1 },
 };
 static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
@@ -7026,15 +7026,15 @@ static_assert(CLIFF_LEVELS * CLIFF_HAZE_RANKS <= 16, "the storeys' ranks must fi
 static_assert(CLIFF_LEVELS <= (int)(sizeof s_haze_tex / sizeof s_haze_tex[0]),
               "one dithered haze texture per storey");
 
-// The tint is per biome: the next step along that ground's own ramp, in the
-// direction it has room to go. Grass and meadow pale toward FC World's light
-// olives and sand toward its khaki; snow has no paler left and cools into
-// shadow instead; waste lifts toward ash rather than toward daylight.
+// The tint is per biome, in the direction that ground has room to go, and
+// each is a colour already on the palette. Grass pales toward the meadow's
+// mint, meadow and sand toward white; snow has no paler left and cools into a
+// blue shadow instead; waste lifts toward ash rather than toward daylight.
 typedef struct { uint8_t r, g, b; } CliffHaze;
-static const CliffHaze CLIFF_HAZE_GRASS  = { 0x9a, 0xaa, 0x7a };
-static const CliffHaze CLIFF_HAZE_MEADOW = { 0xb1, 0xbf, 0x7f };
-static const CliffHaze CLIFF_HAZE_SAND   = { 0xb1, 0xbf, 0x7f };
-static const CliffHaze CLIFF_HAZE_SNOW   = { 0x72, 0x6f, 0x8d };
+static const CliffHaze CLIFF_HAZE_GRASS  = { 0xa8, 0xf0, 0xbc };
+static const CliffHaze CLIFF_HAZE_MEADOW = { 0xfc, 0xfc, 0xfc };
+static const CliffHaze CLIFF_HAZE_SAND   = { 0xfc, 0xfc, 0xfc };
+static const CliffHaze CLIFF_HAZE_SNOW   = { 0x84, 0xa7, 0xe9 };
 static const CliffHaze CLIFF_HAZE_WASTE  = { 0x3e, 0x1c, 0x0e };
 
 // Which of them a tile wears. The cliff families first, so a plateau top takes
@@ -7592,6 +7592,15 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             int screen_y = (int)((uy * TILE_SIZE - cam->y) * z);
 
             // Helper: compute jitter offset for a tree tile
+            // Which sheet column a tree draws from: two kinds on ordinary
+            // ground (cols 16, 17), two conifers on snow (18, 19), half and
+            // half by position. The canopy (row 0) and the trunk (row 1) are
+            // drawn in different passes and must agree, so both ask here.
+            auto tree_col = [&](int tx, int ty2) -> int {
+                uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty2 * 40503u) & 1;
+                bool is_snow = (map->tiles[ty2][tx] == TILE_SNOW);
+                return is_snow ? (h ? 19 : 18) : (h ? 16 : 17);
+            };
             auto tree_jox = [&](int tx, int ty2) -> int {
                 auto jit = s_tile_jitter.find(tile_key(tx, ty2));
                 if (jit == s_tile_jitter.end()) return 0;
@@ -7603,12 +7612,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // Helper: draw a 2-tile tree's canopy (top sprite) for the tile at (tx, ty2).
             // Canopy is rendered one tile above ty2 using dst_top.
             auto draw_tree_canopy = [&](int tx, int ty2, int sx, int sy) {
-                uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty2 * 40503u) & 3;
-                bool is_snow = (map->tiles[ty2][tx] == TILE_SNOW);
-                if (h == 0 && !is_snow) return; // solo tree — no canopy (snow trees are always 2-tile)
-                int col;
-                if (is_snow)      col = (h & 1) ? 19 : 18;
-                else              col = (h == 3) ? 16 : 17;
+                int col = tree_col(tx, ty2);
                 int jox = tree_jox(tx, ty2);
                 SDL_Rect src_top = { col * 16, 0 * 16, 16, 16 };
                 SDL_Rect dst_top = { sx + jox, sy, draw_size, draw_size };
@@ -7753,30 +7757,12 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             int ov = map->overlay[y][x];
             if (ov == TILE_TREE) {
                 // Each tree tile is fully independent.
-                // Hash selects variant; snow tiles use a different sprite set (cols 18/19).
-                uint32_t h = (uint32_t)(x * 2654435761u ^ (uint32_t)y * 40503u) & 3;
-                bool is_snow = (map->tiles[y][x] == TILE_SNOW);
+                // Every tree is two tiles tall: the trunk here, the canopy in
+                // the depth pass above. tree_col() picks the kind.
                 int jox = tree_jox(x, y);
-                int dx = screen_x + jox;
-
-                if (is_snow) {
-                    // Snow: trunk only — canopy drawn in depth pass
-                    int col = (h & 1) ? 19 : 18;
-                    SDL_Rect src_bot = { col * 16, 1 * 16, 16, 16 };
-                    SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
-                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
-                } else if (h == 0) {
-                    // Solo tree: single tile, no canopy
-                    SDL_Rect src = { 15 * 16, 1 * 16, 16, 16 };
-                    SDL_Rect dst = { dx, screen_y, draw_size, draw_size };
-                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src, &dst);
-                } else {
-                    // 2-tile tree: trunk only — canopy drawn in depth pass
-                    int col = (h == 3) ? 16 : 17;
-                    SDL_Rect src_bot = { col * 16, 1 * 16, 16, 16 };
-                    SDL_Rect dst_bot = { dx, screen_y, draw_size, draw_size };
-                    if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
-                }
+                SDL_Rect src_bot = { tree_col(x, y) * 16, 1 * 16, 16, 16 };
+                SDL_Rect dst_bot = { screen_x + jox, screen_y, draw_size, draw_size };
+                if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
             } else if (ov == TILE_DEAD_TREE) {
                 // Always 2-tile tall. Trunk drawn here, canopy in depth pass above.
                 int jox = tree_jox(x, y);

@@ -1,7 +1,7 @@
 #ifndef FC_PALETTE_H
 #define FC_PALETTE_H
 
-// The game's palette: FC World's 64 colours, and nothing else on screen.
+// The game's palette (art/direction/game_palette.gpl), and nothing else on screen.
 //
 // The art is put on it offline (tools/palette_pass.py). These are the same
 // rules for the colours the code makes up at run time -- a UI panel, a
@@ -13,7 +13,7 @@
 //
 // Effects that would blend (a wash, a dim) are dithers instead: fc_bayer()
 // picks which pixels of an area take a palette colour, so every pixel is still
-// exactly one of the 64.
+// exactly one of the palette.
 
 #include <SDL2/SDL.h>
 #include <stdint.h>

@@ -1,5 +1,5 @@
-"""Before/after board: the game as it first looked, and as it renders now on
-FC World's palette. Same three views, same seeds, same places.
+"""Before/after board: the game as it first looked, and as it renders now.
+Same three views, same seeds, same places.
 
     python art/direction/build_compare.py
 
@@ -9,10 +9,11 @@ rendered fresh by shot.exe, so the board always shows the current build.
 
 Everything is assembled through the pixel-plugin's pixel-mcp server (mcpc.py):
   fc_compare.aseprite / .png  the board, one layer per view and side, with
-                              the 64 colours set as the sprite's own palette
-  fc_palette.aseprite         the palette as swatches, ramp by ramp -- open it
-                              and use it as the palette for any new art, and
-                              whatever is painted is on the palette already
+                              the game's palette set as the sprite's own
+  fc_palette.aseprite         the palette (game_palette.gpl) as swatches, one
+                              row per hue family -- open it and use it as the
+                              palette for new art, and whatever is painted is
+                              on the palette already
 """
 import os, subprocess, sys
 from PIL import Image

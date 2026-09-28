@@ -30,13 +30,19 @@ named by where it sits and what it holds. See house_roles().
 TREES are drawn fresh, in FC World's tree language -- a hard black outline,
 three sage greens, shadow massed low and right and broken up with black,
 highlights sparse and high on the left -- but they are original drawings, not
-copies of Yume Nikki's sprites. The dead tree (col 20) is left as it is: its
+copies of Yume Nikki's sprites. Ordinary ground has two kinds, both two
+tiles tall and both drawn through the pixel plugin (sources in trees/):
+FC World's tall tree -- a column of three stacked lobes, each mid green with
+dark chevrons, a doubled dark right edge and a crease at every waist, on a
+three-pixel trunk with flared roots, one light pixel per lobe to keep it off
+our darker grass -- and the stacked-clumps tree the game had before it
+(restored from commit 830f1e1). The dead tree (col 20) is left as it is: its
 maroons are already FC World's wasteland palette.
 
 The renderer picks cells as follows (src/tilemap.cpp, tilemap_draw_impl):
-    (15,1)          solo tree, single tile; also the tree resource node
-    (16,0)+(16,1)   tall tree, canopy + trunk
-    (17,0)+(17,1)   tall tree, the other variant
+    (15,1)          the tree resource node (single tile)
+    (16,0)+(16,1)   tree, three lobes: canopy + trunk
+    (17,0)+(17,1)   tree, stacked clumps: canopy + trunk
     (18,*),(19,*)   trees on snow
 Transparency is the colour key (255,0,0), never alpha.
 """
@@ -64,7 +70,9 @@ def hx(c):
 # recolours the caps with it.
 PAL = {
     "k": K,
-    "D": hx("#325a23"), "M": hx("#649655"), "L": hx("#82b473"),   # foliage
+    # foliage: the old trees' body and highlight greens, over the darkest
+    # green already in the game -- the same three the tree sprites in trees/ use
+    "D": hx("#235436"), "M": hx("#058f3a"), "L": hx("#05c43a"),
     "S": fcremap.lookup(hx("#fcfcfc")),   # the snow ground's colour, wherever it goes
     ".": KEY,
 }
@@ -76,9 +84,12 @@ def materials(light, mid, dark):
     return dict(face=light, roof=(mid, dark), side=mid, line=dark,
                 plank=mid, gap=dark, knob=light, glass=K, bar=mid)
 
-STONE = materials(hx("#b1bf7f"), hx("#8d6b4f"), hx("#4e3633"))   # khaki brick, wood
-WHITE = dict(materials(hx("#9b94b3"), hx("#726f8d"), hx("#504b70")),
-             side=hx("#504b70"))                                  # lavender, slate
+# Both in the colours they had before the FC World recolour (3a4b41d).
+_WHITE, _GREY = hx("#fcfcfc"), hx("#9797aa")
+STONE = dict(materials(_WHITE, hx("#94703d"), K),                 # white brick, brown roof
+             side=_GREY, line=_GREY, bar=_GREY)                   # grey mortar and side
+WHITE = dict(materials(_WHITE, _GREY, hx("#282828")),             # white siding, grey side
+             line=_GREY, plank=_GREY)                             # and a dark roof
 
 
 # ── Trees ───────────────────────────────────────────────────────────────────
@@ -99,76 +110,6 @@ SOLO = """
 .......kkk......
 ......kkkkk.....
 .....k..kk.k....
-"""
-
-OVAL = """
-................
-................
-................
-................
-......kkkk......
-.....kMLMMk.....
-....kMLLMMDk....
-....kLLMMMDk....
-...kMLMMMDMDk...
-...kMLMMMMDDk...
-..kMMMMMMDMDDk..
-..kMLMMMMMDMDk..
-..kMMMMMDMDDDk..
-..kMMLMMMMDDkk..
-.kMMMMMMMDMDDDk.
-.kMMMMMMDMDkDDk.
-.kMMMMMDMMDDDkk.
-.kMMDMMMMDMDkDk.
-.kMMMMMDMDDDDDk.
-.kMDMMDMDMDkDkk.
-.kMMDMDMDDDDkDk.
-.kDMDDMDDDkDDkk.
-..kDDMDDDkDkDk..
-..kkDDDkDkDkk...
-...kkDkDkkkk....
-.....kkkkkk.....
-.......kkk......
-.......kkk......
-.......kkkk.....
-......kkkkk.....
-.....k.kkkk.k...
-................
-"""
-
-CLUMPS = """
-................
-......kkkk......
-....kkMLMMkk....
-...kMMLLMMMDk...
-...kMLMMMMDDk...
-...kMMMMDMDkk...
-...kkMDMDDkDk...
-..kMMkkDDkkMMk..
-.kMLMMMkkkMMDDk.
-.kMLMMMMDkMMDDk.
-.kMMMMMDDkMDDkk.
-.kkMMDMDDkkDkDk.
-.kMkkDDDkkDDkkk.
-.kMMMkkkMMkkkMk.
-kMLMMMMMMMMDkMDk
-kMLMMMMMMMDDDkDk
-kMMMMMMMMDMDDkDk
-kMMMDMMMDMDDkDDk
-kkMMMDMDMDDDkDkk
-kMkkMDDDDDDkkkMk
-kMMMkkkkkkkkMMDk
-kMLMMMMMMMMMMDDk
-kMMMMMMMMMDMDDkk
-kkMMDMMDMDDDkDDk
-.kkDDMDDDDDkDkk.
-..kkkkDDDkkkkk..
-.....kkkkkk.....
-.......kkk......
-.......kkk......
-......kkkkk.....
-.....k.kkk.k....
-................
 """
 
 CONIFER_SMALL = """
@@ -242,11 +183,21 @@ kkkkMMMDMDDkkkkk
 """
 
 # (sprite, cell col, top cell row). Tall sprites span rows 0-1, solo only row 1.
-TREES = [(SOLO, 15, 1), (OVAL, 16, 0), (CLUMPS, 17, 0),
+# A sprite is ASCII art above, or the path of a PNG exported from its
+# .aseprite source in trees/ (drawn through the pixel plugin), which is then
+# the thing to edit.
+TREES = [(SOLO, 15, 1),
+         (HERE + "/trees/tree_three_lobe.png", 16, 0), (HERE + "/trees/tree_clumps.png", 17, 0),
          (CONIFER_SMALL, 18, 0), (CONIFER_TALL, 19, 0)]
 
 
 def parse(art):
+    if art.endswith(".png"):
+        # Transparent in the export is the sheet's key colour.
+        im = Image.open(art).convert("RGBA")
+        assert im.width == 16 and im.height in (16, 32), (art, im.size)
+        return [[im.getpixel((x, y))[:3] if im.getpixel((x, y))[3] else KEY
+                 for x in range(16)] for y in range(im.height)]
     rows = [r for r in art.strip("\n").split("\n")]
     assert all(len(r) == 16 for r in rows), [len(r) for r in rows]
     assert len(rows) in (16, 32), len(rows)

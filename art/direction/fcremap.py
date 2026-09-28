@@ -1,29 +1,22 @@
-"""The game's palette, and where every old colour goes on it.
+"""The game's palette, and where every colour not on it goes.
 
-PALETTE is FC World's own: the 64 colours of its tileset
-(fc_world_reference.png, from The Spriters Resource), less the three key
-colours the sheet is laid out on. Nothing the game draws should be anything
-else -- that single constraint is most of what makes it read as 8-bit rather
-than 16-bit. The other part is how many of them one tile uses; see
-tools/palette_pass.py, which applies this module to the art.
+PALETTE is read from game_palette.gpl, which is the source of truth: the
+colours the game drew at commit 3a4b41d, before the FC World recolour, with
+near-duplicates merged so that sprites meaning the same colour use one. (The
+module keeps its old name so the tools that import it need not change.)
 
-REMAP says where the old colours go, family by family. Two rules keep the
-drawing intact:
+REMAP sends colours that are not on the palette to one that is:
 
-- Within a family the light-to-dark order is kept, so a tuft is still darker
-  than the grass it sits on and a crack is still darker than its rock.
-- Grounds that meet stay apart. Grass and meadow, sand and rock, sand and
-  trail are all neighbours in the world, and the biome edges are drawn in the
-  grounds' own colours, so two that landed on one colour would lose their
-  border.
+- MERGED: the near-duplicates the palette dropped, each to the colour it was
+  merged into -- the more-used of the pair.
+- FROM_FC: the colours of the FC World recolour (commit 830f1e1), for any art
+  still carrying them, each to the old colour playing the same part.
 
-A colour REMAP does not name goes to the nearest palette colour (CIELAB),
-never to an accent: the saturated few FC World uses once per screen, which
-only a deliberate REMAP entry may pick.
+Anything else goes to its nearest palette colour (CIELAB). The per-tile rule
+(four colours a cell) lives in tools/palette_pass.py, which applies all this.
 """
 import os
 from functools import lru_cache
-from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 KEYS = {(255, 0, 0), (0, 0, 255), (255, 0, 255)}
@@ -34,67 +27,39 @@ def hx(c):
 
 
 def _load_palette():
-    ref = Image.open(os.path.join(HERE, "fc_world_reference.png")).convert("RGB")
-    counts = {}
-    for c in ref.getdata():
-        counts[c] = counts.get(c, 0) + 1
-    return sorted((c for c in counts if c not in KEYS), key=lambda c: -counts[c])
+    out = []
+    for line in open(os.path.join(HERE, "game_palette.gpl")):
+        f = line.split()
+        if len(f) >= 3 and all(v.isdigit() for v in f[:3]):
+            out.append(tuple(int(v) for v in f[:3]))
+    assert out and len(set(out)) == len(out), "game_palette.gpl: empty or repeated colours"
+    return out
 
 
 PALETTE = _load_palette()
-ACCENTS = {hx(c) for c in ("#00fc00", "#00c100", "#ffff00", "#661dde", "#8c69e8", "#7c007c")}
+ACCENTS = set()           # none: nearest-colour may land anywhere on the palette
 
-REMAP = {
-    # grounds: bright NES greens -> FC olives, meadow the lightest field
-    "#a8f0bc": "#9aaa7a",   # meadow
-    "#86e389": "#9aaa7a",   # raised grass (only the retired ladder used it)
-    "#6de06d": "#6e834f",   # forest grass
-    "#4edc4a": "#6e834f",   # grass
-    "#54ac6a": "#649655",   # tuft light
-    "#2f9c47": "#325a23",   # tuft
-    "#05c43a": "#649655",
-    "#00a800": "#6e834f",   # meadow sprig, one step under the meadow
-    "#058f3a": "#325a23",   # tree body
-    "#00881b": "#325a23",   # grass tuft
-    "#fc74b4": "#75264f",   # blossom: still the brightest thing in a meadow
-    # the sea: sky blue with white foam -> the violet void with violet foam.
-    # White is foam only inside the water cell; see palette_pass.WATER_CELLS.
-    "#5c94fc": "#18003b",
-    # snow: white -> pale lavender stone; its gold scrub dims to old brass
-    "#fcfcfc": "#9b94b3",
-    "#eaf0f7": "#9b94b3",
-    "#dcf0ff": "#9797aa",
-    "#f0bc3c": "#8c7747",
-    # desert: pale yellow sand -> FC's khaki and browns, never yellow
-    "#e8e0c0": "#b1bf7f",
-    "#f0e880": "#8c7747",
-    "#e0b954": "#8c7747",
-    "#d0c078": "#725a37",
-    # town paths: tan -> the khaki FC World floors its rooms with
-    "#d7a175": "#b1bf7f",
-    # (trail banks and cave rock are ramps per block: palette_pass.RAMPS)
-    "#b2966a": "#8d6b4f",
-    "#92744c": "#725a37",
-    "#9b8773": "#725a37",
-    # cliff rock: olive-brown -> FC boulder brown; the cracks stay black
-    "#887000": "#60413d",
-    "#4b4137": "#4e3633",
-    "#82662a": "#725a37",
-    "#23180c": "#260e00",
-    # cool greys (stones, dead wood)
-    "#54565a": "#5d5a5a",
-    "#2f3032": "#3c3c3c",
-    "#141a21": "#151e37",
-    # the player: skin to FC's pale pink, orange hair and coat to warm brown,
-    # blue to FC's blue, near-black to its charcoal
-    "#f0b890": "#ffe3ff",
-    "#d89830": "#8d6b4f",
-    "#2850a0": "#4f53a9",
-    "#282828": "#3c3c3c",
-    # wasteland: FC World's own ground already
-    "#2e1109": "#270800", "#351a11": "#3e1c0e", "#1a0a09": "#110000",
-    "#221311": "#260e00", "#280000": "#270800",
+MERGED = {
+    "#92744c": "#967448", "#260e00": "#270800", "#2f2f37": "#292931",
+    "#391315": "#311113", "#302010": "#341e10", "#545864": "#595965",
+    "#9ee8b0": "#a8f0bc", "#52525e": "#595965", "#6f2324": "#792727",
+    "#35264f": "#3b2a58", "#ffffff": "#fcfcfc", "#452914": "#3c2412",
+    "#193d28": "#163623", "#1c152a": "#181224", "#40404a": "#474751",
+    "#1f4c30": "#235436", "#251b38": "#2b1f40", "#24242a": "#292931",
+    "#11271a": "#142e1f", "#19181f": "#1e1e24", "#100d18": "#14101e",
 }
+
+FROM_FC = {
+    # foliage, dark to light: the old trees' body and highlight greens, and the
+    # darkest green already in the game (emerald rock) under them
+    "#325a23": "#235436", "#649655": "#058f3a", "#82b473": "#05c43a",
+    # grounds, back to what they were
+    "#6e834f": "#4edc4a", "#9aaa7a": "#a8f0bc", "#9b94b3": "#fcfcfc",
+    "#18003b": "#5c94fc", "#644880": "#fcfcfc", "#60413d": "#887000",
+    "#b1bf7f": "#d7a175", "#8c7747": "#f0e880", "#75264f": "#fc74b4",
+}
+
+REMAP = dict(MERGED, **FROM_FC)
 LUT = {hx(k): hx(v) for k, v in REMAP.items()}
 assert all(v in PALETTE for v in LUT.values()), \
     [k for k, v in REMAP.items() if hx(v) not in PALETTE]
@@ -122,14 +87,14 @@ def lab_dist(a, b):
 
 @lru_cache(maxsize=None)
 def nearest(c):
-    """The closest palette colour to c that is not an accent."""
+    """The closest palette colour to c."""
     lc = _lab(c)
     return min(_AUTO, key=lambda e: sum((p - q) ** 2 for p, q in zip(lc, e[1])))[0]
 
 
 def lookup(c):
-    """Where colour c goes: itself if already on the palette, else REMAP's
-    choice, else the nearest non-accent palette colour."""
+    """Where colour c goes: itself if on the palette, else REMAP's choice, else
+    the nearest palette colour."""
     if c in KEYS or c in PALETTE:
         return c
     return LUT.get(c) or nearest(c)
@@ -141,8 +106,7 @@ def luma(c):
 
 def remap_image(im):
     """Recolour an RGB(A) PIL image onto the palette. Returns the image and the
-    colours REMAP did not name (they went to their nearest), so a family the
-    table ought to cover shows up rather than being quietly approximated."""
+    colours REMAP did not name (they went to their nearest)."""
     im = im.convert("RGBA")
     px = im.load()
     missed = {}
