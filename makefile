@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus oreprof dngportals shot coastprobe
+.PHONY: all run clean tile_editor dngshot dngcensus oreprof dngportals shot coastprobe sheetcensus
 
 all: $(TARGET)
 
@@ -167,7 +167,25 @@ src/tilemap_trace.o: src/tilemap.cpp
 coastprobe$(EXE): tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ)
 	$(HEADLESS_CXX) -DGEN_TRACE tools/coastprobe.cpp src/tilemap_trace.o $(TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# Which sheet cells does the game draw? A second copy of every game object,
+# built with each SDL_RenderCopy reporting its source rect -- see
+# include/sheet_trace.h. Its own directory, so the shipping objects never carry
+# the hook. Same repo-root rule as dngcensus.
+sheetcensus: sheetcensus$(EXE)
+
+SHEET_TRACE_OBJ = $(patsubst src/%.cpp,src/sheettrace/%.o,$(filter-out src/main.cpp,$(SRC)))
+
+src/sheettrace/%.o: src/%.cpp
+	@mkdir -p src/sheettrace
+	$(HEADLESS_CXX) -DSHEET_TRACE -include include/sheet_trace.h -MMD -MP -c $< -o $@
+
+-include $(SHEET_TRACE_OBJ:.o=.d)
+
+sheetcensus$(EXE): tools/sheetcensus.cpp $(SHEET_TRACE_OBJ)
+	$(HEADLESS_CXX) -DSHEET_TRACE -include include/sheet_trace.h tools/sheetcensus.cpp $(SHEET_TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE) sheetcensus$(EXE)
+	rm -rf src/sheettrace
 
 endif

@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "battle.h"
 #include "core.h"
 #include <SDL2/SDL.h>
@@ -304,14 +305,14 @@ void BattleScene::_spawn_enemy_bullet(const BulletSpawn& bs) {
 
 void BattleScene::_fill_rect(SDL_Renderer* ren, int x, int y, int w, int h,
                                Uint8 r, Uint8 g, Uint8 b, Uint8 a) {
-    SDL_SetRenderDrawColor(ren, r, g, b, a);
+    fc_draw_color(ren, r, g, b, a);
     SDL_Rect rect = {x, y, w, h};
     SDL_RenderFillRect(ren, &rect);
 }
 
 void BattleScene::_draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int h,
                                       Uint8 r, Uint8 g, Uint8 b) {
-    SDL_SetRenderDrawColor(ren, r, g, b, 255);
+    fc_draw_color(ren, r, g, b, 255);
     SDL_Rect rect = {x, y, w, h};
     SDL_RenderDrawRect(ren, &rect);
 }
@@ -347,7 +348,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     }
 
     // Player bullets — yellow
-    SDL_SetRenderDrawColor(ren, 255, 230, 50, 255);
+    fc_draw_color(ren, 255, 230, 50, 255);
     for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
         const Bullet& bl = _player_bullets[i];
         if (!bl.active) continue;
@@ -362,17 +363,17 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
         if (bl.spawner && bl.homing)
-            SDL_SetRenderDrawColor(ren, 255, flash ? 255 : 140, flash ? 255 :   0, 255);
+            fc_draw_color(ren, 255, flash ? 255 : 140, flash ? 255 :   0, 255);
         else if (bl.spawner)
-            SDL_SetRenderDrawColor(ren, 255, 140, 0, 255);
+            fc_draw_color(ren, 255, 140, 0, 255);
         else if (bl.homing)
-            SDL_SetRenderDrawColor(ren, flash ? 255 : 180, flash ? 255 :  30, 255, 255);
+            fc_draw_color(ren, flash ? 255 : 180, flash ? 255 :  30, 255, 255);
         else if (bl.bouncing)
-            SDL_SetRenderDrawColor(ren, bl.bounces >= 2 ? 255 : 60,
+            fc_draw_color(ren, bl.bounces >= 2 ? 255 : 60,
                                         bl.bounces >= 2 ?  80 : 140,
                                         bl.bounces >= 2 ?  30 : 255, 255);
         else
-            SDL_SetRenderDrawColor(ren, 255, 80, 30, 255);
+            fc_draw_color(ren, 255, 80, 30, 255);
         int r = (int)bl.radius;
         SDL_Rect rect = { (int)bl.x - r, (int)bl.y - r, r*2, r*2 };
         SDL_RenderFillRect(ren, &rect);
@@ -439,7 +440,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         draw_text(ren, "EQUIPMENT",
                   PX + (PW - text_width("EQUIPMENT", 2)) / 2, PY + 8, 2, 255, 255, 255);
 
-        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        fc_draw_color(ren, 255, 255, 255, 255);
         SDL_Rect div = { PX + 8, PY + 30, PW - 16, 1 };
         SDL_RenderFillRect(ren, &div);
 

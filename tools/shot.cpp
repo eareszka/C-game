@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include "tilemap.h"
 #include "camera.h"
+#include "towns.h"
 
 static Tilemap g_map;
 
@@ -224,11 +225,32 @@ int main(int argc, char** argv)
     tilemap_build_overworld_phase1(&g_map, seed);
     tilemap_build_overworld_phase2(&g_map, seed);
 
+    const char* kind = getenv("SHOT_KIND");
+    if (want_x < 0 && kind && kind[0] == 't') {
+        // The spawn town, whose houses are the building art.
+        want_x = g_map.towns[0].x + TOWN_W / 2 - tw / 2;
+        want_y = g_map.towns[0].y + TOWN_H / 2 - th / 2;
+        printf("centred on town 0 at %d,%d\n", g_map.towns[0].x, g_map.towns[0].y);
+    }
+    if (want_x < 0 && kind && (kind[0] == 'f' || kind[0] == 'F')) {
+        // Densest block of trees; 'F' only counts trees standing on snow.
+        int best = -1, bx = MAP_WIDTH / 2, by = MAP_HEIGHT / 2;
+        for (int y = 0; y + th < MAP_HEIGHT; y += th / 2)
+        for (int x = 0; x + tw < MAP_WIDTH;  x += tw / 2) {
+            int n = 0;
+            for (int j = y; j < y + th; j++)
+            for (int i = x; i < x + tw; i++)
+                if (g_map.overlay[j][i] == TILE_TREE &&
+                    (kind[0] == 'f' || g_map.tiles[j][i] == TILE_SNOW)) n++;
+            if (n > best) { best = n; bx = x; by = y; }
+        }
+        want_x = bx; want_y = by;
+        printf("centred on tile %d,%d (%d trees)\n", bx, by, best);
+    }
     if (want_x < 0) {
         // Densest block of cliff top, on a coarse grid. `kind` picks which
         // family to hunt for so the snow and wasteland sets can be looked at
         // without knowing where in a 3000-tile world they landed.
-        const char* kind = getenv("SHOT_KIND");
         int lo = TILE_CLIFF, hi = TILE_CLIFF_3;
         if (kind && kind[0] == 's') { lo = TILE_CLIFF_SNOW_1;  hi = TILE_CLIFF_SNOW_3; }
         if (kind && kind[0] == 'w') { lo = TILE_CLIFF_WASTE_1; hi = TILE_CLIFF_WASTE_3; }

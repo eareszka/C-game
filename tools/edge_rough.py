@@ -1,6 +1,6 @@
 """How far does the top of a face wander, and how tall are the clefts in it?
 
-Two numbers the other tools do not reach, both measured off mother1.png so
+Two numbers the other tools do not reach, both measured off art/reference/mother1.png so
 there is something to aim at rather than an opinion.
 
     band top edge, peak to peak over a window of

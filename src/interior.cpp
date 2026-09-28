@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "interior.h"
 #include "interiors.h"
 #include "collision.h"
@@ -172,21 +173,21 @@ void interior_draw(const InteriorMap* im, SDL_Renderer* ren, SDL_Texture* atlas_
             }
             switch (im->tiles[y][x]) {
                 case INT_WALL:
-                    SDL_SetRenderDrawColor(ren, 92, 92, 104, 255);
+                    fc_draw_color(ren, 92, 92, 104, 255);
                     SDL_RenderFillRect(ren, &r);
-                    SDL_SetRenderDrawColor(ren, 60, 60, 70, 255);
+                    fc_draw_color(ren, 60, 60, 70, 255);
                     SDL_RenderDrawRect(ren, &r);
                     break;
                 case INT_FLOOR:
                     // wood planks — alternate shade per column for a simple pattern
-                    if ((x + y) & 1) SDL_SetRenderDrawColor(ren, 150, 108, 66, 255);
-                    else             SDL_SetRenderDrawColor(ren, 140,  98, 58, 255);
+                    if ((x + y) & 1) fc_draw_color(ren, 150, 108, 66, 255);
+                    else             fc_draw_color(ren, 140,  98, 58, 255);
                     SDL_RenderFillRect(ren, &r);
                     break;
                 case INT_EXIT:
-                    SDL_SetRenderDrawColor(ren, 196, 152, 92, 255);
+                    fc_draw_color(ren, 196, 152, 92, 255);
                     SDL_RenderFillRect(ren, &r);
-                    SDL_SetRenderDrawColor(ren, 120, 84, 40, 255);
+                    fc_draw_color(ren, 120, 84, 40, 255);
                     SDL_RenderDrawRect(ren, &r);
                     break;
                 default: break; // INT_VOID — leave the dark clear colour

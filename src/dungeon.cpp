@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "dungeon.h"
 #include "collision.h"
 #include "core.h"
@@ -160,13 +161,14 @@ static DngPalette dng_palette(const DungeonMap* dmap) {
     return p;
 }
 
-// The FOV dim, and nothing else now that each material has its own art. Kept as
-// a helper rather than inlined at the three call sites because each one has to
-// reset the mod afterwards -- the atlas texture is shared with the overworld --
-// and a dim that leaks is far easier to spot when there is one place to look.
-static inline void cave_set_dim(SDL_Texture* tex, bool lit) {
-    int m = lit ? 255 : 255 * 3 / 10;
-    SDL_SetTextureColorMod(tex, (Uint8)m, (Uint8)m, (Uint8)m);
+// The FOV dim, and nothing else now that each material has its own art: the
+// atlas to draw cave art from, lit or not. Unlit is a copy of the cave art
+// dithered dark (tilemap_get_town_dim_tex), not the lit atlas with a colour
+// multiply, which would leave the palette -- and, being a separate texture,
+// there is no shared tint left set for the next draw to inherit.
+static inline SDL_Texture* cave_atlas(SDL_Texture* lit_tex, bool lit) {
+    SDL_Texture* dim = tilemap_get_town_dim_tex();
+    return (lit || !dim) ? lit_tex : dim;
 }
 
 // ── LCG RNG ───────────────────────────────────────────────────────────────
@@ -3137,7 +3139,7 @@ static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
     CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
     int dx = cave_art_col_shift(dmap) * 16;
 
-    cave_set_dim(tex, in_fov);
+    tex = cave_atlas(tex, in_fov);
 
     if (p.tall_band) {
         // Stonehenge's wall_h mechanic (is_shg_wall below) but filled with a
@@ -3165,7 +3167,7 @@ static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
             int fg = in_fov ? fc.g : fc.g * 3 / 10;
             int fb = in_fov ? fc.b : fc.b * 3 / 10;
             SDL_Rect back = { sx, sy, tsz, tsz };
-            SDL_SetRenderDrawColor(ren, (Uint8)fr, (Uint8)fg, (Uint8)fb, 255);
+            fc_draw_color(ren, (Uint8)fr, (Uint8)fg, (Uint8)fb, 255);
             SDL_RenderFillRect(ren, &back);
 
             SDL_Rect src = { TALL_BAND_SOLO_X + dx, TALL_BAND_SOLO_Y, 16, 16 };
@@ -3180,10 +3182,6 @@ static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
     }
 
     draw_cave_wall_decor(ren, tex, p, sx, sy, tsz, dx);
-
-    SDL_SetTextureColorMod(tex, 255, 255, 255);   // shared texture — reset immediately so the
-                                                   // dim doesn't leak into the next thing that
-                                                   // draws from tilemap_get_town_tex()
 }
 
 // ── public: draw dungeon tiles ────────────────────────────────────────────
@@ -3264,7 +3262,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             bool is_shg_wall = (dmap->type == DUNGEON_ENT_STONEHENGE) && (tile == DNG_WALL);
             int wall_h = is_shg_wall ? 2 * tsz : 0;
             SDL_Rect rect = { sx, sy - wall_h, tsz, tsz + wall_h };
-            SDL_SetRenderDrawColor(ren, r, g, b, 255);
+            fc_draw_color(ren, r, g, b, 255);
             SDL_RenderFillRect(ren, &rect);
 
             // Loot: plain gold square drawn over the floor tile.
@@ -3277,7 +3275,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
                     int lr = 255, lg = 215, lb = 60;
                     if (!in_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
-                    SDL_SetRenderDrawColor(ren, lr, lg, lb, 255);
+                    fc_draw_color(ren, lr, lg, lb, 255);
                     SDL_RenderFillRect(ren, &loot_rect);
                     has_loot = true;
                     break;
@@ -3344,12 +3342,9 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         if (p.trim_n || p.trim_s || p.trim_e || p.trim_w ||
                             p.nub_ne || p.nub_se || p.nub_sw || p.nub_nw) {
                             SDL_Texture* cave_tex = tilemap_get_town_tex();
-                            if (cave_tex) {
-                                cave_set_dim(cave_tex, shg_fov);
-                                draw_cave_wall_decor(ren, cave_tex, p, sx, sy, tsz,
-                                                     cave_art_col_shift(dmap) * 16);
-                                SDL_SetTextureColorMod(cave_tex, 255, 255, 255);
-                            }
+                            if (cave_tex)
+                                draw_cave_wall_decor(ren, cave_atlas(cave_tex, shg_fov), p,
+                                                     sx, sy, tsz, cave_art_col_shift(dmap) * 16);
                         }
                     }
                     continue;
@@ -3365,7 +3360,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 int sr = shg_fov ? c->r : c->r * 3 / 10;
                 int sg = shg_fov ? c->g : c->g * 3 / 10;
                 int sb = shg_fov ? c->b : c->b * 3 / 10;
-                SDL_SetRenderDrawColor(ren, sr, sg, sb, 255);
+                fc_draw_color(ren, sr, sg, sb, 255);
                 SDL_RenderFillRect(ren, &rect);
 
                 bool has_loot = false;
@@ -3377,7 +3372,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
                         int lr = 255, lg = 215, lb = 60;
                         if (!shg_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
-                        SDL_SetRenderDrawColor(ren, lr, lg, lb, 255);
+                        fc_draw_color(ren, lr, lg, lb, 255);
                         SDL_RenderFillRect(ren, &loot_rect);
                         has_loot = true;
                         break;
@@ -3437,7 +3432,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     // paints into, so the strip always matches the face it hugs
                     // rather than the floor it overhangs.
                     bool lit = show_all || dmap->visible[ty][tx];
-                    cave_set_dim(cave_tex, lit);
+                    SDL_Texture* art = cave_atlas(cave_tex, lit);
 
                     for (int k = 0; k <= 2; k++) {
                         SDL_Rect src = { TRIM_WE_X + cave_art_col_shift(dmap) * 16,
@@ -3445,14 +3440,13 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         SDL_Rect dst = { 0, sy - k * tsz, half, tsz };
                         if (p.band_edge_w & (1 << k)) {   // right half of the cell to the west
                             dst.x = sx - half;
-                            SDL_RenderCopy(ren, cave_tex, &src, &dst);
+                            SDL_RenderCopy(ren, art, &src, &dst);
                         }
                         if (p.band_edge_e & (1 << k)) {   // left half of the cell to the east
                             dst.x = sx + tsz;
-                            SDL_RenderCopy(ren, cave_tex, &src, &dst);
+                            SDL_RenderCopy(ren, art, &src, &dst);
                         }
                     }
-                    SDL_SetTextureColorMod(cave_tex, 255, 255, 255);
                 }
             }
         }
@@ -3578,7 +3572,7 @@ void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Rend
     if (tx1 > DMAP_W) tx1 = DMAP_W;
     if (ty1 > DMAP_H) ty1 = DMAP_H;
 
-    SDL_SetRenderDrawColor(ren, 0, 255, 0, 110);
+    fc_draw_color(ren, 0, 255, 0, 110);
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
     for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = tx0; tx < tx1; tx++) {
@@ -3636,7 +3630,7 @@ void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 case DNG_EXIT:  c = &pal.exit_; break;
                 default:        c = &pal.wall;  break;
             }
-            SDL_SetRenderDrawColor(ren, c->r, c->g, c->b, 255);
+            fc_draw_color(ren, c->r, c->g, c->b, 255);
             SDL_RenderDrawPoint(ren, ox + tx / step, oy + ty / step);
         }
     }
@@ -3645,9 +3639,9 @@ void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
     int px = ox + (int)(dplayer->x / DMAP_TILE) / step;
     int py = oy + (int)(dplayer->y / DMAP_TILE) / step;
     if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1)
-        SDL_SetRenderDrawColor(ren, 0, 255, 255, 255);
+        fc_draw_color(ren, 0, 255, 255, 255);
     else
-        SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+        fc_draw_color(ren, 255, 255, 255, 255);
     SDL_Rect dot = { px - 2, py - 2, 5, 5 };
     SDL_RenderFillRect(ren, &dot);
 

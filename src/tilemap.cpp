@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "tilemap.h"
 #include "dungeon_kinds.h"
 #include "dungeon.h"         // material_min_difficulty, for the guarantee pass
@@ -239,7 +240,10 @@ static_assert(TILE_CACHE_SIZE == TILE_TOWN0_BASE,
               "TILE_CACHE_SIZE must cover exactly the non-sheet tile ids");
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
-static SDL_Texture* s_overworld0_tex     = nullptr;
+// The haze mask rows, dithered once per storey (see CLIFF_HAZE_RANKS), and
+// the cave art darkened by dither for what lies outside the player's view.
+static SDL_Texture* s_haze_tex[4]        = {};
+static SDL_Texture* s_town_dim_tex       = nullptr;
 // Biome edge fringes — see "Biome edge" below. Indexed by an eight-bit map of
 // which surrounding tiles hold the other biome, so the mask depends on the
 // whole neighbourhood rather than on one side at a time. That is what lets a
@@ -969,7 +973,7 @@ static const int CLIFF_TAPER_PASSES = 4;
 //
 // The ladder runs out at -0.55 and the whole rear of a landform draws the
 // beaded line and no rock, which looks like an omission and is the reference.
-// Measured over 266 clean cliff regions of assets/mother1.png at native scale:
+// Measured over 266 clean cliff regions of art/reference/mother1.png at native scale:
 // south faces run 36 px deep, east-west flanks 4, and north edges carry no band
 // at all — 60-64% of its total drawn cliff perimeter has no face on it. Rock
 // the whole way round was tried here and taken out again.
@@ -1190,7 +1194,7 @@ static void cliff_morph(int x_lo, int x_hi, int y_lo, int y_hi, int r, int need)
 //
 // cliff_morph()'s opening and closing is a disk, on purpose — the whole
 // point of a disk is that it treats every direction alike. But the
-// reference does not: measured against assets/mother1.png at matched scale,
+// reference does not: measured against art/reference/mother1.png at matched scale,
 // the edge facing the player holds within a tile or two of level for a long
 // run before it steps, while cliff_morph() leaves it wandering at close to
 // tile scale on every side, because an isotropic filter cannot know which
@@ -6145,14 +6149,14 @@ static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
     const TileStyle* s = &tile_styles[tile_id];
 
     // Fill background
-    SDL_SetRenderDrawColor(renderer, s->bg_r, s->bg_g, s->bg_b, 255);
+    fc_draw_color(renderer, s->bg_r, s->bg_g, s->bg_b, 255);
     SDL_Rect bg = { screen_x, screen_y, draw_size, draw_size };
     SDL_RenderFillRect(renderer, &bg);
 
     // Draw glyph only when tiles are big enough to be readable
     const int scale = draw_size / 8;
     if (scale < 1) return;
-    SDL_SetRenderDrawColor(renderer, s->fg_r, s->fg_g, s->fg_b, 255);
+    fc_draw_color(renderer, s->fg_r, s->fg_g, s->fg_b, 255);
     for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
             if (s->glyph[row] & (0x80u >> col)) {
@@ -6174,13 +6178,15 @@ static SDL_Surface* make_tile_surf(const TileStyle* s) {
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(
         0, TILE_SIZE, TILE_SIZE, 32, SDL_PIXELFORMAT_RGBA32);
     if (!surf) return nullptr;
-    SDL_FillRect(surf, NULL, SDL_MapRGB(surf->format, s->bg_r, s->bg_g, s->bg_b));
+    // On the palette like everything else drawn -- see fc_palette.h.
+    SDL_Color bg = fc_snap(s->bg_r, s->bg_g, s->bg_b), fg = fc_snap(s->fg_r, s->fg_g, s->fg_b);
+    SDL_FillRect(surf, NULL, SDL_MapRGB(surf->format, bg.r, bg.g, bg.b));
     const int scale = TILE_SIZE / 8;
     for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
             if (s->glyph[row] & (0x80u >> col)) {
                 SDL_Rect px = { col * scale, row * scale, scale, scale };
-                SDL_FillRect(surf, &px, SDL_MapRGB(surf->format, s->fg_r, s->fg_g, s->fg_b));
+                SDL_FillRect(surf, &px, SDL_MapRGB(surf->format, fg.r, fg.g, fg.b));
             }
         }
     }
@@ -6194,6 +6200,43 @@ static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet);
 // The same, for the cliff: the ground it closes is read back off the pixels it
 // draws, so those pixels have to be kept somewhere the main thread can see.
 static void cliff_build_solid(SDL_Surface* sheet);
+// And the haze, whose storeys are dithers cut from the sheet's mask rows.
+static void haze_build_dither(SDL_Renderer* renderer, SDL_Surface* sheet);
+
+// The cave art as it looks outside the player's view: dimmed, and on the
+// palette. It used to be a colour multiply to 30%, which is a colour for every
+// colour the art has and none of them FC World's. Now 11 of every 16 pixels go
+// black by fc_bayer() rank and the rest keep their own colour, so the dim is
+// as dark as it was and every pixel of it is still one of the 64. The cave art
+// is all in the sheet's first rows (tools/gen_cave_tiles.py BLOCK_ROWS), so
+// only those are copied; coordinates match the sheet's.
+static const int DIM_ROWS = 8;
+static SDL_Texture* build_dim_texture(SDL_Renderer* renderer, SDL_Surface* sheet) {
+    SDL_Surface* s = SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0);
+    if (!s) return nullptr;
+    int h = DIM_ROWS * 16 < s->h ? DIM_ROWS * 16 : s->h;
+    SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, s->w, h, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Texture* tex = nullptr;
+    if (d) {
+        for (int y = 0; y < h; y++) {
+            const unsigned char* sp = (const unsigned char*)s->pixels + (size_t)y * s->pitch;
+            unsigned char* dp = (unsigned char*)d->pixels + (size_t)y * d->pitch;
+            for (int x = 0; x < s->w; x++) {
+                const unsigned char* p = sp + x * 4;
+                unsigned char* q = dp + x * 4;
+                bool key = p[0] == 255 && p[1] == 0 && p[2] == 0;
+                bool dark = !key && fc_bayer(x, y) >= 5;
+                q[0] = dark ? 0 : p[0]; q[1] = dark ? 0 : p[1]; q[2] = dark ? 0 : p[2];
+                q[3] = key ? 0 : 255;
+            }
+        }
+        tex = SDL_CreateTextureFromSurface(renderer, d);
+        if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+        SDL_FreeSurface(d);
+    }
+    SDL_FreeSurface(s);
+    return tex;
+}
 
 void tilemap_init_tile_cache(SDL_Renderer* renderer) {
     for (int i = 0; i < TILE_CACHE_SIZE && i < NUM_TILE_STYLES; i++) {
@@ -6214,21 +6257,16 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer) {
         // their colour from tile_styles either way.
         build_edge_textures(renderer, surf);
         cliff_build_solid(surf);
-        if (surf) SDL_FreeSurface(surf);
-    }
-    {
-        SDL_Surface* surf = IMG_Load("assets/overworld_0.png");
-        if (!surf) { printf("overworld_0.png not found: %s\n", SDL_GetError()); }
-        else {
-            SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, 255, 0, 0));
-            s_overworld0_tex = SDL_CreateTextureFromSurface(renderer, surf);
-            SDL_FreeSurface(surf);
-            if (s_overworld0_tex) SDL_SetTextureBlendMode(s_overworld0_tex, SDL_BLENDMODE_BLEND);
+        if (surf) {
+            haze_build_dither(renderer, surf);
+            s_town_dim_tex = build_dim_texture(renderer, surf);
         }
+        if (surf) SDL_FreeSurface(surf);
     }
 }
 
 SDL_Texture* tilemap_get_town_tex(void) { return s_town0_tex; }
+SDL_Texture* tilemap_get_town_dim_tex(void) { return s_town_dim_tex; }
 
 void tilemap_free_tile_cache(void) {
     for (int i = 0; i < TILE_CACHE_SIZE; i++) {
@@ -6245,20 +6283,15 @@ void tilemap_free_tile_cache(void) {
         }
     }
     if (s_town0_tex)          { SDL_DestroyTexture(s_town0_tex);          s_town0_tex          = nullptr; }
-    if (s_overworld0_tex)     { SDL_DestroyTexture(s_overworld0_tex);     s_overworld0_tex     = nullptr; }
+    if (s_town_dim_tex)       { SDL_DestroyTexture(s_town_dim_tex);       s_town_dim_tex       = nullptr; }
+    for (SDL_Texture*& t : s_haze_tex)
+        if (t) { SDL_DestroyTexture(t); t = nullptr; }
 }
 
 // Helper: copy a cached tile texture to the screen, falling back to immediate draw.
 static void blit_tile(SDL_Renderer* renderer, int tile_id,
                       int screen_x, int screen_y, int draw_size) {
-    if (tile_id >= TILE_OW0_BASE && s_overworld0_tex) {
-        int idx = tile_id - TILE_OW0_BASE;
-        int col = idx % TOWN0_SHEET_COLS;
-        int row = idx / TOWN0_SHEET_COLS;
-        SDL_Rect src = { col * 16, row * 16, 16, 16 };
-        SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
-        SDL_RenderCopy(renderer, s_overworld0_tex, &src, &dst);
-    } else if (tile_id >= TILE_TOWN0_BASE && s_town0_tex) {
+    if (tile_id >= TILE_TOWN0_BASE && s_town0_tex) {
         int idx = tile_id - TILE_TOWN0_BASE;
         int col = idx % TOWN0_SHEET_COLS;
         int row = idx / TOWN0_SHEET_COLS;
@@ -6439,11 +6472,11 @@ static const float SHORE_JITTER  = 0.025f;
 // a border where a river runs into the sea and have it fringe against itself.
 // A biome may also name a shore colour. Where one is set, both sides of that
 // biome's borders fringe in it instead of in each other's ground colour: water
-// gets a pale rim that reads as shallows and holds the waterline apart from
-// whatever it runs along, rather than blue crumbling into green.
+// gets a rim that holds the waterline apart from whatever it runs along,
+// rather than the void crumbling into the ground.
 //
-// The pale is tinted blue rather than pure white on purpose — snow is very near
-// white already, and an untinted rim would vanish along a snow coast.
+// The rim is the void's own foam, the lighter violet its ripples are drawn in,
+// so the edge reads as more of the water and not as a band of something else.
 // Three independent questions, one flag each:
 //
 //   hard_edge  the boundary is a clean outline rather than two grounds
@@ -6479,7 +6512,7 @@ static GroundBiome s_biomes[] = {
     { { TILE_WASTE_TRAIL, -1, -1, -1 },                &COVER_TRAIL,  false, false, true,  0,0,0,  -1,  -1,  -1 },
     { { TILE_ROAD,      -1, -1, -1 },                  &COVER_ROAD,   false, false, true,  0,0,0,  -1,  -1,  -1 },
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1 },
-    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255 },
+    { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 100,  72, 128 },
     { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1 },
 };
 static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
@@ -6641,9 +6674,9 @@ static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
             uint8_t a;
             SDL_GetRGBA(best, src->format, &b->r, &b->g, &b->b, &a);
         } else if (b->tiles[0] >= 0 && b->tiles[0] < NUM_TILE_STYLES) {
-            b->r = tile_styles[b->tiles[0]].bg_r;
-            b->g = tile_styles[b->tiles[0]].bg_g;
-            b->b = tile_styles[b->tiles[0]].bg_b;
+            const TileStyle& st = tile_styles[b->tiles[0]];
+            SDL_Color c = fc_snap(st.bg_r, st.bg_g, st.bg_b);
+            b->r = c.r; b->g = c.g; b->b = c.b;
         }
     }
     if (src) SDL_FreeSurface(src);
@@ -6961,18 +6994,24 @@ static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 // rather than as three. What changes is the ground on top, and only that, so
 // the height is told by the surface you would stand on rather than by the wall.
 //
-// A wash rather than a recolour, because it has to lighten. The ground comes
-// off the sheet and the only tint SDL will put on a texture is a multiply,
-// which darkens a colour and can never lift one.
+// A dither rather than a wash. The ground comes off the sheet, and the only
+// way SDL lifts a texture's colour is to blend something over it, which makes
+// colours that are on no palette -- smooth shading, the look of a 16-bit game
+// and not of FC World. So a storey takes a quarter of its surface's pixels in
+// one palette colour, chosen by fc_bayer() rank: the first storey ranks 0-3,
+// the second 4-7, the third 8-11. The ranges never overlap, so where storeys
+// stack they cover a quarter, a half, three quarters, and every pixel on
+// screen is still either the ground's own colour or the tint.
 //
-// One step per storey above the first, laid one over another, so a second
-// terrace is one wash paler than open country and a third is two. Cut to the
-// height's own shape — see haze_cell() — rather than laid on as a tile-sized
-// quad: the height is a mask in whole tiles and the outline wanders six pixels
-// either side of it, so a quad fringes pale outside the line on one stretch and
-// leaves dark ground inside it on the next, which is the tile grid showing in
-// the colour. The mask puts the change of ground exactly under the line that
-// marks it.
+// One step per storey, including the first, so that every level of ground is a
+// different shade and the field is the only one wearing none -- a plateau you
+// are standing on top of shows you no band round its edge, so the ground has
+// to say it. Cut to the height's own shape -- see haze_cell() -- rather than
+// laid on as a tile-sized quad: the height is a mask in whole tiles and the
+// outline wanders six pixels either side of it, so a quad fringes outside the
+// line on one stretch and leaves bare ground inside it on the next, which is
+// the tile grid showing in the colour. The mask puts the change of ground
+// exactly under the line that marks it.
 static const int CLIFF_HAZE_ROW0 = 128;   // moved past the fourth bank class
 // The complement of the haze mask: the part of a rim tile that lies OUTSIDE
 // its storey's outline. A plateau's surface is drawn over the whole of its
@@ -6982,53 +7021,66 @@ static const int CLIFF_HAZE_ROW0 = 128;   // moved past the fourth bank class
 // the ground below was a different biome. Same field as the haze, so the two
 // meet at the line exactly. Baked by tools/gen_cliff_tiles.py; KEEP IN SYNC.
 static const int CLIFF_LOW_ROW0  = 160;
-// The wash is per biome, because "paler" is only a step on ground that has room
-// to get paler. Measured off the sheet, the three ground cells sit at grass
-// (63,202,64), snow (246,237,215) and waste (36,6,0) — a mid green, an almost
-// white, and an almost black. One wash serving all three does the right thing
-// only for the green: on snow three storeys of it move every channel by about
-// three, which is no step at all, and on waste they carry a burnt biome from
-// near black to a middling grey, which is a step and also the end of the biome
-// looking burnt.
-//
-// So each gets a direction with somewhere to go. Grass pales toward a cool
-// white, as it always has. Snow has no paler left, so it goes the other way and
-// cools into a blue shadow. Waste lifts toward ash rather than toward daylight.
-//
-// The three alphas are not a style choice, they are levelled against each other.
-// Measured off a render, a storey of grass is about nine points of luma and a
-// storey of snow about ten, and the same alpha on waste gave twenty-seven —
-// which is what carried it to grey. Waste needs a third of the alpha for the
-// same *step* because it starts at luma 12 with the whole range above it, where
-// snow starts at 237 with almost none. Fourteen puts its ladder at 12, 22, 31,
-// 39: still nine points a storey, and still visibly scorched at the top.
-// One wash per storey, including the first, so that every level of ground is a
-// different shade and the field is the only one wearing none. It used to start
-// at the second storey, which left level 1 and the field it stands on exactly
-// the same colour — a whole storey of height whose only evidence was the band
-// round its edge, and a plateau you are standing on top of shows you no band
-// at all.
-//
-// The alphas are small because the wash compounds: each storey composites over
-// the last, so the third is 1-(1-a)^3 of the way to the tint, not 3a. Grass at
-// 51 lands its top storey 48.5% of the way, which is exactly where two storeys
-// at the old 72 already had it — so the highest ground is as pale as it always
-// was, and the new step is bought from the gaps between levels rather than by
-// bleaching the top.
-typedef struct { int r, g, b, a; } CliffHaze;
-static const CliffHaze CLIFF_HAZE_PLAIN = { 236, 244, 252, 51 };
-static const CliffHaze CLIFF_HAZE_SNOW  = { 140, 178, 224, 38 };
-static const CliffHaze CLIFF_HAZE_WASTE = { 198, 186, 180, 14 };
+static const int CLIFF_HAZE_RANKS = 4;    // of fc_bayer()'s 16, per storey
+static_assert(CLIFF_LEVELS * CLIFF_HAZE_RANKS <= 16, "the storeys' ranks must fit in 16");
+static_assert(CLIFF_LEVELS <= (int)(sizeof s_haze_tex / sizeof s_haze_tex[0]),
+              "one dithered haze texture per storey");
+
+// The tint is per biome: the next step along that ground's own ramp, in the
+// direction it has room to go. Grass and meadow pale toward FC World's light
+// olives and sand toward its khaki; snow has no paler left and cools into
+// shadow instead; waste lifts toward ash rather than toward daylight.
+typedef struct { uint8_t r, g, b; } CliffHaze;
+static const CliffHaze CLIFF_HAZE_GRASS  = { 0x9a, 0xaa, 0x7a };
+static const CliffHaze CLIFF_HAZE_MEADOW = { 0xb1, 0xbf, 0x7f };
+static const CliffHaze CLIFF_HAZE_SAND   = { 0xb1, 0xbf, 0x7f };
+static const CliffHaze CLIFF_HAZE_SNOW   = { 0x72, 0x6f, 0x8d };
+static const CliffHaze CLIFF_HAZE_WASTE  = { 0x3e, 0x1c, 0x0e };
 
 // Which of them a tile wears. The cliff families first, so a plateau top takes
-// its own biome's wash, then the plain ground ids for the tiles at the edge of a
+// its own biome's tint, then the plain ground ids for the tiles at the edge of a
 // level where the outline runs over ordinary ground. Mirrors cliff_top_cover().
 static const CliffHaze* cliff_haze_for(int t) {
     if ((t >= TILE_CLIFF_SNOW_1  && t <= TILE_CLIFF_SNOW_5)  || t == TILE_SNOW)
         return &CLIFF_HAZE_SNOW;
     if ((t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5) || t == TILE_WASTELAND)
         return &CLIFF_HAZE_WASTE;
-    return &CLIFF_HAZE_PLAIN;
+    if (t == TILE_MEADOW) return &CLIFF_HAZE_MEADOW;
+    if (t == TILE_SAND)   return &CLIFF_HAZE_SAND;
+    return &CLIFF_HAZE_GRASS;
+}
+
+// The mask rows, once per storey, keeping only the pixels of that storey's
+// ranks. White where kept, clear elsewhere; tinted at draw time. The dither is
+// taken in sheet coordinates, and every cell starts on a multiple of four, so
+// the pattern runs on unbroken from one tile into the next.
+static void haze_build_dither(SDL_Renderer* renderer, SDL_Surface* sheet) {
+    SDL_Surface* s = SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0);
+    if (!s) return;
+    int y0 = CLIFF_HAZE_ROW0 * 16, h = 16 * 16;
+    if (y0 + h <= s->h) {
+        for (int L = 1; L <= CLIFF_LEVELS; L++) {
+            SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, s->w, h, 32, SDL_PIXELFORMAT_RGBA32);
+            if (!d) continue;
+            int lo = (L - 1) * CLIFF_HAZE_RANKS, hi = L * CLIFF_HAZE_RANKS;
+            for (int y = 0; y < h; y++) {
+                const unsigned char* sp = (const unsigned char*)s->pixels + (size_t)(y0 + y) * s->pitch;
+                unsigned char* dp = (unsigned char*)d->pixels + (size_t)y * d->pitch;
+                for (int x = 0; x < s->w; x++) {
+                    const unsigned char* p = sp + x * 4;
+                    unsigned char* q = dp + x * 4;
+                    int rank = fc_bayer(x, y);
+                    bool on = p[0] == 255 && p[1] == 255 && p[2] == 255 && rank >= lo && rank < hi;
+                    q[0] = q[1] = q[2] = 255;
+                    q[3] = on ? 255 : 0;
+                }
+            }
+            s_haze_tex[L - 1] = SDL_CreateTextureFromSurface(renderer, d);
+            if (s_haze_tex[L - 1]) SDL_SetTextureBlendMode(s_haze_tex[L - 1], SDL_BLENDMODE_BLEND);
+            SDL_FreeSurface(d);
+        }
+    }
+    SDL_FreeSurface(s);
 }
 static inline int cliff_cell(int row0, int code, int x, int y) {
     int col = (y & (CLIFF_BLOCK - 1)) * CLIFF_BLOCK + (x & (CLIFF_BLOCK - 1));
@@ -7442,58 +7494,20 @@ static void push_layer(EdgeLayers* out, int kind, int config, int variant,
     l->r = r; l->g = g; l->b = b;
 }
 
-// The colour a neighbour's fringe is painted in on a tile standing L storeys
-// up. Everything on the tile takes the tile's own elevation wash afterwards,
-// L times, and the wash differs by biome -- a strong pale one over plain
-// ground, a faint warm one over wasteland -- so a dot painted in the
-// neighbour's flat colour ends up a different shade from the neighbour's own
-// washed surface a tile away: grass dots on wasteland brighter than the grass
-// beside them, wasteland dots on grass greyish. Dense at the boundary, that
-// read as a lighter square on each side of every biome edge on a plateau.
-//
-// So the fringe is painted AFTER the wash, in the neighbour's finished colour:
-// its flat colour washed L times by its own haze. A wash is affine,
-// c' = h + (c - h) * (1 - a), so that is one line. The one tile that cannot
-// wait is a tile carrying a track, because the track has to cover the fringe
-// and the track itself takes the wash; there the fringe goes on first, at the
-// colour which the HOST's L washes carry to the neighbour's finished colour
-// (the inverse of the same line). That inverse is not always in gamut -- two
-// plain washes lift everything to 85 or more, and washed wasteland is darker
-// than that -- which is exactly why the general case does not go first.
-static void fringe_colour(int host, int other, int L, bool before_wash,
-                          uint8_t* r, uint8_t* g, uint8_t* b) {
-    const GroundBiome& o = s_biomes[other];
-    float c[3] = { (float)o.r, (float)o.g, (float)o.b };
-    if (L > 0) {
-        const CliffHaze* hh = cliff_haze_for(s_biomes[host].tiles[0]);
-        const CliffHaze* ho = cliff_haze_for(o.tiles[0]);
-        float kh = 1.0f - hh->a / 255.0f, ko = 1.0f - ho->a / 255.0f;
-        float hhc[3] = { (float)hh->r, (float)hh->g, (float)hh->b };
-        float hoc[3] = { (float)ho->r, (float)ho->g, (float)ho->b };
-        float kh_L = 1.0f, ko_L = 1.0f;
-        for (int i = 0; i < L; i++) { kh_L *= kh; ko_L *= ko; }
-        for (int i = 0; i < 3; i++) {
-            float v = hoc[i] + (c[i] - hoc[i]) * ko_L;          // the neighbour's surface
-            if (before_wash) v = hhc[i] + (v - hhc[i]) / kh_L;  // what the host's washes make that
-            c[i] = v < 0.0f ? 0.0f : v > 255.0f ? 255.0f : v;
-        }
-    }
-    *r = (uint8_t)(c[0] + 0.5f); *g = (uint8_t)(c[1] + 0.5f); *b = (uint8_t)(c[2] + 0.5f);
-}
-
-static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out,
-                              bool before_wash) {
+// A neighbour's fringe is painted in its plain colour at any height. It used
+// to be worked out through the elevation wash, so a dot matched its biome's
+// washed surface a tile away; a storey is a dither of palette colours now, so
+// the plain colour is already the surface's own, and it is on the palette.
+static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out) {
     out->count = 0;
     int mine = biome_at(map, x, y);
     if (mine < 0) return;
     EdgeFringe fr;
     biome_fringe(map, x, y, &fr);
-    int L = s_cliff_elev[y][x];
 
     for (int i = 0; i < fr.count; i++) {
         int other = fr.biome[i], cfg = fr.config[i];
-        GroundBiome o = s_biomes[other];
-        fringe_colour(mine, other, L, before_wash, &o.r, &o.g, &o.b);
+        const GroundBiome& o = s_biomes[other];
 
         // One of the pair draws its own border, so leave the join alone rather
         // than laying a second one over the top of it.
@@ -7520,9 +7534,9 @@ static void biome_edge_layers(const Tilemap* map, int x, int y, EdgeLayers* out,
 // Paint them. Runs after the tile has drawn itself, so everything here goes
 // over the top — the tile keeps its tufts.
 static void draw_biome_edges(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
-                             int sx, int sy, int size, bool before_wash) {
+                             int sx, int sy, int size) {
     EdgeLayers ls;
-    biome_edge_layers(map, x, y, &ls, before_wash);
+    biome_edge_layers(map, x, y, &ls);
     SDL_Rect dst = { sx, sy, size, size };
 
     for (int i = 0; i < ls.count; i++) {
@@ -7535,7 +7549,10 @@ static void draw_biome_edges(SDL_Renderer* renderer, const Tilemap* map, int x, 
             default:             t = s_shore_in_tex[l.config][l.variant]; break;
         }
         if (!t) continue;
-        SDL_SetTextureColorMod(t, l.r, l.g, l.b);
+        // The masks are white and hard-edged, so a palette colour here comes
+        // out on screen exactly.
+        SDL_Color c = fc_snap(l.r, l.g, l.b);
+        SDL_SetTextureColorMod(t, c.r, c.g, c.b);
         SDL_RenderCopy(renderer, t, NULL, &dst);
     }
 }
@@ -7650,13 +7667,12 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
                 else if (!is_cliff)
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
-                // The fringe of neighbouring ground goes on after the wash
-                // below, in the neighbour's finished colour (fringe_colour) --
-                // except under a track, which has to cover it and takes the
-                // wash itself, so there it goes on now.
+                // The fringe of neighbouring ground goes on after the haze
+                // below -- except under a track, which has to cover it and
+                // takes the haze itself, so there it goes on now.
                 bool track = map->route[y][x] != ROUTE_NONE;
                 if (track)
-                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size, true);
+                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
                 // The track, worn over that ground and over its fringe. Drawn
                 // here rather than written into the tile, so the ground keeps
                 // drawing underneath: the seam between two biomes now runs on
@@ -7697,27 +7713,29 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                         }
                     }
                 }
-                // Standing high pales the ground you stand on — see
-                // CLIFF_HAZE_A. After the cover and its edges, so the whole
-                // surface goes; before the cliff art, so the rock does not.
-                // One wash per storey, each cut to that storey's own outline,
+                // Standing high marks the ground you stand on -- see
+                // CLIFF_HAZE_RANKS. After the cover and its edges, so the whole
+                // surface takes it; before the cliff art, so the rock does not.
+                // One dither per storey, each cut to that storey's own outline,
                 // so they stack where the levels do and every level of ground
-                // comes out a different green.
-                if (s_town0_tex) {
+                // comes out a different shade.
+                {
                     const CliffHaze* hazec = cliff_haze_for(tile_id);
-                    SDL_SetTextureColorMod(s_town0_tex, (Uint8)hazec->r,
-                                           (Uint8)hazec->g, (Uint8)hazec->b);
-                    SDL_SetTextureAlphaMod(s_town0_tex, (Uint8)hazec->a);
+                    SDL_Color tint = fc_snap(hazec->r, hazec->g, hazec->b);
+                    SDL_Rect dst = { screen_x, screen_y, draw_size, draw_size };
                     for (int L = 1; L <= CLIFF_LEVELS; L++) {
                         int hz = cliff_high_code(x, y, L);
-                        if (hz) blit_tile(renderer, cliff_cell(CLIFF_HAZE_ROW0, hz, x, y),
-                                          screen_x, screen_y, draw_size);
+                        SDL_Texture* t = s_haze_tex[L - 1];
+                        if (!hz || !t) continue;
+                        int idx = cliff_cell(CLIFF_HAZE_ROW0, hz, x, y) - TILE_TOWN0_BASE;
+                        SDL_Rect src = { (idx % TOWN0_SHEET_COLS) * 16,
+                                         (idx / TOWN0_SHEET_COLS - CLIFF_HAZE_ROW0) * 16, 16, 16 };
+                        SDL_SetTextureColorMod(t, tint.r, tint.g, tint.b);
+                        SDL_RenderCopy(renderer, t, &src, &dst);
                     }
-                    SDL_SetTextureColorMod(s_town0_tex, 255, 255, 255);
-                    SDL_SetTextureAlphaMod(s_town0_tex, 255);
                 }
                 if (!track)
-                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size, false);
+                    draw_biome_edges(renderer, map, x, y, screen_x, screen_y, draw_size);
                 for (int li = 0; li < n_layers; li++)
                     blit_tile(renderer, layers[li], screen_x, screen_y, draw_size);
                 if (!is_cliff && is_town) blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
@@ -7795,7 +7813,7 @@ void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* ren
 // but the label here is the tileset (col,row) a tile draws from rather than
 // its world (tx,ty), since that's the coordinate system assets/tileset.png
 // edits are actually made in. Exact for anything stored directly as a
-// TOWN0/OW0 sheet id (cliffs, roads, buildings, dungeon entrances). Ground
+// TOWN0 sheet id (cliffs, roads, buildings, dungeon entrances). Ground
 // cover (grass, sand, snow...) picks its exact cell per-position at draw
 // time via GroundCover variants rather than from tile_id directly, so those
 // fall back to the stored id's own naive col,row, which won't always be the
@@ -7820,7 +7838,7 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
         if (ty1 > MAP_HEIGHT) ty1 = MAP_HEIGHT;
     }
 
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 110);
+    fc_draw_color(renderer, 0, 255, 0, 110);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = tx0; tx < tx1; tx++) {
@@ -7839,10 +7857,7 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
                 int sy = (int)((ty * TILE_SIZE - cam->y) * z);
                 int tile_id = map->tiles[wrap_y(ty)][wrap_x(tx)];
                 char buf[16];
-                if (tile_id >= TILE_OW0_BASE) {
-                    int idx = tile_id - TILE_OW0_BASE;
-                    SDL_snprintf(buf, sizeof(buf), "%d:%d", idx % TOWN0_SHEET_COLS, idx / TOWN0_SHEET_COLS);
-                } else if (tile_id >= TILE_TOWN0_BASE) {
+                if (tile_id >= TILE_TOWN0_BASE) {
                     int idx = tile_id - TILE_TOWN0_BASE;
                     SDL_snprintf(buf, sizeof(buf), "%d:%d", idx % TOWN0_SHEET_COLS, idx / TOWN0_SHEET_COLS);
                 } else {
@@ -8010,7 +8025,7 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                 }
             }
             SDL_Color c = tile_colors[best_id];
-            SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
+            fc_draw_color(renderer, c.r, c.g, c.b, 255);
             SDL_Rect r = { ox + x / step, oy + y / step, 1, 1 };
             SDL_RenderFillRect(renderer, &r);
         }
@@ -8021,7 +8036,7 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         if (map->villages[i].x < 0) continue;
         int vx = ox + (map->villages[i].x + VILLAGE_W / 2) / step;
         int vy = oy + (map->villages[i].y + VILLAGE_H / 2) / step;
-        SDL_SetRenderDrawColor(renderer, 255, 140, 0, 255);
+        fc_draw_color(renderer, 255, 140, 0, 255);
         SDL_Rect vdot = { vx - 1, vy - 1, 3, 3 };
         SDL_RenderFillRect(renderer, &vdot);
     }
@@ -8031,7 +8046,7 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         if (map->castles[i].x < 0) continue;
         int cax = ox + (map->castles[i].x + CASTLE_W / 2) / step;
         int cay = oy + (map->castles[i].y + CASTLE_H / 2) / step;
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        fc_draw_color(renderer, 255, 255, 255, 255);
         SDL_Rect cdot = { cax - 2, cay - 2, 4, 4 };
         SDL_RenderFillRect(renderer, &cdot);
     }
@@ -8041,7 +8056,7 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
         const DungeonEntrance* e = &map->dungeon_entrances[i];
         int dx = ox + (e->x + 1) / step;
         int dy = oy + (e->y + 1) / step;
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        fc_draw_color(renderer, 255, 0, 0, 255);
         SDL_Rect ddot = { dx - 1, dy - 1, 3, 3 };
         SDL_RenderFillRect(renderer, &ddot);
     }
@@ -8053,16 +8068,16 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
     int px = ox + (int)(player_x / TILE_SIZE) / step;
     int py = oy + (int)(player_y / TILE_SIZE) / step;
     if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1)
-        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+        fc_draw_color(renderer, 0, 255, 255, 255);
     else
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        fc_draw_color(renderer, 255, 255, 255, 255);
     SDL_Rect dot = { px - 2, py - 2, 5, 5 };
     SDL_RenderFillRect(renderer, &dot);
 
     // red 5×5 dot for cliff gradient peak (debug)
     //int peakdot_x = ox + (int)(map->cliff_peak_x) / step;
     //int peakdot_y = oy + (int)(map->cliff_peak_y) / step;
-    //SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    //fc_draw_color(renderer, 255, 0, 0, 255);
     //SDL_Rect peak_dot = { peakdot_x - 2, peakdot_y - 2, 5, 5 };
     //SDL_RenderFillRect(renderer, &peak_dot);
 
@@ -8367,11 +8382,9 @@ static bool tile_ground_walkable(const Tilemap* map, int tile_x, int tile_y) {
         case TILE_DUNGEON_LARGE_TREE:
             return true;
         default:
-            // Town/overworld sheet tiles are walkable unless the editor marked them as solid
-            if ((map->tiles[tile_y][tile_x] >= TILE_TOWN0_BASE &&
-                 map->tiles[tile_y][tile_x] <= TILE_TOWN0_END) ||
-                (map->tiles[tile_y][tile_x] >= TILE_OW0_BASE &&
-                 map->tiles[tile_y][tile_x] <= TILE_OW0_END))
+            // Sheet tiles are walkable unless the editor marked them as solid
+            if (map->tiles[tile_y][tile_x] >= TILE_TOWN0_BASE &&
+                map->tiles[tile_y][tile_x] <= TILE_TOWN0_END)
                 return map->coll[tile_y][tile_x] == 0;
             return false;
     }

@@ -5,6 +5,7 @@
 #include <vector>
 #include <SDL2/SDL_image.h>
 
+#include "fc_palette.h"
 #include "game_state.h"
 #include "battle.h"
 #include "dungeon.h"
@@ -536,7 +537,7 @@ int main(int argc, char *argv[])
 
         switch (state) {
             case STATE_TITLE:
-                SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
+                fc_draw_color(plat.renderer, 0, 0, 0, 255);
                 SDL_RenderClear(plat.renderer);
                 break;
 
@@ -574,7 +575,7 @@ int main(int argc, char *argv[])
                 float player_cy = ow.y + player.height * 0.5f;
                 camera_center_on(&cam, player_cx, player_cy);
 
-                SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 255);
+                fc_draw_color(plat.renderer, 10, 10, 20, 255);
                 SDL_RenderClear(plat.renderer);
                 
 
@@ -597,10 +598,10 @@ int main(int argc, char *argv[])
                     if (ready > 1.0f) ready = 1.0f;
                     const int BAR_W = 160, BAR_H = 5;
                     const int BAR_X = (640 - BAR_W) / 2, BAR_Y = 480 - 12;
-                    SDL_SetRenderDrawColor(plat.renderer, 40, 40, 40, 200);
+                    fc_draw_color(plat.renderer, 40, 40, 40, 200);
                     SDL_Rect track = { BAR_X, BAR_Y, BAR_W, BAR_H };
                     SDL_RenderFillRect(plat.renderer, &track);
-                    SDL_SetRenderDrawColor(plat.renderer, 255, 220, 0, 255);
+                    fc_draw_color(plat.renderer, 255, 220, 0, 255);
                     SDL_Rect fill = { BAR_X, BAR_Y, (int)(BAR_W * ready), BAR_H };
                     SDL_RenderFillRect(plat.renderer, &fill);
                 }
@@ -632,10 +633,10 @@ int main(int argc, char *argv[])
                     draw_text(plat.renderer, name, nx, 456, 2, 255, 255, 255);
 
                     // difficulty bar inside inner border
-                    SDL_SetRenderDrawColor(plat.renderer, 40, 40, 40, 255);
+                    fc_draw_color(plat.renderer, 40, 40, 40, 255);
                     SDL_Rect diff_track = {NES_PAD + 2, 472, 640 - (NES_PAD+2)*2, 4};
                     SDL_RenderFillRect(plat.renderer, &diff_track);
-                    SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                    fc_draw_color(plat.renderer, 255, 255, 255, 255);
                     SDL_Rect diff_fill = {NES_PAD + 2, 472, (int)((640 - (NES_PAD+2)*2) * ow.dungeon_difficulty), 4};
                     SDL_RenderFillRect(plat.renderer, &diff_fill);
 
@@ -1002,7 +1003,7 @@ int main(int argc, char *argv[])
                 if (state == STATE_BATTLE) break;
 
                 // Background matches wall colour so map edges blend in
-                SDL_SetRenderDrawColor(plat.renderer, 5, 5, 8, 255);
+                fc_draw_color(plat.renderer, 5, 5, 8, 255);
                 SDL_RenderClear(plat.renderer);
 
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
@@ -1021,9 +1022,9 @@ int main(int argc, char *argv[])
                     int sx  = (int)((ch.x - cam.x) * cam.zoom) - sz / 2;
                     int sy  = (int)((ch.y - cam.y) * cam.zoom) - sz / 2;
                     SDL_Rect cr = { sx, sy, sz, sz };
-                    SDL_SetRenderDrawColor(plat.renderer, 200, 30, 30, 255);
+                    fc_draw_color(plat.renderer, 200, 30, 30, 255);
                     SDL_RenderFillRect(plat.renderer, &cr);
-                    SDL_SetRenderDrawColor(plat.renderer, 255, 80, 80, 255);
+                    fc_draw_color(plat.renderer, 255, 80, 80, 255);
                     SDL_RenderDrawRect(plat.renderer, &cr);
                 }
 
@@ -1038,15 +1039,15 @@ int main(int argc, char *argv[])
                         SDL_Rect cr = { sx, sy, sz, sz };
                         if (fi == cur_step && cur_step < flash_count && local_t < FLASH_ON) {
                             // Currently flashing — bright yellow
-                            SDL_SetRenderDrawColor(plat.renderer, 255, 220, 50, 255);
+                            fc_draw_color(plat.renderer, 255, 220, 50, 255);
                             SDL_RenderFillRect(plat.renderer, &cr);
-                            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                            fc_draw_color(plat.renderer, 255, 255, 255, 255);
                             SDL_RenderDrawRect(plat.renderer, &cr);
                         } else if (fi > cur_step && cur_step < flash_count) {
                             // Not yet reached — shown dim
-                            SDL_SetRenderDrawColor(plat.renderer, 80, 20, 20, 255);
+                            fc_draw_color(plat.renderer, 80, 20, 20, 255);
                             SDL_RenderFillRect(plat.renderer, &cr);
-                            SDL_SetRenderDrawColor(plat.renderer, 120, 40, 40, 255);
+                            fc_draw_color(plat.renderer, 120, 40, 40, 255);
                             SDL_RenderDrawRect(plat.renderer, &cr);
                         }
                         // fi <= cur_step past FLASH_ON, or cur_step >= flash_count (pause): not drawn
@@ -1154,7 +1155,7 @@ int main(int argc, char *argv[])
             case STATE_INTERIOR: {
                 interior_player_update(&iplayer, &player, game_in, dt, &imap);
 
-                SDL_SetRenderDrawColor(plat.renderer, 5, 5, 8, 255);
+                fc_draw_color(plat.renderer, 5, 5, 8, 255);
                 SDL_RenderClear(plat.renderer);
 
                 interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
@@ -1206,7 +1207,7 @@ int main(int argc, char *argv[])
             static const Uint8 res_g[] = {120, 160, 210};
             static const Uint8 res_b[] = { 60, 160,  40};
 
-            SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
+            fc_draw_color(plat.renderer, 0, 0, 0, 255);
             SDL_Rect res_bg = {0, 0, 640, 28};
             SDL_RenderFillRect(plat.renderer, &res_bg);
 
@@ -1229,26 +1230,26 @@ int main(int argc, char *argv[])
                 const int TRK_Y = 12;
                 const int TRK_H = 3;
 
-                SDL_SetRenderDrawColor(plat.renderer, 80, 80, 80, 255);
+                fc_draw_color(plat.renderer, 80, 80, 80, 255);
                 SDL_Rect track = { SL_X, TRK_Y, SL_W, TRK_H };
                 SDL_RenderFillRect(plat.renderer, &track);
 
                 int hx = SL_X + zoom_idx * SL_W / (zoom_count - 1);
-                SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                fc_draw_color(plat.renderer, 255, 255, 255, 255);
                 SDL_Rect fill = { SL_X, TRK_Y, hx - SL_X, TRK_H };
                 SDL_RenderFillRect(plat.renderer, &fill);
 
                 for (int i = 0; i < zoom_count; i++) {
                     int tx = SL_X + i * SL_W / (zoom_count - 1);
-                    SDL_SetRenderDrawColor(plat.renderer, 180, 180, 180, 255);
+                    fc_draw_color(plat.renderer, 180, 180, 180, 255);
                     SDL_Rect tick = { tx - 1, TRK_Y - 2, 2, TRK_H + 4 };
                     SDL_RenderFillRect(plat.renderer, &tick);
                 }
 
-                SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+                fc_draw_color(plat.renderer, 255, 255, 255, 255);
                 SDL_Rect knob = { hx - 3, 5, 6, 18 };
                 SDL_RenderFillRect(plat.renderer, &knob);
-                SDL_SetRenderDrawColor(plat.renderer, 0, 0, 0, 255);
+                fc_draw_color(plat.renderer, 0, 0, 0, 255);
                 SDL_Rect knob_inner = { hx - 1, 7, 2, 14 };
                 SDL_RenderFillRect(plat.renderer, &knob_inner);
             }
@@ -1264,7 +1265,7 @@ int main(int argc, char *argv[])
             draw_text(plat.renderer, "CRAFTING MENU",
                       PX + (PW - text_width("CRAFTING MENU", 2)) / 2, PY + NES_PAD + 4, 2, 255, 255, 255);
 
-            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+            fc_draw_color(plat.renderer, 255, 255, 255, 255);
             SDL_Rect div1 = { PX + NES_PAD, PY + 36, PW - NES_PAD*2, 1 };
             SDL_RenderFillRect(plat.renderer, &div1);
 
@@ -1272,7 +1273,7 @@ int main(int argc, char *argv[])
             draw_text(plat.renderer, "RECIPES", PX + NES_PAD + 2, PY + 44, 1, 255, 255, 255);
             draw_text(plat.renderer, "COMING SOON...", PX + NES_PAD + 2, PY + 58, 1, 100, 100, 100);
 
-            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 255, 255);
+            fc_draw_color(plat.renderer, 255, 255, 255, 255);
             SDL_Rect div2 = { PX + NES_PAD, PY + 106, PW - NES_PAD*2, 1 };
             SDL_RenderFillRect(plat.renderer, &div2);
 
@@ -1426,12 +1427,12 @@ int main(int argc, char *argv[])
             const int BAR_H = 6;
             const int BX = 4, BY = 34;
             draw_text(plat.renderer, "HOLD ESC TO QUIT", BX, BY - 12, 1, 255, 255, 80);
-            SDL_SetRenderDrawColor(plat.renderer, 60, 60, 60, 255);
+            fc_draw_color(plat.renderer, 60, 60, 60, 255);
             SDL_Rect track = { BX, BY, BAR_W, BAR_H };
             SDL_RenderFillRect(plat.renderer, &track);
             int fill_w = (int)(esc_hold_time / 3.f * BAR_W);
             if (fill_w > BAR_W) fill_w = BAR_W;
-            SDL_SetRenderDrawColor(plat.renderer, 255, 80, 80, 255);
+            fc_draw_color(plat.renderer, 255, 80, 80, 255);
             SDL_Rect fill = { BX, BY, fill_w, BAR_H };
             SDL_RenderFillRect(plat.renderer, &fill);
         }
@@ -1441,7 +1442,7 @@ int main(int argc, char *argv[])
         if (frame_tex) {
             SDL_SetRenderTarget(plat.renderer, NULL);
             SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
-            SDL_SetRenderDrawColor(plat.renderer, 10, 10, 20, 255);
+            fc_draw_color(plat.renderer, 10, 10, 20, 255);
             SDL_RenderClear(plat.renderer);
             SDL_RenderCopy(plat.renderer, frame_tex, NULL, NULL);
         }

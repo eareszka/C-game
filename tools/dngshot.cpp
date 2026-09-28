@@ -14,6 +14,7 @@
 #include "dungeon.h"
 #include "tilemap.h"
 #include "camera.h"
+#include "fc_palette.h"
 
 static DungeonMap g_dmap;
 
@@ -138,7 +139,7 @@ int main(int argc, char** argv) {
                (!exit_ok || reached != floor_n) ? "   <-- STRANDED FLOOR" : "");
     }
 
-    SDL_SetRenderDrawColor(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear, main.cpp:955
+    fc_draw_color(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear in main.cpp
     SDL_RenderClear(ren);
     dungeon_draw(&g_dmap, &dp, &cam, ren, show_all);
     if (getenv("DNGSHOT_GRID")) dungeon_draw_debug_grid(&g_dmap, &cam, ren);

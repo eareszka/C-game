@@ -10,3 +10,9 @@ tile_editor
 # Python bytecode from the tile generators
 __pycache__/
 *.pyc
+
+# Scratch output of the art build scripts
+art/**/_work/
+art/**/_preview.png
+art/_backup/
+src/sheettrace/

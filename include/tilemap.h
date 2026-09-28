@@ -146,10 +146,6 @@ enum TileId {
     // col = index % TOWN0_SHEET_COLS,  row = index / TOWN0_SHEET_COLS.
     TILE_TOWN0_BASE = 84,
     TILE_TOWN0_END  = TILE_TOWN0_BASE + 256 * 256 - 1,
-
-    // Tiles sampled from assets/overworld_0.png (18 cols × 8 rows = 144 tiles).
-    TILE_OW0_BASE = TILE_TOWN0_BASE + 256 * 256,
-    TILE_OW0_END  = TILE_OW0_BASE + 18 * 8 - 1,
 };
 
 #define TOWN0_SHEET_COLS 256
@@ -333,6 +329,9 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer);
 void tilemap_free_tile_cache(void);
 // Returns the town/overworld tileset texture (16px-per-tile atlas). Valid after tilemap_init_tile_cache.
 SDL_Texture* tilemap_get_town_tex(void);
+// The cave art (the sheet's first rows, same coordinates) dithered dark, for
+// what lies outside the player's view in a cave. See build_dim_texture().
+SDL_Texture* tilemap_get_town_dim_tex(void);
 
 // Hit a tree or rock tile near (px, py) within `range` pixels.
 // Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.

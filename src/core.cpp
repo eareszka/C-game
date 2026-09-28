@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "core.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
@@ -93,11 +94,11 @@ void draw_text(SDL_Renderer* ren, const char* text, int x, int y, int scale,
                Uint8 r, Uint8 g, Uint8 b) {
     int cw = 8 * scale;
     // Shadow one pixel down-right
-    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    fc_draw_color(ren, 0, 0, 0, 255);
     for (int i = 0; text[i]; i++)
         draw_char(ren, text[i], x + 1 + i * cw, y + 1, scale);
     // Main colour
-    SDL_SetRenderDrawColor(ren, r, g, b, 255);
+    fc_draw_color(ren, r, g, b, 255);
     for (int i = 0; text[i]; i++)
         draw_char(ren, text[i], x + i * cw, y, scale);
 }
@@ -108,10 +109,10 @@ int text_width(const char* text, int scale) {
 }
 
 void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h) {
-    SDL_SetRenderDrawColor(ren, 255, 255, 255, 255);
+    fc_draw_color(ren, 255, 255, 255, 255);
     SDL_Rect outer = {x, y, w, h};
     SDL_RenderFillRect(ren, &outer);
-    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    fc_draw_color(ren, 0, 0, 0, 255);
     SDL_Rect inner = {x + 4, y + 4, w - 8, h - 8};
     SDL_RenderFillRect(ren, &inner);
 }

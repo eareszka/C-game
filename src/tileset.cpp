@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "tilemap.h"
 #include "tileset.h"
 #include <stdio.h>
@@ -75,13 +76,13 @@ void tileset_draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
     const TileStyle* s = &tile_styles[tile_id];
 
     // Fill background
-    SDL_SetRenderDrawColor(renderer, s->bg_r, s->bg_g, s->bg_b, 255);
+    fc_draw_color(renderer, s->bg_r, s->bg_g, s->bg_b, 255);
     SDL_Rect bg = { screen_x, screen_y, TILE_SIZE, TILE_SIZE };
     SDL_RenderFillRect(renderer, &bg);
 
     // Draw glyph — each bit in the 8x8 bitmap → (TILE_SIZE/8)² block
     const int scale = TILE_SIZE / 8; // 2 when TILE_SIZE==16
-    SDL_SetRenderDrawColor(renderer, s->fg_r, s->fg_g, s->fg_b, 255);
+    fc_draw_color(renderer, s->fg_r, s->fg_g, s->fg_b, 255);
     for (int row = 0; row < 8; row++) {
         for (int col = 0; col < 8; col++) {
             if (s->glyph[row] & (0x80u >> col)) {

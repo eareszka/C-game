@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "combat.h"
 #include "battle.h"     // weapon_profile
 #include "tilemap.h"
@@ -199,7 +200,7 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
             float a = spin + k * 1.5707963f;
             int ax = cx + (int)(cosf(a) * r), ay = cy + (int)(sinf(a) * r);
             int bx = cx - (int)(cosf(a) * r), by = cy - (int)(sinf(a) * r);
-            SDL_SetRenderDrawColor(ren, k == 0 ? 235 : 170, k == 0 ? 235 : 130,
+            fc_draw_color(ren, k == 0 ? 235 : 170, k == 0 ? 235 : 130,
                                         k == 0 ? 245 : 80, 240);
             SDL_RenderDrawLine(ren, ax, ay, bx, by);
             SDL_RenderDrawLine(ren, ax, ay + 1, bx, by + 1);
@@ -226,14 +227,14 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
         SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 
         // Shaft, thickened across the line of travel.
-        SDL_SetRenderDrawColor(ren, 200, 215, 245, 190);
+        fc_draw_color(ren, 200, 215, 245, 190);
         for (int o = -1; o <= 1; o++) {
             int ox = (int)(-sa * o), oy = (int)(ca * o);
             SDL_RenderDrawLine(ren, cx + ox, cy + oy, hxp + ox, hyp + oy);
         }
 
         // Head: a short bar across the tip so the reach is easy to read.
-        SDL_SetRenderDrawColor(ren, 255, 255, 255, 240);
+        fc_draw_color(ren, 255, 255, 255, 240);
         int wx = (int)(-sa * tp.half_width * z);
         int wy = (int)( ca * tp.half_width * z);
         SDL_RenderDrawLine(ren, hxp - wx, hyp - wy, hxp + wx, hyp + wy);
@@ -263,7 +264,7 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
         float f1 = (float)(i + 1) / STEPS;
         float a0 = ws->swing_angle + f0 * prog * sp.span;
         float a1 = ws->swing_angle + f1 * prog * sp.span;
-        SDL_SetRenderDrawColor(ren, 210, 225, 255, (Uint8)(25.0f + 165.0f * f1));
+        fc_draw_color(ren, 210, 225, 255, (Uint8)(25.0f + 165.0f * f1));
         SDL_RenderDrawLine(ren,
             cx + (int)(cosf(a0) * r), cy + (int)(sinf(a0) * r),
             cx + (int)(cosf(a1) * r), cy + (int)(sinf(a1) * r));
@@ -273,7 +274,7 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
     float cur = ws->swing_angle + prog * sp.span;
     int bx = cx + (int)(cosf(cur) * r);
     int by = cy + (int)(sinf(cur) * r);
-    SDL_SetRenderDrawColor(ren, 255, 255, 255, 235);
+    fc_draw_color(ren, 255, 255, 255, 235);
     SDL_RenderDrawLine(ren, cx, cy, bx, by);
     SDL_RenderDrawLine(ren, cx, cy + 1, bx, by + 1);
 

@@ -91,7 +91,7 @@ BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
 #
 # The ladder stops at -0.55 and the rear of a landform draws the bare beaded
 # line and no rock at all, which is what Mother 1 does: measured over 266 clean
-# cliff regions of assets/mother1.png, its south faces run 36 px deep, its
+# cliff regions of art/reference/mother1.png, its south faces run 36 px deep, its
 # flanks 4, and its north edges have no band whatsoever — 60-64% of the total
 # drawn perimeter carries no face. Wrapping rock the whole way round was tried
 # and is not the reference. See CLIFF_BANK_FACING in tilemap.cpp, which decides

@@ -1,3 +1,4 @@
+#include "fc_palette.h"
 #include "resource_node.h"
 #include "tilemap.h"   // wrap_dpx/wrap_dpy: a node is measured to through its nearest image
 #include <math.h>
@@ -56,11 +57,11 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
                                 int w, int h, ResourceType type) {
     // Background color
     switch (type) {
-        case RESOURCE_TREE:       SDL_SetRenderDrawColor(ren,   0,  80,   0, 255); break;
-        case RESOURCE_ROCK:       SDL_SetRenderDrawColor(ren,  90,  80,  70, 255); break;
-        case RESOURCE_FLOWER:     SDL_SetRenderDrawColor(ren, 100,   0, 120, 255); break;
-        case RESOURCE_GOLD:       SDL_SetRenderDrawColor(ren,  60,  55,  50, 255); break;
-        case RESOURCE_GRAVESTONE: SDL_SetRenderDrawColor(ren,  55,  55,  60, 255); break;
+        case RESOURCE_TREE:       fc_draw_color(ren,   0,  80,   0, 255); break;
+        case RESOURCE_ROCK:       fc_draw_color(ren,  90,  80,  70, 255); break;
+        case RESOURCE_FLOWER:     fc_draw_color(ren, 100,   0, 120, 255); break;
+        case RESOURCE_GOLD:       fc_draw_color(ren,  60,  55,  50, 255); break;
+        case RESOURCE_GRAVESTONE: fc_draw_color(ren,  55,  55,  60, 255); break;
     }
     SDL_Rect bg = { screen_x, screen_y, w, h };
     SDL_RenderFillRect(ren, &bg);
@@ -70,7 +71,7 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
     int cy = screen_y + h / 2;
     int t  = h / 8; // thickness
 
-    SDL_SetRenderDrawColor(ren, type == RESOURCE_GOLD ? 255 : 200,
+    fc_draw_color(ren, type == RESOURCE_GOLD ? 255 : 200,
                                type == RESOURCE_GOLD ? 210 : 200,
                                type == RESOURCE_GOLD ?  40 : 200, 255);
     switch (type) {
@@ -101,7 +102,7 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
         }
         case RESOURCE_GRAVESTONE: {
             // Tombstone: rounded top slab + cross
-            SDL_SetRenderDrawColor(ren, 160, 160, 168, 255);
+            fc_draw_color(ren, 160, 160, 168, 255);
             // slab body
             SDL_Rect slab = { screen_x + w/5, screen_y + h/4, w*3/5, h*2/3 };
             SDL_RenderFillRect(ren, &slab);
@@ -109,7 +110,7 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
             SDL_Rect top = { screen_x + w/4, screen_y + h/8, w/2, h/4 + t };
             SDL_RenderFillRect(ren, &top);
             // cross engraved (darker)
-            SDL_SetRenderDrawColor(ren, 80, 80, 88, 255);
+            fc_draw_color(ren, 80, 80, 88, 255);
             SDL_Rect cv = { cx - t, screen_y + h/3, t*2, h/3 };
             SDL_Rect ch = { screen_x + w/3, screen_y + h*5/12, w/3, t*2 };
             SDL_RenderFillRect(ren, &cv);
