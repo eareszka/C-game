@@ -316,6 +316,41 @@ int main(int argc, char** argv)
     cam.y = (float)(want_y * TILE_SIZE);
     cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
 
+    // SHOT_BANK=1 also prints the window as one character per tile: what the
+    // cliff draws there (tilemap_cliff_draw_at). A flank that flips between
+    // bank classes shows here as a column of changing digits, which a picture
+    // only suggests.
+    // Three grids: what is drawn; the height of the ground; and the facing at
+    // the edge, one character per tenth -- '0'..'9' for 0.0 to 0.9, 'a'..'j'
+    // for -0.1 to -1.0, '+' for 1.0, '.' where no edge runs.
+    if (getenv("SHOT_BANK")) {
+        for (int ty = want_y; ty < want_y + th; ty++) {
+            for (int tx = want_x; tx < want_x + tw; tx++)
+                putchar(tilemap_cliff_draw_at(tx, ty));
+            putchar('\n');
+        }
+        putchar('\n');
+        for (int ty = want_y; ty < want_y + th; ty++) {
+            for (int tx = want_x; tx < want_x + tw; tx++)
+                putchar((char)('0' + tilemap_cliff_elev_at(tx, ty)));
+            putchar('\n');
+        }
+        putchar('\n');
+        for (int ty = want_y; ty < want_y + th; ty++) {
+            for (int tx = want_x; tx < want_x + tw; tx++) {
+                float f = tilemap_cliff_facing_at(tx, ty);
+                int t = (int)floorf(f * 10.0f + 0.5f);
+                putchar(f < -1.5f ? '.' : t >= 10 ? '+' : t >= 0 ? (char)('0' + t) : (char)('a' - 1 - t));
+            }
+            putchar('\n');
+        }
+        // SHOT_BANK=2 stops here, with no picture: a whole world can then be
+        // scanned for a configuration and rendered where it is found. Out
+        // through _exit, because the surface for a whole world is absurd and
+        // was never going to be torn down cleanly.
+        if (atoi(getenv("SHOT_BANK")) >= 2) { fflush(stdout); _exit(0); }
+    }
+
     SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
     SDL_RenderClear(ren);
     tilemap_draw_base(&g_map, &cam, ren, 0);

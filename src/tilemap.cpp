@@ -852,6 +852,17 @@ static const float CLIFF_GRAIN_AMP = 0.30f;
 // reference's own detail sits, and is still wide enough that a plateau comes
 // out a landform rather than a ribbon.
 static const int CLIFF_CHUNK_R  = 3;
+// ... and no inlet of low ground into a plateau is narrower than this.
+//
+// The closing has a radius of its own, one more than the opening's. A
+// closing with radius r fills a gap up to 2r tiles wide, and at three that
+// left every inlet seven tiles across standing: a slot of open ground cut
+// twenty tiles into a terrace, walled with rock on both sides, which is not
+// a shape the reference has anywhere. Four fills anything up to eight wide.
+// The opening stays at three because it is the opening that decides how
+// small a spur or inset the outline may keep, and those are the reference's
+// own detail.
+static const int CLIFF_CLOSE_R  = 4;
 static const int CLIFF_HIGH_MIN = 120;  // tiles below which a plateau is not worth having
 static const int CLIFF_TERRACE  = 5;    // how far a level sits inside the one below
 static const int CLIFF_FACE_MIN = 6;    // tiles below which a piece of face is litter
@@ -954,64 +965,80 @@ static const int CLIFF_TAPER_PASSES = 4;
 
 // Which way the height's edge faces at a tile: +1 where the drop is square on
 // to you, 0 where it runs north to south beside you, -1 where it is the back of
-// the hill. The centroid of the height over a window points into it, so the
-// direction the edge faces is the other way, and its downward part is how much
-// of the wall there is to see.
+// the hill. It is the downward part of the edge's outward normal.
 //
-// This is the number the whole shape of a cliff hangs off. The band is a mask
-// swept in whole tiles, so the least it can draw is a tile of rock, and down a
-// flank the reference draws eight pixels — half of one. There is no narrowing a
-// cell to fit: the band's cases only join up because every one of them is
-// drawn, and a cell whose neighbour has been left out spills its mass to the
-// tile edge and stops square, which puts a brown brick on every shoulder. So
-// the band is masked only where it is deep enough to be worth a tile, and the
-// rest of the way round the edge carries a bank instead — rock hung off the
-// outline itself, in the cell the outline is already drawn in, and as many
-// pixels wide as the facing warrants.
+// The normal is taken from the edge itself: the rim tiles of the height within
+// CLIFF_BANK_R are fitted with a line, and the normal to that line is turned to
+// point at the low ground. It used to be the direction from the tile to the
+// centroid of every high tile in the window, which is the same thing for an
+// edge running straight through the window and something else at every other
+// place: the centroid is pulled toward wherever the plateau's bulk is, so a
+// west flank near the top of a big landform read as the back of it and the
+// band stopped a dozen tiles short of the corner, then sprang up again as a
+// lump the moment the edge turned. The fit sees only the run of the edge and
+// gives the same answer down the whole of a flank.
 //
-// As many as the facing warrants, and none where the facing has gone.
+// How the number is used is one rule with three states, and it is the
+// reference's: a wall that faces you is deep (CLIFF_FACE_FRONT and above), a
+// wall that runs beside you is a band a tile wide the whole way along
+// (between), and the back of the hill is the beaded line and nothing else
+// (below CLIFF_FACE_BACK). Measured on art/reference/mother1.png at native
+// scale: south faces run about 36 px deep; the rock down a flank runs 10 to 26
+// px wide, 14 to 20 as a rule, one tile; it holds that width until the edge has
+// turned to within about 45 degrees of north, and there it ends within half a
+// tile. Nothing tapers along a flank. The five-rung ladder this replaced -- the
+// band, then banks of eleven, seven, five and three pixels, then the line, each
+// starting at its own facing -- put two of its rungs inside the wobble of a
+// straight flank, and flanks came out as a run of every width in turn.
 //
-// The ladder runs out at -0.55 and the whole rear of a landform draws the
-// beaded line and no rock, which looks like an omission and is the reference.
-// Measured over 266 clean cliff regions of art/reference/mother1.png at native scale:
-// south faces run 36 px deep, east-west flanks 4, and north edges carry no band
-// at all — 60-64% of its total drawn cliff perimeter has no face on it. Rock
-// the whole way round was tried here and taken out again.
-//
-// What the narrow classes are for, since it is not obvious and it is the thing
-// that goes wrong if they are pressed into other service: they land the bank
-// back into the bare line as the edge turns away. They cannot be a face
-// themselves. A bank is inked one pixel against the line and again wherever a
-// cleft crosses it, and both are fixed widths, so the narrower the bank the
-// larger the share of it that is black — measured off the sheet, three pixels
-// of bank is 68% ink and seven is 61%, against 52% for the band. Asked to carry
-// a face, three pixels draws the outline gone heavy.
-// Tiles either way the facing is read over.
-//
-// Five rather than three. The facing is a centroid, so this window is how far
-// along the edge it takes to notice that the edge has turned, and a short one
-// turns the whole ladder over within a tile or two: the band stops, the bank
-// appears at its narrowest, and the corner reads as a cut rather than a turn.
-// Widening it spreads the same ladder along more of the edge.
-static const int   CLIFF_BANK_R = 5;
-static const float CLIFF_BANK_FACING[] = { 0.35f, 0.15f, -0.05f, -0.30f, -0.55f };
-static const int   CLIFF_BANK_N = (int)(sizeof CLIFF_BANK_FACING / sizeof *CLIFF_BANK_FACING);
-static const int   CLIFF_BANK_FRONT = CLIFF_BANK_N;   // the whole masked band
+// Tiles either way the fit is taken over. Five is enough rim to fit a line to
+// and short enough that the fit turns with the corner rather than a tile or
+// two after it.
+static const int   CLIFF_BANK_R      = 5;
+static const float CLIFF_FACE_FRONT  =  0.5f;   // 30 degrees below level and steeper: deep
+static const float CLIFF_FACE_BACK   = -0.7f;   // 45 degrees above level and beyond: line
+
+// The three states as a class, in the order the sheet's bank rows count them.
+static const int CLIFF_BANK_FLANK = 1;   // the band, a tile wide
+static const int CLIFF_BANK_FRONT = 2;   // the band, its whole depth
 
 static float cliff_facing(int x, int y, int L) {
-    int n = 0, sx = 0, sy = 0;
+    // The rim: high tiles with a lower 4-neighbour, within the window. Their
+    // centroid is also the mean of the fit; the centroid of all high tiles in
+    // the window, taken alongside, says which side of the line is low.
+    int n = 0, hn = 0;
+    float sx = 0, sy = 0, sxx = 0, sxy = 0, syy = 0, hx = 0, hy = 0;
     for (int dy = -CLIFF_BANK_R; dy <= CLIFF_BANK_R; dy++)
         for (int dx = -CLIFF_BANK_R; dx <= CLIFF_BANK_R; dx++) {
             int px = x + dx, py = y + dy;
             if (!in_world(&px, &py) || s_cliff_elev[py][px] < L) continue;
-            n++; sx += dx; sy += dy;
+            hn++; hx += dx; hy += dy;
+            bool rim = false;
+            static const int N4[4][2] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
+            for (int k = 0; k < 4 && !rim; k++) {
+                int qx = px + N4[k][0], qy = py + N4[k][1];
+                rim = in_world(&qx, &qy) && s_cliff_elev[qy][qx] < L;
+            }
+            if (!rim) continue;
+            n++; sx += dx; sy += dy; sxx += dx * dx; sxy += dx * dy; syy += dy * dy;
         }
-    if (!n) return -1.0f;
-    float cx = (float)sx / n, cy = (float)sy / n;
-    float m = sqrtf(cx * cx + cy * cy);
+    if (!hn) return -1.0f;
+    hx /= hn; hy /= hn;
+    float hm = sqrtf(hx * hx + hy * hy);
     // Dead centre of a height, or of a hole in one: no edge here to face
     // anywhere, and nothing is drawn on it either way.
-    return (m < 0.05f) ? -1.0f : -cy / m;
+    if (hm < 0.05f) return -1.0f;
+    // Too little rim to fit: an isolated tile or two. The centroid's direction
+    // is all there is.
+    if (n < 3) return -hy / hm;
+    float mx = sx / n, my = sy / n;
+    float cxx = sxx / n - mx * mx, cxy = sxy / n - mx * my, cyy = syy / n - my * my;
+    // The line through the rim: the covariance's major axis. Its normal, then
+    // turned to point away from the height.
+    float ang = 0.5f * atan2f(2.0f * cxy, cxx - cyy);
+    float nx = -sinf(ang), ny = cosf(ang);
+    if (nx * hx + ny * hy > 0.0f) { nx = -nx; ny = -ny; }
+    return ny;
 }
 
 // Which cells the cliff is drawn in, so that place_cliffs() can close the
@@ -1020,13 +1047,11 @@ static float cliff_facing(int x, int y, int L) {
 static int cliff_rock_code(int x, int y, int L);
 static int cliff_high_code(int x, int y, int L);
 
-// The facing as a class: CLIFF_BANK_FRONT for the whole band, then a bank of
-// each width in turn, then nothing but the line.
+// The facing as its class: CLIFF_BANK_FRONT, CLIFF_BANK_FLANK, or 0 for the
+// bare line.
 static int cliff_bank(int x, int y, int L) {
     float s = cliff_facing(x, y, L);
-    for (int k = 0; k < CLIFF_BANK_N; k++)
-        if (s >= CLIFF_BANK_FACING[k]) return CLIFF_BANK_N - k;
-    return 0;
+    return s >= CLIFF_FACE_FRONT ? CLIFF_BANK_FRONT : s >= CLIFF_FACE_BACK ? CLIFF_BANK_FLANK : 0;
 }
 
 // How far below the lip a tile sits: the depth at which place_cliffs()' sweep
@@ -1552,11 +1577,11 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         // staircase down rather than up. What actually rounds a corner is the
         // shape of the window, which is why cliff_disk() is a disk.
         {
-            const int r = CLIFF_CHUNK_R, full = cliff_disk_area(r);
-            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
-            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
-            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);
-            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, full);
+            const int r = CLIFF_CHUNK_R, c = CLIFF_CLOSE_R;
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, cliff_disk_area(r));   // open: shrink,
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, r, 1);                    //       grow
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, c, 1);                    // close: grow,
+            cliff_morph(x_lo, x_hi, y_lo, y_hi, c, cliff_disk_area(c));   //        shrink
         }
 
         // scraps of a level are not worth a face
@@ -1818,61 +1843,49 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
                 if (s_cliff_elev[y][x] >= L) continue;
-                // Nothing north of the height, ever. The sweep below starts at
-                // the height's own row rather than a tile above it, so a face
-                // can no longer climb over the back of what it belongs to and
-                // stand outside the outline — which is what put a cap of rock
-                // on the north of every small landform.
-                { int bx = x, by = y + 1;
-                  if (in_world(&bx, &by) && s_cliff_elev[by][bx] >= L) continue; }  // its far side
                 // The face is the plateau's own outline, pushed downhill: every
                 // tile the sweep can reach, however deep it turned out to be.
                 // How much of that depth is actually drawn is the ramp's
                 // business, two passes below; this mask is the candidate set,
                 // and it is also what the ground is walked on by. See
                 // cliff_face_depth() for why the sweep narrows as it descends.
-                if (cliff_face_depth(x, y, L) >= 0)
-                    s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
+                if (cliff_face_depth(x, y, L) < 0) continue;
+                // Nothing on the back of the height. A tile with the height
+                // directly below it used to be refused outright, so that a
+                // face could not climb over the back of what it belongs to
+                // and put a cap of rock on the north of every small landform.
+                // But every low tile along an edge that climbs away from you
+                // has the next high tile down sitting directly below it, and
+                // refusing those cut the band along every such flank into
+                // beads. The facing tells the two apart: the back is where it
+                // says so, and only there.
+                { int bx = x, by = y + 1;
+                  if (in_world(&bx, &by) && s_cliff_elev[by][bx] >= L
+                      && cliff_bank(x, y, L) < CLIFF_BANK_FLANK) continue; }
+                s_cliff_face[y][x] |= (unsigned char)(1 << (L - 1));
             }
     }
 
-    // The part of that which is a wall you look into gets a second set of bits.
-    //
-    // The sweep reaches a tile to either side so that a corner closes, and a
-    // tile is the smallest thing it can reach: down a flank it lays a band of
-    // rock a whole tile across where the reference draws eight pixels, and it
-    // stops dead at the north end of the flank with the outline carrying on
-    // past it. Neither is fixable in the art — the cells are cut from this mask
-    // and every one of them has to be drawn for them to join up, so a band that
-    // wants to be narrower than a tile, or to fade out over one, has to stop
-    // being a band. Where the facing says the wall is edge-on it does: the
-    // outline carries a bank of a few pixels instead, cut from the outline's
-    // own field so it cannot come adrift from it.
+    // The part of that which is drawn gets a second set of bits.
     //
     // Two masks rather than one, because they answer two questions. The low
-    // bits are still every tile the sweep reached and they are still what the
-    // ground is walked on by, so nothing about where a plateau can be climbed
-    // has moved — measured on seed 99, not one tile of 79019 differs. The high
-    // bits are the tiles the band is drawn from, which down a flank is none of
-    // them: the rock has stepped back onto the tile inside, and the ground it
-    // has left stays closed. That is the same slack a flank always had, where
-    // the band drew half a tile of a tile that blocked the whole of it, and it
-    // is now a whole tile of it.
+    // bits are every tile the sweep reached: the candidate set, and what the
+    // ground is walked on by until the art has been consulted (see "close the
+    // ground" below). The high bits are the tiles the band is drawn from.
     //
-    // Clearing the low bit here as well instead of setting the high one is the
-    // other way to have it, and makes the two agree: a flank draws nothing and
-    // stops nothing, and a plateau can be walked onto from the side as it has
-    // always been walkable from the rear. That is a change to where the player
-    // may go, so it is not made here.
-    //
-    // How much of the sweep's depth each of those tiles draws is a ramp rather
-    // than a threshold, which is the whole of the corner's answer. The facing
-    // says where the front is; from there the depth walks outward along the
-    // mask and comes down a fixed amount per tile travelled, so the wall steps
-    // from the front's depth to the flank's hung bank over
-    // CLIFF_FACE_D / CLIFF_TAPER_SLOPE tiles of edge no matter how sharply the
-    // contour turns underneath it. See CLIFF_TAPER_SLOPE for what that replaced
-    // and why a rung of facing could not do it.
+    // Which tiles those are is the reference's rule in three states, told
+    // apart by the facing. In front of a wall you look into, the band is deep:
+    // CLIFF_FACE_D rows of it, ramped down along the edge as the wall turns
+    // away, which is the corner's whole answer — the facing says where the
+    // front is, and from there the depth walks outward along the mask and
+    // comes down a fixed amount per tile travelled, so the wall steps from the
+    // front's depth to the flank's over CLIFF_FACE_D / CLIFF_TAPER_SLOPE tiles
+    // of edge no matter how sharply the contour turns underneath it (see
+    // CLIFF_TAPER_SLOPE for what that replaced). Down a flank the band is the
+    // first row of the sweep and nothing more, a tile wide, the whole way,
+    // ramp or no ramp. And along the back there is no band at all, only the
+    // outline. Where the band has a hole — a tile the sweep skipped, a scrap
+    // rubbed out below — the outline's own bank of rock shows through it.
     GEN_STAGE(map, "cliff: taper ramp");
     for (int L = 1; L <= CLIFF_LEVELS; L++) {
         unsigned char bit  = (unsigned char)(1 << (L - 1));
@@ -1935,12 +1948,20 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         // every one of them is drawn, so the ramp buys tiles of depth, never
         // part of one, and a run of it comes out as a flight of steps down to
         // the flank rather than as a wedge.
+        //
+        // And the first row draws wherever the edge still has a side to show,
+        // ramp or no ramp: that row is the band a tile wide that runs the
+        // whole way down a flank, which the ramp only reaches within a few
+        // tiles of a front. Where the edge has turned to the back the row
+        // stops, and that is the square end the reference's flanks have.
         for (int y = y_lo; y < y_hi; y++)
             for (int x = x_lo; x < x_hi; x++) {
                 if (!(s_cliff_face[y][x] & bit)) continue;
                 int dep = cliff_face_depth(x, y, L);
                 if (dep < 0) continue;
-                if ((dep + 1) * CLIFF_TAPER_Q <= s_cliff_scratch[y][x])
+                bool ramp  = (dep + 1) * CLIFF_TAPER_Q <= s_cliff_scratch[y][x];
+                bool flank = dep == 0 && cliff_bank(x, y, L) >= CLIFF_BANK_FLANK;
+                if (ramp || flank)
                     s_cliff_face[y][x] |= (unsigned char)(bit << CLIFF_FACE_DRAW);
             }
     }
@@ -6978,12 +6999,12 @@ static const int CLIFF_ROCK_ROW0  = 16;
 static const int CLIFF_EDGE_ROW0  = 32;
 static const int CLIFF_SCREE_ROW0 = 48;  // grains spilled below a foot
 static const int CLIFF_SCREE_STEPS = 2;  // how many tiles below they reach
-// The outline again, with a bank of rock hung off it: three, five and seven
-// pixels of it, one set of sixteen cases each, widest last. Seven is about what
-// the reference draws down a flank and about all there is room for beside a
-// line that wanders six pixels inside its own cell; the two narrower ones are
-// what lands the bank back into the bare line as the edge turns away north.
-// BANK_REACH in tools/gen_cliff_tiles.py sets them and has the reasoning.
+// The outline again, with a bank of rock hung off it, drawn under the band on
+// every tile of front or flank so that a hole in the band's mask shows rock and
+// not bare line. Three sets of sixteen cases: the bank whole, then tapered
+// toward each edge the line leaves the cell by, for the tile of back a flank
+// folds onto -- see cliff_bank_row(). BANK_REACH in tools/gen_cliff_tiles.py
+// sets its width and has the reasoning.
 static const int CLIFF_BANK_ROW0  = 64;
 static const int CLIFF_BLOCK      = 16;  // cells across the noise torus
 
@@ -7271,6 +7292,51 @@ static int cliff_rock_code(int x, int y, int L) {
     return cliff_face_code(x, y, L);
 }
 
+// The edges of a cell the outline leaves by, in the fixed order top, right,
+// bottom, left: an edge is crossed where its two corners differ. Two for every
+// case but the saddles (6 and 9), which have four. Mirrors line_exits() in
+// tools/gen_cliff_tiles.py, whose bank rows are stamped in this order.
+static int cliff_line_exits(int hc, int out[4]) {
+    bool nw = hc & 1, ne = hc & 2, sw = hc & 4, se = hc & 8;
+    int n = 0;
+    if (nw != ne) out[n++] = 0;
+    if (ne != se) out[n++] = 1;
+    if (sw != se) out[n++] = 2;
+    if (nw != sw) out[n++] = 3;
+    return n;
+}
+
+// The sheet row an outline tile is drawn from: the line with the bank of rock
+// hung off it wherever the drop still has a side to show, the bare line at the
+// back. One place, because the drawing and the collision both ask.
+//
+// Where a flank meets the back, the rock folds onto the back and thins out
+// along it: the last tile of the flank keeps its whole bank, and the first
+// tile of the back draws the bank tapered toward its far edge, so the rock
+// hugs the line round the corner and runs out over a tile. That is the
+// reference's end of a flank -- its rock thins to nothing over ten or twelve
+// pixels along the edge with the outline converging into the line -- at the
+// sharp corners our outlines have and its curved ones do not. Tapering the
+// flank's own last tile instead stopped the rock dead at the corner. A tile
+// of back between two flanks bridges them; a back tile with no flank against
+// it is the bare line.
+static int cliff_bank_row(int x, int y, int L) {
+    if (cliff_bank(x, y, L) > 0) return CLIFF_BANK_ROW0;
+    int exits[4];
+    int hc = cliff_high_code(x, y, L);
+    if (cliff_line_exits(hc, exits) != 2) return CLIFF_EDGE_ROW0;
+    static const int STEP[4][2] = { {0,-1}, {1,0}, {0,1}, {-1,0} };
+    int fed = -1, nfed = 0;
+    for (int k = 0; k < 2; k++) {
+        int nx = x + STEP[exits[k]][0], ny = y + STEP[exits[k]][1];
+        int nc = cliff_high_code(nx, ny, L);
+        if (nc && nc != 15 && cliff_bank(nx, ny, L) > 0) { fed = k; nfed++; }
+    }
+    if (nfed == 0) return CLIFF_EDGE_ROW0;
+    if (nfed == 2) return CLIFF_BANK_ROW0;
+    return CLIFF_BANK_ROW0 + (2 - fed) * 16;      // tapered toward the exit the flank is not on
+}
+
 // Up to six cells to draw over the tile's ground, in order.
 //
 // One pass per level, lowest first, so where a hill comes down in steps the
@@ -7305,19 +7371,16 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[6])
         // drawing the two from one field is what keeps them one edge.
         int hc = cliff_high_code(x, y, L);
         if (hc && hc != 15) {
-            // A facing of BANK_FRONT takes the widest bank rather than the bare
-            // line, even though the band is about to be drawn over it. The band
-            // covers this cell only where the mask reached, and the mask has
-            // holes the facing knows nothing about — a tile the sweep skipped
-            // for lying north of its own height, a scrap the small-region pass
-            // rubbed out. Every one of those used to come out as a stretch of
-            // bare line with rock either end of it, which reads as the cliff
-            // breaking. Drawing the bank underneath costs nothing where the
-            // band lands on top of it and fills the hole where it does not.
-            int b = cliff_bank(x, y, L);
-            int k = (b < CLIFF_BANK_FRONT) ? b : CLIFF_BANK_FRONT - 1;
-            int row = k > 0 ? CLIFF_BANK_ROW0 + (k - 1) * 16 : CLIFF_EDGE_ROW0;
-            out[n_out++] = cliff_cell(row, hc, x, y);
+            // Front and flank both take the bank, even though the band is about
+            // to be drawn over it. The band covers this cell only where the
+            // mask reached, and the mask has holes the facing knows nothing
+            // about — a tile the sweep skipped for lying north of its own
+            // height, a scrap the small-region pass rubbed out. Every one of
+            // those used to come out as a stretch of bare line with rock either
+            // end of it, which reads as the cliff breaking. Drawing the bank
+            // underneath costs nothing where the band lands on top of it and
+            // fills the hole where it does not.
+            out[n_out++] = cliff_cell(cliff_bank_row(x, y, L), hc, x, y);
         }
         if (n_out >= 6) break;
         int c = cliff_rock_code(x, y, L);
@@ -7325,9 +7388,12 @@ static int cliff_art_layers(const Tilemap* map, int x, int y, int t, int out[6])
         // Clear of the rock, but not far below it: the grains spilled off the
         // foot of the face above. In the reference they fall a tile or two out
         // onto open ground, which is further than the band's own cells can
-        // reach, so they are a set of their own.
+        // reach, so they are a set of their own. Off the foot of a wall that
+        // faces you, and only that: three grains in four of the reference's
+        // lie under a front, and the rest sit sparsely beside flanks, where
+        // this put a clump under every step of the outline instead.
         for (int s = 0; s < CLIFF_SCREE_STEPS; s++)
-            if (cliff_rock_code(x, y - 1 - s, L)) {
+            if (cliff_rock_code(x, y - 1 - s, L) && cliff_bank(x, y - 1 - s, L) >= CLIFF_BANK_FRONT) {
                 out[n_out++] = cliff_cell(CLIFF_SCREE_ROW0 + s, 0, x, y);
                 break;
             }
@@ -7368,10 +7434,7 @@ static bool cliff_pixel_solid(int x, int y, int ax, int ay) {
         // plateau, and there is no line drawn in either.
         int hc = cliff_high_code(x, y, L);
         if (!hc || hc == 15) continue;
-        int b = cliff_bank(x, y, L);
-        int k = (b < CLIFF_BANK_FRONT) ? b : CLIFF_BANK_FRONT - 1;
-        int row = k > 0 ? CLIFF_BANK_ROW0 + (k - 1) * 16 : CLIFF_EDGE_ROW0;
-        if (cliff_cell_ink(row, hc, x, y, ax, ay)) return true;
+        if (cliff_cell_ink(cliff_bank_row(x, y, L), hc, x, y, ax, ay)) return true;
     }
     return false;
 }
@@ -8324,6 +8387,29 @@ bool tilemap_face_at(int x, int y) {
 
 int tilemap_cliff_elev_at(int x, int y) {
     return in_world(&x, &y) ? (int)s_cliff_elev[y][x] : 0;
+}
+
+// The same walk over the levels cliff_art_layers() makes, reduced to the one
+// thing a tile-by-tile check wants to know.
+char tilemap_cliff_draw_at(int x, int y) {
+    if (!in_world(&x, &y)) return ' ';
+    char out = '.';
+    for (int L = 1; L <= CLIFF_LEVELS; L++) {
+        if (cliff_rock_code(x, y, L)) return 'R';
+        int hc = cliff_high_code(x, y, L);
+        if (hc && hc != 15) out = (char)('0' + cliff_bank(x, y, L));
+    }
+    return out;
+}
+
+float tilemap_cliff_facing_at(int x, int y) {
+    if (!in_world(&x, &y)) return -2.0f;
+    float out = -2.0f;
+    for (int L = 1; L <= CLIFF_LEVELS; L++) {
+        int hc = cliff_high_code(x, y, L);
+        if (hc && hc != 15) out = cliff_facing(x, y, L);
+    }
+    return out;
 }
 
 // Whether the tile's own ground can be stood on, with nothing said about what

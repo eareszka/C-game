@@ -24,15 +24,14 @@ lines up across every seam by construction.  A tile therefore needs an index
 of (marching-squares case, position in the 4x4 torus block) — 16 x 16 cells,
 laid out one case per sheet row.
 
-The band is only half the picture, because a band is a mask swept in whole
-tiles and the least it can draw is a tile of rock.  Down a flank the reference
-draws eight pixels, and where the edge turns away north it draws none at all —
-neither fits in a mask.  So the band is masked only where the drop is deep
-enough to be worth a tile, and everywhere else the outline carries a *bank*:
-three, five or seven pixels of the same rock hung off the line itself, cut from
-the line's own field so the two cannot come apart.  Which of the two a tile gets
-is decided by how far its edge has turned from facing you — see cliff_facing()
-in tilemap.cpp, and BANK_FACING below, which has to agree with it.
+The band has three states, and they are the reference's: deep where the wall
+faces you, a tile wide the whole way down a flank, and nothing at all along
+the back, where the outline runs on its own.  Which a tile gets is decided by
+the way its edge faces — see cliff_facing() in tilemap.cpp, and FACE_FRONT /
+FACE_BACK below, which have to agree with it.  Under the band the outline
+also carries a *bank*: a few pixels of the same rock hung off the line itself,
+cut from the line's own field so the two cannot come apart, there so that a
+hole in the band's mask shows rock rather than bare line.
 
 Run from the repo root:  python tools/gen_cliff_tiles.py [--preview out.png]
 """
@@ -61,44 +60,84 @@ HAZE_ROW0  = 128     # ... and of the mask that pales the ground on top of it
 LOW_ROW0   = 160     # ... and of its complement: the sliver of a rim tile beyond the line
 NCASE      = 16
 
-# How far the rock reaches out from the outline on a bank, in pixels, class by
-# class, and how far that far edge wanders.
+# Outline cases never asked for. A saddle -- two corners high on one diagonal,
+# neither on the other -- needs a run of high ground one tile wide, and the
+# morphology's opening (CLIFF_CHUNK_R in tilemap.cpp) deletes anything
+# thinner than its disk before the outline is read. Measured with `make
+# sheetcensus` over eight worlds: drawn nowhere, in any outline-derived set.
+# The band's own cases are read from the face mask, which has no such floor,
+# so the rock set keeps all sixteen.
+SADDLES = (6, 9)
+
+# How far the rock reaches out from the outline on a bank, in pixels, and how
+# far that far edge wanders.
 #
-# Seven is what the reference asks for and what there is room to draw. It draws
-# eight down its west flank (the rock at x=16..23, y=101..116) and its strictly
-# north-south stretches measure two to four across; what this drew there was the
-# band, sixteen, a whole tile, and it reads as a second cliff standing alongside
-# the first rather than as the side of the first one. Room, because a bank hangs
-# off the outline and the outline wanders six pixels inside its own cell: eight
-# is more than is left over half the time, and what will not fit is cropped
-# against the tile. The narrower classes are there to land the bank into the
-# line rather than to be looked at on their own — five is two clefts wide and
-# three is one, which is the least that still reads as rock and not as a line
-# drawn heavy.
-BANK_REACH = (3.0, 5.0, 7.0, 11.0)
+# The bank is drawn under the band, on every tile of front or flank, so that a
+# hole in the band's mask -- a tile the sweep skipped, a scrap the small-region
+# pass rubbed out -- shows rock and not the bare line. Eleven is about all
+# there is room for: a bank hangs off the outline and the outline wanders six
+# pixels inside its own cell, and what will not fit is cropped against the
+# tile. It is not the flank. The flank is the band itself, a tile wide, which
+# is what the reference draws: measured on art/reference/mother1.png at native
+# scale, the rock down a flank runs 10 to 26 px wide, 14 to 20 as a rule, and
+# holds that width the whole way. A ladder of narrower banks used to stand in
+# for the flank, and flanks came out as every width in turn.
+BANK_REACH = (11.0,)
 BANK_RAG   = 1.6
 BANK_FLOOR = 2.0     # and the least it draws where there is no room for more
 
-# The facing at which each class starts, widest first, and how far the facing is
-# measured over.
+# Where a flank meets the back of the hill, the rock folds onto the back and
+# runs out along it: the first tile of back draws the bank tapered toward its
+# far edge, its reach falling from full to nothing over BANK_TAPER_SPAN of the
+# cell. That is the reference's end of a flank -- the brown narrows to nothing
+# over ten or twelve pixels along the edge while its outline converges into
+# the line -- at the sharp corners our outlines have and its curved ones do
+# not.
 #
-# Facing runs from +1 where the drop is square on to you to -1 where it is the
-# back of the hill, and it is what decides how much of the wall there is to see:
-# all of it at the front, an edge at the flank, the least the set can draw at
-# the rear. A flank proper is 0, and the classes are spaced so that it lands on
-# the widest bank and the two narrow ones are spent turning the corner into the
-# rear.
+# Which edge is the far one cannot be read off the case. On a diagonal that
+# climbs away from you the cases alternate corner and notch at every step, and
+# tapering by the shape of the cell turned such a flank into a string of
+# lumps. The flank is wherever the facing says it is, which is a property of
+# the neighbouring tile, so the bank is stamped three ways -- untapered, and
+# tapered toward each of the two edges the line leaves the cell by (see
+# line_exits) -- and cliff_bank_row() in tilemap.cpp picks one by asking the
+# tile across each of those edges whether it is a flank.
+BANK_SETS = 3                                  # full, toward the first exit, toward the second
+BANK_TAPER_SPAN = 0.5                          # over half the cell: eight pixels
+BANK_INK = 1.5                                 # pixels of ink against the line
+
+EDGE_TOP, EDGE_RIGHT, EDGE_BOTTOM, EDGE_LEFT = 0, 1, 2, 3
+
+
+def line_exits(case):
+    """The edges of the cell the outline leaves by, in the fixed order top,
+    right, bottom, left: an edge is crossed where its two corners differ.
+    Two for every case but the saddles (6 and 9), which have four; those are
+    drawn untapered."""
+    nw, ne, sw, se = case & 1, case & 2, case & 4, case & 8
+    out = []
+    if bool(nw) != bool(ne): out.append(EDGE_TOP)
+    if bool(ne) != bool(se): out.append(EDGE_RIGHT)
+    if bool(sw) != bool(se): out.append(EDGE_BOTTOM)
+    if bool(nw) != bool(sw): out.append(EDGE_LEFT)
+    return out
+
+# The facing at which the band is deep, and below which there is only the
+# line. Facing runs from +1 where the drop is square on to you to -1 where it
+# is the back of the hill: the downward part of the edge's outward normal,
+# fitted to the rim over BANK_R tiles either way (see cliff_facing()).
 #
-# The ladder stops at -0.55 and the rear of a landform draws the bare beaded
-# line and no rock at all, which is what Mother 1 does: measured over 266 clean
-# cliff regions of art/reference/mother1.png, its south faces run 36 px deep, its
-# flanks 4, and its north edges have no band whatsoever — 60-64% of the total
-# drawn perimeter carries no face. Wrapping rock the whole way round was tried
-# and is not the reference. See CLIFF_BANK_FACING in tilemap.cpp, which decides
-# this and which this has to agree with.
-BANK_FRONT  = len(BANK_REACH) + 1
-BANK_R      = 3
-BANK_FACING = (0.35, 0.15, -0.05, -0.30, -0.55)
+# Measured on the reference: south faces run about 36 px deep, flanks a tile,
+# and the band ends within half a tile once the edge has turned to within
+# about 45 degrees of north -- 60-64% of the drawn perimeter carries no face.
+# Wrapping rock the whole way round was tried and is not the reference. See
+# CLIFF_FACE_FRONT / CLIFF_FACE_BACK in tilemap.cpp, which decide this and
+# which this has to agree with.
+BANK_FLANK  = 1
+BANK_FRONT  = 2
+BANK_R      = 5
+FACE_FRONT  = 0.5
+FACE_BACK   = -0.7
 
 KEY   = (255,   0,   0)   # the sheet's colour key
 BROWN = (136, 112,   0)   # straight off the reference
@@ -317,6 +356,19 @@ def grain_shift(px, py, vein):
     return jag(px, py, JAG_SCALE) + TOOTH_RELIEF * (tooth - TOOTH_PIVOT)
 
 
+def depth_in_v(mask, limit):
+    """How far a pixel sits inside the mask measured up and down only, capped
+    at `limit`. The clefts are vertical, so where they open out is where they
+    meet an edge that runs across them: the top and the foot of a wall, and
+    not its sides."""
+    d = np.zeros(mask.shape)
+    m = mask.copy()
+    for r in range(1, limit + 1):
+        m &= np.roll(mask, r, axis=0) & np.roll(mask, -r, axis=0)
+        d += m
+    return d
+
+
 def erode(mask, radius):
     """True only where every pixel within `radius` (chebyshev-ish disk) is set."""
     out = mask.copy()
@@ -364,9 +416,16 @@ def rock_cell(case, bx, by):
     # it as an outline instead is what made the band read as a shape with a
     # line around it.
     #
+    # Arriving at the top or the foot, and only there. The clefts run up and
+    # down, so it is an edge across them that they open out on; measured any
+    # other way, every vein along the side of a flank was within reach of the
+    # side and flared into a stripe of black beside the line, five pixels
+    # where the reference has two. Down a side the rock keeps its one pixel
+    # of rim and the clefts their own width.
+    #
     # A cleft also closes in places and lets the rock either side join up, so
     # the columns come out lumpy and broken rather than as ruled stripes.
-    deep = depth_in(rock, int(CLEFT_REACH))
+    deep = depth_in_v(rock, int(CLEFT_REACH))
     flare = np.clip(1.0 - deep / CLEFT_REACH, 0.0, 1.0)
     width = cleft_width(stripe, px, py) + CLEFT_FLARE * flare
     ink = rock & (~erode(rock, 1) | (vein < width))
@@ -417,7 +476,7 @@ def scree_cell(step, bx, by):
     return img
 
 
-def edge_cell(case, bx, by, reach=None):
+def edge_cell(case, bx, by, reach=None, taper=None):
     """One cell of the outline along the edge of a height.
 
     `reach` hangs a bank of rock off it, that many pixels of it, on the low
@@ -479,7 +538,14 @@ def edge_cell(case, bx, by, reach=None):
         # across the cell — one pixel is one sixteenth of the field and the cut
         # is in pixels after all. On the corner cases it is not, and the bank
         # widens and narrows through a corner, which is no bad thing.
-        far = reach + jag(px, py, BANK_RAG, (0.30, 0.45, 0.25))
+        far = np.maximum(reach + jag(px, py, BANK_RAG, (0.30, 0.45, 0.25)), 0.0)
+        # `taper` is an edge of the cell the line leaves by into the back: the
+        # reach falls to nothing there. The whole of it, rag included, so that
+        # nothing is left of the bank where the reach has run out; on the
+        # opposite edge the weight is one and the seam is untouched.
+        if taper is not None:
+            dist = {EDGE_TOP: v, EDGE_BOTTOM: 1.0 - v, EDGE_LEFT: u, EDGE_RIGHT: 1.0 - u}[taper]
+            far = far * np.clip(dist / BANK_TAPER_SPAN, 0.0, 1.0)
         # And it has to stop short of the cell.
         #
         # A bank hangs off the outline, and the grain throws the outline about
@@ -504,33 +570,19 @@ def edge_cell(case, bx, by, reach=None):
         lim = np.minimum(far / CELL, room)
         rock = ~high & (-field < lim)
         if rock.any():
-            # The ink a bank carries is not the ink the band carries, and it
-            # took three passes to see how. The band holds a pixel back from
-            # every edge and flares its clefts where they reach daylight, which
-            # is what puts the heavy black along the top and the foot of a face.
-            # A bank is seven pixels across at its widest and every pixel of it
-            # is an edge, so both fire everywhere at once: it came out 94% ink
-            # at three pixels and 66% at eight, which is the outline drawn heavy
-            # and not rock at all.
-            #
-            # Dropping the flare and the rim and keeping one pixel against the
-            # line plus the clefts was the second pass, and it is still wrong,
-            # because both of those are FIXED widths against a bank that is not.
-            # The narrower the bank the larger the share of it they take:
-            # measured off the sheet, three pixels of bank came out 83% ink,
-            # five 69%, seven 62%, against 52% for the band. A rear face drawn
-            # that way reads as the outline gone heavy, which is exactly what it
-            # was, and a flight of terraces read as contour lines on a map.
-            #
-            # So take the share the reference takes, not a fixed width. Down its
-            # west flank the rock runs x=16..23 with the four pixels nearest the
-            # height inked and the four against the grass bare brown — half and
-            # half, dark side against the drop. Cutting at half the bank's own
-            # depth gives that at every width, and inherits the wander in `far`
-            # so the boundary between the two is not a ruled line.
-            ink = rock & (-field < 0.5 * lim)
-            img[crop(rock & ~ink)] = BROWN
-            img[crop(ink)] = INK
+            # A pixel or two of ink against the line and one against the
+            # grass, brown between: what the reference draws beside its line
+            # wherever rock hangs off it. A share of the bank's own depth was
+            # tried first, half of it inked, and read as the outline drawn
+            # heavy; the bank is seen only where the band is not -- at the end
+            # of a flank and in the mask's holes -- and there its two edges are
+            # what carry the transition. Where the strip is narrower than the
+            # two edges together it is all ink, and that is the point: brown
+            # and black thin out together into the line.
+            ink = rock & (-field < BANK_INK / CELL)
+            rim = rock & ~erode(rock | high, 1)
+            img[crop(rock & ~ink & ~rim)] = BROWN
+            img[crop(ink | rim)] = INK
 
     # One unbroken pixel of ink just inside the edge.
     #
@@ -599,12 +651,16 @@ def low_cell(case, bx, by):
 
 # ------------------------------------------------------------------- sheet
 
-def stamp(sheet, row0, maker, rows=NCASE):
+STAMPED = set()      # every sheet row a set was stamped into; the rest is cleared
+
+
+def stamp(sheet, row0, maker, rows=NCASE, skip=()):
     for case in range(rows):
+        STAMPED.add(row0 + case)
         for by in range(BLOCK):
             for bx in range(BLOCK):
                 col = by * BLOCK + bx
-                cell = maker(case, bx, by)
+                cell = KEY if case in skip else maker(case, bx, by)
                 sheet[(row0 + case) * CELL:(row0 + case + 1) * CELL,
                       col * CELL:(col + 1) * CELL] = cell
 
@@ -628,6 +684,52 @@ def preview(path, sheet):
         blob += 0.16 * r.rand(H, W)
     high = blob > 0.55
 
+    def at(m, x, y):
+        return 0 <= x < W and 0 <= y < H and m[y, x]
+
+    def facing(x, y):
+        """Which way the height's edge faces here: +1 square on to you, -1 the
+        back of the hill. The rim within BANK_R is fitted with a line and the
+        normal to it turned toward the low ground -- see cliff_facing()."""
+        hn = n = 0
+        hx = hy = sx = sy = sxx = sxy = syy = 0.0
+        for dy in range(-BANK_R, BANK_R + 1):
+            for dx in range(-BANK_R, BANK_R + 1):
+                px, py = x + dx, y + dy
+                if not at(high, px, py):
+                    continue
+                hn += 1
+                hx += dx
+                hy += dy
+                if not any(0 <= px + ox < W and 0 <= py + oy < H and not high[py + oy, px + ox]
+                           for ox, oy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                    continue
+                n += 1
+                sx += dx
+                sy += dy
+                sxx += dx * dx
+                sxy += dx * dy
+                syy += dy * dy
+        if hn == 0:
+            return -1.0
+        hx, hy = hx / hn, hy / hn
+        hm = np.hypot(hx, hy)
+        if hm < 0.05:
+            return -1.0
+        if n < 3:
+            return -hy / hm
+        mx, my = sx / n, sy / n
+        cxx, cxy, cyy = sxx / n - mx * mx, sxy / n - mx * my, syy / n - my * my
+        ang = 0.5 * np.arctan2(2.0 * cxy, cxx - cyy)
+        nx, ny = -np.sin(ang), np.cos(ang)
+        if nx * hx + ny * hy > 0:
+            nx, ny = -nx, -ny
+        return ny
+
+    def bank(x, y):
+        f = facing(x, y)
+        return BANK_FRONT if f >= FACE_FRONT else BANK_FLANK if f >= FACE_BACK else 0
+
     # The band: below and beside the highland, never above it — the same sweep
     # place_cliffs() does, at CLIFF_FACE_D = 2 and CLIFF_FACE_SIDE = 1, narrowing
     # with depth so it comes to a point at each shoulder.
@@ -636,7 +738,10 @@ def preview(path, sheet):
         for x in range(W):
             if high[y, x]:
                 continue
-            if y + 1 < H and high[y + 1, x]:
+            # Nothing on the back of the height: a tile with the height
+            # directly below it is refused where the facing says it is the
+            # back, and kept where the edge merely climbs away from you.
+            if y + 1 < H and high[y + 1, x] and bank(x, y) < BANK_FLANK:
                 continue
             for dy in range(0, 3):
                 w = 1 if dy <= 1 else 0
@@ -645,40 +750,13 @@ def preview(path, sheet):
                     if 0 <= sx < W and 0 <= sy < H and high[sy, sx]:
                         face[y, x] = True
 
-    def at(m, x, y):
-        return 0 <= x < W and 0 <= y < H and m[y, x]
-
-    def facing(x, y):
-        """Which way the height's edge faces here: +1 square on to you, -1 the
-        back of the hill. The centroid of the height over a window points into
-        it, so the outward normal is the other way — see cliff_facing()."""
-        n = sy = sx = 0
-        for dy in range(-BANK_R, BANK_R + 1):
-            for dx in range(-BANK_R, BANK_R + 1):
-                if at(high, x + dx, y + dy):
-                    n += 1
-                    sy += dy
-                    sx += dx
-        if n == 0:
-            return -1.0
-        cy, cx = sy / float(n), sx / float(n)
-        m = np.hypot(cx, cy)
-        return -1.0 if m < 0.05 else -cy / m
-
-    def bank(x, y):
-        for k, lo in enumerate(BANK_FACING):
-            if facing(x, y) >= lo:
-                return len(BANK_FACING) - k
-        return 0
-
-    # The band is only masked where the wall it draws is deep enough to want a
-    # tile of its own; the rest of the way round, the bank off the outline is
-    # the whole of it. Cut here rather than when drawing, because the cases are
-    # taken off this mask and every one of them has to be drawn for them to
-    # join up.
+    # The band stops at the back of the hill. Cut here rather than when
+    # drawing, because the cases are taken off this mask and every one of them
+    # has to be drawn for them to join up. (The game also ramps the band's
+    # depth down from the front; the preview draws the sweep's own depth.)
     for y in range(H):
         for x in range(W):
-            if face[y, x] and bank(x, y) < BANK_FRONT:
+            if face[y, x] and bank(x, y) < BANK_FLANK:
                 face[y, x] = False
 
     def face_code(x, y):
@@ -715,15 +793,37 @@ def preview(path, sheet):
         vis = ~np.all(cell == KEY, axis=2)
         dst[vis] = cell[vis]
 
+    def bank_row(x, y, hc):
+        """The whole bank wherever the drop has a side to show. On the back,
+        the bank tapered away from a flank that runs into this tile -- the
+        fold -- the whole bank between two flanks, and the bare line
+        otherwise. Mirrors cliff_bank_row() in tilemap.cpp."""
+        if bank(x, y):
+            return BANK_ROW0
+        exits = line_exits(hc)
+        if len(exits) != 2:
+            return EDGE_ROW0
+        step = {EDGE_TOP: (0, -1), EDGE_RIGHT: (1, 0), EDGE_BOTTOM: (0, 1), EDGE_LEFT: (-1, 0)}
+        fed = []
+        for k, e in enumerate(exits):
+            nx, ny = x + step[e][0], y + step[e][1]
+            nc = high_code(nx, ny) if 0 <= nx < W and 0 <= ny < H else 0
+            if nc and nc != 15 and bank(nx, ny):
+                fed.append(k)
+        if not fed:
+            return EDGE_ROW0
+        if len(fed) == 2:
+            return BANK_ROW0
+        return BANK_ROW0 + (2 - fed[0]) * NCASE
+
     for y in range(H):
         for x in range(W):
             hc = high_code(x, y)
             if hc and hc != 15:
-                # The widest bank at the front too, under the band — the mask
+                # The bank under the band, front and flank alike — the mask
                 # has holes the facing knows nothing about, and a hole in it
                 # with the bare line running through is the cliff breaking.
-                b = min(bank(x, y), BANK_FRONT - 1)
-                put((BANK_ROW0 + (b - 1) * NCASE if b else EDGE_ROW0) + hc, x, y)
+                put(bank_row(x, y, hc) + hc, x, y)
             c = rock_code(x, y)
             if c:
                 put(ROCK_ROW0 + c, x, y)
@@ -773,20 +873,33 @@ def main():
     # and the mask is then stamped back over it, so the banks come out white and
     # nothing anywhere says why. Nothing else catches it — `need` is measured
     # from HAZE_ROW0, which does not move.
-    if BANK_ROW0 + NCASE * len(BANK_REACH) > HAZE_ROW0:
-        raise SystemExit('%d bank classes run from row %d into the height mask '
+    if BANK_ROW0 + NCASE * BANK_SETS > HAZE_ROW0:
+        raise SystemExit('%d bank sets run from row %d into the height mask '
                          'at %d; move HAZE_ROW0 (and CLIFF_HAZE_ROW0 in '
                          'tilemap.cpp) past them'
-                         % (len(BANK_REACH), BANK_ROW0, HAZE_ROW0))
+                         % (BANK_SETS, BANK_ROW0, HAZE_ROW0))
 
     stamp(sheet, ROCK_ROW0, rock_cell)
-    stamp(sheet, EDGE_ROW0, edge_cell)
+    stamp(sheet, EDGE_ROW0, edge_cell, skip=SADDLES)
     stamp(sheet, SCREE_ROW0, scree_cell, SCREE_STEPS)
-    for k, reach in enumerate(BANK_REACH):
-        stamp(sheet, BANK_ROW0 + k * NCASE,
-              lambda case, bx, by, r=reach: edge_cell(case, bx, by, r))
-    stamp(sheet, HAZE_ROW0, haze_cell)
-    stamp(sheet, LOW_ROW0, low_cell)
+    # The bank three ways: whole, and tapered toward each edge the line
+    # leaves by. Rows CLIFF_BANK_ROW0 + 0/16/32 in tilemap.cpp.
+    def bank_maker(k):
+        def make(case, bx, by):
+            exits = line_exits(case)
+            taper = exits[k - 1] if k and len(exits) == 2 else None
+            return edge_cell(case, bx, by, BANK_REACH[0], taper)
+        return make
+    for k in range(BANK_SETS):
+        stamp(sheet, BANK_ROW0 + k * NCASE, bank_maker(k), skip=SADDLES)
+    stamp(sheet, HAZE_ROW0, haze_cell, skip=SADDLES)
+    stamp(sheet, LOW_ROW0, low_cell, skip=SADDLES)
+    # The region from the first set to the last is this script's, whole: a row
+    # in it that nothing stamped is cleared, so that art from a layout since
+    # replaced cannot sit there unread. It held sixteen rows of one.
+    for row in range(ROCK_ROW0, LOW_ROW0 + NCASE):
+        if row not in STAMPED:
+            sheet[row * CELL:(row + 1) * CELL, :BLOCK * BLOCK * CELL] = KEY
 
     if a.preview:
         preview(a.preview, sheet)
@@ -797,7 +910,7 @@ def main():
               % (a.sheet, ROCK_ROW0, ROCK_ROW0 + NCASE - 1,
                  EDGE_ROW0, EDGE_ROW0 + NCASE - 1,
                  SCREE_ROW0, SCREE_ROW0 + SCREE_STEPS - 1,
-                 BANK_ROW0, BANK_ROW0 + NCASE * len(BANK_REACH) - 1,
+                 BANK_ROW0, BANK_ROW0 + NCASE * BANK_SETS - 1,
                  HAZE_ROW0, HAZE_ROW0 + NCASE - 1))
 
 
