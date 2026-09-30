@@ -700,6 +700,178 @@ def sources_of(sp, refs, landforms, log=False):
     return refs_f, land_all + refs_f
 
 
+# --------------------------------------------------------------- taller walls
+
+STRETCH_JUMP = 2          # how far the seam may step up or down from one column to the next
+STRETCH_PASSES = 3        # a column with several fronts takes one pass per front
+
+
+def vertical_pairs(model):
+    """(above, below) sprite pairs the sources' blocks contain, and for each
+    sprite the ones that may stand under it."""
+    vp = set()
+    for p in model.pats:
+        vp.add((int(p[0, 0]), int(p[1, 0])))
+        vp.add((int(p[0, 1]), int(p[1, 1])))
+    below = {}
+    for a, b in vp:
+        below.setdefault(a, set()).add(b)
+    return vp, below
+
+
+def wall_runs(sp, col):
+    """(start, end) row ranges of rock down a column, top to bottom, end exclusive."""
+    runs, y, h = [], 0, len(col)
+    while y < h:
+        if col[y] > 0 and sp.kind[col[y]] == 1:
+            y0 = y
+            while y < h and col[y] > 0 and sp.kind[col[y]] == 1:
+                y += 1
+            runs.append((y0, y))
+        else:
+            y += 1
+    return runs
+
+
+def stretch_rows(model, sp, g, vp, below, target):
+    """One seam of new sprites, one per column, that makes the island a row
+    taller and puts rock into the wall run `target[c]` of every column that
+    has one: seam insertion, chosen by dynamic programming over the columns
+    so that every 2x2 block the new sprites make is a block of the sources.
+    Valid by construction; nothing is drawn by rule. Returns (grid, grown):
+    the new grid, h+1 rows, and the columns whose target run got rock -- or
+    None when no seam fits at all."""
+    H, W = g.shape
+    INF = 10 ** 9
+
+    def insert(c, r, t):
+        col = g[:, c]
+        return np.concatenate([col[:r], [t], col[r:]])
+
+    states = []
+    for c in range(W):
+        col = g[:, c]
+        run = target[c]
+        st = []
+        for r in range(1, H):
+            for t in below.get(int(col[r - 1]), ()):
+                if (t, int(col[r])) not in vp:
+                    continue
+                rock = t > 0 and sp.kind[t] == 1
+                if run is None:
+                    cost = 0
+                else:
+                    inside = run[0] < r <= run[1]      # between two rows of the run, or under its foot
+                    cost = 0 if (rock and inside) else 1
+                st.append((r, t, cost))
+        if not st:
+            return None
+        states.append(st)
+    best = {(r, t): cost for r, t, cost in states[0]}
+    backs = [None]
+    for c in range(1, W):
+        cur, bk = {}, {}
+        cols = {}
+        for s, u, cost in states[c]:
+            B = insert(c, s, u)
+            for (r, t), v0 in best.items():
+                if abs(r - s) > STRETCH_JUMP:
+                    continue
+                A = cols.get((r, t))
+                if A is None:
+                    A = cols[(r, t)] = insert(c - 1, r, t)
+                lo, hi = max(0, min(r, s) - 1), min(H, max(r, s) + 1)
+                good = True
+                for i in range(lo, hi):
+                    if model.bkey(int(A[i]), int(B[i]), int(A[i + 1]), int(B[i + 1])) not in model.bkeyset:
+                        good = False
+                        break
+                if good:
+                    v = v0 + cost
+                    if v < cur.get((s, u), INF):
+                        cur[(s, u)] = v
+                        bk[(s, u)] = (r, t)
+        if not cur:
+            return None
+        best = cur
+        backs.append(bk)
+    k = min(best, key=best.get)
+    path = [k]
+    for c in range(W - 1, 0, -1):
+        k = backs[c][k]
+        path.append(k)
+    path.reverse()
+    out = np.stack([insert(c, r, t) for c, (r, t) in enumerate(path)], axis=1)
+    grown = [c for c, (r, t) in enumerate(path)
+             if target[c] is not None and t > 0 and sp.kind[t] == 1]
+    return out, grown
+
+
+def stretch(model, sp, g, vp, below):
+    """The island with every wall run lengthened by one tile where the
+    sources' blocks allow it: one seam per pass, each pass aimed at the
+    next run down in every column that still has one to grow. Returns
+    (grid, runs grown, runs in all)."""
+    todo = [list(wall_runs(sp, g[:, c])) for c in range(g.shape[1])]
+    total = sum(len(t) for t in todo)
+    done = 0
+    for _ in range(STRETCH_PASSES):
+        if not any(todo):
+            break
+        target = [t[0] if t else None for t in todo]
+        res = stretch_rows(model, sp, g, vp, below, target)
+        if res is None:
+            break
+        g2, grown = res
+        if not grown:
+            break
+        g = g2
+        done += len(grown)
+        grown = set(grown)
+        # every row at or below a seam moved down one; recount what is left to grow
+        for c in range(g.shape[1]):
+            runs = wall_runs(sp, g[:, c])
+            left = len(todo[c]) - (1 if c in grown and todo[c] else 0)
+            todo[c] = runs[len(runs) - left:] if left > 0 else []
+    return g, done, total
+
+
+def stretch_worker(args):
+    """Stretch a share of the library in a worker: its own sources and model,
+    numbered the same as the parent's because load_refs is deterministic."""
+    grids, extra = args
+    sp, refs = load_refs()
+    landforms = load_map(sp, vocabulary(sp))
+    refs, sources = sources_of(sp, refs, landforms)
+    model = Model(sp, sources + [np.array(e) for e in extra])
+    model.bkeyset = set(int(k) for k in model.bkeys)
+    vp, below = vertical_pairs(model)
+    out = []
+    for g in grids:
+        out.append(stretch(model, sp, np.array(g), vp, below))
+    return out
+
+
+def stretch_all(islands, workers, extra=()):
+    """Every island a tile taller where it can be, in parallel."""
+    import multiprocessing
+    t0 = time.time()
+    jobs = [([g.tolist() for g in islands[i::workers]], [e.tolist() for e in extra]) for i in range(workers)]
+    jobs = [j for j in jobs if j[0]]
+    with multiprocessing.Pool(len(jobs)) as pool:
+        results = pool.map(stretch_worker, jobs)
+    out = [None] * len(islands)
+    for w, res in enumerate(results):
+        for k, r in enumerate(res):
+            out[w + k * len(jobs)] = r
+    full = sum(1 for g, d, t in out if t and d == t)
+    part = sum(1 for g, d, t in out if 0 < d < t)
+    none = sum(1 for g, d, t in out if t and d == 0)
+    print('  taller walls: %d islands fully, %d partly, %d not at all (%.0fs)'
+          % (full, part, none, time.time() - t0))
+    return [g for g, d, t in out]
+
+
 # --------------------------------------------------------------- islands
 
 def wall_pieces(sp, g):
@@ -1212,6 +1384,7 @@ def main():
             print('  %s left out: tile%s %s could not be settled (drawing tiles, x,y)'
                   % (name, 's' if len(xs) > 1 else '', ', '.join('%d,%d' % (x - 3, y - 3) for x, y in zip(xs.tolist(), ys.tolist()))))
     islands = big + own + small
+    islands = stretch_all(islands, a.workers)
     levels = [settle_levels(sp, g) for g in islands]
     keep = [i for i in range(len(islands)) if not narrow_split(sp, islands[i], levels[i])]
     if len(keep) < len(islands):
