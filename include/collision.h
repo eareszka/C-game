@@ -1,7 +1,7 @@
 #pragma once
 
 // The feet: the boots of the sprite, twelve world pixels square at the bottom
-// of a 32x48 frame, which the ground is asked about at every art pixel along
+// of the 24x36 frame, which the ground is asked about at every art pixel along
 // the edge -- seven samples a side (HB_SAMPLE below).
 //
 // Twelve, not the sixteen it was, because the cliffs draw ground narrower than
@@ -14,10 +14,10 @@
 // slot, eight of the art's pixels; the boots are six and pass it with a pixel
 // to spare. Every landform in the library is measured against this box by
 // tools/gen_islands.py (FEET), and the two must agree.
-constexpr int HB_X1 = 12;  // left edge
-constexpr int HB_X2 = 24;  // right edge
-constexpr int HB_Y1 = 36;  // top of feet
-constexpr int HB_Y2 = 48;  // bottom of feet
+constexpr int HB_X1 = 6;   // left edge   (the feet: bottom centre of the 24x36 frame)
+constexpr int HB_X2 = 18;  // right edge
+constexpr int HB_Y1 = 24;  // top of feet
+constexpr int HB_Y2 = 36;  // bottom of feet
 
 // How far across the way the feet will be slid to get past something small in
 // front of them. Two world pixels, which is exactly one of the art's, and that
