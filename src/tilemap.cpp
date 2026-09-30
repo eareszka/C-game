@@ -6341,8 +6341,14 @@ static void cliff_close_cell(unsigned short* c) {
     }
 }
 
+// The cave mouth's ink, one bit per pixel of each of its cells, read off the
+// sheet with the cliff's. Its side columns carry rock jambs that reach the
+// ground whatever the wall's teeth do, and what is drawn is what closes.
+static unsigned short s_mouth_ink[CAVE_MOUTH_H][CAVE_MOUTH_W][16];
+
 static void cliff_build_solid(SDL_Surface* sheet) {
     memset(s_cliff_ink, 0, sizeof s_cliff_ink);
+    memset(s_mouth_ink, 0, sizeof s_mouth_ink);
     s_cliff_ink_ready = false;
     if (!sheet) return;
     SDL_Surface* s = SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0);
@@ -6367,6 +6373,22 @@ static void cliff_build_solid(SDL_Surface* sheet) {
         }
         cliff_close_cell(s_cliff_ink[i]);
     }
+    for (int dy = 0; dy < CAVE_MOUTH_H; dy++)
+        for (int dx = 0; dx < CAVE_MOUTH_W; dx++) {
+            int y0 = (CAVE_MOUTH_ROW + dy) * 16, x0 = (CAVE_MOUTH_COL + dx) * 16;
+            if (y0 + 16 > s->h || x0 + 16 > s->w) continue;
+            for (int py = 0; py < 16; py++) {
+                const unsigned char* rowp =
+                    (const unsigned char*)s->pixels + (size_t)(y0 + py) * s->pitch;
+                unsigned short bits = 0;
+                for (int px = 0; px < 16; px++) {
+                    const unsigned char* q = rowp + (size_t)(x0 + px) * 4;
+                    if (!(q[0] == 255 && q[1] == 0 && q[2] == 0))
+                        bits |= (unsigned short)(1u << px);
+                }
+                s_mouth_ink[dy][dx][py] = bits;
+            }
+        }
     SDL_FreeSurface(s);
     s_cliff_ink_ready = true;
 }
@@ -7483,6 +7505,14 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
         if (ax < 0) ax = 0; else if (ax > 15) ax = 15;
         if (ay < 0) ay = 0; else if (ay > 15) ay = 15;
         if (cliff_pixel_solid(tx, ty, ax, ay)) return true;
+        // The cave mouth's jambs close the ground as the rock they draw.
+        // Only its side columns: the middle one is the way in.
+        int ov = map->overlay[ty][tx];
+        if (is_cave_mouth_cell(ov)) {
+            int rel = ov - cave_mouth_cell(0, 0);
+            int dy = rel / TOWN0_SHEET_COLS, dx = rel % TOWN0_SHEET_COLS;
+            if (dx != 1 && ((s_mouth_ink[dy][dx][ay] >> ax) & 1)) return true;
+        }
     }
 
     int mine  = biome_at(map, tx, ty);
