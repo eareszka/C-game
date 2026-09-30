@@ -205,6 +205,7 @@ int main(int argc, char** argv)
                              t == TILE_POND  || t == TILE_HUB) ch = '~';
                     else if (t == TILE_LAVA)            ch = 'L';
                     else if (t == TILE_PATH)            ch = 'p';
+                    else if (t == TILE_DUNGEON_CAVE)    ch = 'C';
                     else if (t >= TILE_TOWN0_BASE || t == TILE_BLUEPRINT ||
                              t == TILE_VILLAGE_PLACEHOLDER ||
                              t == TILE_CASTLE_PLACEHOLDER) ch = 'O';

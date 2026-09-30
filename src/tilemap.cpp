@@ -839,6 +839,24 @@ static unsigned short s_island_cell[MAP_HEIGHT][MAP_WIDTH];   // 0: nothing draw
 static int s_island_count = 0;                                 // islands stamped, all levels
 static int s_island_sealed_count = 0;                          // mountains with a top no foot can reach
 static long s_island_sealed_tiles = 0;                         // their raised tiles, all together
+
+// The cave mouth: a rock mound with a dark opening, drawn over the foot of a
+// south wall. Three cells wide and two tall on the sheet, from (21, 6) --
+// art/structures/cave_mouth.aseprite, stamped by stamp_cave_mouth.py, which
+// must agree with these. Its cells double as overlay ids (the sheet's ids,
+// as sheet_cell() below numbers them): the base pass paints them after the
+// cliff, so the wall shows round the mound and the opening covers the
+// mouth tile's glyph.
+static const int CAVE_MOUTH_COL = 21, CAVE_MOUTH_ROW = 6;
+static const int CAVE_MOUTH_W = 3, CAVE_MOUTH_H = 2;
+static constexpr int cave_mouth_cell(int dx, int dy) {
+    return TILE_TOWN0_BASE + (CAVE_MOUTH_ROW + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_COL + dx);
+}
+static inline bool is_cave_mouth_cell(int id) {
+    for (int dy = 0; dy < CAVE_MOUTH_H; dy++)
+        if (id >= cave_mouth_cell(0, dy) && id < cave_mouth_cell(CAVE_MOUTH_W, dy)) return true;
+    return false;
+}
 static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 
 // Open ground kept round every island, beyond the tile of margin the island
@@ -4731,41 +4749,37 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
             int first = m->num_dungeon_entrances;
 
-            // The way in: a 2x2 cut into the foot of a level-1 south wall --
-            // a plateau tile with rock straight below it, the band hanging
-            // off the island's edge.
+            // The way in: the mouth, drawn over the foot of a level-1 south
+            // wall -- a plateau tile with rock straight below it, the band
+            // hanging off the island's edge. The mouth is three cells wide
+            // and two tall, and the whole of it lies on rock: the middle
+            // column is the one found, the columns either side must carry the
+            // same wall to the same foot, and the ground under all three is
+            // walkable, so the opening in the bottom middle can be walked
+            // into. (mx, my) is that opening; the sprite's top-left is one
+            // column left and one row up.
             int mx = -1, my = -1;
             for (int i = 0; i < n && mx < 0; i++) {
                 int lx = cave_cells[i] % MAP_WIDTH, ly = cave_cells[i] / MAP_WIDTH;
                 if (s_cliff_elev[ly][lx] != 1) continue;          // level-1 top only
                 if (ly + 1 >= MAP_HEIGHT || s_cliff_elev[ly+1][lx] >= 1) continue;
-                if (lx + 1 >= MAP_WIDTH) continue;
+                if (lx - 1 < 0 || lx + 1 >= MAP_WIDTH) continue;
 
-                // The mouth is two tiles wide, so it has two feet, and the band
-                // is not always the same depth in both columns. Take the lower
-                // of them: below that row the wall has ended in *both* columns,
-                // so the mouth can be walked into. Anchoring on one column's
-                // foot instead leaves rock under the other half of the opening
-                // -- a mouth you can stand in and cannot reach.
-                int fa = face_foot(lx,     ly + 1);
-                int fb = face_foot(lx + 1, ly + 1);
-                if (fa < 0 || fb < 0) continue;
-                int foot = fa > fb ? fa : fb;
-                if ((fa > fb ? fa - fb : fb - fa) > 1) continue;   // too ragged to cut squarely
-                if (foot - 1 <= ly) continue;                      // needs a row of wall to sit in
+                int foot = face_foot(lx, ly + 1);
+                if (foot < 0) continue;
+                if (foot - 1 <= ly) continue;                      // needs two rows of wall to sit on
+                bool ok = true;
+                for (int c = -1; c <= 1 && ok; c++) {
+                    // the same foot in every column, and rock on both rows above it
+                    if (face_foot(lx + c, ly + 1) != foot) ok = false;
+                    else if (!rock_at(lx + c, foot - 1) || !rock_at(lx + c, foot)) ok = false;
+                    // and ground you can walk up to it on, all along the sprite
+                    else if (foot + 1 >= MAP_HEIGHT || !tilemap_is_walkable(map, lx + c, foot + 1)) ok = false;
+                }
+                if (!ok) continue;
 
-                // Cut into rock, not hung below it: the top row of the opening
-                // has to be wall in both columns.
-                if (!rock_at(lx, foot - 1) || !rock_at(lx + 1, foot - 1)) continue;
-
-                // And you must be able to walk up to it. The row under the
-                // opening is asked the same question the player's feet ask.
-                if (foot + 1 >= MAP_HEIGHT) continue;
-                if (!tilemap_is_walkable(map, lx,     foot + 1)) continue;
-                if (!tilemap_is_walkable(map, lx + 1, foot + 1)) continue;
-
-                if (!door_ok_ex(lx, foot - 1, 2, 1, first)) continue;
-                mx = lx; my = foot - 1;
+                if (!door_ok_ex(lx, foot, 1, 1, first)) continue;
+                mx = lx; my = foot;
             }
             if (mx < 0) return false;   // no south wall to put a mouth in
 
@@ -4796,7 +4810,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 };
             };
 
-            stamp_mouth(mx, my, 1, 1);
+            // The ground mouth: the opening is one tile, cut as above, and the
+            // mound is laid over it and the five wall tiles round it as an
+            // overlay. Those five keep their wall -- drawn and solid per pixel
+            // -- so the rock the player sees beside the opening is rock.
+            stamp_mouth(mx, my, 0, 1);
+            for (int dy = 0; dy < CAVE_MOUTH_H; dy++)
+                for (int dx = 0; dx < CAVE_MOUTH_W; dx++)
+                    m->overlay[my - 1 + dy][mx - 1 + dx] = cave_mouth_cell(dx, dy);
             s_cave_placed++;
             s_cave_placed_tiles += n;
 
@@ -6706,12 +6727,18 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 if (tile_id == TILE_DUNGEON ||
                     (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE))
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                // The cave mouth's mound lies over the wall and over that
+                // glyph: its key pixels let the band through round it.
+                if (is_cave_mouth_cell(map->overlay[y][x]))
+                    blit_tile(renderer, map->overlay[y][x], screen_x, screen_y, draw_size);
             }
             if (is_depth) continue;
 
             // Draw overlay (trees, rocks, gold ore) on top
             int ov = map->overlay[y][x];
-            if (ov == TILE_TREE) {
+            if (is_cave_mouth_cell(ov)) {
+                // already painted, over the cliff, above
+            } else if (ov == TILE_TREE) {
                 // Each tree tile is fully independent.
                 // Every tree is two tiles tall: the trunk here, the canopy in
                 // the depth pass above. tree_col() picks the kind.
