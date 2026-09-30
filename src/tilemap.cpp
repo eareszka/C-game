@@ -773,10 +773,25 @@ static void build_cliff_near(void) {
         }
 }
 static unsigned char s_cliff_scratch[MAP_HEIGHT][MAP_WIDTH];
+// The cave pass, counted: mountains walked, those with a sealed top (the
+// only ones that roll), those that got a cave. For the census.
+static int s_cave_seen = 0, s_cave_sealed = 0, s_cave_placed = 0;
+static long s_cave_sealed_tiles = 0, s_cave_placed_tiles = 0;   // their raised tiles, for the mean size
 // Which levels' walls close a tile, one bit per level: every tile an island
 // put rock or line on. Worked out once, when the world is built, because
 // every later pass and every frame drawn wants it.
+//
+// The top bit says something else, on the tiles of a plateau rather than its
+// walls: the feet cannot walk up here from the flat. A plateau is closed at
+// tile level by construction, but the ground is closed per pixel, and where a
+// flank's foot meets the next lobe's back line inside one wall tile there is
+// often a way through. Those stay as they are -- a way up on foot -- and the
+// library says of each landform whether it has one (Island::open). The cave
+// pass reads the bit: a cave carries the player between elevations, and a
+// mountain whose every top can be walked onto needs none. Every reader of
+// the wall bits masks them out, so the top bit rides along untouched.
 static unsigned char s_cliff_face[MAP_HEIGHT][MAP_WIDTH];
+static const unsigned char CLIFF_FACE_SEALED = 1 << 7;
 
 // Where the highland lies: a field whose level sets put the islands where a
 // range would be. It orders the placement below and nothing else -- no
@@ -822,16 +837,34 @@ static const int CAVE_SYSTEMS_TARGET = 360;
 #include "islands.inc"
 static unsigned short s_island_cell[MAP_HEIGHT][MAP_WIDTH];   // 0: nothing drawn
 static int s_island_count = 0;                                 // islands stamped, all levels
+static int s_island_sealed_count = 0;                          // mountains with a top no foot can reach
+static long s_island_sealed_tiles = 0;                         // their raised tiles, all together
+static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 
 // Open ground kept round every island, beyond the tile of margin the island
 // carries itself, so that islands never touch and each is a distinct thing.
 // The least of it, and then up to ISLAND_GAP_VARY more, rolled per island:
 // one fixed gap packs islands of a size into rows and columns, which reads
-// as a lattice from any distance. A storey stands ISLAND_STOREY_GAP inside
-// the top of the island below it.
+// as a lattice from any distance. A storey's walls stand ISLAND_STOREY_GAP
+// tiles of open top away from anything the island below has drawn: its rim,
+// its line, another storey. Without that a storey's back line lands straight
+// above the parent's front, and between the line and the teeth of the front
+// there is a strip of ground a few pixels tall -- drawn, visibly walkable,
+// and too thin for the feet. The drawings never put two walls that close;
+// only the stamping could, so it may not.
 static const int ISLAND_GAP        = 2;
 static const int ISLAND_GAP_VARY   = 5;
 static const int ISLAND_STOREY_GAP = 1;
+
+// Whether a storey's drawn cell may stand at (x, y): the tile and every tile
+// within ISLAND_STOREY_GAP of it is open top of the level below, by `clear`.
+template <class Clear>
+static bool storey_cell_stands(int x, int y, Clear clear) {
+    for (int dy = -ISLAND_STOREY_GAP; dy <= ISLAND_STOREY_GAP; dy++)
+        for (int dx = -ISLAND_STOREY_GAP; dx <= ISLAND_STOREY_GAP; dx++)
+            if (!clear(x + dx, y + dy)) return false;
+    return true;
+}
 
 // The five biomes the majority vote is taken over, and a tile's place in that
 // list. Order is load-bearing: ties are broken towards the earlier entry, so
@@ -976,9 +1009,10 @@ static float cliff_value_noise(int px, int py, int gw, int gh, int s)
 
 // Which islands can stand on which, and where: storey j sits on island i
 // at offset (ox, oy) when every cell j draws lands on a tile of i's first
-// level where i draws nothing. Few islands can carry another -- the drawings'
-// plateaus are small -- so this is worked out once, over the library, and
-// the placement looks the answer up rather than rolling for it.
+// level where i draws nothing, with ISLAND_STOREY_GAP of the same all round
+// it. Few islands can carry another -- the drawings' plateaus are small -- so
+// this is worked out once, over the library, and the placement looks the
+// answer up rather than rolling for it.
 static const int STOREY_OPTS_CAP = 1 << 14;
 static int  s_storey_start[ISLAND_COUNT + 1];
 static int  s_storey_j[STOREY_OPTS_CAP], s_storey_ox[STOREY_OPTS_CAP], s_storey_oy[STOREY_OPTS_CAP];
@@ -995,12 +1029,15 @@ static void build_storey_table(void) {
             if (S.w > P.w || S.h > P.h) continue;
             for (int oy = 0; oy <= P.h - S.h && n < STOREY_OPTS_CAP; oy++)
                 for (int ox = 0; ox <= P.w - S.w && n < STOREY_OPTS_CAP; ox++) {
+                    auto open_top = [&](int px, int py) {
+                        return px >= 0 && py >= 0 && px < P.w && py < P.h &&
+                               P.level[py * P.w + px] == 1 && !P.cells[py * P.w + px];
+                    };
                     bool ok = true;
                     for (int y = 0; y < S.h && ok; y++)
                         for (int x = 0; x < S.w && ok; x++) {
                             if (!S.cells[y * S.w + x]) continue;
-                            int px = ox + x, py = oy + y;
-                            if (P.level[py * P.w + px] != 1 || P.cells[py * P.w + px]) ok = false;
+                            if (!storey_cell_stands(ox + x, oy + y, open_top)) ok = false;
                         }
                     if (ok) { s_storey_j[n] = j; s_storey_ox[n] = ox; s_storey_oy[n] = oy; n++; }
                 }
@@ -1088,17 +1125,26 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                     if (s_island_cell[py][px] || s_cliff_elev[py][px] != 0) return false;
                 } else {
                     // A storey's walls stand on the top below, where the
-                    // island below drew nothing. Its own ground -- the margin
-                    // it carries and the gap -- asks nothing more: the stamp
-                    // writes only drawn cells, so the island below keeps its
-                    // rim under the storey's margin, and the plateaus of the
-                    // drawings are too small to hold a storey any other way.
-                    if (own && (s_island_cell[py][px] || s_cliff_elev[py][px] != L - 1)) return false;
+                    // island below drew nothing, and keep ISLAND_STOREY_GAP
+                    // of that open top round them. Its own ground -- the
+                    // margin it carries and the gap -- asks nothing more: the
+                    // stamp writes only drawn cells, so the island below
+                    // keeps its rim under the storey's margin, and the
+                    // plateaus of the drawings are too small to hold a
+                    // storey any other way.
+                    if (own && !storey_cell_stands(px, py, [&](int qx, int qy) {
+                            if (!inwin(&qx, &qy)) return false;
+                            return !s_island_cell[qy][qx] && s_cliff_elev[qy][qx] == L - 1;
+                        })) return false;
                 }
             }
         return true;
     };
-    auto stamp = [&](const Island& I, int ax, int ay, int L) {
+    // mountain_tiles is the raised area of the mountain this stamp belongs
+    // to: the island's own top, or for a storey the top of the island it
+    // stands on. The cave pass weighs a mountain's chance by it.
+    auto stamp = [&](const Island& I, int ax, int ay, int L, int mountain_tiles) {
+        bool under_sealed = false;     // standing on a top already sealed
         for (int y = 0; y < I.h; y++)
             for (int x = 0; x < I.w; x++) {
                 int px = ax + x, py = ay + y;
@@ -1128,8 +1174,17 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 if (lv) {
                     int e = L - 1 + lv;
                     s_cliff_elev[py][px] = (unsigned char)(e > CLIFF_LEVELS ? CLIFF_LEVELS : e);
+                    // A top the feet cannot reach from the flat is sealed, and
+                    // the cave pass wants to know per mountain. A storey on an
+                    // open top seals one; on a sealed top it adds nothing.
+                    if (s_cliff_face[py][px] & CLIFF_FACE_SEALED) under_sealed = true;
+                    if (!I.open) s_cliff_face[py][px] |= CLIFF_FACE_SEALED;
                 }
             }
+        if (!I.open && !under_sealed) {
+            s_island_sealed_count++;
+            s_island_sealed_tiles += mountain_tiles;
+        }
     };
 
     // Level 1: anchors on a coarse grid over the window, taken in the order
@@ -1157,6 +1212,8 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     const int PLACED_CAP = (int)(sizeof placed_i / sizeof *placed_i);
     int nplaced = 0;
     s_island_count = 0;
+    s_island_sealed_count = 0;
+    s_island_sealed_tiles = 0;
 
     long high = 0, want = (long)(CLIFF_LEVEL_PCT[1] * (float)elig);
     // The library is sorted largest first, in three classes. The anchors
@@ -1178,7 +1235,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         int tx = ax - I.w / 2, ty = ay - I.h / 2;
         int gap = ISLAND_GAP + (int)(hash((unsigned)ax, (unsigned)ay, 5u) % (unsigned)(ISLAND_GAP_VARY + 1));
         if (!fits(I, tx, ty, 1, gap)) continue;
-        stamp(I, tx, ty, 1);
+        stamp(I, tx, ty, 1, I.high_tiles);
         high += I.high_tiles;
         s_island_count++;
         if (nplaced < PLACED_CAP) { placed_x[nplaced] = tx; placed_y[nplaced] = ty; placed_i[nplaced] = ii; nplaced++; }
@@ -1204,7 +1261,7 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
                 const Island& I = ISLANDS[ii];
                 int tx = placed_x[k] + s_storey_ox[o], ty = placed_y[k] + s_storey_oy[o];
                 if (!fits(I, tx, ty, L, 0)) continue;
-                stamp(I, tx, ty, L);
+                stamp(I, tx, ty, L, ISLANDS[pi].high_tiles);
                 got += I.high_tiles;
                 s_island_count++;
                 if (nplaced < PLACED_CAP) { placed_x[nplaced] = tx; placed_y[nplaced] = ty; placed_i[nplaced] = ii; nplaced++; }
@@ -4574,6 +4631,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // place_cliffs — so it is free to mark up, and marking the landform's
         // own tiles is what makes "one system per mountain" true by
         // construction rather than by a distance test.
+        s_cave_seen = s_cave_sealed = s_cave_placed = 0;
+        s_cave_sealed_tiles = s_cave_placed_tiles = 0;
         for (int py = 0; py < MAP_HEIGHT; py++)
             for (int px = 0; px < MAP_WIDTH; px++)
                 s_cliff_scratch[py][px] = 0;
@@ -4609,7 +4668,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             // as it does there. Marking every cell is what makes one system per
             // mountain true by construction rather than by a distance test.
             int n = 0, head = 0, top_lvl = 0, ax = bx, ay = by;
-            bool holds_castle = false;
+            bool holds_castle = false, sealed = false;
+            s_cave_seen++;
             // The castle stamps map->tiles but never s_cliff_elev, so its
             // footprint is still part of the landform as far as this walk is
             // concerned — which is what lets the mountain be recognised as the
@@ -4620,6 +4680,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             while (head < n) {
                 int v = cave_cells[head++], vy = v / MAP_WIDTH, vx = v % MAP_WIDTH;
                 if (s_cliff_elev[vy][vx] > top_lvl) top_lvl = s_cliff_elev[vy][vx];
+                if (s_cliff_face[vy][vx] & CLIFF_FACE_SEALED) sealed = true;
                 if (vy < ay || (vy == ay && vx < ax)) { ax = vx; ay = vy; }
                 if (c1x >= 0 && vx >= c1x && vx < c1x + CASTLE_W &&
                                 vy >= c1y && vy < c1y + CASTLE_H) holds_castle = true;
@@ -4632,6 +4693,14 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         if (n < CAVE_CAP) cave_cells[n++] = py * MAP_WIDTH + px;
                     }
             }
+            // A cave carries the player between elevations. Every top of this
+            // mountain has a way up on foot -- the library says so of the
+            // landform, per pixel of its walls -- so there is nothing here to
+            // carry them between, and no cave.
+            if (!sealed) return false;
+            s_cave_sealed++;
+            s_cave_sealed_tiles += n;
+
             // Whether this mountain has a cave, by how many storeys it carries:
             // every three-storey mountain, half of the rest. Hashed off the world seed
             // and the landform's own anchor rather than drawn from the placement
@@ -4645,18 +4714,19 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                            ^ ((unsigned int)ay * 0x85EBCA6Bu);
             h ^= h >> 15; h *= 0x2C1B3C6Du; h ^= h >> 12;
             int pct = (int)((h >> 8) % 10000u);
-            // Half of the mountains carried a cave when there were six hundred
-            // of them. There are thousands of islands, so the share is set by
-            // the count instead: enough of them to make CAVE_SYSTEMS_TARGET
-            // systems, which is what the kinds table asks of a world, and no
-            // more -- at half, the caves alone filled MAX_DUNGEON_ENTRANCES and
-            // every other kind was starved.
-            // In hundredths of a percent: a share of a few percent would
-            // lose a third of itself to whole-percent rounding.
-            int share = s_island_count > 0 ? (10000 * CAVE_SYSTEMS_TARGET) / s_island_count : 5000;
-            if (share < 1) share = 1;
-            if (share > 10000) share = 10000;
-            int want = (top_lvl >= 3) ? 10000 : share;
+            // The chance grows with the mountain: its raised tiles over the
+            // raised tiles of every sealed mountain, times CAVE_SYSTEMS_TARGET,
+            // so the caves add up to the target over the world -- which is
+            // what the kinds table asks of it, and no more: at half of the
+            // mountains, the caves alone filled MAX_DUNGEON_ENTRANCES and every
+            // other kind was starved -- and a tableland is far likelier to
+            // carry one than a knoll. In hundredths of a percent: a share of
+            // a few percent would lose a third of itself to whole-percent
+            // rounding.
+            long long want = s_island_sealed_tiles > 0
+                           ? (10000LL * CAVE_SYSTEMS_TARGET * n) / s_island_sealed_tiles : 5000;
+            if (want < 1) want = 1;
+            if (want > 10000 || top_lvl >= 3) want = 10000;
             if (pct >= want && !holds_castle) return false;
 
             int first = m->num_dungeon_entrances;
@@ -4727,6 +4797,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             };
 
             stamp_mouth(mx, my, 1, 1);
+            s_cave_placed++;
+            s_cave_placed_tiles += n;
 
             // And one on the top of every storey the mountain has.
             for (int L = 1; L <= top_lvl; L++) {
@@ -7214,6 +7286,19 @@ static bool cliff_bars_overlay(int x, int y) {
 
 int tilemap_cliff_elev_at(int x, int y) {
     return in_world(&x, &y) ? (int)s_cliff_elev[y][x] : 0;
+}
+
+bool tilemap_cliff_sealed_at(int x, int y) {
+    return in_world(&x, &y) && (s_cliff_face[y][x] & CLIFF_FACE_SEALED) != 0;
+}
+
+void tilemap_debug_cave_tally(int* seen, int* sealed, int* placed,
+                              long* sealed_tiles, long* placed_tiles) {
+    if (seen)         *seen         = s_cave_seen;
+    if (sealed)       *sealed       = s_cave_sealed;
+    if (placed)       *placed       = s_cave_placed;
+    if (sealed_tiles) *sealed_tiles = s_cave_sealed_tiles;
+    if (placed_tiles) *placed_tiles = s_cave_placed_tiles;
 }
 
 // What the island drew on the tile, reduced to the one thing a tile-by-tile

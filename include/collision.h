@@ -1,8 +1,22 @@
 #pragma once
 
-constexpr int HB_X1 = 10;  // left edge
-constexpr int HB_X2 = 26;  // right edge
-constexpr int HB_Y1 = 32;  // top of feet
+// The feet: the boots of the sprite, twelve world pixels square at the bottom
+// of a 32x48 frame, which the ground is asked about at every art pixel along
+// the edge -- seven samples a side (HB_SAMPLE below).
+//
+// Twelve, not the sixteen it was, because the cliffs draw ground narrower than
+// that and mean it to be walked. Mother 1's landforms put two flanks half a
+// tile apart with the back line dipping between them, and hang a flank's foot
+// or a notch's line straight over the teeth of a front: a strip of open ground
+// eight art pixels across in the one case and eight to twelve tall in the
+// other, drawn inside the wall sprites, plainly ground, and walled off by feet
+// that took nine. The narrowest strip the drawings make is that half-tile
+// slot, eight of the art's pixels; the boots are six and pass it with a pixel
+// to spare. Every landform in the library is measured against this box by
+// tools/gen_islands.py (FEET), and the two must agree.
+constexpr int HB_X1 = 12;  // left edge
+constexpr int HB_X2 = 24;  // right edge
+constexpr int HB_Y1 = 36;  // top of feet
 constexpr int HB_Y2 = 48;  // bottom of feet
 
 // How far across the way the feet will be slid to get past something small in
@@ -15,10 +29,11 @@ constexpr int HB_Y2 = 48;  // bottom of feet
 // of the art, 5-8% at two and 3.5-5.7% at three.
 //
 // The other measurement says one pixel and not a fraction more. The beaded line
-// at the back of a height is one pixel across, and the feet are a box tested
-// only at its four corners, so a line that thin stops you only where a corner
-// lands on it. A slide is a licence to go looking for somewhere a corner does
-// not, and how far it may look is exactly how thin a wall it can defeat: with
+// at the back of a height is one pixel across, and when the feet were a box
+// tested only at its four corners a line that thin stopped you only where a
+// corner landed on it. A slide is a licence to go looking for somewhere a
+// corner does not, and how far it may look is exactly how thin a wall it can
+// defeat: with
 // the plateau top reachable from open country 0.1% of the time at a slide of
 // one pixel and 94% at two, walking a pixel a frame. There is no curve there to
 // trade along — the line is a wall or it is not.
@@ -48,7 +63,7 @@ using TileSolidFn = bool (*)(const void* map, float px, float py);
 // time, and sprinted at, three fifths.
 //
 // The box only — an obstacle that crosses it has to cross the edge to get in,
-// and everything the cliff draws is longer than the sixteen pixels this is
+// and everything the cliff draws is longer than the twelve pixels this is
 // wide.
 bool can_occupy(const void* map, float x, float y, TileSolidFn tile_solid);
 

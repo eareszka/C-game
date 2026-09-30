@@ -410,6 +410,13 @@ bool tilemap_face_at(int x, int y);
 // The plateau level a tile stands at, 0 for the flat. For the tools' ground
 // dumps, which otherwise cannot tell a plateau top from the field below.
 int  tilemap_cliff_elev_at(int x, int y);
+// Whether the plateau on this tile is sealed: no way up on foot, so a cave
+// may be cut for it (the top bit of the face mask, set by the stamp).
+bool tilemap_cliff_sealed_at(int x, int y);
+// The cave pass counted: mountains walked, sealed ones, caves cut, and the
+// raised tiles of the sealed ones and of the cave ones (for their mean size).
+void tilemap_debug_cave_tally(int* seen, int* sealed, int* placed,
+                              long* sealed_tiles, long* placed_tiles);
 // What the cliff draws on a tile, as one character, for tools that check the
 // drawing tile by tile (SHOT_BANK in tools/shot.cpp): 'R' rock, 'L' the
 // line, '.' nothing.

@@ -75,6 +75,9 @@ int main(int argc, char** argv)
                 if (lv == 2) c = 0xFF40F0F0u;
                 if (lv == 3) c = 0xFFFFFFFFu;
                 else if (!lv && tilemap_face_at(x, y)) c = 0xFF3050A0u;
+                // A sealed top -- no way up on foot, so a cave may be cut for
+                // it -- reads darker than an open one of the same level.
+                if (lv && lv < 3 && tilemap_cliff_sealed_at(x, y)) c = (lv == 1) ? 0xFF2050A0u : 0xFF20A0A0u;
                 px[y * (m->pitch / 4) + x] = c;
             }
         IMG_SavePNG(m, out);

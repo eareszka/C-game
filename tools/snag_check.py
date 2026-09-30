@@ -26,7 +26,7 @@ import sys
 import numpy as np
 from PIL import Image
 
-BOX = 8    # the feet, in art pixels: sixteen world pixels, eight of the art's
+BOX = 6    # the feet, in art pixels: twelve world pixels, six of the art's (BOX + 1 samples)
 SLIP = 1   # HB_SLIP, likewise: two world pixels
 
 

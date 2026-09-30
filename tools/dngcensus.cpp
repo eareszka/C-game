@@ -168,6 +168,21 @@ int main(int argc, char** argv) {
         printf("%-10u", seeds[si]);
         for (int k = 0; k < NKIND; k++) printf(" %7d", dung[k]);
         printf("   %s\n", notes);
+        {
+            // Mountains walked by the cave pass, those with a top no foot
+            // can reach (the only ones that roll), and those that got a
+            // cave: caves <= sealed <= mountains, and systems >= caves (the
+            // fixed entrances add a system of their own).
+            int seen = 0, sealed = 0, placed = 0;
+            long sealed_tiles = 0, placed_tiles = 0;
+            tilemap_debug_cave_tally(&seen, &sealed, &placed, &sealed_tiles, &placed_tiles);
+            // The chance of a cave grows with the mountain, so the mean cave
+            // mountain should be well above the mean sealed one.
+            printf("%-10s mountains %d, sealed %d, caves %d (systems %d, mouths %d); mean size sealed %.0f, cave %.0f tiles%s\n", "",
+                   seen, sealed, placed, sys, mouths,
+                   sealed ? (double)sealed_tiles / sealed : 0.0, placed ? (double)placed_tiles / placed : 0.0,
+                   (placed > sealed || sealed > seen || placed > sys) ? "  <-- TALLY OFF" : "");
+        }
 
         for (int k = 0; k <= NKIND; k++) {
             dung_tot[k] += dung[k];

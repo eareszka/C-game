@@ -67,6 +67,8 @@ GRASS = (168, 240, 188)
 BROWN = (136, 112, 0)
 INK = (0, 0, 0)
 TUFT = (0, 168, 0)
+UNKNOWN = -1              # a tile the picture does not show: past its edge, or under a tree or a tuft
+FILL_SEED = 1             # the collapse that settles unknown tiles; one seed, so every worker reads the same sources
 
 REFS = ('island1', 'island2', 'island3')
 MIN_HIGH = 6              # enclosed ground tiles a grown island must have
@@ -107,7 +109,7 @@ class Sprites:
         return self.ids[k]
 
     def wall(self, s):
-        return self.kind[s] != 0
+        return s >= 0 and self.kind[s] != 0
 
     def solid(self, s):
         im = self.img[s]
@@ -116,7 +118,10 @@ class Sprites:
 
 def tile_codes(a):
     """Per tile of an image: only-cliff-colours, cliff-coloured (rock or ink
-    on it, no tuft), and scree (brown grains on clean ground)."""
+    on it, no tuft), scree (brown grains on clean ground), and plain ground
+    (grass, a tuft, a few grains: nothing that could be rock underneath).
+    A tile that is none of these shows something else -- a tree, water, a
+    tuft standing on rock -- and what the cliff does there is unknown."""
     H, W = a.shape[0] // CELL, a.shape[1] // CELL
     code = np.zeros(a.shape[:2], np.uint8)
     for k, col in ((1, GRASS), (2, BROWN), (3, INK), (4, TUFT)):
@@ -125,38 +130,89 @@ def tile_codes(a):
     clean = (t != 0).all(axis=(2, 3))
     cliffish = clean & ~(t == 4).any(axis=(2, 3)) & (((t == 2).sum(axis=(2, 3)) >= 8) | ((t == 3).sum(axis=(2, 3)) >= 3))
     scree = clean & ~cliffish & ~(t == 4).any(axis=(2, 3)) & (t == 2).any(axis=(2, 3))
-    return H, W, clean, cliffish, scree
+    ground = clean & ~cliffish & ~scree & ((t == 2).sum(axis=(2, 3)) < 8) & ((t == 3).sum(axis=(2, 3)) < 3)
+    return H, W, clean, cliffish, scree, ground
+
+
+RUNS_INTO = 8             # rock pixels along a cell's edge for the rock to run on past it
+
+
+def edge_rock(sp, s, side):
+    """Rock pixels on one edge of sprite s: 0 top, 1 bottom, 2 left, 3 right."""
+    im = sp.img[s]
+    rock = np.all(im == BROWN, axis=2) | np.all(im == INK, axis=2)
+    return int((rock[0], rock[15], rock[:, 0], rock[:, 15])[side].sum())
+
+
+def settle_hidden(sp, grid, hidden):
+    """Hidden tiles -- past the picture's edge, under a tree or a tuft --
+    become UNKNOWN where a neighbouring wall's rock runs to the edge they
+    share, since the wall then goes on under them, and plain ground
+    everywhere else, where nothing they hide could be rock. A flank's teeth
+    touch its edge by a few pixels and stand beside real ground; a band that
+    fills its edge does not stop there. RUNS_INTO tells the two apart. A tile
+    is UNKNOWN only where the picture may hide rock, and a splice cannot
+    cross an unknown tile, so no more of them than that."""
+    h, w = grid.shape
+    out = grid.copy()
+    for y in range(h):
+        for x in range(w):
+            if not hidden[y, x]:
+                continue
+            runs = False
+            # the neighbour above faces this tile with its bottom edge, and so on
+            for (dy, dx), side in (((-1, 0), 1), ((1, 0), 0), ((0, -1), 3), ((0, 1), 2)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < h and 0 <= nx < w and sp.wall(grid[ny, nx]) and edge_rock(sp, grid[ny, nx], side) >= RUNS_INTO:
+                    runs = True
+                    break
+            out[y, x] = UNKNOWN if runs else 0
+    return out
 
 
 def load_island(sp, name):
-    """A drawing as a grid of sprite ids with a one-tile ground margin, and
-    which of its tiles were wiped (tufts, trees, water) so a diff can skip them."""
+    """A drawing as a grid of sprite ids with a one-tile margin, and which of
+    its tiles were wiped (tufts, trees, water) so a diff can skip them.
+
+    The margin is hidden, not ground: the picture stops there, and a wall
+    that runs to its edge goes on past it. island1's bottom row holds the top
+    of a front whose foot is outside the picture; read as ground, the margin
+    made "front over grass" a block of the reference, and the islands grew
+    that block by the hundred. So is a tile with something standing on the
+    rock. What the drawing shows as plain ground is ground, and a hidden tile
+    beside no wall is ground too (settle_hidden)."""
     a = np.array(Image.open(os.path.join(ISLAND_DIR, name + '.png')).convert('RGB'))
-    H, W, clean, cliffish, scree = tile_codes(a)
+    H, W, clean, cliffish, scree, ground = tile_codes(a)
     grid = np.zeros((H + 2, W + 2), int)
     wiped = np.zeros((H + 2, W + 2), bool)
+    hidden = np.ones((H + 2, W + 2), bool)
     for ty in range(H):
         for tx in range(W):
+            hidden[ty + 1, tx + 1] = False
             if cliffish[ty, tx] or scree[ty, tx]:
                 grid[ty + 1, tx + 1] = sp.id(a[ty * CELL:(ty + 1) * CELL, tx * CELL:(tx + 1) * CELL])
             else:
                 wiped[ty + 1, tx + 1] = True
-    return grid, wiped
+                hidden[ty + 1, tx + 1] = not ground[ty, tx]
+    return settle_hidden(sp, grid, hidden), wiped
 
 
 def mirror(sp, grid):
     out = np.zeros_like(grid)
     for y in range(grid.shape[0]):
         for x in range(grid.shape[1]):
-            out[y, grid.shape[1] - 1 - x] = sp.id(sp.img[grid[y, x]][:, ::-1, :])
+            s = grid[y, x]
+            out[y, grid.shape[1] - 1 - x] = UNKNOWN if s == UNKNOWN else sp.id(sp.img[s][:, ::-1, :])
     return out
 
 
-def pieces_of(mask):
-    """8-connected pieces of a mask: label grid (1-based) and the cells of each."""
+def pieces_of(mask, conn=8):
+    """8-connected (or 4-connected) pieces of a mask: label grid (1-based)
+    and the cells of each."""
     H, W = mask.shape
     lab = np.zeros((H, W), np.int32)
     out = []
+    steps = [(dy, dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if dy or dx] if conn == 8 else [(1, 0), (-1, 0), (0, 1), (0, -1)]
     for y in range(H):
         for x in range(W):
             if not mask[y, x] or lab[y, x]:
@@ -167,12 +223,11 @@ def pieces_of(mask):
             while q:
                 p, r = q.popleft()
                 out[-1].append((p, r))
-                for dy in (-1, 0, 1):
-                    for dx in (-1, 0, 1):
-                        yy, xx = p + dy, r + dx
-                        if 0 <= yy < H and 0 <= xx < W and mask[yy, xx] and not lab[yy, xx]:
-                            lab[yy, xx] = len(out)
-                            q.append((yy, xx))
+                for dy, dx in steps:
+                    yy, xx = p + dy, r + dx
+                    if 0 <= yy < H and 0 <= xx < W and mask[yy, xx] and not lab[yy, xx]:
+                        lab[yy, xx] = len(out)
+                        q.append((yy, xx))
     return lab, out
 
 
@@ -186,7 +241,7 @@ def load_map(sp, vocab):
     no more than SOLID_SHARE of it is solid rock (a mountain mass is a field
     of it; a landform's band is one solid row in three)."""
     a = np.array(Image.open(MAP).convert('RGB'))
-    H, W, clean, cliffish, scree = tile_codes(a)
+    H, W, clean, cliffish, scree, ground = tile_codes(a)
     sid = np.full((H, W), -1, int)
     ys, xs = np.nonzero(cliffish)
     for y, x in zip(ys, xs):
@@ -217,23 +272,34 @@ def load_map(sp, vocab):
         if x1 - x0 > MAP_MAX_W or y1 - y0 > MAP_MAX_H:
             continue
         h, w = y1 - y0, x1 - x0
+        # Hidden where the map hides what the cliff does: a tree or a tuft on
+        # the rock, a boulder or a track in the cliff's colours, another
+        # landform's wall cut by the box. Ground where nothing runs into
+        # them, unknown where a wall's rock does (settle_hidden): a boulder
+        # at the foot of a band is on open ground, one in the middle of a
+        # band's bottom row is where the map stopped showing the band.
         grid = np.zeros((h, w), int)
+        hidden = np.zeros((h, w), bool)
         for yy in range(h):
             for xx in range(w):
                 my, mx = y0 + yy, x0 + xx
                 if cliffish[my, mx]:
                     if not wall[my, mx]:
-                        continue                  # a boulder or a track in the cliff's colours
+                        hidden[yy, xx] = True     # a boulder or a track in the cliff's colours
+                        continue
                     other = lab[my, mx]
                     if other != pi + 1:
                         # another landform's wall: part of this picture only when it lies whole in the box
                         oy0, oy1, ox0, ox1 = bbox[other - 1]
                         if not (oy0 >= y0 and oy1 < y1 and ox0 >= x0 and ox1 < x1):
+                            hidden[yy, xx] = True
                             continue
                     grid[yy, xx] = sid[my, mx]
                 elif scree[my, mx]:
                     grid[yy, xx] = sp.id(a[my * CELL:(my + 1) * CELL, mx * CELL:(mx + 1) * CELL])
-        out.append(grid)
+                elif not ground[my, mx]:
+                    hidden[yy, xx] = True
+        out.append(settle_hidden(sp, grid, hidden))
     return out
 
 
@@ -248,7 +314,7 @@ def vocabulary(sp):
             if sp.wall(s):
                 vocab.add(s)
     a = np.array(Image.open(CLUSTER).convert('RGB'))
-    H, W, clean, cliffish, scree = tile_codes(a)
+    H, W, clean, cliffish, scree, ground = tile_codes(a)
     for y in range(H):
         for x in range(W):
             if cliffish[y, x]:
@@ -377,6 +443,8 @@ class Model:
             for y in range(h - N + 1):
                 for x in range(w - N + 1):
                     blk = g[y:y + N, x:x + N]
+                    if (blk == UNKNOWN).any():
+                        continue                  # the picture does not show this block
                     k = blk.tobytes()
                     if k not in pats:
                         pats[k] = blk.copy()
@@ -487,6 +555,151 @@ class Model:
                     raise AssertionError('block at %d,%d is not a reference block' % (x, y))
 
 
+def fill_unknown(model, sp, g, rng, pad, reach=2, tries=4):
+    """A source with its unknown tiles settled from the sources' blocks.
+
+    A drawing's picture stops at its edge with walls running on past it; a
+    tree or a tuft stands on the rock here and there. Those tiles are UNKNOWN
+    and make no blocks. They are filled here by collapse, a window at a time:
+    round each unknown tile, `reach` tiles each way, the known tiles fixed and
+    the unknown ones free to take whatever the blocks allow -- so a front
+    whose foot the picture cut off gets the foot the drawing gives that front
+    elsewhere. Windows, not the whole patch at once, because one tile the
+    sources cannot settle must not leave the rest of a drawing's edge open.
+    `pad` rings of unknown are laid round the grid first, the outermost ring
+    ground, so a wall at a drawing's edge has room to end: a foot, then the
+    grass below it. A tile no window can settle is left unknown, and nothing
+    is guessed."""
+    N = model.N
+    if pad:
+        g = np.pad(g, pad, constant_values=UNKNOWN)
+        g[0, :] = g[-1, :] = g[:, 0] = g[:, -1] = 0
+    g = g.copy()
+    if not (g == UNKNOWN).any():
+        return g
+    vals = np.array([[[int(p[dy, dx]) for dx in range(N)] for dy in range(N)] for p in model.pats])   # P x N x N
+    H, W = g.shape
+    for cy in range(H):
+        for cx in range(W):
+            if g[cy, cx] != UNKNOWN:
+                continue
+            y0, y1 = max(0, cy - reach), min(H, cy + reach + 1)
+            x0, x1 = max(0, cx - reach), min(W, cx + reach + 1)
+            wh, ww = y1 - y0 - N + 1, x1 - x0 - N + 1
+            if wh < 1 or ww < 1:
+                continue
+            unknown = g[y0:y1, x0:x1] == UNKNOWN
+            for _ in range(tries):
+                wave = np.ones((wh, ww, model.P), bool)
+                for y in range(wh):
+                    for x in range(ww):
+                        for dy in range(N):
+                            for dx in range(N):
+                                v = g[y0 + y + dy, x0 + x + dx]
+                                if v != UNKNOWN:
+                                    wave[y, x] &= vals[:, dy, dx] == v
+                if not model.propagate(wave, [(y, x) for y in range(wh) for x in range(ww)]):
+                    break                             # no blocks fit the known tiles round here
+                ok = True
+                while True:
+                    cnt = wave.sum(axis=2)
+                    if not (cnt > 1).any():
+                        break
+                    wt = np.where(wave, model.w, 0.0)
+                    sw = wt.sum(axis=2)
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        ent = np.log(sw) - (wt * np.log(np.where(wt > 0, wt, 1))).sum(axis=2) / sw
+                    ent = np.where(cnt > 1, ent, np.inf) + rng.random(ent.shape) * 1e-4
+                    y, x = np.unravel_index(int(np.argmin(ent)), ent.shape)
+                    ks = np.flatnonzero(wave[y, x])
+                    k = ks[rng.choice(len(ks), p=model.w[ks] / model.w[ks].sum())]
+                    wave[y, x] = False
+                    wave[y, x, k] = True
+                    if not model.propagate(wave, [(y, x)]):
+                        ok = False
+                        break
+                if not ok:
+                    continue
+                # Only tiles strictly inside the window are written: every
+                # block a tile inside makes lies in the window and was
+                # checked, while a tile on the edge makes a block with what
+                # lies just outside, and that one was not. The window centred
+                # on it, later, holds it against all of its neighbours.
+                for y in range(wh):
+                    for x in range(ww):
+                        p = model.pats[int(np.flatnonzero(wave[y, x])[0])]
+                        for dy in range(N):
+                            for dx in range(N):
+                                gy, gx = y0 + y + dy, x0 + x + dx
+                                inside = y0 < gy < y1 - 1 and x0 < gx < x1 - 1
+                                if unknown[y + dy, x + dx] and inside:
+                                    g[gy, gx] = p[dy, dx]
+                break
+    return g
+
+
+def widen_holes(sp, g):
+    """Every wall whose rock runs into a tile still unknown becomes unknown
+    too. The blocks could not end that wall the way the picture cut it, so
+    the wall is asked again along with the tile: a front the picture cut
+    off then gets a top that has a foot in the sources."""
+    out = g.copy()
+    ys, xs = np.nonzero(g == UNKNOWN)
+    for y, x in zip(ys.tolist(), xs.tolist()):
+        for (dy, dx), side in (((-1, 0), 1), ((1, 0), 0), ((0, -1), 3), ((0, 1), 2)):
+            ny, nx = y + dy, x + dx
+            if 0 <= ny < g.shape[0] and 0 <= nx < g.shape[1] and sp.wall(g[ny, nx]) and edge_rock(sp, g[ny, nx], side) >= RUNS_INTO:
+                out[ny, nx] = UNKNOWN
+    return out
+
+
+def fill_passes(model, sp, g, rng, pad):
+    """The smallest window first, then wider ones for whatever is left. A
+    small window asks only the tiles round the one being settled; a wide one
+    asks more of them at once and fails whole when any of them cannot agree."""
+    g = fill_unknown(model, sp, g, rng, pad, reach=1)
+    for reach in (2, 3):
+        if (g == UNKNOWN).any():
+            g = fill_unknown(model, sp, g, rng, 0, reach=reach)
+    return g
+
+
+def settle_sources(sp, grids, model, pad):
+    """Every grid with its unknown tiles filled, deterministically. What the
+    blocks cannot fill is widened by the wall that runs into it and asked
+    once more (widen_holes); a splice cannot cross a tile left unknown, so
+    every one settled is landforms gained."""
+    out = []
+    for i, g in enumerate(grids):
+        rng = np.random.RandomState(FILL_SEED + i)
+        g = fill_passes(model, sp, g, rng, pad)
+        if (g == UNKNOWN).any():
+            g = fill_passes(model, sp, widen_holes(sp, g), rng, 0)
+        out.append(g)
+    return out
+
+
+def sources_of(sp, refs, landforms, log=False):
+    """The sources as the model and the splices use them: the drawings and the
+    map's landforms with their unknown tiles settled, and their mirrors. The
+    drawings get two rings of room past their edge (the picture cut a wall
+    off there); the map's boxes hold their own margin. Same in every
+    process: the filling is seeded once, FILL_SEED."""
+    draw = refs[0::2]                             # load_refs: each drawing, then its mirror
+    raw = list(landforms) + [mirror(sp, g) for g in landforms] + list(refs)
+    model0 = Model(sp, raw)
+    draw_f = settle_sources(sp, draw, model0, 2)
+    land_f = settle_sources(sp, landforms, model0, 0)
+    if log:
+        for name, before, after in (('drawings', draw, draw_f), ('map landforms', landforms, land_f)):
+            b = sum(int((g == UNKNOWN).sum()) for g in before)
+            a = sum(int((g == UNKNOWN).sum()) for g in after)
+            print('  %s: %d unknown tiles, %d settled, %d left' % (name, b, b - a, a))
+    refs_f = [h for g in draw_f for h in (g, mirror(sp, g))]
+    land_all = list(land_f) + [mirror(sp, g) for g in land_f]
+    return refs_f, land_all + refs_f
+
+
 # --------------------------------------------------------------- islands
 
 def wall_pieces(sp, g):
@@ -516,7 +729,8 @@ def room(sp, g, level=None):
     return best
 
 
-FEET = 8                  # the player's feet, in art pixels: HB_X2 - HB_X1 over the 2x scale (include/collision.h)
+FEET = 7                  # the player's feet, in art pixels: the samples across the box of
+                          # include/collision.h -- (HB_X2 - HB_X1) / 2 plus the far edge
 
 
 def ink_mask(sp, g):
@@ -541,6 +755,51 @@ def standable(ink):
     tot = p[f:, f:] - p[:-f, f:] - p[f:, :-f] + p[:-f, :-f]
     out[:H - f + 1, :W - f + 1] = tot == 0
     return out
+
+
+def close_ink(m):
+    """The game's closing of a cell's ink (cliff_close_cell in tilemap.cpp):
+    grow a pixel with a plus, shrink it back; outside the cell empty when
+    growing and full when shrinking. Applied per cell, as the game does."""
+    H, W = m.shape
+    out = np.zeros_like(m)
+    for y0 in range(0, H, CELL):
+        for x0 in range(0, W, CELL):
+            c = m[y0:y0 + CELL, x0:x0 + CELL]
+            g = c.copy()
+            g[1:, :] |= c[:-1, :]; g[:-1, :] |= c[1:, :]; g[:, 1:] |= c[:, :-1]; g[:, :-1] |= c[:, 1:]
+            e = g.copy()
+            e[1:, :] &= g[:-1, :]; e[:-1, :] &= g[1:, :]; e[:, 1:] &= g[:, :-1]; e[:, :-1] &= g[:, 1:]
+            out[y0:y0 + CELL, x0:x0 + CELL] = e
+    return out
+
+
+def top_open(sp, g, level):
+    """Whether the feet can walk from the flat onto the plateau.
+
+    Enclosed at tile level, a plateau is not always enclosed at the pixel
+    level the ground is closed at: where a flank's foot meets the next lobe's
+    back line inside one wall tile there can be a way through. The game
+    keeps such ways as they are, so the cave pass has to know: a cave is
+    there to carry the player between elevations, and a plateau with its own
+    way up needs none. Asked of the closed ink, with the feet's box, from
+    the flat round the landform: the feet's positions are joined four ways
+    (a one-pixel diagonal line parts two regions only under that), the piece
+    that reaches the border is the flat, and the plateau is open if any
+    pixel under one of its boxes is plateau."""
+    ink = close_ink(ink_mask(sp, g))
+    stand = standable(ink)
+    lab, _ = pieces_of(stand, conn=4)
+    H, W = lab.shape
+    outside = set(lab[0, :].tolist()) | set(lab[H - FEET, :].tolist()) | set(lab[:, 0].tolist()) | set(lab[:, W - FEET].tolist())
+    outside.discard(0)
+    flat = np.isin(lab, list(outside))
+    cov = np.zeros((H, W), bool)
+    for dy in range(FEET):
+        for dx in range(FEET):
+            cov[dy:, dx:] |= flat[:H - dy, :W - dx]
+    region = np.kron(level == 1, np.ones((CELL, CELL), bool))
+    return int((cov & region).any())
 
 
 def pieces_px(mask, step=4):
@@ -608,6 +867,7 @@ def grow_worker(args):
     worker's cells mean the same."""
     seed, count = args
     sp, refs = load_refs()
+    refs, _ = sources_of(sp, refs, [])
     model = Model(sp, refs)
     rng = np.random.RandomState(seed)
     out, seen, misses = [], set(), 0
@@ -736,7 +996,7 @@ def splice_worker(args):
     a_idx, extra_idx, seed, cap, b_sample = args
     sp, refs = load_refs()
     landforms = load_map(sp, vocabulary(sp))
-    sources = list(landforms) + [mirror(sp, g) for g in landforms] + list(refs)
+    refs, sources = sources_of(sp, refs, landforms)
     model = Model(sp, sources)
     pool = list(sources) + [np.array(e) for e in extra_idx]
     rng = np.random.RandomState(seed)
@@ -812,7 +1072,7 @@ def paint(sp, g):
     im = np.zeros((h * CELL, w * CELL, 3), np.uint8)
     for y in range(h):
         for x in range(w):
-            im[y * CELL:(y + 1) * CELL, x * CELL:(x + 1) * CELL] = sp.img[g[y, x]]
+            im[y * CELL:(y + 1) * CELL, x * CELL:(x + 1) * CELL] = (255, 0, 255) if g[y, x] == UNKNOWN else sp.img[g[y, x]]
     return im
 
 
@@ -834,8 +1094,8 @@ def write_sheet(sp, path):
     Image.fromarray(sheet).save(path)
 
 
-def write_inc(sp, islands, levels, path):
-    """islands and levels sorted largest plateau first."""
+def write_inc(sp, islands, levels, opens, path):
+    """islands, levels and opens sorted largest plateau first."""
     sizes = [int((lv > 0).sum()) for lv in levels]
     large0 = next((i for i, s in enumerate(sizes) if s < LARGE_HIGH), len(sizes))
     medium0 = next((i for i, s in enumerate(sizes) if s < MEDIUM_HIGH), len(sizes))
@@ -852,8 +1112,11 @@ def write_inc(sp, islands, levels, path):
              'static const unsigned char ISLAND_KIND[ISLAND_SPRITES] = { %s };' % ', '.join(str(k) for k in sp.kind),
              '// level: 0 the flat, 1 the plateau, 2 and 3 storeys on it. high_tiles counts',
              '// the tiles above the flat; room is the side of the largest open square of them.',
-             'struct Island { int w, h, high_tiles, room; const unsigned short* cells; const unsigned char* level; };']
+             '// open: 1 when the feet can walk up onto the plateau from the flat, through a',
+             '// gap in the walls at pixel level, so a cave is not needed to reach it.',
+             'struct Island { int w, h, high_tiles, room, open; const unsigned short* cells; const unsigned char* level; };']
     for i, (g, lv) in enumerate(zip(islands, levels)):
+        assert (g >= 0).all(), 'landform %d has a tile the sources do not show' % i
         lines.append('static const unsigned short ISLAND_%d_CELLS[%d] = { %s };'
                      % (i, g.size, ', '.join(str(int(v)) for v in g.ravel())))
         lines.append('static const unsigned char ISLAND_%d_LEVEL[%d] = { %s };'
@@ -865,8 +1128,8 @@ def write_inc(sp, islands, levels, path):
     lines.append('static const int ISLAND_MEDIUM0 = %d;' % medium0)
     lines.append('static const Island ISLANDS[ISLAND_COUNT] = {')
     for i, (g, lv) in enumerate(zip(islands, levels)):
-        lines.append('    { %d, %d, %d, %d, ISLAND_%d_CELLS, ISLAND_%d_LEVEL },'
-                     % (g.shape[1], g.shape[0], sizes[i], room(sp, g, lv), i, i))
+        lines.append('    { %d, %d, %d, %d, %d, ISLAND_%d_CELLS, ISLAND_%d_LEVEL },'
+                     % (g.shape[1], g.shape[0], sizes[i], room(sp, g, lv), opens[i], i, i))
     lines.append('};')
     with open(path, 'w', newline='\n') as f:
         f.write('\n'.join(lines) + '\n')
@@ -931,15 +1194,23 @@ def main():
     vocab = vocabulary(sp)
     landforms = load_map(sp, vocab)
     print('%d drawings (with mirrors), %d map landforms, %d sprites, %.0fs' % (len(refs), len(landforms), len(sp.img), time.time() - t0))
-    sources = list(landforms) + [mirror(sp, g) for g in landforms] + list(refs)
+    refs, sources = sources_of(sp, refs, landforms, log=True)
     model = Model(sp, sources)
     print('%d blocks, %.0fs' % (model.P, time.time() - t0))
     sys.stdout.flush()
 
     big = splice_pool(sp, sources, a.big, a.seed, a.workers)
     small = grow(a.count, a.seed, a.workers)
-    # the user's own drawings stand as they are; the map's landforms do not
-    own = [crop(sp, g) for g in refs]
+    # the user's own drawings stand as they are; the map's landforms do not.
+    # A drawing with a tile still unknown cannot: nothing can be drawn there.
+    own = [crop(sp, g) for g in refs if not (g == UNKNOWN).any()]
+    for k, g in enumerate(refs):
+        ys, xs = np.nonzero(g == UNKNOWN)
+        if len(xs):
+            # refs are settled drawings: 2 rings of pad round the loader's 1-tile margin
+            name = REFS[k // 2] + (' (mirror)' if k % 2 else '')
+            print('  %s left out: tile%s %s could not be settled (drawing tiles, x,y)'
+                  % (name, 's' if len(xs) > 1 else '', ', '.join('%d,%d' % (x - 3, y - 3) for x, y in zip(xs.tolist(), ys.tolist()))))
     islands = big + own + small
     levels = [settle_levels(sp, g) for g in islands]
     keep = [i for i in range(len(islands)) if not narrow_split(sp, islands[i], levels[i])]
@@ -952,16 +1223,19 @@ def main():
     levels = [levels[i] for i in order]
     for g in islands:
         model.check(g)
+    opens = [top_open(sp, g, lv) for g, lv in zip(islands, levels)]
     if a.no_write:
         return
     write_sheet(sp, a.sheet)
-    large0, medium0 = write_inc(sp, islands, levels, OUT_INC)
+    large0, medium0 = write_inc(sp, islands, levels, opens, OUT_INC)
     write_contact(sp, islands, OUT_PNG, cols=6, scale=1)
     sizes = [int((lv > 0).sum()) for lv in levels]
     storeys = sum(1 for lv in levels if lv.max() >= 2)
     print('wrote %d landforms: %d large, %d medium, %d small; plateaus %d to %d tiles, %d with a storey drawn in -> %s, %s, %s (%.0fs)'
           % (len(islands), large0, medium0 - large0, len(islands) - medium0, min(sizes), max(sizes), storeys,
              os.path.relpath(a.sheet, ROOT), os.path.relpath(OUT_INC, ROOT), os.path.relpath(OUT_PNG, ROOT), time.time() - t0))
+    print('  open to the feet from the flat: %d of %d large, %d of %d medium, %d of %d small'
+          % (sum(opens[:large0]), large0, sum(opens[large0:medium0]), medium0 - large0, sum(opens[medium0:]), len(islands) - medium0))
     print('now run: python tools/palette_pass.py --write')
 
 
