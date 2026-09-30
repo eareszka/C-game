@@ -849,6 +849,9 @@ static long s_island_sealed_tiles = 0;                         // their raised t
 // mouth tile's glyph.
 static const int CAVE_MOUTH_COL = 21, CAVE_MOUTH_ROW = 6;
 static const int CAVE_MOUTH_W = 3, CAVE_MOUTH_H = 2;
+// The top row of the checkered floor within the opening tile (sprite row 28,
+// the bottom cell's row 12): the feet stop there.
+static const int CAVE_MOUTH_FLOOR_AY = 12;
 static constexpr int cave_mouth_cell(int dx, int dy) {
     return TILE_TOWN0_BASE + (CAVE_MOUTH_ROW + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_COL + dx);
 }
@@ -7491,6 +7494,15 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // walkable to its tile edges — that is the whole point of it — and it is
     // the one tile the drawn edge is not the walkable one.
     if (map->tiles[ty][tx] == TILE_WASTE_BRIDGE) return false;
+
+    // The cave mouth's opening: the feet walk in onto the checkered floor and
+    // no further. Above the floor's top row the opening is the dark inside the
+    // rock, and the player stands at its threshold -- still well inside the
+    // mouth tile, so the way in is still offered.
+    if (map->overlay[ty][tx] == cave_mouth_cell(1, 1)) {
+        int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
+        if (ay < CAVE_MOUTH_FLOOR_AY) return true;
+    }
 
     // The cliff is drawn along a contour through the middle of a cell too, and
     // is asked the same way the water is: which pixel, not which tile. The
