@@ -22,8 +22,6 @@ Two rules, and this enforces both:
    never dropped: it is the line.
 
 Left alone:
-  - the tint masks (cliff haze and low rows), which must stay pure white: the
-    renderer reads them as masks and multiplies them by a colour at draw time;
   - the generators' hand-painted masters, which are never drawn -- they are
     what the generators read, and keep their full detail for that.
 Block positions come from the generators, never restated here.
@@ -41,7 +39,6 @@ sys.path.insert(0, os.path.join(ROOT, "art", "direction"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import fcremap as fc
 import gen_cave_tiles as cave
-import gen_cliff_tiles as cliff
 import gen_trail_tiles as trail
 
 SHEET = os.path.join(ROOT, "assets", "tileset.png")
@@ -59,8 +56,6 @@ def regions():
     def block(c0, r0, nc, nr):
         return {(c, r) for c in range(c0, c0 + nc) for r in range(r0, r0 + nr)}
     return [
-        ("mask", "haze", block(0, cliff.HAZE_ROW0, 256, cliff.NCASE)),
-        ("mask", "low", block(0, cliff.LOW_ROW0, 256, cliff.NCASE)),
         ("master", "cave", block(cave.MASTER_COL0, 0, cave.BLOCK_COLS, cave.BLOCK_ROWS)),
         ("master", "trail", block(trail.MASTER_COL0, trail.MASTER_ROW0,
                                   trail.BANK_COLS, trail.BANK_ROWS)),

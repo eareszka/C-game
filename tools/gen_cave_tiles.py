@@ -32,15 +32,15 @@ can never land on the same output: collapsing two is invisible in a palette dump
 and shows up only as lost detail in the render.
 
 Transparency is the colour key (255,0,0), never alpha -- the atlas is opaque RGBA
-throughout, and tools/gen_cliff_tiles.py round-trips the whole sheet through
+throughout, and tools/gen_islands.py round-trips the whole sheet through
 .convert('RGB'), so an alpha-blanked pixel would come back as opaque black and
 stop matching the key. Key pixels are copied through untouched, which is also
 what makes the footprint assertion below meaningful.
 
 CROSS-LANGUAGE PAIRING. MASTER_COL0 / OUT_COL0 / BLOCK_COLS must agree with
 CAVE_MASTER_COL0 / CAVE_ART_COL0 / CAVE_ART_COLS in src/dungeon.cpp. There is no
-way to check that from here; it is the same standing arrangement gen_cliff_tiles.py
-has with tilemap.cpp's *_ROW0 constants.
+way to check that from here; it is the same standing arrangement gen_islands.py
+has with tilemap.cpp's ISLAND_ROW0.
 
 Run from the repo root:
 
