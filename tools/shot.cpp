@@ -92,6 +92,37 @@ int main(int argc, char** argv)
     // a picture can be trusted to show: the routes are painted over terrain, so
     // a tile differing between builds is only meaningful once the tiles either
     // build painted a route on are set aside. tools/terrain_same.py does that.
+    // SHOT_MOUTHS=1 lists every ground cave mouth (a 1x1 level-1 cave
+    // entrance) with the overlay of the six tiles its sprite covers -- the
+    // sheet cell, as col:row, or '-' where something else now lies -- and
+    // counts how many mouths still carry the whole sprite.
+    if (getenv("SHOT_MOUTHS")) {
+        SDL_Surface* m = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_RGBA32);
+        tilemap_init_tile_cache(SDL_CreateSoftwareRenderer(m));
+        tilemap_build_overworld_phase1(&g_map, seed);
+        tilemap_build_overworld_phase2(&g_map, seed);
+        int total = 0, whole = 0;
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = g_map.dungeon_entrances[i];
+            if (e.type != DUNGEON_ENT_CAVE || e.size != 0 || e.cliff_level != 1) continue;
+            total++;
+            int good = 0; char row[128]; int n = 0;
+            for (int dy = -1; dy <= 0; dy++)
+                for (int dx = -1; dx <= 1; dx++) {
+                    int x = e.x + dx, y = e.y + dy;
+                    int ov = in_world(&x, &y) ? g_map.overlay[y][x] : -1;
+                    int rel = ov - TILE_TOWN0_BASE, col = rel % 256, r = rel / 256;
+                    bool ok = ov >= TILE_TOWN0_BASE && col == 22 + dx && r == 7 + dy;
+                    good += ok;
+                    n += snprintf(row + n, sizeof row - n, ok ? " ok" : " %d", ov);
+                }
+            if (good == 6) whole++;
+            printf("mouth %d,%d tile %d:%s\n", e.x, e.y, g_map.tiles[e.y][e.x], row);
+        }
+        printf("ground mouths %d, with the whole sprite %d\n", total, whole);
+        return 0;
+    }
+
     if (getenv("SHOT_TILES")) {
         tilemap_build_overworld_phase1(&g_map, seed);
         tilemap_build_overworld_phase2(&g_map, seed);
