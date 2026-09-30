@@ -4773,8 +4773,17 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     // the same foot in every column, and rock on both rows above it
                     if (face_foot(lx + c, ly + 1) != foot) ok = false;
                     else if (!rock_at(lx + c, foot - 1) || !rock_at(lx + c, foot)) ok = false;
-                    // and ground you can walk up to it on, all along the sprite
-                    else if (foot + 1 >= MAP_HEIGHT || !tilemap_is_walkable(map, lx + c, foot + 1)) ok = false;
+                    // and the flat in front of it, two rows of it, walkable all
+                    // along the sprite. The flat, not a top: a wall tile keeps
+                    // elevation 0 wherever it stands, so the tile under a notch
+                    // or a flank's foot inside a plateau passes every test
+                    // above, and the ground in front of it is still plateau --
+                    // or the line at its edge -- where no one arrives from below.
+                    else for (int r = 1; r <= 2 && ok; r++) {
+                        int gy = foot + r;
+                        if (gy >= MAP_HEIGHT || s_cliff_elev[gy][lx + c] != 0 ||
+                            !tilemap_is_walkable(map, lx + c, gy)) ok = false;
+                    }
                 }
                 if (!ok) continue;
 
