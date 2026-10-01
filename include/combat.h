@@ -15,6 +15,19 @@ struct Tilemap;   // optional tile-based harvest target -- only the overworld ha
 // overworld and every dungeon share this mechanic completely -- only what
 // they can strike differs (resource nodes plus world tiles, vs. resource
 // nodes alone).
+// One thrown object in flight. Each throw is its own, retired only by what it
+// hits or by leaving the view, so a new throw never cuts an old one short.
+struct ThrownObject {
+    int        live = 0;
+    float      x = 0.0f, y = 0.0f;
+    float      dx = 0.0f, dy = 0.0f;   // unit direction
+    WeaponType weapon = WEAPON_KNIFE;
+    unsigned   seq = 0;                // launch order: the oldest gives way if all are flying
+};
+
+// More than the fastest thrower can have in the air before the first leaves view.
+#define MAX_THROWN 16
+
 struct WeaponSwingState {
     float      tool_cd      = 0.0f;    // seconds before the next hit is allowed
     float      swing_t      = -1.0f;   // seconds into the current swing; -1 = idle
@@ -24,10 +37,8 @@ struct WeaponSwingState {
 
     float      freeze_t     = 0.0f;    // seconds left rooted by a heavy weapon's swing
 
-    int        throw_live   = 0;       // the one thrown object in flight, if any
-    float      throw_x = 0.0f, throw_y = 0.0f;
-    float      throw_dx = 0.0f, throw_dy = 0.0f;   // unit direction
-    WeaponType throw_weapon = WEAPON_KNIFE;
+    ThrownObject thrown[MAX_THROWN];   // every thrown object in flight
+    unsigned     throw_seq = 0;        // launches so far
 };
 
 // Seconds of cooldown a swing with this weapon sets. Sweeps and thrusts can use

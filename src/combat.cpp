@@ -61,13 +61,20 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
             ws->tool_cd = weapon_cooldown_seconds(weapon);
         } else if (weapon_throws(weapon)) {
             // Launch the object and step back -- it does the striking, not us.
+            // A free slot, or -- only if every one is flying -- the oldest.
+            ThrownObject* t = &ws->thrown[0];
+            for (ThrownObject& c : ws->thrown) {
+                if (!c.live) { t = &c; break; }
+                if (c.seq < t->seq) t = &c;
+            }
             float ang = facing_angle(player->facing);
-            ws->throw_live   = 1;
-            ws->throw_x      = hx;
-            ws->throw_y      = hy;
-            ws->throw_dx     = cosf(ang);
-            ws->throw_dy     = sinf(ang);
-            ws->throw_weapon = weapon;
+            t->live   = 1;
+            t->x      = hx;
+            t->y      = hy;
+            t->dx     = cosf(ang);
+            t->dy     = sinf(ang);
+            t->weapon = weapon;
+            t->seq    = ++ws->throw_seq;
             ws->tool_cd      = weapon_cooldown_seconds(weapon);
             ws->freeze_t     = weapon_freeze_seconds(weapon);
         } else if (weapon_thrusts(weapon)) {
@@ -146,28 +153,29 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
         }
     }
 
-    // Fly the thrown object. It is retired by the first thing it can harvest,
-    // or by leaving the view -- whichever comes first.
-    if (ws->throw_live) {
-        ThrowProfile tw = weapon_throw_profile(ws->throw_weapon);
-        ws->throw_x += ws->throw_dx * tw.speed * dt;
-        ws->throw_y += ws->throw_dy * tw.speed * dt;
+    // Fly every thrown object. Each is retired by the first thing it can
+    // harvest, or by leaving the view -- whichever comes first.
+    for (ThrownObject& t : ws->thrown) {
+        if (!t.live) continue;
+        ThrowProfile tw = weapon_throw_profile(t.weapon);
+        t.x += t.dx * tw.speed * dt;
+        t.y += t.dy * tw.speed * dt;
 
-        int struck = resource_nodes_strike_point(resources, ws->throw_x, ws->throw_y,
-                                                 tw.radius, ws->throw_weapon, out);
+        int struck = resource_nodes_strike_point(resources, t.x, t.y,
+                                                 tw.radius, t.weapon, out);
         if (!struck && tiles)
-            struck = tilemap_strike_point(tiles, ws->throw_x, ws->throw_y, ws->throw_weapon, out);
-        if (struck) ws->throw_live = 0;
+            struck = tilemap_strike_point(tiles, t.x, t.y, t.weapon, out);
+        if (struck) t.live = 0;
 
-        if (ws->throw_live && cam) {
+        if (t.live && cam) {
             // The visible world rectangle; leaving it retires the object.
             float vw = cam->screen_w / cam->zoom;
             float vh = cam->screen_h / cam->zoom;
-            float rx = wrap_dpx(ws->throw_x - cam->x);
-            float ry = wrap_dpy(ws->throw_y - cam->y);
+            float rx = wrap_dpx(t.x - cam->x);
+            float ry = wrap_dpy(t.y - cam->y);
             if (rx < -tw.radius || rx > vw + tw.radius ||
                 ry < -tw.radius || ry > vh + tw.radius)
-                ws->throw_live = 0;
+                t.live = 0;
         }
     }
 
@@ -189,12 +197,13 @@ bool weapon_swing_frozen_tick(WeaponSwingState* ws, Player* player, float dt) {
 void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
                        const Camera* cam, SDL_Renderer* ren)
 {
-    // Thrown object: a small blade tumbling end over end as it flies.
-    if (ws->throw_live) {
+    // Thrown objects: small blades tumbling end over end as they fly.
+    for (const ThrownObject& t : ws->thrown) {
+        if (!t.live) continue;
         float z = cam->zoom;
-        int cx = cam_screen_x(cam, ws->throw_x);
-        int cy = cam_screen_y(cam, ws->throw_y);
-        float r = weapon_throw_profile(ws->throw_weapon).radius * z;
+        int cx = cam_screen_x(cam, t.x);
+        int cy = cam_screen_y(cam, t.y);
+        float r = weapon_throw_profile(t.weapon).radius * z;
         float spin = (float)SDL_GetTicks() * 0.018f;
 
         SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
