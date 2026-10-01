@@ -232,8 +232,12 @@ enum Facing {
 // The side views' second stride, the other foot forward.
 enum { STRIDE2_RIGHT = 22, STRIDE2_LEFT = 23 };
 
-// The facing for a movement or aim vector; zero on an axis means no lean that way.
+// The facing for a movement vector; zero on an axis means no lean that way.
 int facing_from(float dx, float dy);
+
+// The facing nearest an aim vector (toward a target): the closest of the eight
+// directions, so a target slightly off an axis is still faced straight on.
+int facing_toward(float dx, float dy);
 
 // The frame of assets/player_small.png to draw for the player's facing and
 // walk step. The maps and battles both draw from that sheet.

@@ -124,11 +124,7 @@ void BattleScene::_update_player_fire(const Input* in, float dt) {
                    input_down(in, SDL_SCANCODE_Z);
 
     if (pressed && _bp.fire_timer <= 0.0f) {
-        float ddx = _enemy->x - _bp.x;
-        float ddy = _enemy->y - _bp.y;
-        _player_ref->facing = (ddx*ddx >= ddy*ddy)
-            ? (ddx >= 0.0f ? FACE_RIGHT : FACE_LEFT)
-            : (ddy >= 0.0f ? FACE_DOWN  : FACE_UP);
+        _player_ref->facing = facing_toward(_enemy->x - _bp.x, _enemy->y - _bp.y);
         _player_ref->facing_locked = 1;
 
         const ProjectileProfile& wp = _bp.weapon;

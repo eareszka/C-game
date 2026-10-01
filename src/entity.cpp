@@ -46,6 +46,15 @@ int facing_from(float dx, float dy)
     return dx < 0.0f ? FACE_LEFT : FACE_RIGHT;
 }
 
+int facing_toward(float dx, float dy)
+{
+    // An axis counts only when it is more than tan(22.5 deg) of the other,
+    // which splits the circle into eight equal 45-degree sectors.
+    const float T = 0.41421356f;
+    float ax = fabsf(dx), ay = fabsf(dy);
+    return facing_from(ax > T * ay ? dx : 0.0f, ay > T * ax ? dy : 0.0f);
+}
+
 int player_frame(const Player* player)
 {
     int f = player->facing;

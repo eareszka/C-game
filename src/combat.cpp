@@ -97,12 +97,7 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
                 tilemap_try_hit(tiles, hx, hy, 40, weapon, out);
 
             if (out->count > 0) {
-                float ddx = out->hits[0].x - hx;
-                float ddy = out->hits[0].y - hy;
-                if (ddx * ddx >= ddy * ddy)
-                    player->facing = ddx >= 0.0f ? FACE_RIGHT : FACE_LEFT;
-                else
-                    player->facing = ddy >= 0.0f ? FACE_DOWN  : FACE_UP;
+                player->facing = facing_toward(out->hits[0].x - hx, out->hits[0].y - hy);
                 player->facing_locked = 1;
                 ws->tool_cd  = weapon_cooldown_seconds(weapon);
                 // Only on a connected swing -- a whiff sets no cooldown either,
