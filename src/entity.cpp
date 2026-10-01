@@ -46,16 +46,21 @@ int facing_from(float dx, float dy)
     return dx < 0.0f ? FACE_LEFT : FACE_RIGHT;
 }
 
-int player_frame(const Player* player, bool has_diagonals)
+int player_frame(const Player* player, bool map_sheet)
 {
     int f = player->facing;
-    if (!has_diagonals) {
+    if (!map_sheet) {
         if (f == FACE_DOWN_LEFT  || f == FACE_UP_LEFT)  f = FACE_LEFT;
         if (f == FACE_DOWN_RIGHT || f == FACE_UP_RIGHT) f = FACE_RIGHT;
     }
     if (!player->is_moving) return f;
-    if (f == FACE_LEFT || f == FACE_RIGHT)          // idle, walk
-        return f + 1 - player->anim_step % 2;
+    if (f == FACE_LEFT || f == FACE_RIGHT) {
+        if (!map_sheet)                             // idle, walk
+            return f + 1 - player->anim_step % 2;
+        int stride2 = f == FACE_LEFT ? STRIDE2_LEFT : STRIDE2_RIGHT;
+        const int side4[4] = {f + 1, f, stride2, f}; // stride, pass, other stride, pass
+        return side4[player->anim_step % 4];
+    }
     static const int step3[4] = {1, 0, 2, 0};       // step A, idle, step B, idle
     return f + step3[player->anim_step % 4];
 }

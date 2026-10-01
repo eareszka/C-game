@@ -222,18 +222,24 @@ typedef struct {
 
 // The eight ways the player can face. Each value is that direction's idle frame
 // on the map sheet (assets/player_small.png). Down, up and the four diagonals
-// walk on three frames (idle, step A, step B); left and right on two.
+// walk on three frames (idle, step A, step B); left and right on their idle,
+// the stride after it, and a second stride at the end of the sheet.
 enum Facing {
     FACE_DOWN = 0, FACE_UP = 3, FACE_LEFT = 6, FACE_RIGHT = 8,
     FACE_DOWN_LEFT = 10, FACE_DOWN_RIGHT = 13, FACE_UP_LEFT = 16, FACE_UP_RIGHT = 19,
 };
 
+// The side views' second stride, the other foot forward (map sheet only).
+enum { STRIDE2_RIGHT = 22, STRIDE2_LEFT = 23 };
+
 // The facing for a movement or aim vector; zero on an axis means no lean that way.
 int facing_from(float dx, float dy);
 
-// The frame to draw for the player's facing and walk step. A sheet without
-// the diagonal frames (the battle sheet) gets the nearer of left or right.
-int player_frame(const Player* player, bool has_diagonals);
+// The frame to draw for the player's facing and walk step. map_sheet is
+// whether the sheet is the map's, with the diagonals and second strides; the
+// battle sheet has neither, so it gets the nearer of left or right and a
+// two-frame side walk.
+int player_frame(const Player* player, bool map_sheet);
 
 // Reads WASD/arrow keys, resolves opposing keys via last-pressed,
 // updates player facing/is_moving/last_hdir/last_vdir.
