@@ -853,6 +853,10 @@ static const int CAVE_MOUTH_W = 3, CAVE_MOUTH_H = 2;
 // (six world pixels) past the top of the checkered floor (the bottom cell's
 // row 12), so the player steps a little way into the dark.
 static const int CAVE_MOUTH_FLOOR_AY = 9;
+// The mouth is drawn this many art rows above its cells, so it sits up on the
+// cliff face rather than at its foot. The draw, the walk-in stop and the
+// jambs' collision all apply it; CAVE_MOUTH_FLOOR_AY is in the sprite's rows.
+static const int CAVE_MOUTH_LIFT_AY = 5;
 static constexpr int cave_mouth_cell(int dx, int dy) {
     return TILE_TOWN0_BASE + (CAVE_MOUTH_ROW + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_COL + dx);
 }
@@ -6724,6 +6728,11 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // drawn over whatever it lands on. is_cliff is still read below.
                 const GroundCover* cover = is_body ? cliff_top_cover(tile_id)
                                                    : tile_cover(map, x, y);
+                // A cave mouth's opening tile has no ground of its own, only
+                // the cave glyph; the mouth is drawn lifted off it, so what
+                // shows beneath is the ground the player walks up on.
+                if (!cover && map->overlay[y][x] == cave_mouth_cell(1, 1) && y + 1 < MAP_HEIGHT)
+                    cover = tile_cover(map, x, y + 1);
                 bool is_town = (tile_id >= TILE_TOWN0_BASE);
                 if (cover)
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
@@ -6759,13 +6768,17 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // the wall. Every other tile is drawn before the cliff layers,
                 // which is right for ground the band falls across and wrong for
                 // the one hole that is supposed to show through it.
-                if (tile_id == TILE_DUNGEON ||
-                    (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE))
+                // The cave mouth's mound replaces the glyph: it is lifted off
+                // its cells, so the glyph would show beneath it.
+                bool mouth = is_cave_mouth_cell(map->overlay[y][x]);
+                if (!mouth && (tile_id == TILE_DUNGEON ||
+                    (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE)))
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
-                // The cave mouth's mound lies over the wall and over that
-                // glyph: its key pixels let the band through round it.
-                if (is_cave_mouth_cell(map->overlay[y][x]))
-                    blit_tile(renderer, map->overlay[y][x], screen_x, screen_y, draw_size);
+                // The mound lies over the wall, raised CAVE_MOUTH_LIFT_AY art
+                // rows; its key pixels let the band through round it.
+                if (mouth)
+                    blit_tile(renderer, map->overlay[y][x], screen_x,
+                              screen_y - CAVE_MOUTH_LIFT_AY * draw_size / 16, draw_size);
             }
             if (is_depth) continue;
 
@@ -7501,7 +7514,7 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // the mouth tile, so the way in is still offered.
     if (map->overlay[ty][tx] == cave_mouth_cell(1, 1)) {
         int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
-        if (ay < CAVE_MOUTH_FLOOR_AY) return true;
+        if (ay < CAVE_MOUTH_FLOOR_AY - CAVE_MOUTH_LIFT_AY) return true;
     }
 
     // The cliff is drawn along a contour through the middle of a cell too, and
@@ -7523,7 +7536,11 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
         if (is_cave_mouth_cell(ov)) {
             int rel = ov - cave_mouth_cell(0, 0);
             int dy = rel / TOWN0_SHEET_COLS, dx = rel % TOWN0_SHEET_COLS;
-            if (dx != 1 && ((s_mouth_ink[dy][dx][ay] >> ax) & 1)) return true;
+            // Drawn lifted, so this pixel shows the sprite's row ay + lift,
+            // which may be in the cell below -- or below the sprite entirely.
+            int sy = ay + CAVE_MOUTH_LIFT_AY;
+            dy += sy / 16; sy %= 16;
+            if (dx != 1 && dy < CAVE_MOUTH_H && ((s_mouth_ink[dy][dx][sy] >> ax) & 1)) return true;
         }
     }
 
