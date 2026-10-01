@@ -26,10 +26,10 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->swing               = WeaponSwingState();
 
     player->equipped_weapon = WEAPON_KNIFE;
-    // 12x18 art pixels at 2x (assets/player_small.png); the feet box in collision.h sits at
+    // 14x20 art pixels at 2x (assets/player_small.png); the feet box in collision.h sits at
     // the bottom of this frame.
-    player->width  = 24;
-    player->height = 36;
+    player->width  = 28;
+    player->height = 40;
     player->facing = 0;
     player->facing_locked = 0;
     player->anim_step  = 0;
@@ -161,7 +161,7 @@ void player_draw(const Player* player, float world_x, float world_y,
     else
         frame = player->is_moving ? down_cycle[player->anim_step]      : player->facing;
 
-    SDL_Rect src = { frame * 12, 0, 12, 18 };
+    SDL_Rect src = { frame * 14, 0, 14, 20 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
 }

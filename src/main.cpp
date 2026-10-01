@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     tilemap_init_tile_cache(plat.renderer);
 
     SDL_Texture* player_sprite = IMG_LoadTexture(plat.renderer, "assets/Sprite-0001.png");
-    // The player on the maps: the same frames at 12x18 art pixels, so the character stands
+    // The player on the maps: the same frames at 14x20 art pixels, so the character stands
     // smaller against the cliffs (assets/player_small.aseprite). Battles keep the full size.
     SDL_Texture* player_small = IMG_LoadTexture(plat.renderer, "assets/player_small.png");
     if (!player_small) player_small = player_sprite;
