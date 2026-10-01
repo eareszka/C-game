@@ -2590,7 +2590,7 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
     dp->swing = WeaponSwingState();
 
     // Reset animation state on the shared player
-    player->facing        = 0;
+    player->facing        = FACE_DOWN;
     player->facing_locked = 0;
     player->anim_step     = 0;
     player->anim_timer    = 0.0f;

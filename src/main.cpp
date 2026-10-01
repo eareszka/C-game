@@ -307,7 +307,7 @@ int main(int argc, char *argv[])
     interior_player_init(&iplayer, &player, &imap);
     iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
     iplayer.y = 7 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
-    player.facing = 0;  // down, toward the door
+    player.facing = FACE_DOWN;  // toward the door
     state = STATE_INTERIOR;
 
     struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; };

@@ -119,7 +119,7 @@ void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap*
     ip->speed   = 150.0f;
     ip->at_exit = 1;
 
-    player->facing = 3;  // up
+    player->facing = FACE_UP;
     player->facing_locked = 0;
     player->is_moving = 0;
     player->anim_step = 0;

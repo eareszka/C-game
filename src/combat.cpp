@@ -25,10 +25,18 @@ float weapon_cooldown_seconds(WeaponType w)
 }
 
 float facing_angle(int facing) {
-    if (facing >= 8) return 0.0f;           // right
-    if (facing >= 6) return 3.1415927f;     // left
-    if (facing >= 3) return -1.5707963f;    // up
-    return 1.5707963f;                      // down
+    const float Q = 0.78539816f;            // a quarter of a right angle
+    switch (facing) {
+    case FACE_RIGHT:      return 0.0f;
+    case FACE_DOWN_RIGHT: return Q;
+    case FACE_DOWN:       return 2 * Q;
+    case FACE_DOWN_LEFT:  return 3 * Q;
+    case FACE_LEFT:       return 4 * Q;
+    case FACE_UP_LEFT:    return -3 * Q;
+    case FACE_UP:         return -2 * Q;
+    case FACE_UP_RIGHT:   return -Q;
+    }
+    return 2 * Q;
 }
 
 void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, float dt,
@@ -92,9 +100,9 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
                 float ddx = out->hits[0].x - hx;
                 float ddy = out->hits[0].y - hy;
                 if (ddx * ddx >= ddy * ddy)
-                    player->facing = ddx >= 0.0f ? 8 : 6;
+                    player->facing = ddx >= 0.0f ? FACE_RIGHT : FACE_LEFT;
                 else
-                    player->facing = ddy >= 0.0f ? 0 : 3;
+                    player->facing = ddy >= 0.0f ? FACE_DOWN  : FACE_UP;
                 player->facing_locked = 1;
                 ws->tool_cd  = weapon_cooldown_seconds(weapon);
                 // Only on a connected swing -- a whiff sets no cooldown either,

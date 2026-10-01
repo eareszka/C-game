@@ -204,7 +204,7 @@ typedef struct {
 
     // Visual/animation state — shared across all game states
     int   width, height;    // sprite size in pixels (32x48)
-    int   facing;           // idle frame: 0=down 3=up 6=left 8=right
+    int   facing;           // a Facing: the idle frame on the map sheet
     int   facing_locked;    // true after a hit/action until next direction key
     int   anim_step;
     float anim_timer;
@@ -219,6 +219,21 @@ typedef struct {
 
     WeaponType equipped_weapon;
 } Player;
+
+// The eight ways the player can face. Each value is that direction's idle frame
+// on the map sheet (assets/player_small.png). Down, up and the four diagonals
+// walk on three frames (idle, step A, step B); left and right on two.
+enum Facing {
+    FACE_DOWN = 0, FACE_UP = 3, FACE_LEFT = 6, FACE_RIGHT = 8,
+    FACE_DOWN_LEFT = 10, FACE_DOWN_RIGHT = 13, FACE_UP_LEFT = 16, FACE_UP_RIGHT = 19,
+};
+
+// The facing for a movement or aim vector; zero on an axis means no lean that way.
+int facing_from(float dx, float dy);
+
+// The frame to draw for the player's facing and walk step. A sheet without
+// the diagonal frames (the battle sheet) gets the nearer of left or right.
+int player_frame(const Player* player, bool has_diagonals);
 
 // Reads WASD/arrow keys, resolves opposing keys via last-pressed,
 // updates player facing/is_moving/last_hdir/last_vdir.

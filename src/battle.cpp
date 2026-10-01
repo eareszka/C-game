@@ -127,8 +127,8 @@ void BattleScene::_update_player_fire(const Input* in, float dt) {
         float ddx = _enemy->x - _bp.x;
         float ddy = _enemy->y - _bp.y;
         _player_ref->facing = (ddx*ddx >= ddy*ddy)
-            ? (ddx >= 0.0f ? 8 : 6)
-            : (ddy >= 0.0f ? 0 : 3);
+            ? (ddx >= 0.0f ? FACE_RIGHT : FACE_LEFT)
+            : (ddy >= 0.0f ? FACE_DOWN  : FACE_UP);
         _player_ref->facing_locked = 1;
 
         const ProjectileProfile& wp = _bp.weapon;
@@ -386,18 +386,8 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         if (visible) {
             int px = (int)_bp.x, py = (int)_bp.y;
             if (player_sprite) {
-                static const int down_cycle[4]  = {1, 0, 2, 0};
-                static const int up_cycle[4]    = {4, 3, 5, 3};
-                static const int left_cycle[2]  = {7, 6};
-                static const int right_cycle[2] = {9, 8};
-
-                int facing = _player_ref->facing;
-                int step   = _player_ref->anim_step;
-                int frame;
-                if      (facing >= 8) frame = _player_ref->is_moving ? right_cycle[step % 2] : facing;
-                else if (facing >= 6) frame = _player_ref->is_moving ? left_cycle[step % 2]  : facing;
-                else if (facing >= 3) frame = _player_ref->is_moving ? up_cycle[step]         : facing;
-                else                  frame = _player_ref->is_moving ? down_cycle[step]       : facing;
+                // The battle sheet has no diagonal frames.
+                int frame = player_frame(_player_ref, false);
 
                 SDL_Rect src = { frame * 16, 0, 16, 24 };
                 SDL_Rect dst = { px - 16, py - 24, 32, 48 };

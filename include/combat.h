@@ -36,7 +36,7 @@ struct WeaponSwingState {
 // is what stops the bar from describing a cooldown the weapon doesn't have.
 float weapon_cooldown_seconds(WeaponType w);
 
-// Bearing the player is looking, matching the frame ranges player_draw uses.
+// Bearing the player is looking, one of eight (see Facing in entity.h).
 // World y grows downward, so down is +PI/2 and up is -PI/2.
 float facing_angle(int facing);
 

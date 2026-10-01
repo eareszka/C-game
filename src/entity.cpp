@@ -25,12 +25,8 @@ void player_read_input(Player* player, const Input* in, float* out_dx, float* ou
     else if (up)       { dy = -1.0f; player->last_vdir = -1; }
     else if (down)     { dy =  1.0f; player->last_vdir =  1; }
 
-    if (!player->facing_locked) {
-        if (dx < 0.0f) player->facing = 6;
-        if (dx > 0.0f) player->facing = 8;
-        if (dy < 0.0f) player->facing = 3;
-        if (dy > 0.0f) player->facing = 0;
-    }
+    if (!player->facing_locked && (dx != 0.0f || dy != 0.0f))
+        player->facing = facing_from(dx, dy);
 
     if (dx != 0.0f || dy != 0.0f) {
         float len = sqrtf(dx * dx + dy * dy);
@@ -41,6 +37,27 @@ void player_read_input(Player* player, const Input* in, float* out_dx, float* ou
 
     *out_dx = dx;
     *out_dy = dy;
+}
+
+int facing_from(float dx, float dy)
+{
+    if (dy > 0.0f) return dx < 0.0f ? FACE_DOWN_LEFT : dx > 0.0f ? FACE_DOWN_RIGHT : FACE_DOWN;
+    if (dy < 0.0f) return dx < 0.0f ? FACE_UP_LEFT   : dx > 0.0f ? FACE_UP_RIGHT   : FACE_UP;
+    return dx < 0.0f ? FACE_LEFT : FACE_RIGHT;
+}
+
+int player_frame(const Player* player, bool has_diagonals)
+{
+    int f = player->facing;
+    if (!has_diagonals) {
+        if (f == FACE_DOWN_LEFT  || f == FACE_UP_LEFT)  f = FACE_LEFT;
+        if (f == FACE_DOWN_RIGHT || f == FACE_UP_RIGHT) f = FACE_RIGHT;
+    }
+    if (!player->is_moving) return f;
+    if (f == FACE_LEFT || f == FACE_RIGHT)          // idle, walk
+        return f + 1 - player->anim_step % 2;
+    static const int step3[4] = {1, 0, 2, 0};       // step A, idle, step B, idle
+    return f + step3[player->anim_step % 4];
 }
 
 void player_animate(Player* player, float dt, float anim_speed)

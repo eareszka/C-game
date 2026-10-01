@@ -10,11 +10,6 @@ static bool ow_solid(const void* ctx, float px, float py) {
         || resource_node_solid(c->res, px, py);
 }
 
-static const int down_cycle[4]  = {1, 0, 2, 0};
-static const int up_cycle[4]    = {4, 3, 5, 3};
-static const int left_cycle[2]  = {7, 6};
-static const int right_cycle[2] = {9, 8};
-
 void overworld_init(Overworld* ow, Player* player, float x, float y)
 {
     ow->x       = x;
@@ -30,7 +25,7 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     // the bottom of this frame.
     player->width  = 28;
     player->height = 40;
-    player->facing = 0;
+    player->facing = FACE_DOWN;
     player->facing_locked = 0;
     player->anim_step  = 0;
     player->anim_timer = 0.0f;
@@ -151,16 +146,7 @@ void player_draw(const Player* player, float world_x, float world_y,
     int sx = cam_screen_x(cam, world_x);
     int sy = cam_screen_y(cam, world_y);
 
-    int frame;
-    if (player->facing >= 8)
-        frame = player->is_moving ? right_cycle[player->anim_step % 2] : player->facing;
-    else if (player->facing >= 6)
-        frame = player->is_moving ? left_cycle[player->anim_step % 2]  : player->facing;
-    else if (player->facing >= 3)
-        frame = player->is_moving ? up_cycle[player->anim_step]        : player->facing;
-    else
-        frame = player->is_moving ? down_cycle[player->anim_step]      : player->facing;
-
+    int frame = player_frame(player, true);
     SDL_Rect src = { frame * 14, 0, 14, 20 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
