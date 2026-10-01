@@ -819,7 +819,8 @@ int main(int argc, char *argv[])
                     }
                 } else {
                     // Update chasers — activate when seen, move toward player, queue on contact.
-                    const float CHASER_SPEED  = 300.0f;
+                    // As fast as the player runs: outrunning them takes a lead.
+                    const float CHASER_SPEED  = PLAYER_RUN_SPEED;
                     const float TRIGGER_DIST2 = 22.0f * 22.0f;
                     // Chasers are drawn 14px wide; keep their centres this far
                     // apart so a pack never stacks into a single square.

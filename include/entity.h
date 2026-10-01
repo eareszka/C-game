@@ -251,6 +251,15 @@ void player_read_input(Player* player, const Input* in, float* out_dx, float* ou
 // Advances the walk animation. Call after movement with the desired frame duration.
 void player_animate(Player* player, float dt, float anim_speed);
 
+// How fast the player walks, and runs with shift held, on the maps, in world
+// pixels a second. Scaled with the sprite: the old one stood 46 pixels tall at
+// 150 and 300, the 30-pixel one keeps the same body lengths a second.
+constexpr float PLAYER_WALK_SPEED = 100.0f;
+constexpr float PLAYER_RUN_SPEED  = 200.0f;
+
+// The speed and walk-frame duration for this frame: running while shift is held.
+void player_gait(const Input* in, float* speed, float* anim_speed);
+
 typedef struct {
     Stats stats;
     int enemy_id;

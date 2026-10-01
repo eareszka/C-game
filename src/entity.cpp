@@ -81,3 +81,10 @@ void player_animate(Player* player, float dt, float anim_speed)
         player->anim_timer = 0.0f;
     }
 }
+
+void player_gait(const Input* in, float* speed, float* anim_speed)
+{
+    bool run = input_down(in, SDL_SCANCODE_LSHIFT);
+    *speed      = run ? PLAYER_RUN_SPEED : PLAYER_WALK_SPEED;
+    *anim_speed = run ? 0.10f : 0.20f;
+}

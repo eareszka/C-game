@@ -2583,7 +2583,7 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
     int spawn_ty = from_exit ? dmap->exit_y  : dmap->entry_y;
     dp->x        = (float)(spawn_tx * DMAP_TILE);
     dp->y        = (float)(spawn_ty * DMAP_TILE + DMAP_TILE / 2 - 24);
-    dp->speed    = 150.0f;
+    dp->speed    = PLAYER_WALK_SPEED;
     dp->at_exit  = 0;
     dp->at_entry = 0;
 
@@ -2695,10 +2695,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     if (!weapon_swing_frozen_tick(&dp->swing, player, dt))
         player_read_input(player, in, &dx, &dy);
 
-    if (input_down(in, SDL_SCANCODE_LSHIFT))
-        { dp->speed = 300.0f; anim_speed = 0.10f; }
-    else
-        { dp->speed = 150.0f; anim_speed = 0.20f; }
+    player_gait(in, &dp->speed, &anim_speed);
 
     if (dx != 0.0f || dy != 0.0f) {
         float nx = dp->x + dx * dp->speed * dt;

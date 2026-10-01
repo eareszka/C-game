@@ -14,7 +14,7 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
 {
     ow->x       = x;
     ow->y       = y;
-    ow->speed   = 150.0f;
+    ow->speed   = PLAYER_WALK_SPEED;
     ow->at_dungeon_entrance = 0;
     ow->at_interior_door    = 0;
     ow->interior_door_idx   = -1;
@@ -72,10 +72,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         player_read_input(player, in, &dx, &dy);
 
     float anim_speed;
-    if (input_down(in, SDL_SCANCODE_LSHIFT))
-        { ow->speed = 300.0f; anim_speed = 0.10f; }
-    else
-        { ow->speed = 150.0f; anim_speed = 0.20f; }
+    player_gait(in, &ow->speed, &anim_speed);
 
     if (dx != 0.0f || dy != 0.0f) {
         OWCollCtx ctx = { map, resources };

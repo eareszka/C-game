@@ -116,7 +116,7 @@ void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap*
     float door_cy =  im->exit_y * (float)IMAP_TILE + IMAP_TILE * 0.5f;
     ip->x = door_cx - (HB_X1 + HB_X2) * 0.5f;
     ip->y = door_cy - (HB_Y1 + HB_Y2) * 0.5f;
-    ip->speed   = 150.0f;
+    ip->speed   = PLAYER_WALK_SPEED;
     ip->at_exit = 1;
 
     player->facing = FACE_UP;
@@ -133,10 +133,7 @@ void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
     player_read_input(player, in, &dx, &dy);
 
     float anim_speed;
-    if (input_down(in, SDL_SCANCODE_LSHIFT))
-        { ip->speed = 300.0f; anim_speed = 0.10f; }
-    else
-        { ip->speed = 150.0f; anim_speed = 0.20f; }
+    player_gait(in, &ip->speed, &anim_speed);
 
     if (dx != 0.0f || dy != 0.0f) {
         float nx = ip->x + dx * ip->speed * dt;
