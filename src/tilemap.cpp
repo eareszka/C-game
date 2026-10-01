@@ -849,9 +849,10 @@ static long s_island_sealed_tiles = 0;                         // their raised t
 // mouth tile's glyph.
 static const int CAVE_MOUTH_COL = 21, CAVE_MOUTH_ROW = 6;
 static const int CAVE_MOUTH_W = 3, CAVE_MOUTH_H = 2;
-// The top row of the checkered floor within the opening tile (sprite row 28,
-// the bottom cell's row 12): the feet stop there.
-static const int CAVE_MOUTH_FLOOR_AY = 12;
+// How far into the opening tile the feet may walk, in art rows: three rows
+// (six world pixels) past the top of the checkered floor (the bottom cell's
+// row 12), so the player steps a little way into the dark.
+static const int CAVE_MOUTH_FLOOR_AY = 9;
 static constexpr int cave_mouth_cell(int dx, int dy) {
     return TILE_TOWN0_BASE + (CAVE_MOUTH_ROW + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_COL + dx);
 }
@@ -7495,10 +7496,9 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // the one tile the drawn edge is not the walkable one.
     if (map->tiles[ty][tx] == TILE_WASTE_BRIDGE) return false;
 
-    // The cave mouth's opening: the feet walk in onto the checkered floor and
-    // no further. Above the floor's top row the opening is the dark inside the
-    // rock, and the player stands at its threshold -- still well inside the
-    // mouth tile, so the way in is still offered.
+    // The cave mouth's opening: the feet walk in over the checkered floor and
+    // a few rows into the dark beyond it, and no further -- still well inside
+    // the mouth tile, so the way in is still offered.
     if (map->overlay[ty][tx] == cave_mouth_cell(1, 1)) {
         int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
         if (ay < CAVE_MOUTH_FLOOR_AY) return true;
