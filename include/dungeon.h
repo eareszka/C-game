@@ -13,7 +13,9 @@
 #define DMAP_W              768
 #define DMAP_H              512
 #define DMAP_TILE           32
-#define DUNGEON_FOV_RADIUS  12   // visible tile radius around player
+// Visible tile radius around the player. Scaled with the sprite: 12 suited the
+// old 46-pixel one, and 8 keeps the same reach in body lengths for the 30.
+#define DUNGEON_FOV_RADIUS  8
 // Array capacity, not the amount any one dungeon gets. Catacombs covers several
 // times the floor area of anything else and would read as empty on the old cap,
 // so the arrays grew for its sake -- but raising what every archetype PLACES
