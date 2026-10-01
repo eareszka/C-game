@@ -91,11 +91,9 @@ int main(int argc, char *argv[])
 
     tilemap_init_tile_cache(plat.renderer);
 
-    SDL_Texture* player_sprite = IMG_LoadTexture(plat.renderer, "assets/Sprite-0001.png");
-    // The player on the maps: the same frames at 14x20 art pixels, so the character stands
-    // smaller against the cliffs (assets/player_small.aseprite). Battles keep the full size.
-    SDL_Texture* player_small = IMG_LoadTexture(plat.renderer, "assets/player_small.png");
-    if (!player_small) player_small = player_sprite;
+    // The player, on the maps and in battle: 14x20 art pixels a frame
+    // (assets/player_small.aseprite), drawn at 2x.
+    SDL_Texture* player_sprite = IMG_LoadTexture(plat.renderer, "assets/player_small.png");
     if (!player_sprite) {
         printf("Failed to load sprite: %s\n", IMG_GetError());
         tilemap_free_tile_cache();
@@ -585,7 +583,7 @@ int main(int argc, char *argv[])
 
                 tilemap_draw_base(map, &cam, plat.renderer);
                 resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
-                player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_small);
+                player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_depth(map, &cam, plat.renderer);
                 if (dbg_grid) tilemap_draw_debug_grid(map, &cam, plat.renderer);
@@ -1012,7 +1010,7 @@ int main(int argc, char *argv[])
 
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
-                player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_small);
+                player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
                 dungeon_draw_swing(&dplayer, &cam, plat.renderer);
 
                 // --- Floating resource text ---
@@ -1169,7 +1167,7 @@ int main(int argc, char *argv[])
                 icam.zoom = 1.0f;
                 icam.screen_w = LOGICAL_W;
                 icam.screen_h = LOGICAL_H;
-                player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_small);
+                player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
 
                 // Doormat — exit back to the overworld; ow.x/ow.y were never
                 // touched, so the player reappears where they entered.
@@ -1470,7 +1468,6 @@ int main(int argc, char *argv[])
     delete map;
 
     //cleanups textures
-    if (player_small != player_sprite) SDL_DestroyTexture(player_small);
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
 

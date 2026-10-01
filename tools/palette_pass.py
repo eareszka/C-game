@@ -42,7 +42,7 @@ import gen_cave_tiles as cave
 import gen_trail_tiles as trail
 
 SHEET = os.path.join(ROOT, "assets", "tileset.png")
-SPRITES = [os.path.join(ROOT, "assets", "Sprite-0001.png")]
+SPRITES = [os.path.join(ROOT, "assets", "player_small.png")]
 KEY = (255, 0, 0)
 BLACK = (0, 0, 0)
 MASK_WHITE = (255, 255, 255)

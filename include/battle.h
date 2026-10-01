@@ -30,7 +30,9 @@ static const int ARENA_H  = 480;
 static const int ENEMY_X  = 320;
 static const int ENEMY_Y  = 160;
 static const int ENEMY_R  = 24;
-static const int PLAYER_R = 12;
+// The player's hitbox: three quarters of the sprite's 22-pixel width, centred
+// on the body, as the old 32-pixel sprite's 12 was of it.
+static const int PLAYER_R = 8;
 
 #define MAX_PLAYER_BULLETS 64
 #define MAX_ENEMY_BULLETS  256

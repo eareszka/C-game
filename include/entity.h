@@ -203,7 +203,7 @@ typedef struct {
     int level;
 
     // Visual/animation state — shared across all game states
-    int   width, height;    // sprite size in pixels (32x48)
+    int   width, height;    // sprite size in pixels (28x40)
     int   facing;           // a Facing: the idle frame on the map sheet
     int   facing_locked;    // true after a hit/action until next direction key
     int   anim_step;
@@ -229,17 +229,15 @@ enum Facing {
     FACE_DOWN_LEFT = 10, FACE_DOWN_RIGHT = 13, FACE_UP_LEFT = 16, FACE_UP_RIGHT = 19,
 };
 
-// The side views' second stride, the other foot forward (map sheet only).
+// The side views' second stride, the other foot forward.
 enum { STRIDE2_RIGHT = 22, STRIDE2_LEFT = 23 };
 
 // The facing for a movement or aim vector; zero on an axis means no lean that way.
 int facing_from(float dx, float dy);
 
-// The frame to draw for the player's facing and walk step. map_sheet is
-// whether the sheet is the map's, with the diagonals and second strides; the
-// battle sheet has neither, so it gets the nearer of left or right and a
-// two-frame side walk.
-int player_frame(const Player* player, bool map_sheet);
+// The frame of assets/player_small.png to draw for the player's facing and
+// walk step. The maps and battles both draw from that sheet.
+int player_frame(const Player* player);
 
 // Reads WASD/arrow keys, resolves opposing keys via last-pressed,
 // updates player facing/is_moving/last_hdir/last_vdir.

@@ -386,11 +386,13 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         if (visible) {
             int px = (int)_bp.x, py = (int)_bp.y;
             if (player_sprite) {
-                // The battle sheet has no diagonal frames.
-                int frame = player_frame(_player_ref, false);
+                // The map's sheet at the map's 2x. The art is 11x15 at the
+                // bottom middle of a 14x20 frame, so the body's centre -- where
+                // the hitbox is -- sits 15 across and 25 down the 28x40 frame.
+                int frame = player_frame(_player_ref);
 
-                SDL_Rect src = { frame * 16, 0, 16, 24 };
-                SDL_Rect dst = { px - 16, py - 24, 32, 48 };
+                SDL_Rect src = { frame * 14, 0, 14, 20 };
+                SDL_Rect dst = { px - 15, py - 25, 28, 40 };
                 SDL_RenderCopy(ren, player_sprite, &src, &dst);
             } else {
                 _fill_rect(ren, px - 6, py - 6, 12, 12, 220, 220, 255, 255);
