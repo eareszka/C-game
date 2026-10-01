@@ -865,10 +865,6 @@ static inline bool is_cave_mouth_cell(int id) {
         if (id >= cave_mouth_cell(0, dy) && id < cave_mouth_cell(CAVE_MOUTH_W, dy)) return true;
     return false;
 }
-// A bottom side cell: the rock jamb that has to reach the ground.
-static inline bool cave_mouth_jamb(int id) {
-    return id == cave_mouth_cell(0, CAVE_MOUTH_H - 1) || id == cave_mouth_cell(CAVE_MOUTH_W - 1, CAVE_MOUTH_H - 1);
-}
 static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 
 // Open ground kept round every island, beyond the tile of margin the island
@@ -6358,6 +6354,29 @@ static void cliff_close_cell(unsigned short* c) {
 // ground whatever the wall's teeth do, and what is drawn is what closes.
 static unsigned short s_mouth_ink[CAVE_MOUTH_H][CAVE_MOUTH_W][16];
 
+// The ground under a raised jamb: in a bottom side cell, the bottom
+// CAVE_MOUTH_LIFT_AY rows, from the jamb's outer edge (where its sprite's
+// last row starts) in to the opening. Columns [*c0, *c1); false for any other
+// cell. Drawn as the ground in front and walked as it.
+static bool cave_mouth_strip(int id, int* c0, int* c1) {
+    int last = CAVE_MOUTH_H - 1;
+    unsigned short row;
+    if (id == cave_mouth_cell(0, last)) {
+        row = s_mouth_ink[last][0][15];
+        if (!row) return false;
+        int lo = 0; while (!((row >> lo) & 1)) lo++;
+        *c0 = lo; *c1 = 16;
+    } else if (id == cave_mouth_cell(CAVE_MOUTH_W - 1, last)) {
+        row = s_mouth_ink[last][CAVE_MOUTH_W - 1][15];
+        if (!row) return false;
+        int hi = 15; while (!((row >> hi) & 1)) hi--;
+        *c0 = 0; *c1 = hi + 1;
+    } else {
+        return false;
+    }
+    return true;
+}
+
 static void cliff_build_solid(SDL_Surface* sheet) {
     memset(s_cliff_ink, 0, sizeof s_cliff_ink);
     memset(s_mouth_ink, 0, sizeof s_mouth_ink);
@@ -6779,14 +6798,27 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE)))
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
                 // The mound lies over the wall, raised CAVE_MOUTH_LIFT_AY art
-                // rows; its key pixels let the band through round it. The
-                // side columns' jambs are drawn at their own height first, so
-                // the rock still reaches the ground under the raised mouth
-                // instead of baring the wall's dark foot.
+                // rows; its key pixels let the band through round it. Under a
+                // raised jamb, from its outer edge in to the opening, the
+                // ground is laid first: the jamb's toothed foot stands on it,
+                // rather than over the wall's dark foot it used to cover.
                 if (mouth) {
                     int ov = map->overlay[y][x];
-                    if (cave_mouth_jamb(ov))
-                        blit_tile(renderer, ov, screen_x, screen_y, draw_size);
+                    int c0, c1;
+                    if (cave_mouth_strip(ov, &c0, &c1) && y + 1 < MAP_HEIGHT) {
+                        const GroundCover* g = tile_cover(map, x, y + 1);
+                        if (g) {
+                            SDL_Rect clip = { screen_x + c0 * draw_size / 16,
+                                              screen_y + (16 - CAVE_MOUTH_LIFT_AY) * draw_size / 16,
+                                              (c1 - c0) * draw_size / 16,
+                                              CAVE_MOUTH_LIFT_AY * draw_size / 16 };
+                            SDL_Rect old; SDL_bool had = SDL_RenderIsClipEnabled(renderer);
+                            SDL_RenderGetClipRect(renderer, &old);
+                            SDL_RenderSetClipRect(renderer, &clip);
+                            blit_tile(renderer, cover_variant(map, x, y, g), screen_x, screen_y, draw_size);
+                            SDL_RenderSetClipRect(renderer, had ? &old : NULL);
+                        }
+                    }
                     blit_tile(renderer, ov, screen_x,
                               screen_y - CAVE_MOUTH_LIFT_AY * draw_size / 16, draw_size);
                 }
@@ -7540,6 +7572,11 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
         int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
         if (ax < 0) ax = 0; else if (ax > 15) ax = 15;
         if (ay < 0) ay = 0; else if (ay > 15) ay = 15;
+        // Under a raised jamb the wall's foot is drawn over with ground, and
+        // is walked as ground.
+        int sc0, sc1;
+        if (cave_mouth_strip(map->overlay[ty][tx], &sc0, &sc1)
+         && ay >= 16 - CAVE_MOUTH_LIFT_AY && ax >= sc0 && ax < sc1) return false;
         if (cliff_pixel_solid(tx, ty, ax, ay)) return true;
         // The cave mouth's jambs close the ground as the rock they draw.
         // Only its side columns: the middle one is the way in.
@@ -7549,9 +7586,6 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
             int dy = rel / TOWN0_SHEET_COLS, dx = rel % TOWN0_SHEET_COLS;
             // Drawn lifted, so this pixel shows the sprite's row ay + lift,
             // which may be in the cell below -- or below the sprite entirely.
-            // A jamb is drawn at its own height as well, so its ink there
-            // closes too.
-            if (cave_mouth_jamb(ov) && ((s_mouth_ink[dy][dx][ay] >> ax) & 1)) return true;
             int sy = ay + CAVE_MOUTH_LIFT_AY;
             dy += sy / 16; sy %= 16;
             if (dx != 1 && dy < CAVE_MOUTH_H && ((s_mouth_ink[dy][dx][sy] >> ax) & 1)) return true;
