@@ -865,6 +865,10 @@ static inline bool is_cave_mouth_cell(int id) {
         if (id >= cave_mouth_cell(0, dy) && id < cave_mouth_cell(CAVE_MOUTH_W, dy)) return true;
     return false;
 }
+// A bottom side cell: the rock jamb that has to reach the ground.
+static inline bool cave_mouth_jamb(int id) {
+    return id == cave_mouth_cell(0, CAVE_MOUTH_H - 1) || id == cave_mouth_cell(CAVE_MOUTH_W - 1, CAVE_MOUTH_H - 1);
+}
 static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 
 // Open ground kept round every island, beyond the tile of margin the island
@@ -6775,10 +6779,17 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                     (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE)))
                     blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
                 // The mound lies over the wall, raised CAVE_MOUTH_LIFT_AY art
-                // rows; its key pixels let the band through round it.
-                if (mouth)
-                    blit_tile(renderer, map->overlay[y][x], screen_x,
+                // rows; its key pixels let the band through round it. The
+                // side columns' jambs are drawn at their own height first, so
+                // the rock still reaches the ground under the raised mouth
+                // instead of baring the wall's dark foot.
+                if (mouth) {
+                    int ov = map->overlay[y][x];
+                    if (cave_mouth_jamb(ov))
+                        blit_tile(renderer, ov, screen_x, screen_y, draw_size);
+                    blit_tile(renderer, ov, screen_x,
                               screen_y - CAVE_MOUTH_LIFT_AY * draw_size / 16, draw_size);
+                }
             }
             if (is_depth) continue;
 
@@ -7538,6 +7549,9 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
             int dy = rel / TOWN0_SHEET_COLS, dx = rel % TOWN0_SHEET_COLS;
             // Drawn lifted, so this pixel shows the sprite's row ay + lift,
             // which may be in the cell below -- or below the sprite entirely.
+            // A jamb is drawn at its own height as well, so its ink there
+            // closes too.
+            if (cave_mouth_jamb(ov) && ((s_mouth_ink[dy][dx][ay] >> ax) & 1)) return true;
             int sy = ay + CAVE_MOUTH_LIFT_AY;
             dy += sy / 16; sy %= 16;
             if (dx != 1 && dy < CAVE_MOUTH_H && ((s_mouth_ink[dy][dx][sy] >> ax) & 1)) return true;
