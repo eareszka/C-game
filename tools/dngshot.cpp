@@ -54,9 +54,8 @@ int main(int argc, char** argv) {
 
     DungeonPlayer dp{};
     Camera cam;
-    cam.x = (float)(want_x * DMAP_TILE);
-    cam.y = (float)(want_y * DMAP_TILE);
     cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
+    camera_place(&cam, (float)(want_x * DMAP_TILE), (float)(want_y * DMAP_TILE));
 
     // Force the cave's material, so the regression check can pin MAT_VEYRITE
     // (the identity row, which must render byte-identical to the pre-material

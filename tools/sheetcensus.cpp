@@ -73,8 +73,8 @@ int main(int argc, char** argv) {
         for (int ty = 0; ty < MAP_HEIGHT; ty += WT)
             for (int tx = 0; tx < MAP_WIDTH; tx += WT) {
                 Camera cam;
-                cam.x = (float)(tx * TILE_SIZE); cam.y = (float)(ty * TILE_SIZE);
                 cam.screen_w = WT * TILE_SIZE; cam.screen_h = WT * TILE_SIZE; cam.zoom = 1.0f;
+                camera_place(&cam, (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE));
                 tilemap_draw_base(&g_map, &cam, ren, 0);
                 tilemap_draw_depth(&g_map, &cam, ren, 0);
             }
@@ -90,7 +90,8 @@ int main(int argc, char** argv) {
                 g_dmap.ore = (Material)m;
                 DungeonPlayer dp{};
                 Camera cam;
-                cam.x = 0; cam.y = 0; cam.zoom = 1.0f;
+                cam.zoom = 1.0f;
+                camera_place(&cam, 0.0f, 0.0f);
                 cam.screen_w = DMAP_W * DMAP_TILE; cam.screen_h = DMAP_H * DMAP_TILE;
                 dungeon_draw(&g_dmap, &dp, &cam, ren, true);
             }

@@ -6645,8 +6645,8 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
         for (int ux = start_x; ux < end_x; ux++) {
             const int x = wrap_x(ux), y = wrap_y(uy);
             bool is_depth = (map->depth_layer[y][x] != 0);
-            int screen_x = (int)((ux * TILE_SIZE - cam->x) * z);
-            int screen_y = (int)((uy * TILE_SIZE - cam->y) * z);
+            int screen_x = cam_px(cam, ux * TILE_SIZE);
+            int screen_y = cam_py(cam, uy * TILE_SIZE);
 
             // Helper: compute jitter offset for a tree tile
             // Which sheet column a tree draws from: two kinds on ordinary
@@ -6845,8 +6845,8 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = tx0; tx < tx1; tx++) {
-            int sx = (int)((tx * TILE_SIZE - cam->x) * z);
-            int sy = (int)((ty * TILE_SIZE - cam->y) * z);
+            int sx = cam_px(cam, tx * TILE_SIZE);
+            int sy = cam_py(cam, ty * TILE_SIZE);
             SDL_Rect r = { sx, sy, tsz, tsz };
             SDL_RenderDrawRect(renderer, &r);
         }
@@ -6856,8 +6856,8 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     if (tsz >= 24) {   // labels need room; skip them at small zoom rather than smear illegible text
         for (int ty = ty0; ty < ty1; ty++) {
             for (int tx = tx0; tx < tx1; tx++) {
-                int sx = (int)((tx * TILE_SIZE - cam->x) * z);
-                int sy = (int)((ty * TILE_SIZE - cam->y) * z);
+                int sx = cam_px(cam, tx * TILE_SIZE);
+                int sy = cam_py(cam, ty * TILE_SIZE);
                 int tile_id = map->tiles[wrap_y(ty)][wrap_x(tx)];
                 char buf[16];
                 if (tile_id >= TILE_TOWN0_BASE) {

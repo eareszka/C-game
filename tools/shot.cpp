@@ -347,9 +347,8 @@ int main(int argc, char** argv)
     }
 
     Camera cam;
-    cam.x = (float)(want_x * TILE_SIZE);
-    cam.y = (float)(want_y * TILE_SIZE);
     cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
+    camera_place(&cam, (float)(want_x * TILE_SIZE), (float)(want_y * TILE_SIZE));
 
     // SHOT_BANK=1 also prints the window as one character per tile: what the
     // cliff draws there (tilemap_cliff_draw_at). A flank that flips between

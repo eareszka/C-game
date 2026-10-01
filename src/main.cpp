@@ -573,9 +573,7 @@ int main(int argc, char *argv[])
                 overworld_update(&ow, &player, game_in, dt, &resources, map, &cam, dbg_noclip, &harvest);
                 floattext_spawn_from_harvest(&cur_float, &harvest);
 
-                float player_cx = ow.x + player.width * 0.5f;
-                float player_cy = ow.y + player.height * 0.5f;
-                camera_center_on(&cam, player_cx, player_cy);
+                camera_follow(&cam, ow.x, ow.y, (float)player.width, (float)player.height);
 
                 fc_draw_color(plat.renderer, 10, 10, 20, 255);
                 SDL_RenderClear(plat.renderer);
@@ -802,7 +800,7 @@ int main(int argc, char *argv[])
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
                 float dpcy = dplayer.y + player.height * 0.5f;
-                camera_center_on(&cam, dpcx, dpcy);
+                camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
 
                 // Pre-battle flash: each queued enemy flashes once in fight order,
                 // then 0.5s pause before battle starts.
@@ -1022,8 +1020,8 @@ int main(int argc, char *argv[])
                     DungeonChaser& ch = chasers[ci];
                     if (!ch.active) continue;
                     int sz  = (int)(14 * cam.zoom);
-                    int sx  = (int)((ch.x - cam.x) * cam.zoom) - sz / 2;
-                    int sy  = (int)((ch.y - cam.y) * cam.zoom) - sz / 2;
+                    int sx  = cam_px(&cam, ch.x) - sz / 2;
+                    int sy  = cam_py(&cam, ch.y) - sz / 2;
                     SDL_Rect cr = { sx, sy, sz, sz };
                     fc_draw_color(plat.renderer, 200, 30, 30, 255);
                     SDL_RenderFillRect(plat.renderer, &cr);
@@ -1037,8 +1035,8 @@ int main(int argc, char *argv[])
                     float local_t = pre_battle_timer - cur_step * FLASH_STEP;
                     for (int fi = 0; fi < flash_count; fi++) {
                         int sz = (int)(14 * cam.zoom);
-                        int sx = (int)((flash_entries[fi].x - cam.x) * cam.zoom) - sz / 2;
-                        int sy = (int)((flash_entries[fi].y - cam.y) * cam.zoom) - sz / 2;
+                        int sx = cam_px(&cam, flash_entries[fi].x) - sz / 2;
+                        int sy = cam_py(&cam, flash_entries[fi].y) - sz / 2;
                         SDL_Rect cr = { sx, sy, sz, sz };
                         if (fi == cur_step && cur_step < flash_count && local_t < FLASH_ON) {
                             // Currently flashing — bright yellow

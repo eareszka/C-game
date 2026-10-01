@@ -3221,8 +3221,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             if (tile == DNG_WALL && dmap->type == DUNGEON_ENT_CAVE) {
                 SDL_Texture* cave_tex = tilemap_get_town_tex();
                 if (cave_tex) {
-                    int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-                    int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                    int sx = cam_px(cam, tx * DMAP_TILE);
+                    int sy = cam_py(cam, ty * DMAP_TILE);
                     draw_cave_wall(ren, cave_tex, dmap, tx, ty, sx, sy, tsz, in_fov);
                     continue;
                 }
@@ -3253,8 +3253,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             int g = in_fov ? c->g : c->g * 3 / 10;
             int b = in_fov ? c->b : c->b * 3 / 10;
 
-            int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-            int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+            int sx = cam_px(cam, tx * DMAP_TILE);
+            int sy = cam_py(cam, ty * DMAP_TILE);
 
             bool is_shg_wall = (dmap->type == DUNGEON_ENT_STONEHENGE) && (tile == DNG_WALL);
             int wall_h = is_shg_wall ? 2 * tsz : 0;
@@ -3320,8 +3320,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 if (!show_all && !dmap->explored[ty][tx]) continue;
 
                 bool shg_fov = show_all || dmap->visible[ty][tx];
-                int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-                int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                int sx = cam_px(cam, tx * DMAP_TILE);
+                int sy = cam_py(cam, ty * DMAP_TILE);
 
                 if (tile == DNG_WALL) {
                     // Reclaim a cave wall tile's own decoration (trim/nub)
@@ -3423,8 +3423,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
                     if (!p.band_edge_w && !p.band_edge_e) continue;
 
-                    int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-                    int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                    int sx = cam_px(cam, tx * DMAP_TILE);
+                    int sy = cam_py(cam, ty * DMAP_TILE);
                     // Dimmed to the BAND tile's own FOV, not that of the cell it
                     // paints into, so the strip always matches the face it hugs
                     // rather than the floor it overhangs.
@@ -3573,8 +3573,8 @@ void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Rend
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
     for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = tx0; tx < tx1; tx++) {
-            int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-            int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+            int sx = cam_px(cam, tx * DMAP_TILE);
+            int sy = cam_py(cam, ty * DMAP_TILE);
             SDL_Rect r = { sx, sy, tsz, tsz };
             SDL_RenderDrawRect(ren, &r);
         }
@@ -3587,8 +3587,8 @@ void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Rend
             for (int tx = tx0; tx < tx1; tx++) {
                 char buf[56];   // base fill + 2 run-end strips + up to 2 edges + up to 4 nubs
                 if (!is_cave || !cave_wall_debug_cell(dmap, tx, ty, buf, sizeof(buf))) continue;
-                int sx = (int)((tx * DMAP_TILE - cam->x) * z);
-                int sy = (int)((ty * DMAP_TILE - cam->y) * z);
+                int sx = cam_px(cam, tx * DMAP_TILE);
+                int sy = cam_py(cam, ty * DMAP_TILE);
                 draw_text(ren, buf, sx + 1, sy + 1, 1, 60, 255, 60);
             }
         }
