@@ -2,6 +2,7 @@
 #include "battle.h"
 #include "core.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <math.h>
 #include <string.h>
 
@@ -45,6 +46,43 @@ static bool circles_overlap(float ax, float ay, float ar,
     return dx*dx + dy*dy < rsum*rsum;
 }
 
+// ── Enemy sprites ─────────────────────────────────────────────────────────────
+
+// Sheets built by tools/build_enemy.py: 24 frames in a row, 8 directions
+// (D DR R UR U UL L DL) x 3 idle frames, played in `loop` order with the same
+// timings as the preview GIFs. Enemies past the end of the table have no
+// sprite yet and draw as a box.
+struct EnemySheet { const char* path; Uint8 loop[4]; };
+static const EnemySheet ENEMY_SHEETS[] = {
+    { "assets/enemies/00_skvader.png",                {0, 1, 0, 2} },
+    { "assets/enemies/01_wolpertinger.png",           {0, 1, 0, 2} },
+    { "assets/enemies/02_treesqueak.png",             {0, 1, 0, 2} },
+    { "assets/enemies/03_qique.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/04_lili.png",                   {0, 1, 2, 1} },  // legs splay out
+    { "assets/enemies/05_crowing_crested_cobra.png",  {0, 1, 0, 2} },
+    { "assets/enemies/06_wakmangganchi_aragondi.png", {0, 1, 0, 2} },
+    { "assets/enemies/07_alber.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/08_snawfus.png",                {0, 1, 0, 2} },
+    { "assets/enemies/09_questing_beast.png",         {0, 1, 0, 2} },
+    { "assets/enemies/10_grand_goule.png",            {0, 1, 0, 2} },
+};
+static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
+static const Uint32 LOOP_MS[4] = { 400, 250, 400, 250 };
+
+// Sheet row for a FACE_* direction.
+static int sheet_dir(int facing) {
+    switch (facing) {
+        case FACE_DOWN:       return 0;
+        case FACE_DOWN_RIGHT: return 1;
+        case FACE_RIGHT:      return 2;
+        case FACE_UP_RIGHT:   return 3;
+        case FACE_UP:         return 4;
+        case FACE_UP_LEFT:    return 5;
+        case FACE_LEFT:       return 6;
+        default:              return 7;   // FACE_DOWN_LEFT
+    }
+}
+
 // ── BattleScene ───────────────────────────────────────────────────────────────
 
 BattleScene::BattleScene(Player* player, int enemy_id) {
@@ -64,11 +102,13 @@ BattleScene::BattleScene(Player* player, int enemy_id) {
     _bp.weapon = weapon_profile(_weapon_type);
 
     seed_enemy_rng((unsigned int)SDL_GetTicks());
-    _enemy = enemy_create(enemy_id);
+    _enemy    = enemy_create(enemy_id);
+    _enemy_id = enemy_id;
 }
 
 BattleScene::~BattleScene() {
     delete _enemy;
+    if (_sheet) SDL_DestroyTexture(_sheet);
 }
 
 // ── update ────────────────────────────────────────────────────────────────────
@@ -239,7 +279,7 @@ void BattleScene::_check_collisions() {
         Bullet& bl = _player_bullets[i];
         if (!bl.active) continue;
         if (circles_overlap(bl.x, bl.y, bl.radius,
-                            _enemy->x, _enemy->y, (float)ENEMY_R)) {
+                            _enemy->x, _enemy->y, _hit_r)) {
             _enemy->take_damage(bl.damage * _enemy->damage_mult(_weapon_type));
             bl.active = false;
         }
@@ -326,22 +366,58 @@ void BattleScene::_draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
 
 // ── draw ──────────────────────────────────────────────────────────────────────
 
-void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
-    _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, 255);
-    _draw_rect_outline(ren, 4, 4, ARENA_W - 8, ARENA_H - 8, 255, 255, 255);
+// The enemy faces the player and plays its idle loop, drawn at the player's 2x
+// and centred on its hitbox; enemies without a sheet yet draw as a box. The HP
+// bar and name sit above whichever is drawn.
+void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
+    int ex = (int)_enemy->x, ey = (int)_enemy->y;
+    if (!_sheet_tried) {
+        _sheet_tried = true;
+        if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT) {
+            _sheet = IMG_LoadTexture(ren, ENEMY_SHEETS[_enemy_id].path);
+            if (!_sheet) SDL_Log("enemy sheet %s: %s", ENEMY_SHEETS[_enemy_id].path, IMG_GetError());
+        }
+        if (_sheet) {
+            // Hitbox scales with the creature: 40% of the drawn frame's
+            // smaller side, so a hare is a small target and a boar a big one.
+            int sw, sh;
+            SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
+            int fw = sw / 24;
+            _hit_r = 0.4f * 2.0f * (fw < sh ? fw : sh);
+        }
+    }
 
-    // Enemy
-    {
-        int ex = (int)_enemy->x, ey = (int)_enemy->y;
+    int half_h = ENEMY_R + 4;
+    if (_sheet) {
+        int sw, sh;
+        SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
+        int fw = sw / 24;
+        const Uint8* loop = ENEMY_SHEETS[_enemy_id].loop;
+        Uint32 t = SDL_GetTicks() % (LOOP_MS[0] + LOOP_MS[1] + LOOP_MS[2] + LOOP_MS[3]);
+        int step = 0;
+        while (t >= LOOP_MS[step]) t -= LOOP_MS[step++];
+        int dir = sheet_dir(facing_toward(_bp.x - _enemy->x, _bp.y - _enemy->y));
+        SDL_Rect src = { (dir * 3 + loop[step]) * fw, 0, fw, sh };
+        SDL_Rect dst = { ex - fw, ey - sh, fw * 2, sh * 2 };
+        SDL_RenderCopy(ren, _sheet, &src, &dst);
+        half_h = sh;
+    } else {
         int hw = ENEMY_R + 4;
         Uint8 pulse = (_phase == BATTLE_PHASE_FIGHTING) ? 200 : 80;
         _fill_rect(ren, ex - hw, ey - hw, hw*2, hw*2, 40, pulse, 40, 255);
         _draw_rect_outline(ren, ex - hw, ey - hw, hw*2, hw*2, 80, 255, 80);
-        _draw_bar(ren, ex - 60, ey - hw - 14, 120, 8,
-                  _enemy->hp, _enemy->max_hp, 220, 60, 60);
-        const char* nm = _enemy->name();
-        draw_text(ren, nm, ex - text_width(nm, 1)/2, ey - hw - 24, 1, 220, 220, 220);
     }
+    _draw_bar(ren, ex - 60, ey - half_h - 14, 120, 8,
+              _enemy->hp, _enemy->max_hp, 220, 60, 60);
+    const char* nm = _enemy->name();
+    draw_text(ren, nm, ex - text_width(nm, 1)/2, ey - half_h - 24, 1, 220, 220, 220);
+}
+
+void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
+    _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, 255);
+    _draw_rect_outline(ren, 4, 4, ARENA_W - 8, ARENA_H - 8, 255, 255, 255);
+
+    _draw_enemy(ren);
 
     // Player bullets — yellow
     fc_draw_color(ren, 255, 230, 50, 255);

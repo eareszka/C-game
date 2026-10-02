@@ -94,6 +94,15 @@ private:
     bool         _tab_open;
     Bullet       _player_bullets[MAX_PLAYER_BULLETS];
     Bullet       _enemy_bullets[MAX_ENEMY_BULLETS];
+    int          _enemy_id;
+    // The enemy's sprite sheet, loaded on the first draw (the scene has no
+    // renderer before then); null when the enemy has no sprite yet.
+    mutable SDL_Texture* _sheet       = nullptr;
+    mutable bool         _sheet_tried = false;
+    // Hitbox radius: ENEMY_R until the sheet loads, then sized to the sprite.
+    mutable float        _hit_r       = (float)ENEMY_R;
+
+    void _draw_enemy(SDL_Renderer* ren) const;
 
     void _update_movement(const Input* in, float dt);
     void _update_player_fire(const Input* in, float dt);
