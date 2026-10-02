@@ -477,6 +477,7 @@ class Model:
         self.rig = np.array([np.all(p[:, -1] == 0) for p in self.pats])
         self.wall00 = np.array([sp.wall(p[0, 0]) for p in self.pats])
         self.allg = np.array([np.all(p == 0) for p in self.pats])
+        self.vals = np.array([p for p in self.pats])                   # P x N x N
 
     def bkey(self, a, b, c, d):
         K = self.K
@@ -504,6 +505,56 @@ class Model:
                     stack.append((yy, xx))
         return True
 
+    def collapse(self, wave, rng):
+        """Settle a propagated wave cell by cell, least entropy first, each
+        block drawn by its weight. False if it runs into a contradiction."""
+        while True:
+            cnt = wave.sum(axis=2)
+            if not (cnt > 1).any():
+                return True
+            wt = np.where(wave, self.w, 0.0)
+            sw = wt.sum(axis=2)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                ent = np.log(sw) - (wt * np.log(np.where(wt > 0, wt, 1))).sum(axis=2) / sw
+            ent = np.where(cnt > 1, ent, np.inf) + rng.random(ent.shape) * 1e-4
+            y, x = np.unravel_index(int(np.argmin(ent)), ent.shape)
+            ks = np.flatnonzero(wave[y, x])
+            k = ks[rng.choice(len(ks), p=self.w[ks] / self.w[ks].sum())]
+            wave[y, x] = False
+            wave[y, x, k] = True
+            if not self.propagate(wave, [(y, x)]):
+                return False
+
+    def refill(self, g, y0, y1, x0, x1, rng, change=None, free=None):
+        """g with the inside of the window g[y0:y1, x0:x1] collapsed afresh
+        from the blocks, the window's outer ring held as it is, or None.
+        `free`, a mask the window's size, narrows what is collapsed to it.
+        `change`, a tile (x, y) inside, must come out different: the
+        weighted collapse would otherwise mostly rebuild what was there."""
+        N = self.N
+        sub = g[y0:y1, x0:x1]
+        if free is None:
+            free = np.zeros(sub.shape, bool)
+            free[1:-1, 1:-1] = True
+        wh, ww = sub.shape[0] - N + 1, sub.shape[1] - N + 1
+        wave = np.ones((wh, ww, self.P), bool)
+        for y in range(wh):
+            for x in range(ww):
+                for dy in range(N):
+                    for dx in range(N):
+                        yy, xx = y + dy, x + dx
+                        if not free[yy, xx]:
+                            wave[y, x] &= self.vals[:, dy, dx] == sub[yy, xx]
+                        elif change == (x0 + xx, y0 + yy):
+                            wave[y, x] &= self.vals[:, dy, dx] != sub[yy, xx]
+        if not self.propagate(wave, [(y, x) for y in range(wh) for x in range(ww)]) or not self.collapse(wave, rng):
+            return None
+        out = g.copy()
+        for y in range(wh):
+            for x in range(ww):
+                out[y0 + y:y0 + y + N, x0 + x:x0 + x + N] = self.pats[int(np.flatnonzero(wave[y, x])[0])]
+        return out
+
     def run(self, w, h, rng, anchors, tries=6):
         """An island in a w x h box whose border is ground and whose anchor
         tiles hold a wall, or None."""
@@ -520,25 +571,7 @@ class Model:
             restricted = [(y, x) for y in range(wh) for x in range(ww) if not wave[y, x].all()]
             if not self.propagate(wave, restricted):
                 continue
-            ok = True
-            while True:
-                cnt = wave.sum(axis=2)
-                if not (cnt > 1).any():
-                    break
-                wt = np.where(wave, self.w, 0.0)
-                sw = wt.sum(axis=2)
-                with np.errstate(divide='ignore', invalid='ignore'):
-                    ent = np.log(sw) - (wt * np.log(np.where(wt > 0, wt, 1))).sum(axis=2) / sw
-                ent = np.where(cnt > 1, ent, np.inf) + rng.random(ent.shape) * 1e-4
-                y, x = np.unravel_index(int(np.argmin(ent)), ent.shape)
-                ks = np.flatnonzero(wave[y, x])
-                k = ks[rng.choice(len(ks), p=self.w[ks] / self.w[ks].sum())]
-                wave[y, x] = False
-                wave[y, x, k] = True
-                if not self.propagate(wave, [(y, x)]):
-                    ok = False
-                    break
-            if not ok:
+            if not self.collapse(wave, rng):
                 continue
             out = np.zeros((h, w), int)
             for y in range(wh):
@@ -577,7 +610,6 @@ def fill_unknown(model, sp, g, rng, pad, reach=2, tries=4):
     g = g.copy()
     if not (g == UNKNOWN).any():
         return g
-    vals = np.array([[[int(p[dy, dx]) for dx in range(N)] for dy in range(N)] for p in model.pats])   # P x N x N
     H, W = g.shape
     for cy in range(H):
         for cx in range(W):
@@ -597,28 +629,10 @@ def fill_unknown(model, sp, g, rng, pad, reach=2, tries=4):
                             for dx in range(N):
                                 v = g[y0 + y + dy, x0 + x + dx]
                                 if v != UNKNOWN:
-                                    wave[y, x] &= vals[:, dy, dx] == v
+                                    wave[y, x] &= model.vals[:, dy, dx] == v
                 if not model.propagate(wave, [(y, x) for y in range(wh) for x in range(ww)]):
                     break                             # no blocks fit the known tiles round here
-                ok = True
-                while True:
-                    cnt = wave.sum(axis=2)
-                    if not (cnt > 1).any():
-                        break
-                    wt = np.where(wave, model.w, 0.0)
-                    sw = wt.sum(axis=2)
-                    with np.errstate(divide='ignore', invalid='ignore'):
-                        ent = np.log(sw) - (wt * np.log(np.where(wt > 0, wt, 1))).sum(axis=2) / sw
-                    ent = np.where(cnt > 1, ent, np.inf) + rng.random(ent.shape) * 1e-4
-                    y, x = np.unravel_index(int(np.argmin(ent)), ent.shape)
-                    ks = np.flatnonzero(wave[y, x])
-                    k = ks[rng.choice(len(ks), p=model.w[ks] / model.w[ks].sum())]
-                    wave[y, x] = False
-                    wave[y, x, k] = True
-                    if not model.propagate(wave, [(y, x)]):
-                        ok = False
-                        break
-                if not ok:
+                if not model.collapse(wave, rng):
                     continue
                 # Only tiles strictly inside the window are written: every
                 # block a tile inside makes lies in the window and was
@@ -1011,6 +1025,228 @@ def crop(sp, g):
     return np.pad(g[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 1)
 
 
+SCREE_REACH = 2           # scree and tufts this many tiles from a wall piece go with it
+
+
+def split_pieces(sp, g):
+    """Each 8-connected wall piece of g on its own grid, with the scree and
+    tufts within SCREE_REACH tiles of it. A splice of two landforms nearly
+    always carries neighbouring pieces of cliff along with the one it
+    joined; kept together they made an island that was another island plus
+    a stray chunk, and thrown away they cost almost every big splice. Each
+    piece is a landform of its own, and is checked as one from scratch. A
+    lone piece is trimmed the same way: scree carried in from far off would
+    only widen its box."""
+    wall = np.array([sp.wall(s) for s in g.ravel()]).reshape(g.shape)
+    lab, pieces = pieces_of(wall)
+    other = (g != 0) & ~wall
+    out = []
+    for i in range(1, len(pieces) + 1):
+        near = lab == i
+        mine = near.copy()
+        for _ in range(SCREE_REACH):
+            grown = near.copy()
+            grown[1:, :] |= near[:-1, :]; grown[:-1, :] |= near[1:, :]
+            grown[:, 1:] |= near[:, :-1]; grown[:, :-1] |= near[:, 1:]
+            near = grown
+        out.append(np.where(mine | (other & near), g, 0))
+    return out
+
+
+def mouth_ok(sp, g, level):
+    """Whether a ground cave could open in this landform: the game's search
+    (cave_place in src/tilemap.cpp), asked of the library entry. A level-1
+    top tile over a south wall whose foot -- the last of up to five rows of
+    rock below it -- is the same row in three adjacent columns, with rock on
+    that row and the one above, and two rows of the flat in front of it with
+    nothing drawn that closes. A sealed landform without one could never be
+    reached: the game opens a mountain only through such a wall."""
+    h, w = g.shape
+    rock = np.array([s > 0 and sp.kind[s] == 1 for s in g.ravel()]).reshape(h, w)
+
+    def foot(x, y):
+        f = -1
+        for d in range(5):
+            if y + d >= h or not rock[y + d, x]:
+                break
+            f = y + d
+        return f
+    for y in range(h - 1):
+        for x in range(1, w - 1):
+            if level[y, x] != 1 or level[y + 1, x] >= 1:
+                continue
+            f = foot(x, y + 1)
+            if f < 0 or f - 1 <= y or f + 2 >= h:
+                continue
+            ok = True
+            for c in (-1, 0, 1):
+                if foot(x + c, y + 1) != f or not rock[f - 1, x + c] or not rock[f, x + c]:
+                    ok = False
+                    break
+                for r in (1, 2):
+                    s = g[f + r, x + c]
+                    if level[f + r, x + c] != 0 or (s > 0 and sp.kind[s] != 0):
+                        ok = False
+                        break
+                if not ok:
+                    break
+            if ok:
+                return True
+    return False
+
+
+SAME_SHAPE = 0.85         # plateaus overlapping this much of the larger (shift and mirror) are one layout
+CONTAINED = 0.7           # ... or this much of the smaller: one island and the same island with lobes added
+CONTAIN_SIZE = 0.6        # ... when the smaller is at least this share of the larger
+
+
+def _trim(m):
+    ys, xs = np.nonzero(m)
+    return m[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
+
+
+def same_shape(a, b):
+    """Whether two plateau masks are one layout: their best overlap under any
+    shift, and an x-mirror, is SAME_SHAPE of the larger -- or CONTAINED of
+    the smaller, which is the same island with lobes added or taken away,
+    and reads as the same one walking past it. Correlated by FFT."""
+    a = _trim(a)
+    for bb in (_trim(b), _trim(b)[:, ::-1]):
+        na, nb = int(a.sum()), int(bb.sum())
+        H, W = a.shape[0] + bb.shape[0], a.shape[1] + bb.shape[1]
+        fa = np.fft.rfft2(a.astype(float), (H, W))
+        fb = np.fft.rfft2(bb[::-1, ::-1].astype(float), (H, W))
+        best = np.fft.irfft2(fa * fb, (H, W)).max() + 0.5
+        if best >= SAME_SHAPE * max(na, nb):
+            return True
+        # containment only between islands of a size: any small blob fits
+        # inside a big plateau somewhere, and that is not the same island
+        if min(na, nb) >= CONTAIN_SIZE * max(na, nb) and best >= CONTAINED * min(na, nb):
+            return True
+    return False
+
+
+SMALL_MIN = 8             # plateau tiles: anything less is a scrap, not an island
+MIN_TOP_SHARE = 0.25      # plateau tiles per wall tile: the drawings hold 0.33 to 0.75; a tangle of
+                          # back lines round a scrap of top (0.05 in the one that failed) is no island
+MAX_UNBACKED = 0.12       # wall tops with no plateau behind them, per wall tile: the drawings hold
+                          # 6-8%; the free-standing face the user flagged sat in an island at 21%
+
+# The layouts of the last bake, numbered as its contact sheet numbers them,
+# and the layouts the user has turned down. A layout is turned down by its
+# number on the sheet (--reject 3,17); its plateau goes into REJECTED, and no
+# later bake keeps that shape again. Whether a layout reads well is the
+# user's eye: the faults found so far (a full-height wall stopping dead
+# against the grass) are built of sprites and seams the drawings use too,
+# so no rule here could tell them apart.
+LAYOUTS = os.path.join(ROOT, 'art', 'cliffs', 'islands_layouts.npz')     # the last sheet's layouts, as grids
+KEPT = os.path.join(ROOT, 'art', 'cliffs', 'islands_kept.npz')           # layouts the user approved (--keep)
+REJECTED = os.path.join(ROOT, 'art', 'cliffs', 'islands_rejected.npz')
+
+
+def load_arrays(path):
+    if not os.path.exists(path):
+        return []
+    z = np.load(path)
+    return [z['m%d' % i] for i in range(len(z.files))]
+
+
+def save_arrays(path, masks):
+    np.savez_compressed(path, **{'m%d' % i: m for i, m in enumerate(masks)})
+
+
+def vet(model, sp, g):
+    """A candidate landform as the library would keep it, or None: inside
+    the stamp size, every 2x2 block a source block, one wall piece, a
+    plateau, no passage too narrow for the feet."""
+    if g.shape[1] > STAMP_MAX_W or g.shape[0] > STAMP_MAX_H or (g == UNKNOWN).any():
+        return None
+    try:
+        model.check(g)
+    except AssertionError:
+        return None
+    if len(wall_pieces(sp, g)) != 1:
+        return None
+    level = settle_levels(sp, g)
+    high = int((level > 0).sum())
+    if high < SMALL_MIN or narrow_split(sp, g, level):
+        return None
+    walls = sum(1 for s in g.ravel() if sp.wall(s))
+    if high < MIN_TOP_SHARE * walls:
+        return None
+    if unbacked(sp, g, level) > MAX_UNBACKED * walls:
+        return None
+    return g
+
+
+def corner_cuts(sp, g):
+    """The wall tiles whose top corner is cut off square, as (x, y): plain
+    ground in all three tiles above, and rock running into a side edge
+    (edge_rock) with plain ground beyond. Each half is common in the
+    drawings -- a bare top with the wall running on beside it, or a cut side
+    under the back line that caps it -- but together they never occur there:
+    the rock stops dead in the grass, top and side. The user flagged one."""
+    h, w = g.shape
+    out = []
+    for y in range(1, h):
+        for x in range(1, w - 1):
+            s = g[y, x]
+            if not sp.wall(s) or (g[y - 1, x - 1:x + 2] != 0).any():
+                continue
+            if (g[y, x - 1] == 0 and edge_rock(sp, s, 2) >= RUNS_INTO) or                (g[y, x + 1] == 0 and edge_rock(sp, s, 3) >= RUNS_INTO):
+                out.append((x, y))
+    return out
+
+
+CUT_UP, CUT_DOWN, CUT_SIDE = 3, 6, 4   # the window refilled round a cut corner
+CUT_TRIES = 20
+
+
+def repair_corners(model, sp, g, rng):
+    """g with every square-cut corner (corner_cuts) rebuilt from the blocks,
+    or None if one cannot be. The window round the corner is collapsed
+    afresh, and of the fills that leave no cut, one wall piece and nothing
+    new above the corner's row -- so the wall is cut shorter and the back
+    line comes in at that row to cap it, rather than the plateau growing up
+    over it (the user chose this) -- the one changing fewest tiles is kept."""
+    g = np.pad(g, max(CUT_UP, CUT_SIDE))  # room for a full window at the edge
+    while True:
+        cuts = corner_cuts(sp, g)
+        if not cuts:
+            return crop(sp, g)
+        x, y = cuts[0]
+        best = None
+        for _ in range(CUT_TRIES):
+            r = model.refill(g, y - CUT_UP, min(g.shape[0], y + CUT_DOWN),
+                             x - CUT_SIDE, min(g.shape[1], x + CUT_SIDE + 1), rng, (x, y))
+            if r is None or (r[:y] != g[:y]).any() or len(corner_cuts(sp, r)) >= len(cuts)                or (x, y) in corner_cuts(sp, r) or len(wall_pieces(sp, r)) != 1:
+                continue
+            n = int((r != g).sum())
+            if best is None or n < best[0]:
+                best = (n, r)
+        if best is None:
+            return None
+        g = best[1]
+
+
+def unbacked(sp, g, level):
+    """Wall columns whose top rock tile has no raised ground within two tiles
+    above it: a face with nothing behind it, stopping dead in the grass where
+    the drawings run the plateau's back line in to cap it."""
+    h, w = g.shape
+    rock = np.array([s > 0 and sp.kind[s] == 1 for s in g.ravel()]).reshape(h, w)
+    n = 0
+    for y in range(h):
+        for x in range(w):
+            if not rock[y, x] or (y > 0 and rock[y - 1, x]):
+                continue
+            ys = slice(max(0, y - 3), y)
+            xs = slice(max(0, x - 1), x + 2)
+            if not (level[ys, xs] > 0).any():
+                n += 1
+    return n
+
+
 def accept(sp, model, g):
     pieces = wall_pieces(sp, g)
     if len(pieces) != 1 or high_mask(sp, g).sum() < MIN_HIGH:
@@ -1124,6 +1360,8 @@ def vsplice(A, xa, B, xb, d):
 
 SEAM_REACH = 20           # how far B may be shifted along the seam, either way
 SEAM_STEP = 1             # cuts are tried this many tiles apart
+SPLICE_CUTS = 48          # seams tried per pair of sources (shuffled); each splice yields several pieces
+SPLICE_ROUNDS = 3         # the first round pairs the sources; later ones splice the last round's pieces
 
 
 def seams(model, sp, A, B):
@@ -1142,23 +1380,23 @@ def seams(model, sp, A, B):
 
 
 def splice_at(model, sp, A, B, ca, cb, d, transposed):
-    """The splice, trimmed and checked, or None."""
+    """The landforms the splice makes, each checked: the splice's own blocks
+    first, then every wall piece of it on its own (split_pieces, vet)."""
     g = vsplice(A.T, ca, B.T, cb, d).T if transposed else vsplice(A, ca, B, cb, d)
-    drawn = g != 0
-    if not drawn.any():
-        return None
-    ys, xs = np.nonzero(drawn)
-    g = np.pad(g[ys.min():ys.max() + 1, xs.min():xs.max() + 1], 1)
-    if g.shape[1] > STAMP_MAX_W or g.shape[0] > STAMP_MAX_H:
-        return None
+    if not (g != 0).any():
+        return []
     try:
-        model.check(g)
+        model.check(np.pad(g, 1))
     except AssertionError:
-        return None
-    level = settle_levels(sp, g)
-    if (level > 0).sum() < SPLICE_MIN_HIGH or narrow_split(sp, g, level):
-        return None
-    return g
+        return []
+    out = []
+    for piece in split_pieces(sp, g):
+        if not (piece != 0).any():
+            continue
+        p = vet(model, sp, crop(sp, piece))
+        if p is not None:
+            out.append(p)
+    return out
 
 
 def splice_worker(args):
@@ -1187,36 +1425,37 @@ def splice_worker(args):
                 found = seams(model, sp, At, Bt)
                 rng.shuffle(found)
                 for ca, cb, d in found[:cap]:
-                    g = splice_at(model, sp, A, B, ca, cb, d, transposed)
-                    if g is None:
-                        continue
-                    k = g.tobytes() + bytes(g.shape)
-                    if k in seen:
-                        continue
-                    seen.add(k)
-                    out.append(g)
+                    for g in splice_at(model, sp, A, B, ca, cb, d, transposed):
+                        k = g.tobytes() + bytes(g.shape)
+                        if k in seen:
+                            continue
+                        seen.add(k)
+                        out.append(g)
     return out
 
 
 def splice_pool(sp, sources, want, seed, workers):
     """Big landforms spliced from the sources in parallel: every source
-    with every other at every exact seam. One round: the sources give more
-    than the library needs, and a second round over the big results costs
-    hours in level settling for little new shape."""
+    with every other at every exact seam, then SPLICE_ROUNDS - 1 more
+    rounds in which each piece the last round made is spliced with a sample
+    of the sources. Once splices were kept whole that cost hours for little
+    new shape; split into their pieces (splice_at), the pieces are small and
+    every round adds layouts no source pair gives."""
     import multiprocessing
     t0 = time.time()
     out, seen = [], set()
     n = len(sources)
-    for round_ in range(1):
+    last = 0
+    for round_ in range(SPLICE_ROUNDS):
         if round_ == 0:
             a_idx = list(range(n))
             extra = []
             b_sample = 0                  # every source against every other
         else:
-            extra = [g.tolist() for g in out[:300]]
+            extra = [g.tolist() for g in out[last:][:300]]
             a_idx = list(range(n, n + len(extra)))
             b_sample = 24                 # each new landform against a sample of the rest
-        jobs = [(a_idx[i::workers], extra, seed * 1000 + round_ * 100 + i, 12, b_sample) for i in range(workers) if a_idx[i::workers]]
+        jobs = [(a_idx[i::workers], extra, seed * 1000 + round_ * 100 + i, SPLICE_CUTS, b_sample) for i in range(workers) if a_idx[i::workers]]
         with multiprocessing.Pool(len(jobs)) as pool:
             results = pool.map(splice_worker, jobs)
         made = 0
@@ -1230,11 +1469,185 @@ def splice_pool(sp, sources, want, seed, workers):
                 made += 1
         print('  splice round %d: %d new landforms (%d so far), %.0fs' % (round_ + 1, made, len(out), time.time() - t0))
         sys.stdout.flush()
-        if len(out) >= want or made == 0:
+        last = len(out) - made          # the next round splices what this one made
+        if (want and len(out) >= want) or made == 0:
             break
     rng = np.random.RandomState(seed)
     rng.shuffle(out)
-    return out[:want]
+    return out[:want] if want else out
+
+
+CARVE_BAND = 3                  # tiles inside a carved window's edge collapsed afresh to close it
+CARVE_W, CARVE_H = (10, 20), (9, 16)
+CARVE_TRIES = 3                 # collapses of the band before a window is given up
+
+
+def carve(model, sp, g, rng):
+    """A smaller landform cut out of g, or None: a window round one of its
+    plateau tiles, everything outside it ground, and the band just inside its
+    edge collapsed afresh from the blocks so the walls the window cuts end
+    as the drawings end them. What lies deeper in keeps g's own tiles, so a
+    lobe of a big layout becomes a small one of the same hand. Vetted."""
+    ys, xs = np.nonzero(settle_levels(sp, g) > 0)
+    if not len(ys):
+        return None
+    i = rng.randint(len(ys))
+    w, h = rng.randint(*CARVE_W), rng.randint(*CARVE_H)
+    pad = max(w, h)
+    gp = np.pad(g, pad)
+    y0, x0 = ys[i] + pad - h // 2, xs[i] + pad - w // 2
+    win = np.zeros((h, w), int)
+    win[1:-1, 1:-1] = gp[y0 + 1:y0 + h - 1, x0 + 1:x0 + w - 1]
+    free = np.zeros((h, w), bool)
+    free[1:-1, 1:-1] = True
+    free[1 + CARVE_BAND:-1 - CARVE_BAND, 1 + CARVE_BAND:-1 - CARVE_BAND] = False
+    for _ in range(CARVE_TRIES):
+        r = model.refill(win, 0, h, 0, w, rng, free=free)
+        if r is not None:
+            break
+    if r is None or not (r != 0).any():
+        return None
+    pieces = split_pieces(sp, r)          # its own scree only, as a splice's piece
+    return vet(model, sp, crop(sp, pieces[0])) if len(pieces) == 1 else None
+
+
+def carve_worker(args):
+    """`tries` carves from this worker's share of the landforms."""
+    grids, tries, seed = args
+    sp, refs = load_refs()
+    landforms = load_map(sp, vocabulary(sp))
+    refs, sources = sources_of(sp, refs, landforms)
+    model = Model(sp, sources)
+    rng = np.random.RandomState(seed)
+    out = []
+    for _ in range(tries):
+        g = carve(model, sp, np.array(grids[rng.randint(len(grids))]), rng)
+        if g is not None:
+            out.append(g)
+    return out
+
+
+def carve_pool(cands, tries, seed, workers):
+    """Small and medium landforms carved out of the big candidates (carve),
+    `tries` carves in all, in parallel."""
+    import multiprocessing
+    t0 = time.time()
+    rng = np.random.RandomState(seed)
+    big = [cands[i] for i in rng.permutation(len(cands))[:400]]
+    jobs = [([g.tolist() for g in big[i::workers]], tries // workers, seed * 1000 + 900 + i) for i in range(workers)]
+    with multiprocessing.Pool(workers) as pool:
+        results = pool.map(carve_worker, jobs)
+    out, seen = [], set()
+    for islands in results:
+        for g in islands:
+            k = g.tobytes() + bytes(g.shape)
+            if k not in seen:
+                seen.add(k)
+                out.append(g)
+    print('  carved %d landforms from %d tries, %.0fs' % (len(out), tries, time.time() - t0))
+    sys.stdout.flush()
+    return out
+
+
+def plateau_class(n):
+    """0 large, 1 medium, 2 small: the classes the placement draws from."""
+    return 0 if n >= LARGE_HIGH else 1 if n >= MEDIUM_HIGH else 2
+
+
+def choose(model, sp, cands, own, targets, seed, workers):
+    """The library's distinct layouts: targets[k] of each class, no two the
+    same shape (same_shape, with mirrors), the user's drawings first. Picked
+    with spares, made taller (stretch_all), then checked as the game will
+    use them: still clear for the feet, and a sealed one must take a cave
+    (mouth_ok). Returns (grid, level, open) per class."""
+    rng = np.random.RandomState(seed)
+    rest = [cands[i] for i in rng.permutation(len(cands))]
+    rejected = load_arrays(REJECTED)
+    picked, masks = [[], [], []], [[], [], []]
+    for i, g in enumerate(own + rest):
+        m = settle_levels(sp, g) > 0
+        k = plateau_class(int(m.sum()))
+        if i >= len(own) and len(picked[k]) >= 2 * targets[k]:
+            continue
+        if any(same_shape(m, pm) for pm in masks[k]):
+            continue
+        if i >= len(own) and any(same_shape(m, r) for r in rejected):
+            continue
+        picked[k].append((i < len(own), g))
+        masks[k].append(m)
+    flat = [x for k in range(3) for x in picked[k]]
+    print('  %d / %d / %d distinct layouts found (large / medium / small), stretching them'
+          % tuple(len(p) for p in picked))
+    sys.stdout.flush()
+    tall = stretch_all([g for _, g in flat], workers)
+    final, fmasks, dropped = [[], [], []], [[], [], []], Counter()
+    for (mine, _), g in zip(flat, tall):
+        level = settle_levels(sp, g)
+        m = level > 0
+        k = plateau_class(int(m.sum()))
+        if not mine:
+            if len(final[k]) >= targets[k]:
+                continue
+            if narrow_split(sp, g, level):
+                dropped['narrow once taller'] += 1
+                continue
+        fixed = len(corner_cuts(sp, g))
+        if fixed:
+            g = repair_corners(model, sp, g, rng)
+            if g is None:
+                dropped['corner cut, no repair'] += 1
+                continue
+            dropped['kept, square-cut corners rebuilt'] += 1
+            level = settle_levels(sp, g)
+            m = level > 0
+            k = plateau_class(int(m.sum()))
+            if narrow_split(sp, g, level):
+                dropped['narrow once repaired'] += 1
+                continue
+        op = top_open(sp, g, level)
+        if not mine and not op and not mouth_ok(sp, g, level):
+            dropped['sealed, no wall for a cave'] += 1
+            continue
+        if any(same_shape(m, pm) for pm in fmasks[k]):
+            dropped['same shape once taller'] += 1
+            continue
+        model.check(g)
+        final[k].append((g, level, op, fixed))
+        fmasks[k].append(m)
+    if dropped:
+        print('  after stretching: ' + ', '.join('%d %s' % (c, r) for r, c in dropped.items()))
+    for k, name in enumerate(('large', 'medium', 'small')):
+        if len(final[k]) < targets[k]:
+            print('  only %d distinct %s layouts (wanted %d)' % (len(final[k]), name, targets[k]))
+    return final
+
+
+def write_contact_labelled(sp, uniques, path):
+    """The distinct layouts, one each, labelled: class, size, plateau, and
+    whether the feet walk up (open, a ramp) or a cave carries them (sealed)."""
+    from PIL import ImageDraw
+    ims = [paint(sp, g) for g, _, _, _ in uniques]
+    cols = 5
+    cw = max(im.shape[1] for im in ims) + CELL
+    rows = (len(ims) + cols - 1) // cols
+    rh = [max(im.shape[0] for im in ims[r * cols:(r + 1) * cols]) + 28 for r in range(rows)]
+    sheet = Image.new('RGB', (cols * cw, sum(rh)), (60, 60, 60))
+    dr = ImageDraw.Draw(sheet)
+    y = 0
+    for r in range(rows):
+        for c in range(cols):
+            i = r * cols + c
+            if i >= len(ims):
+                break
+            g, level, op, fixed = uniques[i]
+            n = int((level > 0).sum())
+            dr.text((c * cw + 4, y + 6), '%d %s %dx%d plateau %d %s%s' % (
+                i + 1, ('large', 'medium', 'small')[plateau_class(n)], g.shape[1], g.shape[0], n,
+                'open' if op else 'sealed+cave', ', %d corner fixed' % fixed if fixed else ''),
+                fill=(255, 220, 0) if fixed else (255, 255, 255))
+            sheet.paste(Image.fromarray(ims[i]), (c * cw, y + 24))
+        y += rh[r]
+    sheet.save(path)
 
 
 # ---------------------------------------------------------------- output
@@ -1353,16 +1766,31 @@ def load_refs():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--count', type=int, default=150, help='small islands grown from the drawings')
-    ap.add_argument('--big', type=int, default=300, help='big landforms spliced from the map and the drawings')
+    ap.add_argument('--count', type=int, default=0, help='small islands grown from the drawings (slow, yields little)')
+    ap.add_argument('--big', type=int, default=0, help='cap on spliced candidates; 0 keeps them all')
+    ap.add_argument('--distinct', default='15,20,15', help='distinct layouts wanted: large,medium,small')
     ap.add_argument('--seed', type=int, default=7)
     ap.add_argument('--workers', type=int, default=8)
     ap.add_argument('--sheet', default=OUT_SHEET)
+    ap.add_argument('--contact', default=None, help='where the labelled sheet of distinct layouts goes')
+    ap.add_argument('--reject', default='', help='turn down layouts by their number on the last contact sheet, e.g. 3,17')
+    ap.add_argument('--keep', action='store_true', help='approve the last contact sheet: its layouts stay in every later bake as they are')
+    ap.add_argument('--carve', type=int, default=0, help='carves of smaller landforms out of the spliced ones')
+    ap.add_argument('--cache', default=None, help='npz the spliced candidates are kept in between runs')
     ap.add_argument('--no-write', action='store_true')
     a = ap.parse_args()
+    targets = [int(v) for v in a.distinct.split(',')]
     t0 = time.time()
 
     sp, refs = load_refs()
+    if a.reject:
+        last = load_arrays(LAYOUTS)
+        turned = [settle_levels(sp, last[int(v) - 1]) > 0 for v in a.reject.split(',')]
+        save_arrays(REJECTED, load_arrays(REJECTED) + turned)
+        print('turned down %d layout%s (%d in all)' % (len(turned), '' if len(turned) == 1 else 's', len(load_arrays(REJECTED))))
+    if a.keep:
+        save_arrays(KEPT, load_arrays(KEPT) + load_arrays(LAYOUTS))
+        print('kept the last sheet: %d approved layouts in all' % len(load_arrays(KEPT)))
     vocab = vocabulary(sp)
     landforms = load_map(sp, vocab)
     print('%d drawings (with mirrors), %d map landforms, %d sprites, %.0fs' % (len(refs), len(landforms), len(sp.img), time.time() - t0))
@@ -1371,37 +1799,50 @@ def main():
     print('%d blocks, %.0fs' % (model.P, time.time() - t0))
     sys.stdout.flush()
 
-    big = splice_pool(sp, sources, a.big, a.seed, a.workers)
-    small = grow(a.count, a.seed, a.workers)
+    if a.cache and os.path.exists(a.cache):
+        big = load_arrays(a.cache)
+        print('  %d spliced candidates from %s' % (len(big), a.cache))
+    else:
+        big = splice_pool(sp, sources, a.big, a.seed, a.workers)
+        if a.cache:
+            save_arrays(a.cache, big)
+    small = grow(a.count, a.seed, a.workers) if a.count else []
+    small += carve_pool(big, a.carve, a.seed, a.workers) if a.carve else []
+    print('  %d candidate landforms (splices split into their pieces, each checked)' % (len(big) + len(small)))
     # the user's own drawings stand as they are; the map's landforms do not.
     # A drawing with a tile still unknown cannot: nothing can be drawn there.
-    own = [crop(sp, g) for g in refs if not (g == UNKNOWN).any()]
-    for k, g in enumerate(refs):
+    # Mirrors are added to every layout at the end, so only one of each pair.
+    # Approved layouts (--keep) stand as they are too, after the drawings.
+    own = [crop(sp, g) for g in refs[::2] if not (g == UNKNOWN).any()] + load_arrays(KEPT)
+    for k, g in enumerate(refs[::2]):
         ys, xs = np.nonzero(g == UNKNOWN)
         if len(xs):
             # refs are settled drawings: 2 rings of pad round the loader's 1-tile margin
-            name = REFS[k // 2] + (' (mirror)' if k % 2 else '')
             print('  %s left out: tile%s %s could not be settled (drawing tiles, x,y)'
-                  % (name, 's' if len(xs) > 1 else '', ', '.join('%d,%d' % (x - 3, y - 3) for x, y in zip(xs.tolist(), ys.tolist()))))
-    islands = big + own + small
-    islands = stretch_all(islands, a.workers)
-    levels = [settle_levels(sp, g) for g in islands]
-    keep = [i for i in range(len(islands)) if not narrow_split(sp, islands[i], levels[i])]
-    if len(keep) < len(islands):
-        print('  %d landforms dropped for a passage too narrow to walk' % (len(islands) - len(keep)))
-    islands = [islands[i] for i in keep]
-    levels = [levels[i] for i in keep]
-    order = sorted(range(len(islands)), key=lambda i: -int((levels[i] > 0).sum()))
-    islands = [islands[i] for i in order]
-    levels = [levels[i] for i in order]
-    for g in islands:
-        model.check(g)
-    opens = [top_open(sp, g, lv) for g, lv in zip(islands, levels)]
+                  % (REFS[k], 's' if len(xs) > 1 else '', ', '.join('%d,%d' % (x - 3, y - 3) for x, y in zip(xs.tolist(), ys.tolist()))))
+    final = choose(model, sp, big + small, own, targets, a.seed, a.workers)
+    uniques = [x for k in range(3) for x in final[k]]
+    uniques.sort(key=lambda x: -int((x[1] > 0).sum()))
+    contact = a.contact or OUT_PNG
+    write_contact_labelled(sp, uniques, contact)
+    save_arrays(LAYOUTS, [g for g, _, _, _ in uniques])
+    print('%d distinct layouts (%d large, %d medium, %d small) -> %s'
+          % (len(uniques), len(final[0]), len(final[1]), len(final[2]), contact))
+    # every layout and its mirror: the mirror is a free second entry, not a layout
+    islands, levels, opens = [], [], []
+    for g, level, op, _ in uniques:
+        mg = mirror(sp, g)
+        mlevel = settle_levels(sp, mg)
+        model.check(mg)
+        islands += [g, mg]
+        levels += [level, mlevel]
+        opens += [op, top_open(sp, mg, mlevel)]
     if a.no_write:
         return
     write_sheet(sp, a.sheet)
     large0, medium0 = write_inc(sp, islands, levels, opens, OUT_INC)
-    write_contact(sp, islands, OUT_PNG, cols=6, scale=1)
+    if a.contact:
+        write_contact_labelled(sp, uniques, OUT_PNG)
     sizes = [int((lv > 0).sum()) for lv in levels]
     storeys = sum(1 for lv in levels if lv.max() >= 2)
     print('wrote %d landforms: %d large, %d medium, %d small; plateaus %d to %d tiles, %d with a storey drawn in -> %s, %s, %s (%.0fs)'

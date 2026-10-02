@@ -881,6 +881,11 @@ static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 static const int ISLAND_GAP        = 2;
 static const int ISLAND_GAP_VARY   = 5;
 static const int ISLAND_STOREY_GAP = 1;
+// Anchors within ISLAND_DENSE_R grid steps (4 tiles each) count towards how
+// crowded an anchor's country is, which picks the size class it rolls. No
+// library entry is placed twice with anchors closer than ISLAND_REPEAT_R tiles.
+static const int ISLAND_DENSE_R    = 8;
+static const int ISLAND_REPEAT_R   = 64;
 
 // Whether a storey's drawn cell may stand at (x, y): the tile and every tile
 // within ISLAND_STOREY_GAP of it is open top of the level below, by `clear`.
@@ -1233,6 +1238,34 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         }
     std::sort(anc_i, anc_i + na, [&](int a, int b) { return anc_s[a] > anc_s[b]; });
 
+    // How crowded with mountain the country round each anchor is: of the
+    // anchors within ISLAND_DENSE_R grid steps, how many are in the upper
+    // half of the field order -- the half the islands go on. The class an
+    // anchor rolls goes by it, the most crowded country the large landforms,
+    // so a range is built of big mountains and the small ones scatter where
+    // it thins out. By the field alone, its rough and grain noise left large
+    // and small interleaved anchor by anchor.
+    const int gw = (x_hi - x_lo + 3) / 4 + 1, gh = (y_hi - y_lo + 3) / 4 + 1;
+    static int dense_sum[(MAP_HEIGHT / 4 + 2) * (MAP_WIDTH / 4 + 2)];
+    static int anc_d[1 << 20];
+    memset(dense_sum, 0, sizeof(int) * gw * gh);
+    auto cell = [&](int gx, int gy) -> int& { return dense_sum[gy * gw + gx]; };
+    for (int k = 0; k < na / 2; k++) {
+        int a = anc_i[k];
+        cell((anc_x[a] - x_lo) / 4 + 1, (anc_y[a] - y_lo) / 4 + 1) = 1;
+    }
+    for (int gy = 1; gy < gh; gy++)                // summed-area table; row 0 and column 0 stay zero
+        for (int gx = 1; gx < gw; gx++)
+            cell(gx, gy) += cell(gx - 1, gy) + cell(gx, gy - 1) - cell(gx - 1, gy - 1);
+    for (int a = 0; a < na; a++) {
+        int gx = (anc_x[a] - x_lo) / 4 + 1, gy = (anc_y[a] - y_lo) / 4 + 1;
+        int x0 = std::max(gx - ISLAND_DENSE_R - 1, 0), x1 = std::min(gx + ISLAND_DENSE_R, gw - 1);
+        int y0 = std::max(gy - ISLAND_DENSE_R - 1, 0), y1 = std::min(gy + ISLAND_DENSE_R, gh - 1);
+        anc_d[a] = cell(x1, y1) - cell(x0, y1) - cell(x1, y0) + cell(x0, y0);
+    }
+    // ponytail: the sum does not wrap, so a range on a joined seam counts as less crowded there.
+    std::stable_sort(anc_i, anc_i + na, [&](int a, int b) { return anc_d[a] > anc_d[b]; });
+
     // Which islands were placed, for the storeys above them to sit on.
     static int placed_x[1 << 16], placed_y[1 << 16], placed_i[1 << 16];
     const int PLACED_CAP = (int)(sizeof placed_i / sizeof *placed_i);
@@ -1241,12 +1274,33 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
     s_island_sealed_count = 0;
     s_island_sealed_tiles = 0;
 
+    // No library entry stands within ISLAND_REPEAT_R of itself: the placed
+    // islands' anchors in buckets ISLAND_REPEAT_R wide, a list per bucket.
+    const int bw = MAP_WIDTH / ISLAND_REPEAT_R + 1, bh = MAP_HEIGHT / ISLAND_REPEAT_R + 1;
+    static int bucket_head[(MAP_HEIGHT / ISLAND_REPEAT_R + 1) * (MAP_WIDTH / ISLAND_REPEAT_R + 1)];
+    static int placed_ax[1 << 16], placed_ay[1 << 16], bucket_next[1 << 16];
+    for (int b = 0; b < bw * bh; b++) bucket_head[b] = -1;
+    auto repeats = [&](int ii, int ax, int ay) -> bool {
+        int bx = ax / ISLAND_REPEAT_R, by = ay / ISLAND_REPEAT_R;
+        for (int qy = by - 1; qy <= by + 1; qy++)
+            for (int qx = bx - 1; qx <= bx + 1; qx++) {
+                // ponytail: buckets do not wrap, so a repeat straddling a joined seam goes unseen.
+                if (qx < 0 || qy < 0 || qx >= bw || qy >= bh) continue;
+                for (int j = bucket_head[qy * bw + qx]; j >= 0; j = bucket_next[j]) {
+                    if (placed_i[j] != ii) continue;
+                    int dx = placed_ax[j] - ax, dy = placed_ay[j] - ay;
+                    if (dx * dx + dy * dy < ISLAND_REPEAT_R * ISLAND_REPEAT_R) return true;
+                }
+            }
+        return false;
+    };
+
     long high = 0, want = (long)(CLIFF_LEVEL_PCT[1] * (float)elig);
     // The library is sorted largest first, in three classes. The anchors
-    // are sorted by the field, highest first: the top of the order rolls
-    // the large landforms, the middle the medium, the rest the small, so
-    // the big country stands where the range is and the islands scatter
-    // outward from it.
+    // are sorted by how crowded their country is: the top of the order
+    // rolls the large landforms, the middle the medium, the rest the small.
+    // An anchor whose roll already stands nearby takes the next entry of its
+    // class, round the class, and is passed over if every one does.
     for (int k = 0; k < na && high < want; k++) {
         int ax = anc_x[anc_i[k]], ay = anc_y[anc_i[k]];
         unsigned int h = hash((unsigned)ax, (unsigned)ay, 2u);
@@ -1255,7 +1309,12 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         else if (k < na * 50 / 100 && ISLAND_MEDIUM0 > ISLAND_LARGE0)  { lo = ISLAND_LARGE0;  hi = ISLAND_MEDIUM0; }
         else                                                           { lo = ISLAND_MEDIUM0; hi = ISLAND_COUNT; }
         if (hi <= lo) { lo = 0; hi = ISLAND_COUNT; }
-        int ii = lo + (int)(h % (unsigned)(hi - lo));
+        int ii = -1;
+        for (int t = 0; t < hi - lo && ii < 0; t++) {
+            int c = lo + (int)((h + (unsigned)t) % (unsigned)(hi - lo));
+            if (!repeats(c, ax, ay)) ii = c;
+        }
+        if (ii < 0) continue;
         const Island& I = ISLANDS[ii];
         // the anchor is the island's centre, so a hill sits on its peak
         int tx = ax - I.w / 2, ty = ay - I.h / 2;
@@ -1264,8 +1323,20 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         stamp(I, tx, ty, 1, I.high_tiles);
         high += I.high_tiles;
         s_island_count++;
-        if (nplaced < PLACED_CAP) { placed_x[nplaced] = tx; placed_y[nplaced] = ty; placed_i[nplaced] = ii; nplaced++; }
+        if (nplaced < PLACED_CAP) {
+            placed_x[nplaced] = tx; placed_y[nplaced] = ty; placed_i[nplaced] = ii;
+            placed_ax[nplaced] = ax; placed_ay[nplaced] = ay;
+            int b = (ay / ISLAND_REPEAT_R) * bw + ax / ISLAND_REPEAT_R;
+            bucket_next[nplaced] = bucket_head[b];
+            bucket_head[b] = nplaced;
+            nplaced++;
+        }
     }
+    // ISLAND_TRACE: every level-1 island placed, as "entry anchor_x
+    // anchor_y", for tools to check the classes and the repeat distance.
+    if (getenv("ISLAND_TRACE"))
+        for (int j = 0; j < nplaced; j++)
+            fprintf(stderr, "island %d %d %d\n", placed_i[j], placed_ax[j], placed_ay[j]);
 
     // The storeys: on each island placed, in the same order, one of the
     // islands that can stand on it, where it can -- see build_storey_table.
