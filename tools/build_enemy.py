@@ -6,19 +6,20 @@ The .txt holds #PAL (letter + hex), #BODY (row the breathing pivots on),
 optional #POSE ("breathe", the default, or "splay ROW": legs from ROW down
 push outward instead -- frames rest/half/full, played 0 1 2 1; the full pose
 may be hand-drawn as R+ DR+ UR+ Dh+ Uh+ at the padded width; or "frames":
-all three drawn, frames 1 and 2 as sections R@1 ... U@2, played 0 1 0 2),
+all drawn, frames 1, 2 ... as sections R@1 ... U@2 ...; three frames play
+0 1 0 2, more than three (a big creature's smoother idle) play in order),
 optional #PAD
 (blank columns added each side to make room for the pose), optional
-#DIRS 6 (no D/U drawn; down uses 3/4 front-right, up 3/4 back-right --
-same 24-frame layout), optional
+(a straight front D or back U that isn't drawn reuses the 3/4 front-right /
+back-right view -- same layout; #DIRS 6 just records that neither is), optional
 #PATCHn X Y [VIEW] sections (pixels drawn onto frame n of every hand-drawn
 view, or just VIEW, at X,Y in frame coordinates, mirrored with the view --
 for a part that moves on its own, like a tail or a tongue),
 and the hand-drawn views: R, DR, UR full width; D and U as left halves (Dh, Uh,
 mirrored) or full (D, U). Left-facing views are mirrors of the right ones.
 
-Writes OUTDIR/NN_name.aseprite + .png (24 frames, 8 directions x
-rest/inhale/stance in order D DR R UR U UL L DL) and, if asked, an 8x preview with the player beside it for scale
+Writes OUTDIR/NN_name.aseprite + .png (8 directions in order D DR R UR U UL L DL
+x their idle frames, 3 unless "frames" draws more) and, if asked, an 8x preview with the player beside it for scale
 plus an idle-loop .gif next to it.
 """
 import sys, os, subprocess
@@ -87,6 +88,7 @@ def splay_poses(g, legs, full=None):
     g = pad(g)
     return [g, splay(g, legs + 1), pad(full) if full else splay(g, legs + 1)]
 
+STEP_MS = 260   # each frame of a longer (more than 3 frame) idle cycle; matches battle.cpp
 GIF_ORDER = {'breathe': (0, 1, 0, 2), 'splay': (0, 1, 2, 1), 'frames': (0, 1, 0, 2)}
 
 def patches(S):
@@ -108,7 +110,7 @@ def paste(g, x0, y0, rows):
     return g
 
 def animate(S):
-    """{direction: its 3 frames}. Frames are built for the hand-drawn
+    """{direction: its idle frames}. Frames are built for the hand-drawn
     directions, patched (#PATCHn: drawn onto frame n), then mirrored for the
     left-facing ones."""
     kind, *arg = S.get('POSE', ['breathe'])[0].split()
@@ -118,8 +120,9 @@ def animate(S):
         A = {d: poses(V[d], int(S['BODY'][0])) for d in base}
     elif kind == 'frames':
         top = lambda g: ['.' * len(g[0])] + g
-        F1, F2 = views(S, '@1'), views(S, '@2')
-        A = {d: [top(V[d]), top(F1[d]), top(F2[d])] for d in base}
+        more = []
+        while views(S, f'@{len(more) + 1}'): more.append(views(S, f'@{len(more) + 1}'))
+        A = {d: [top(V[d])] + [top(F[d]) for F in more] for d in base}
     else:
         F = views(S, '+') if 'R+' in S else {}
         A = {d: splay_poses(V[d], int(arg[0]), F.get(d)) for d in base}
@@ -129,13 +132,13 @@ def animate(S):
                 if view in (None, d): A[d][n] = paste(A[d][n], x, y, rows)
     for d in ('R', 'DR', 'UR'):
         if d in A: A[d.replace('R', 'L')] = [[r[::-1] for r in g] for g in A[d]]
-    if S.get('DIRS', ['8'])[0] == '6':
-        # No straight front/back view: down and up reuse the 3/4 views, so the
-        # sheet keeps the same 8-direction layout as every other enemy.
-        for d, src in SIX_DIR.items(): A[d] = A[src]
+    # A straight front or back view that isn't drawn reuses the 3/4 view next
+    # to it, so the sheet keeps the same 8-direction layout as every other enemy.
+    for d, src in FALLBACK.items():
+        if d not in A: A[d] = A[src]
     return A
 
-SIX_DIR = {'D': 'DR', 'U': 'UR'}
+FALLBACK = {'D': 'DR', 'U': 'UR'}
 
 def build(txt, outdir):
     S = load(txt)
@@ -158,33 +161,34 @@ def build(txt, outdir):
                     '--script', os.path.join(HERE, 'paint_grid.lua')], check=True)
     subprocess.run([ASEPRITE, '-b', ase, '--save-as', os.path.join(outdir, name + '.png')], check=True)
     os.remove(grid)
-    return name, w, h, S.get('POSE', ['breathe'])[0].split()[0]
+    return name, w, h, S.get('POSE', ['breathe'])[0].split()[0], len(A['D'])
 
-def preview(png, w, h, out, player=None, kind='breathe'):
-    """8 rows (directions) x 3 poses at 8x on pink, player sprite beside for scale."""
+def preview(png, w, h, out, player=None, kind='breathe', n=3):
+    """8 rows (directions) x n poses at 8x on pink, player sprite beside for scale."""
     im = Image.open(png).convert('RGBA')
     pw = 0
     if player:
         pl = Image.open(player).convert('RGBA').crop((0, 0, 14, 20)); pw = 16
-    cv = Image.new('RGBA', (3 * (w + 2) + pw, max(8 * (h + 2), 22)), (255, 170, 200, 255))
-    for i in range(24):
-        cv.alpha_composite(im.crop((i * w, 0, (i + 1) * w, h)), ((i % 3) * (w + 2) + 1, (i // 3) * (h + 2) + 1))
-    if player: cv.alpha_composite(pl, (3 * (w + 2) + 1, 1 + h + 2 - 20 + 1))
+    cv = Image.new('RGBA', (n * (w + 2) + pw, max(8 * (h + 2), 22)), (255, 170, 200, 255))
+    for i in range(8 * n):
+        cv.alpha_composite(im.crop((i * w, 0, (i + 1) * w, h)), ((i % n) * (w + 2) + 1, (i // n) * (h + 2) + 1))
+    if player: cv.alpha_composite(pl, (n * (w + 2) + 1, 1 + h + 2 - 20 + 1))
     cv.resize((cv.width * 8, cv.height * 8), Image.NEAREST).save(out)
     # Idle loop, all 8 directions in a row.
     gif = []
-    for p in GIF_ORDER[kind]:
+    order = GIF_ORDER[kind] if n == 3 else range(n)
+    for p in order:
         row = Image.new('RGBA', (8 * (w + 2), h + 2), (255, 170, 200, 255))
         for d in range(8):
-            i = d * 3 + p
+            i = d * n + p
             row.alpha_composite(im.crop((i * w, 0, (i + 1) * w, h)), (d * (w + 2) + 1, 1))
         gif.append(row.resize((row.width * 6, row.height * 6), Image.NEAREST).convert('RGB'))
     gif[0].save(os.path.splitext(out)[0] + '.gif', save_all=True, append_images=gif[1:],
-                duration=[400, 250, 400, 250], loop=0)
+                duration=[400, 250, 400, 250] if n == 3 else [STEP_MS] * n, loop=0)
 
 if __name__ == '__main__':
     txt, outdir = sys.argv[1], sys.argv[2]
-    name, w, h, kind = build(txt, outdir)
+    name, w, h, kind, n = build(txt, outdir)
     if len(sys.argv) > 3:
-        preview(os.path.join(outdir, name + '.png'), w, h, sys.argv[3], 'assets/player_small.png', kind)
+        preview(os.path.join(outdir, name + '.png'), w, h, sys.argv[3], 'assets/player_small.png', kind, n)
     print(name, w, h)

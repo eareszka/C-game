@@ -5,22 +5,36 @@ A grid is a list of rows of palette letters ('.' = empty). Parts are dicts
 back to front stay separate where they overlap."""
 import os
 
-def blank(w, h): return [['.'] * w for _ in range(h)]
+class Canvas(list):
+    """Rows of letters. `ox` shifts every helper's x so a big enemy can be drawn
+    in its usual coordinates on a wider canvas without parts falling off the
+    left edge; generators that index rows directly keep ox = 0."""
+    ox = 0
 
-def inside(g, x, y): return 0 <= y < len(g) and 0 <= x < len(g[0])
+def blank(w, h, ox=0):
+    g = Canvas(['.'] * w for _ in range(h)); g.ox = ox
+    return g
+
+def ox(g): return getattr(g, 'ox', 0)
+
+def inside(g, x, y): return 0 <= y < len(g) and 0 <= x + ox(g) < len(g[0])
+
+def get(g, x, y): return g[y][x + ox(g)]
+
+def set_(g, x, y, c): g[y][x + ox(g)] = c
 
 def put(g, cells):
     """Draw a part: cells with a 4-neighbour outside the part become outline."""
     for (x, y), c in cells.items():
         if not inside(g, x, y): continue
         edge = any((x + dx, y + dy) not in cells for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-        g[y][x] = 'K' if edge else c
+        set_(g, x, y, 'K' if edge else c)
 
 def stamp(g, x0, y0, rows):
     """Paste hand-drawn rows; '.' leaves what is underneath."""
     for dy, r in enumerate(rows):
         for dx, c in enumerate(r):
-            if c != '.' and inside(g, x0 + dx, y0 + dy): g[y0 + dy][x0 + dx] = c
+            if c != '.' and inside(g, x0 + dx, y0 + dy): set_(g, x0 + dx, y0 + dy, c)
 
 def ellipse(cx, cy, rx, ry, colour):
     """colour(x, y, t) -> letter, t = 0 at the top row .. 1 at the bottom."""
@@ -91,7 +105,7 @@ def bat_wing(g, shoulder, wrist, tips, trail, membrane, bone, flap=(0, 0)):
     put(g, cells)
     for a, b in [(shoulder, wrist)] + [(wrist, tp) for tp in tips]:
         for (x, y) in thick_line(*a, *b, 0, bone):
-            if (x, y) in cells and inside(g, x, y) and g[y][x] != 'K': g[y][x] = bone
+            if (x, y) in cells and inside(g, x, y) and get(g, x, y) != 'K': set_(g, x, y, bone)
 
 def top_of(cells, x):
     ys = [y for (cx, y) in cells if cx == x]
@@ -105,13 +119,13 @@ def slim_leg(g, points, c, edge, hoof):
     for a, b in zip(points, points[1:]):
         for (x, y) in thick_line(*a, *b, 0, c):
             if not inside(g, x, y): continue
-            g[y][x] = hoof if y >= hy - 1 else c
-            if inside(g, x + edge, y) and g[y][x + edge] != c: g[y][x + edge] = 'K'
+            set_(g, x, y, hoof if y >= hy - 1 else c)
+            if inside(g, x + edge, y) and get(g, x + edge, y) != c: set_(g, x + edge, y, 'K')
     for x in (hx, hx + edge):
-        if inside(g, x, hy): g[hy][x] = 'K'
+        if inside(g, x, hy): set_(g, x, hy, 'K')
 
 def check_legs(g, bottom, top):
-    """Every foot on row `bottom` connects, through its leg, up past row `top`
+    """(Works on the raw canvas, so it is unaffected by ox.) Every foot on row `bottom` connects, through its leg, up past row `top`
     (where the legs start, inside the body) -- no leg hangs off with nothing
     above it. Follows the leg's pixels, so bent and angled legs pass."""
     h, w = len(g), len(g[0])
@@ -125,6 +139,70 @@ def check_legs(g, bottom, top):
                     ok = ok or ny < top
                     seen.add((nx, ny)); todo.append((nx, ny))
         assert ok, f'foot at column {x} does not reach the body above row {top}'
+
+def views_reader(png, pal):
+    """For views hand-drawn with the plugin (NN_views.png): returns
+    grab(x, y, w, h) -> rows of palette letters ('.' = transparent)."""
+    from PIL import Image
+    im = Image.open(png).convert('RGBA')
+    letter = {tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)): k for k, h in pal.items()}
+    px = lambda x, y: '.' if im.getpixel((x, y))[3] == 0 else letter[im.getpixel((x, y))[:3]]
+    return lambda x0, y0, w, h: [''.join(px(x0 + x, y0 + y) for x in range(w)) for y in range(h)]
+
+def float_frame(view_rows, n, mouth=None, size=None, bob=(1, 0, 2), x=1):
+    """Idle frame n for a floating enemy drawn as plugin views: the view bobs
+    (rest, up, down -- its top row in the frame per `bob`) and on the way down
+    an open mouth (rows, (x, y) on the view) replaces the shut one."""
+    v = [list(r) for r in view_rows]
+    if n == 2 and mouth: stamp(v, *mouth[1], mouth[0])
+    g = blank(*size)
+    stamp(g, x, bob[n], [''.join(r) for r in v])
+    return g
+
+def lift(rows, pivot):
+    """Breathing in: the rows above `pivot` rise one pixel (the pivot row is
+    doubled), the rows below -- legs, feet -- stay put."""
+    assert not rows[0].strip('.'), 'breathing would lift the top row off the canvas'
+    return rows[1:pivot + 1] + rows[pivot:]
+
+def rising_frame(layers, size, x, top, lean):
+    """A creature rising out of water, drawn as plugin layers (behind, the
+    body that moves, in front): the moving layer's row y shifts sideways by
+    lean(y) -- so it can sway, more toward the top -- and everything sits with
+    its top row at `top` (the heave)."""
+    behind, body, front = layers
+    g = blank(*size)
+    stamp(g, x, top, behind)
+    for y, r in enumerate(body): stamp(g, x + lean(y), top + y, [r])
+    stamp(g, x, top, front)
+    return g
+
+def sea(g, n, water, cx, rx, frames, letters='AaW'):
+    """Water (or sand) over everything from row `water` down: a flat oval pool
+    centred at cx, ripple dashes drifting a step each of the `frames` frames
+    (frame n), foam (or kicked-up dust) either side of each part breaking the
+    surface. `letters`: the pool, its ripples, the foam."""
+    pool, ripple, foam = letters
+    w, h = len(g[0]), len(g)
+    body = [g[water - 1][x] != '.' for x in range(w)]
+    for y in range(water, h):
+        for x in range(w):
+            g[y][x] = pool if ((x - cx) / rx) ** 2 + ((y - water - 2) / 6.5) ** 2 <= 1 else '.'
+    for y, step in ((water, 0), (water + 3, 3)):
+        for x in range(w):
+            if g[y][x] == pool and (x - n + step) % frames < 2: g[y][x] = ripple
+    for x in range(w):
+        if body[x] and (x == 0 or not body[x - 1] or x == w - 1 or not body[x + 1]):
+            for xx in (x - 1, x, x + 1):
+                if 0 <= xx < w and g[water][xx] != '.': g[water][xx] = foam
+
+def drawn_frames(png, pal, vw, vh, frames=3, order=('D', 'DR', 'R', 'UR', 'U')):
+    """Views drawn whole for every frame with the plugin -- row n of the
+    exported sheet is frame n -- laid out as build sections (R, R@1, ...)
+    with a 1 px margin each side (the build adds a top row)."""
+    grab = views_reader(png, pal)
+    return {view + (f'@{n}' if n else ''): ['.' + r + '.' for r in grab(i * vw, n * vh, vw, vh)]
+            for n in range(frames) for i, view in enumerate(order)}
 
 def write(path, pal, header, views, patches=()):
     """Write a build_enemy.py source: #PAL, extra header lines, each view, then

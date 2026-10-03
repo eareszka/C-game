@@ -48,11 +48,12 @@ static bool circles_overlap(float ax, float ay, float ar,
 
 // ── Enemy sprites ─────────────────────────────────────────────────────────────
 
-// Sheets built by tools/build_enemy.py: 24 frames in a row, 8 directions
-// (D DR R UR U UL L DL) x 3 idle frames, played in `loop` order with the same
-// timings as the preview GIFs. Enemies past the end of the table have no
+// Sheets built by tools/build_enemy.py: one row, 8 directions
+// (D DR R UR U UL L DL) x `frames` idle frames each. Three frames play in
+// `loop` order; more (big creatures, smoother motion) play straight through
+// as a cycle, STEP_MS each -- the same timings as the preview GIFs. Enemies past the end of the table have no
 // sprite yet and draw as a box.
-struct EnemySheet { const char* path; Uint8 loop[4]; };
+struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; };
 static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/00_skvader.png",                {0, 1, 0, 2} },
     { "assets/enemies/01_wolpertinger.png",           {0, 1, 0, 2} },
@@ -65,9 +66,23 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/08_snawfus.png",                {0, 1, 0, 2} },
     { "assets/enemies/09_questing_beast.png",         {0, 1, 0, 2} },
     { "assets/enemies/10_grand_goule.png",            {0, 1, 0, 2} },
+    { "assets/enemies/11_paoxiao.png",                {0, 1, 0, 2} },
+    { "assets/enemies/12_ebigane.png",                {0, 1, 0, 2} },
+    { "assets/enemies/13_beast_of_the_charred_forests.png", {0, 1, 0, 2} },
+    { "assets/enemies/14_lodsilungur.png",            {0, 1, 0, 2} },
+    { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2} },
+    { "assets/enemies/16_kamaitachi.png",             {0, 1, 0, 2} },
+    { "assets/enemies/17_qiqirn.png",                 {0, 1, 0, 2} },
+    { "assets/enemies/18_vatnaormur.png",             {}, 5 },
+    { "assets/enemies/19_skeljaskrimsli.png",         {}, 5 },
+    { "assets/enemies/20_sermilik.png",               {}, 5 },
+    { "assets/enemies/21_asp.png",                    {0, 1, 0, 2} },
+    { "assets/enemies/22_cactus_cat.png",             {0, 1, 0, 2} },
+    { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 8 },
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
 static const Uint32 LOOP_MS[4] = { 400, 250, 400, 250 };
+static const Uint32 STEP_MS = 260;
 
 // Sheet row for a FACE_* direction.
 static int sheet_dir(int facing) {
@@ -382,7 +397,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
             // smaller side, so a hare is a small target and a boar a big one.
             int sw, sh;
             SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
-            int fw = sw / 24;
+            int fw = sw / (8 * ENEMY_SHEETS[_enemy_id].frames);
             _hit_r = 0.4f * 2.0f * (fw < sh ? fw : sh);
         }
     }
@@ -391,13 +406,19 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
     if (_sheet) {
         int sw, sh;
         SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
-        int fw = sw / 24;
-        const Uint8* loop = ENEMY_SHEETS[_enemy_id].loop;
-        Uint32 t = SDL_GetTicks() % (LOOP_MS[0] + LOOP_MS[1] + LOOP_MS[2] + LOOP_MS[3]);
-        int step = 0;
-        while (t >= LOOP_MS[step]) t -= LOOP_MS[step++];
+        const EnemySheet& es = ENEMY_SHEETS[_enemy_id];
+        int fw = sw / (8 * es.frames);
+        int frame;
+        if (es.frames == 3) {
+            Uint32 t = SDL_GetTicks() % (LOOP_MS[0] + LOOP_MS[1] + LOOP_MS[2] + LOOP_MS[3]);
+            int step = 0;
+            while (t >= LOOP_MS[step]) t -= LOOP_MS[step++];
+            frame = es.loop[step];
+        } else {
+            frame = (SDL_GetTicks() / STEP_MS) % es.frames;
+        }
         int dir = sheet_dir(facing_toward(_bp.x - _enemy->x, _bp.y - _enemy->y));
-        SDL_Rect src = { (dir * 3 + loop[step]) * fw, 0, fw, sh };
+        SDL_Rect src = { (dir * es.frames + frame) * fw, 0, fw, sh };
         SDL_Rect dst = { ex - fw, ey - sh, fw * 2, sh * 2 };
         SDL_RenderCopy(ren, _sheet, &src, &dst);
         half_h = sh;
