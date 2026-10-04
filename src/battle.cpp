@@ -53,7 +53,7 @@ static bool circles_overlap(float ax, float ay, float ar,
 // `loop` order; more (big creatures, smoother motion) play straight through
 // as a cycle, STEP_MS each -- the same timings as the preview GIFs. Enemies past the end of the table have no
 // sprite yet and draw as a box.
-struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; };
+struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; bool rows = false; };   // rows: one row per direction
 static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/00_skvader.png",                {0, 1, 0, 2} },
     { "assets/enemies/01_wolpertinger.png",           {0, 1, 0, 2} },
@@ -79,6 +79,32 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/21_asp.png",                    {0, 1, 0, 2} },
     { "assets/enemies/22_cactus_cat.png",             {0, 1, 0, 2} },
     { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 8 },
+    { "assets/enemies/24_zoureg.png",                 {0, 1, 0, 2} },
+    { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
+    { "assets/enemies/26_akhekh.png",                 {0, 1, 0, 2} },
+    { "assets/enemies/27_grootslang.png",             {}, 5 },
+    { "assets/enemies/28_opimachus.png",              {0, 1, 0, 2} },
+    { "assets/enemies/29_karnabo.png",                {0, 1, 0, 2} },
+    { "assets/enemies/30_dajna.png",                  {}, 8, true },   // fills the top of the arena: one row per direction
+    { "assets/enemies/31_man_eating_boulder.png",     {0, 1, 0, 2} },
+    { "assets/enemies/32_angont.png",                 {}, 5 },
+    { "assets/enemies/33_tsenagahi.png",              {0, 1, 0, 2} },
+    { "assets/enemies/34_anaye.png",                  {}, 8, true },   // giant: one row per direction
+    { "assets/enemies/35_lomie.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/36_cu_sith.png",                {0, 1, 0, 2} },
+    { "assets/enemies/37_celestial_stag.png",         {0, 1, 0, 2} },
+    { "assets/enemies/38_igtuk.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/39_ajaju.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/40_slide_rock_bolter.png",      {}, 5 },
+    { "assets/enemies/41_sasnalkahi.png",             {}, 5 },
+    { "assets/enemies/42_nykur.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/43_sazae_oni.png",              {0, 1, 0, 2} },
+    { "assets/enemies/44_itqiirpak.png",              {}, 8, true },   // giant: one row per direction
+    { "assets/enemies/45_kusa_kap.png",               {0, 1, 0, 2} },
+    { "assets/enemies/46_lusca.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/47_moha_moha.png",              {}, 5 },
+    { "assets/enemies/48_bjarndyrakongur.png",        {0, 1, 0, 2} },
+    { "assets/enemies/49_physeter.png",               {}, 8, true },   // fills the top of the arena: one row per direction
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
 static const Uint32 LOOP_MS[4] = { 400, 250, 400, 250 };
@@ -397,8 +423,9 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
             // smaller side, so a hare is a small target and a boar a big one.
             int sw, sh;
             SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
-            int fw = sw / (8 * ENEMY_SHEETS[_enemy_id].frames);
-            _hit_r = 0.4f * 2.0f * (fw < sh ? fw : sh);
+            const EnemySheet& es = ENEMY_SHEETS[_enemy_id];
+            int fw = es.rows ? sw / es.frames : sw / (8 * es.frames), fh = es.rows ? sh / 8 : sh;
+            _hit_r = 0.4f * 2.0f * (fw < fh ? fw : fh);
         }
     }
 
@@ -407,7 +434,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         int sw, sh;
         SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
         const EnemySheet& es = ENEMY_SHEETS[_enemy_id];
-        int fw = sw / (8 * es.frames);
+        int fw = es.rows ? sw / es.frames : sw / (8 * es.frames), fh = es.rows ? sh / 8 : sh;
         int frame;
         if (es.frames == 3) {
             Uint32 t = SDL_GetTicks() % (LOOP_MS[0] + LOOP_MS[1] + LOOP_MS[2] + LOOP_MS[3]);
@@ -418,10 +445,11 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
             frame = (SDL_GetTicks() / STEP_MS) % es.frames;
         }
         int dir = sheet_dir(facing_toward(_bp.x - _enemy->x, _bp.y - _enemy->y));
-        SDL_Rect src = { (dir * es.frames + frame) * fw, 0, fw, sh };
-        SDL_Rect dst = { ex - fw, ey - sh, fw * 2, sh * 2 };
+        SDL_Rect src = es.rows ? SDL_Rect{ frame * fw, dir * fh, fw, fh }
+                               : SDL_Rect{ (dir * es.frames + frame) * fw, 0, fw, fh };
+        SDL_Rect dst = { ex - fw, ey - fh, fw * 2, fh * 2 };
         SDL_RenderCopy(ren, _sheet, &src, &dst);
-        half_h = sh;
+        half_h = fh;
     } else {
         int hw = ENEMY_R + 4;
         Uint8 pulse = (_phase == BATTLE_PHASE_FIGHTING) ? 200 : 80;

@@ -677,7 +677,7 @@ public:
 class Dajna : public Enemy {
     float rot = 0.0f;
 public:
-    Dajna() : Enemy(320, 160, 238, {1.25f,1.5f,2.0f,0.75f,0.75f,1.5f,1.0f}) {}
+    Dajna() : Enemy(320, 171, 238, {1.25f,1.5f,2.0f,0.75f,0.75f,1.5f,1.0f}) {}
     const char* name()          const override { return "DAJNA"; }
     float       fire_interval() const override { return ENRAGED ? 1.0f : 1.5f; }
     int fire(float px, float py, BulletSpawn out[], int) override {
@@ -1123,7 +1123,7 @@ public:
 
 class Physeter : public Enemy {
 public:
-    Physeter() : Enemy(320, 160, 650, {0.75f,0.75f,1.0f,1.0f,1.5f,1.25f,1.25f}) {}
+    Physeter() : Enemy(320, 171, 650, {0.75f,0.75f,1.0f,1.0f,1.5f,1.25f,1.25f}) {}
     const char* name()          const override { return "PHYSETER"; }
     float       fire_interval() const override { return ENRAGED ? 1.7f : 2.5f; }
     int fire(float px, float py, BulletSpawn out[], int) override {

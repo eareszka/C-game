@@ -3,7 +3,7 @@
 A grid is a list of rows of palette letters ('.' = empty). Parts are dicts
 {(x, y): letter}; put() draws one with its own black outline, so parts drawn
 back to front stay separate where they overlap."""
-import os
+import math, os
 
 class Canvas(list):
     """Rows of letters. `ox` shifts every helper's x so a big enemy can be drawn
@@ -91,6 +91,121 @@ def tube(points, radii, colour):
             below = (bx - ax) * (py - ay) - (by - ay) * (px - ax) > 0
             if p not in best or d < best[p][0]: best[p] = (d, below)
     return {p: colour(d, below) for p, (d, below) in best.items()}
+
+def edges(cells):
+    """For shading a part: at(x, y) is 1 near its lit edge (top / left), -1
+    near its shaded one (bottom / right), else 0 -- light from the up-left."""
+    rmin, rmax, cmin, cmax = {}, {}, {}, {}
+    for (x, y) in cells:
+        rmin[y] = min(rmin.get(y, 999), x); rmax[y] = max(rmax.get(y, -1), x)
+        cmin[x] = min(cmin.get(x, 999), y); cmax[x] = max(cmax.get(x, -1), y)
+    def at(x, y):
+        if x >= rmax[y] - 2 or y >= cmax[x] - 1: return -1
+        if x <= rmin[y] + 1 or y <= cmin[x] + 1: return 1
+        return 0
+    return at
+
+def shaded(light, mid, dark):
+    """A painter for skeleton parts: `mid`, with `light` along the part's
+    top-left edge and `dark` along its bottom-right."""
+    def paint(cells):
+        at = edges(cells)
+        return {(x, y): {1: light, 0: mid, -1: dark}[at(x, y)] for (x, y) in cells}
+    return paint
+
+# ── 3D skeletons: a creature laid out once as tubes and balls in body space,
+# turned to each view and composited with a per-pixel depth buffer ──
+YAW = {'D': 0, 'DR': 45, 'R': 90, 'UR': 135, 'U': 180}   # degrees the creature has turned from facing you
+
+def turn(p, yaw, cx, ground, scale=1.0):
+    """Body space (x to the creature's left -- your right from the front --,
+    y up, z forward) -> screen (x, y) and depth (px, larger = nearer you)."""
+    x, y, z = p
+    a = math.radians(yaw)
+    X = x * math.cos(a) + z * math.sin(a)
+    D = -x * math.sin(a) + z * math.cos(a)
+    return cx + X * scale, ground - y * scale, D * scale
+
+def facing_dir(yaw, s=1, toward=1):
+    """A body-space direction (dx, dz) that lies across the screen in this
+    view -- so a curl or fan laid along it is never seen edge-on -- pointing
+    toward the creature's front (toward=1) or back (-1); from straight in
+    front or behind, out to its side `s` instead."""
+    a = math.radians(yaw)
+    dx, dz = math.cos(a), math.sin(a)
+    if abs(dz) < 1e-6: return s * abs(dx), 0.0
+    return (dx, dz) if dz * toward > 0 else (-dx, -dz)
+
+def spiral(centre, d, r, a0, sweep, tighten=0.35, n=7):
+    """Points round a curl in the plane of direction d = (dx, dz) and up:
+    from angle a0 through `sweep` radians, the radius tightening by
+    `tighten` of itself by the end."""
+    cx, cy, cz = centre
+    out = []
+    for k in range(1, n + 1):
+        a = a0 + sweep * k / n
+        rr = r * (1 - tighten * k / n)
+        out.append((cx + d[0] * rr * math.cos(a), cy + rr * math.sin(a), cz + d[1] * rr * math.cos(a)))
+    return out
+
+def skeleton(g, parts, yaw, cx, ground, scale=1.0, jump=None):
+    """Draw the parts -- (kind, points, radii, paint[, bias[, group]]): 'tube'
+    through 3D points (a radius per stretch) or 'ball' at one point
+    (rx, ry[, rz]); paint(cells) colours a part's cells -- turned by `yaw`.
+    Every pixel gets its own depth (along a tube's axis plus the bulge of its
+    round surface toward you; + bias, to force a part in front), the nearest
+    part wins it, and a part's edge pixels are its outline -- so a long limb
+    can pass in front of one thing and behind another. Parts sharing a
+    `group` are one seamless shape: outlined only round the group's outside,
+    no lines where they join (legs into a body, a neck into a head), only
+    where one part stands more than `jump` px (default JUMP) in front of another."""
+    zbuf, drawn, groups = {}, [], {}
+    for kind, pts, rad, paint, *extra in parts:
+        pp = [turn(p, yaw, cx, ground, scale) for p in pts]
+        if kind == 'tube':
+            radii = [r * scale for r in rad[:len(pp) - 1]]
+            cells = paint(tube([(round(x), round(y)) for x, y, z in pp], tuple(round(r) for r in radii), lambda *a: '?'))
+        else:
+            radii = None
+            cells = paint(ellipse(pp[0][0], pp[0][1], rad[0] * scale, rad[1] * scale, lambda *a: '?'))
+        bias = extra[0] if extra else 0
+        group = extra[1] if len(extra) > 1 else None
+        if group is not None: groups.setdefault(group, set()).update(cells)
+        drawn.append((kind, pp, rad, radii, cells, bias, group))
+    for kind, pp, rad, radii, cells, bias, group in drawn:
+        shape = groups[group] if group is not None else cells
+        for (x, y), c in cells.items():
+            px, py = x + 0.5, y + 0.5
+            if kind == 'tube':
+                best = None
+                for i, ((x0, y0, z0), (x1, y1, z1)) in enumerate(zip(pp, pp[1:])):
+                    dx, dy = x1 - x0, y1 - y0
+                    L = dx * dx + dy * dy
+                    u = 0 if L == 0 else max(0, min(1, ((px - x0) * dx + (py - y0) * dy) / L))
+                    d = math.hypot(px - (x0 + u * dx), py - (y0 + u * dy))
+                    if best is None or d < best[0]: best = (d, z0 + u * (z1 - z0), radii[i])
+                d, zc, r = best
+            else:
+                rz = rad[2] if len(rad) > 2 else (rad[0] + rad[1]) / 2           # the ball's depth radius
+                n = math.hypot((px - pp[0][0]) / (rad[0] * scale), (py - pp[0][1]) / (rad[1] * scale))
+                d, zc, r = min(n, 1) * rz * scale, pp[0][2], rz * scale
+            depth = zc + math.sqrt(max(0.0, r * r - d * d)) + bias
+            edge = any((x + ex, y + ey) not in shape for ex, ey in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            if inside(g, x, y) and ((x, y) not in zbuf or depth > zbuf[(x, y)][0]):
+                zbuf[(x, y)] = (depth, 'K' if edge else c, group)
+    # Within a seamless group, still outline where one part stands clearly in
+    # front of another (a near leg over a far one): a jump in depth, not a join.
+    out = {}
+    for (x, y), (depth, c, group) in zbuf.items():
+        if group is not None and c != 'K':
+            for ex, ey in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                n = zbuf.get((x + ex, y + ey))
+                if n and n[2] == group and depth - n[0] > (JUMP if jump is None else jump) * scale:
+                    c = 'K'; break
+        out[(x, y)] = c
+    for (x, y), c in out.items(): set_(g, x, y, c)
+
+JUMP = 3      # px of depth between neighbouring pixels of one seamless shape that still draws a line
 
 def bat_wing(g, shoulder, wrist, tips, trail, membrane, bone, flap=(0, 0)):
     """Draw a bat wing: arm shoulder->wrist, three fingers wrist->tips, a broad

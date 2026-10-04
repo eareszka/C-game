@@ -11,7 +11,9 @@ all drawn, frames 1, 2 ... as sections R@1 ... U@2 ...; three frames play
 optional #PAD
 (blank columns added each side to make room for the pose), optional
 (a straight front D or back U that isn't drawn reuses the 3/4 front-right /
-back-right view -- same layout; #DIRS 6 just records that neither is), optional
+back-right view -- same layout; #DIRS 6 just records that neither is), left
+views L DL UL may be drawn too (otherwise they mirror R DR UR), #ROWS (the PNG
+laid out one row per direction -- for a sheet too wide for one texture), optional
 #PATCHn X Y [VIEW] sections (pixels drawn onto frame n of every hand-drawn
 view, or just VIEW, at X,Y in frame coordinates, mirrored with the view --
 for a part that moves on its own, like a tail or a tongue),
@@ -48,6 +50,8 @@ def views(S, suffix=''):
         if k + suffix not in S: continue
         V[k] = side(S[k + suffix])
         V[k.replace('R', 'L')] = [r[::-1] for r in V[k]]
+    for k in ('L', 'DL', 'UL'):                    # left views drawn as well (not mirrors): they win
+        if k + suffix in S: V[k] = side(S[k + suffix])
     return V
 
 def poses(g, body):
@@ -115,7 +119,8 @@ def animate(S):
     left-facing ones."""
     kind, *arg = S.get('POSE', ['breathe'])[0].split()
     V = views(S)
-    base = tuple(d for d in ('D', 'DR', 'R', 'UR', 'U') if d in V)
+    drawn_left = any(k in S for k in ('L', 'DL', 'UL'))
+    base = tuple(d for d in (ORDER if drawn_left else ('D', 'DR', 'R', 'UR', 'U')) if d in V)
     if kind == 'breathe':
         A = {d: poses(V[d], int(S['BODY'][0])) for d in base}
     elif kind == 'frames':
@@ -131,7 +136,7 @@ def animate(S):
             for x, y, rows, view in ps:
                 if view in (None, d): A[d][n] = paste(A[d][n], x, y, rows)
     for d in ('R', 'DR', 'UR'):
-        if d in A: A[d.replace('R', 'L')] = [[r[::-1] for r in g] for g in A[d]]
+        if d in A and d.replace('R', 'L') not in A: A[d.replace('R', 'L')] = [[r[::-1] for r in g] for g in A[d]]
     # A straight front or back view that isn't drawn reuses the 3/4 view next
     # to it, so the sheet keeps the same 8-direction layout as every other enemy.
     for d, src in FALLBACK.items():
@@ -186,9 +191,20 @@ def preview(png, w, h, out, player=None, kind='breathe', n=3):
     gif[0].save(os.path.splitext(out)[0] + '.gif', save_all=True, append_images=gif[1:],
                 duration=[400, 250, 400, 250] if n == 3 else [STEP_MS] * n, loop=0)
 
+def to_rows(png, w, h, n):
+    """Re-lay a one-row sheet as one row per direction (8 rows of n frames):
+    a huge enemy's sheet in one row would be wider than a GPU texture can be."""
+    im = Image.open(png)
+    out = Image.new(im.mode, (n * w, 8 * h), (0, 0, 0, 0) if im.mode == 'RGBA' else 0)
+    for d in range(8):
+        out.paste(im.crop((d * n * w, 0, (d + 1) * n * w, h)), (0, d * h))
+    out.save(png)
+
 if __name__ == '__main__':
     txt, outdir = sys.argv[1], sys.argv[2]
     name, w, h, kind, n = build(txt, outdir)
+    png = os.path.join(outdir, name + '.png')
     if len(sys.argv) > 3:
-        preview(os.path.join(outdir, name + '.png'), w, h, sys.argv[3], 'assets/player_small.png', kind, n)
+        preview(png, w, h, sys.argv[3], 'assets/player_small.png', kind, n)
+    if 'ROWS' in load(txt): to_rows(png, w, h, n)   # #ROWS: the game reads it one row per direction
     print(name, w, h)
