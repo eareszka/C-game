@@ -1,6 +1,7 @@
 #include "fc_palette.h"
 #include "resource_node.h"
 #include "tilemap.h"   // wrap_dpx/wrap_dpy: a node is measured to through its nearest image
+#include "sheet_sprites.inc"   // where the gravestones are on the sheet
 #include <math.h>
 
 static int abs_int(int v) 
@@ -150,6 +151,18 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
         if (n->type == RESOURCE_TREE && tileset_tex) {
             // Single-tile tree resource: (row=1, col=15) in the tileset atlas
             SDL_Rect src = { 15 * 16, 1 * 16, 16, 16 };
+            SDL_Rect dst = { screen_x, screen_y, w, h };
+            SDL_RenderCopy(ren, tileset_tex, &src, &dst);
+        } else if (n->type == RESOURCE_GRAVESTONE && tileset_tex) {
+            // One of the drawn stones, picked by the tile the node stands on so
+            // a yard is a mix and each stone stays the same one every frame.
+            // Mixed, not a bare multiply-xor: a large yard lays its stones on a
+            // two-tile lattice, and that only ever reached three of the six.
+            unsigned int tx = (unsigned int)(n->x / TILE_SIZE), ty = (unsigned int)(n->y / TILE_SIZE);
+            unsigned int hsh = tx * 0x9E3779B1u ^ ty * 0x85EBCA77u;
+            hsh ^= hsh >> 15; hsh *= 0x2C1B3C6Du; hsh ^= hsh >> 12;
+            int v = (int)(hsh % GRAVESTONE_COUNT);
+            SDL_Rect src = { (GRAVESTONE_SHEET_COL + v) * 16, GRAVESTONE_SHEET_ROW * 16, 16, 16 };
             SDL_Rect dst = { screen_x, screen_y, w, h };
             SDL_RenderCopy(ren, tileset_tex, &src, &dst);
         } else {

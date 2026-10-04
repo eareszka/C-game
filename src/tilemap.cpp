@@ -415,6 +415,120 @@ static inline bool tile_is_route(const Tilemap* map, int x, int y) {
     return t == TILE_WASTE_BRIDGE || t == TILE_ROAD_BRIDGE;
 }
 
+// The structure entrances' art (ruins and the rest; caves have
+// their own, CAVE_ENT_ROW0 below): one
+// block of sheet cells per archetype and size, from art/structures/
+// gen_entrance_art.py, which writes the table. A block is drawn from the
+// entrance's stamp outward -- the stamp is its bottom size+1 rows of the
+// middle size+1 columns -- and its cells are laid in the overlay, so the art
+// stands on the ground it was placed on. What each cell does is in the
+// table, one character a cell -- for a building it follows from where the
+// cell sits, like a house, and the generator works it out; a pool spreads
+// back along the ground instead, and its art says so cell by cell:
+//   'E' ART_STAMP   the stamp itself, the way in
+//   '#' ART_SOLID   wall or water, closed per tile
+//   '^' ART_BEHIND  drawn over the player, who walks behind it
+//   '_' ART_FLOOR   art on the ground that is walked over
+//   '.'             no art: never laid, so the ground there stays as it was
+struct EntranceArt {
+    int type, size;
+    int biome;                                  // the TileId the site read as, or -1 for any
+    int col, row, w, h;
+    const char* role;                           // w*h, row by row, as above
+    char at(int cx, int cy) const { return role[cy * w + cx]; }
+    bool has(int cx, int cy) const { return at(cx, cy) != '.'; }
+};
+#include "entrance_art.inc"
+static const int ENTRANCE_ART_N = (int)(sizeof ENTRANCE_ART / sizeof *ENTRANCE_ART);
+enum { ART_NONE, ART_STAMP, ART_SOLID, ART_BEHIND, ART_FLOOR };
+
+// The art for an entrance of this kind standing in this biome: the entry
+// drawn for that biome if there is one, else the one for any.
+static const EntranceArt* entrance_art_for(int type, int size, int biome) {
+    const EntranceArt* any = nullptr;
+    for (const EntranceArt& a : ENTRANCE_ART) {
+        if (a.type != type || a.size != size) continue;
+        if (a.biome == biome) return &a;
+        if (a.biome < 0) any = &a;
+    }
+    return any;
+}
+// Which block an overlay id is a cell of, and where in it; false if none.
+static bool entrance_art_pos(int id, int* n, int* cx, int* cy) {
+    int rel = id - TILE_TOWN0_BASE;
+    if (rel < 0) return false;
+    int col = rel % TOWN0_SHEET_COLS, row = rel / TOWN0_SHEET_COLS;
+    for (int i = 0; i < ENTRANCE_ART_N; i++) {
+        const EntranceArt& a = ENTRANCE_ART[i];
+        if (col >= a.col && col < a.col + a.w && row >= a.row && row < a.row + a.h) {
+            *n = i; *cx = col - a.col; *cy = row - a.row;
+            return true;
+        }
+    }
+    return false;
+}
+static int entrance_art_role(int id) {
+    int n, cx, cy;
+    if (!entrance_art_pos(id, &n, &cx, &cy)) return ART_NONE;
+    switch (ENTRANCE_ART[n].at(cx, cy)) {
+        case 'E': return ART_STAMP;
+        case '#': return ART_SOLID;
+        case '^': return ART_BEHIND;
+        case '_': return ART_FLOOR;
+        default:  return ART_NONE;
+    }
+}
+// The steam off a hot spring: a strip of STEAM_COUNT frames on the sheet
+// (gen_entrance_art.py SPRITES), marked on a water tile by frame 0's id in the
+// overlay and played there by the depth pass, over the player.
+#include "sheet_sprites.inc"
+static constexpr int steam_cell(int frame) {
+    return TILE_TOWN0_BASE + STEAM_SHEET_ROW * TOWN0_SHEET_COLS + STEAM_SHEET_COL + frame;
+}
+static inline bool is_steam_cell(int id) { return id == steam_cell(0); }
+// An oasis's pool is pond tiles like any other -- water to every rule that
+// asks -- marked in the overlay with its own water cell, or with the steam,
+// which only a hot spring's water carries. biome_at reads the mark and gives
+// it a water of its own: flatter, and its own colour (COVER_OASIS).
+static constexpr int OASIS_WATER_CELL =
+    TILE_TOWN0_BASE + OASIS_WATER_SHEET_ROW * TOWN0_SHEET_COLS + OASIS_WATER_SHEET_COL;
+static inline bool is_oasis_mark(int id) { return id == OASIS_WATER_CELL || is_steam_cell(id); }
+
+// A graveyard's yard wall: the large graveyard's wooden fence or the
+// catacombs' brick wall. A strip of sixteen pieces two cells tall
+// (yard_walls_design.py), each a post with arms toward the neighbours that
+// are wall too -- W 1, E 2, SW 4, NE 8 -- so the overlay holds only which
+// wall it is (its strip's first bottom cell) and the piece is picked when
+// drawn: a stretch broken away leaves the ends beside it whole. The bottom
+// cell is drawn on the wall's tile, the top over the tile above in the depth
+// pass, the player walking behind it as behind a tree's crown. Solid, and
+// broken like a rock (tile_target).
+static constexpr int YARD_FENCE_MARK =
+    TILE_TOWN0_BASE + (YARD_FENCE_SHEET_ROW + 1) * TOWN0_SHEET_COLS + YARD_FENCE_SHEET_COL;
+static constexpr int YARD_WALL_MARK =
+    TILE_TOWN0_BASE + (YARD_WALL_SHEET_ROW + 1) * TOWN0_SHEET_COLS + YARD_WALL_SHEET_COL;
+static inline bool is_yard_wall(int id) { return id == YARD_FENCE_MARK || id == YARD_WALL_MARK; }
+// The sheet id of the piece the wall at (x, y) draws: its bottom cell, or
+// with top set the one above it.
+static int yard_wall_piece(const Tilemap* map, int x, int y, bool top) {
+    auto wall = [&](int dx, int dy) {
+        int nx = x + dx, ny = y + dy;
+        return in_world(&nx, &ny) && is_yard_wall(map->overlay[ny][nx]);
+    };
+    int arms = wall(-1, 0) * 1 | wall(1, 0) * 2 | wall(-1, 1) * 4 | wall(1, -1) * 8;
+    return map->overlay[y][x] + arms - (top ? TOWN0_SHEET_COLS : 0);
+}
+
+// Tile (x, y) of a block laid for the stamp at (ex, ey), and the sheet id of
+// its cell (cx, cy). Not wrapped.
+static void entrance_art_tile(const EntranceArt& a, int ex, int ey, int cx, int cy,
+                              int* x, int* y, int* id) {
+    int sz = a.size + 1;
+    *x = ex - (a.w - sz) / 2 + cx;
+    *y = ey - (a.h - sz) + cy;
+    *id = TILE_TOWN0_BASE + (a.row + cy) * TOWN0_SHEET_COLS + a.col + cx;
+}
+
 // Sweep the overlays after generation rather than testing at each placement:
 // ponds and streams are carved after the trees are scattered, so a placement
 // test would pass and then be overtaken by the water arriving beside it.
@@ -422,7 +536,9 @@ static void clear_overlays_near_liquid(Tilemap* map) {
     for (int y = 0; y < MAP_HEIGHT; y++) {
         for (int x = 0; x < MAP_WIDTH; x++) {
             int ov = map->overlay[y][x];
-            if (ov == 0) continue;
+            // A structure entrance's art is a building, not a tree: it stands
+            // whole beside water rather than losing a cell to it.
+            if (ov == 0 || entrance_art_role(ov) != ART_NONE || is_oasis_mark(ov)) continue;
             bool dry = overlay_site_dry(map, x, y);
             // A tree's canopy is drawn one tile up, so that tile needs the same
             // clearance or the crown hangs out over the water.
@@ -840,14 +956,19 @@ static int s_island_count = 0;                                 // islands stampe
 static int s_island_sealed_count = 0;                          // mountains with a top no foot can reach
 static long s_island_sealed_tiles = 0;                         // their raised tiles, all together
 
-// The cave mouth: a rock mound with a dark opening, drawn over the foot of a
-// south wall. Three cells wide and two tall on the sheet, from (21, 6) --
-// art/structures/cave_mouth.aseprite, stamped by stamp_cave_mouth.py, which
-// must agree with these. Its cells double as overlay ids (the sheet's ids,
-// as sheet_cell() below numbers them): the base pass paints them after the
-// cliff, so the wall shows round the mound and the opening covers the
-// mouth tile's glyph.
-static const int CAVE_MOUTH_COL = 21, CAVE_MOUTH_ROW = 6;
+// The cave entrances, one set per Material, from
+// art/structures/cave_entrance.aseprite, stamped by gen_cave_entrances.py
+// (its ROW0 must agree with CAVE_ENT_ROW0):
+//   rows ROW0..ROW0+1, cols 3m..3m+2  material m's mouth: a ring of boulders
+//                                     round a dark opening, drawn over the
+//                                     foot of a south wall
+//   row  ROW0+2,       col m          material m's ladder hole, for a cave on
+//                                     flat ground or a storey top
+// Every material is the same drawing in its own rock, so one silhouette (and
+// one set of jamb collision bits) serves all seven. The cells double as
+// overlay ids (the sheet's ids, as sheet_cell() below numbers them): the base
+// pass paints a mouth after the cliff, so the wall shows round the mound.
+static const int CAVE_ENT_ROW0 = 12;
 static const int CAVE_MOUTH_W = 3, CAVE_MOUTH_H = 2;
 // How far into the opening tile the feet may walk, in art rows: three rows
 // (six world pixels) past the top of the checkered floor (the bottom cell's
@@ -857,14 +978,31 @@ static const int CAVE_MOUTH_FLOOR_AY = 9;
 // cliff face rather than at its foot. The draw, the walk-in stop and the
 // jambs' collision all apply it; CAVE_MOUTH_FLOOR_AY is in the sprite's rows.
 static const int CAVE_MOUTH_LIFT_AY = 5;
-static constexpr int cave_mouth_cell(int dx, int dy) {
-    return TILE_TOWN0_BASE + (CAVE_MOUTH_ROW + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_COL + dx);
+static constexpr int cave_mouth_cell(int dx, int dy, int mat = 0) {
+    return TILE_TOWN0_BASE + (CAVE_ENT_ROW0 + dy) * TOWN0_SHEET_COLS + (CAVE_MOUTH_W * mat + dx);
 }
-static inline bool is_cave_mouth_cell(int id) {
-    for (int dy = 0; dy < CAVE_MOUTH_H; dy++)
-        if (id >= cave_mouth_cell(0, dy) && id < cave_mouth_cell(CAVE_MOUTH_W, dy)) return true;
-    return false;
+static constexpr int cave_ladder_cell(int mat) {
+    return TILE_TOWN0_BASE + (CAVE_ENT_ROW0 + CAVE_MOUTH_H) * TOWN0_SHEET_COLS + mat;
 }
+// Where in its mouth a cell sits, whatever its material; false if it is not
+// a mouth cell at all.
+static inline bool cave_mouth_pos(int id, int* dx, int* dy) {
+    int rel = id - TILE_TOWN0_BASE;
+    if (rel < 0) return false;
+    int row = rel / TOWN0_SHEET_COLS - CAVE_ENT_ROW0, col = rel % TOWN0_SHEET_COLS;
+    if (row < 0 || row >= CAVE_MOUTH_H || col >= CAVE_MOUTH_W * MAT_COUNT) return false;
+    *dx = col % CAVE_MOUTH_W; *dy = row;
+    return true;
+}
+static inline bool is_cave_mouth_cell(int id) { int dx, dy; return cave_mouth_pos(id, &dx, &dy); }
+static inline bool is_cave_opening_cell(int id) {
+    int dx, dy;
+    return cave_mouth_pos(id, &dx, &dy) && dx == 1 && dy == CAVE_MOUTH_H - 1;
+}
+static inline bool is_cave_ladder_cell(int id) {
+    return id >= cave_ladder_cell(0) && id < cave_ladder_cell(MAT_COUNT);
+}
+
 static_assert(CLIFF_LEVELS < 7, "the wall bits must leave the sealed bit free");
 
 // Open ground kept round every island, beyond the tile of margin the island
@@ -1629,6 +1767,31 @@ static void stamp_castle_blueprint(Tilemap* map, int type, int tx, int ty) {
     map->castles[type] = { tx, ty, type };
 }
 
+// Every cave entrance shows its interior's rock: the mouth's boulders, or the
+// ladder down a hole where it opens in flat ground. The material is asked of
+// dungeon_wiring_for(), the same question the game asks on the way in, and
+// asked last -- the guarantee pass moves a whole system's difficulty after its
+// mouths are cut, and the sweep beside water can take an overlay away -- so
+// the colour at the door and the rock inside cannot disagree.
+static void dress_cave_entrances(Tilemap* map, unsigned int seed) {
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        if (e.type != DUNGEON_ENT_CAVE || map->tiles[e.y][e.x] != TILE_DUNGEON_CAVE) continue;
+        int mat = (int)material_for_difficulty(dungeon_wiring_for(map, seed, i).difficulty);
+        int dx, dy;
+        if (!cave_mouth_pos(map->overlay[e.y][e.x], &dx, &dy)) {
+            map->overlay[e.y][e.x] = cave_ladder_cell(mat);
+            continue;
+        }
+        for (int r = -(CAVE_MOUTH_H - 1); r <= 0; r++)
+            for (int c = -1; c <= CAVE_MOUTH_W - 2; c++) {
+                int x = e.x + c, y = e.y + r;
+                if (in_world(&x, &y) && cave_mouth_pos(map->overlay[y][x], &dx, &dy))
+                    map->overlay[y][x] = cave_mouth_cell(dx, dy, mat);
+            }
+    }
+}
+
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Which edge the ocean takes (0=W, 1=E, 2=N, 3=S), and with it which pair
     // of edges joins: the ocean and the edge across from it are the borders,
@@ -1703,6 +1866,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Phase 1's region is on screen before phase 2 finishes, so it clears its
     // own banks rather than waiting for the sweep at the end of generation.
     clear_overlays_near_liquid(map);
+    dress_cave_entrances(map, seed);
 }
 
 // ---------------------------------------------------------------------------
@@ -1911,8 +2075,9 @@ static void graveyard_yard_size(DungeonEntranceType type, int& span, int& H) {
 
 // Stamps decorative tiles/overlays around a placed dungeon entrance.
 // Uses existing tile primitives as a "temp" visual so each type is readable on the overworld:
-//   graveyard → rock tombstones,  stonehenge → rock ring,  pyramid → sand clearing,
-//   oasis → pond neighbors,       large tree → tree overlays,  ruins → scattered debris.
+//   graveyard → rock tombstones,  pyramid → sand clearing,
+//   oasis → pond neighbors,       large tree → tree overlays.
+// Ruins and stonehenge have none: their art carries its own fallen stone.
 // cave has no surround — it sits embedded in a clifftop.
 // biome is the site's biome_of() at placement (stored on the entrance record),
 // for the archetypes whose exterior depends on where they stand.
@@ -1949,8 +2114,9 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
         map->overlay[ty][tx] = ovl_id;
     };
 
-    // Placeholder parallelogram fence — 1:1 diagonal (north wall shifted right by
-    // H tiles vs south wall). To be replaced with proper art later.
+    // The yard's wall -- the fence or the brick wall, a parallelogram in the
+    // houses' oblique view: the north wall shifted right by H tiles vs the
+    // south, its sides running back at 45 degrees.
     //
     //   N: (L+H, T) ────[gate]──────── (R+H, T)
     //        \                             \
@@ -1962,6 +2128,7 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
     // catacombs is the same yard at a larger size — the shear, the gate and the
     // fill are one description, not two that have to be kept in step.
     auto stamp_graveyard_yard = [&](int span, int H) {
+        const int WALL = type == DUNGEON_ENT_CATACOMBS ? YARD_WALL_MARK : YARD_FENCE_MARK;
         const int L = ex - span / 2 - H, R = L + span;   // south fence extents
         const int T = ey - 1,            B = T + H;      // north/south rows
 
@@ -1975,7 +2142,7 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
 
         // North fence — closed, the mausoleum itself is the way through
         for (int tx = lx_at(T); tx <= rx_at(T); tx++)
-            safe_ovl(tx, T, TILE_ROCK);
+            safe_ovl(tx, T, WALL);
 
         // South fence — 2-tile gate at its centre
         {
@@ -1983,14 +2150,14 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
             int gate_l = (sl + sr) / 2;
             for (int tx = sl; tx <= sr; tx++) {
                 bool is_gate = (tx == gate_l || tx == gate_l + 1);
-                if (!is_gate) safe_ovl(tx, B, TILE_ROCK);
+                if (!is_gate) safe_ovl(tx, B, WALL);
             }
         }
 
         // Left and right diagonal fence walls
         for (int ty = T; ty <= B; ty++) {
-            safe_ovl(lx_at(ty), ty, TILE_ROCK);
-            safe_ovl(rx_at(ty), ty, TILE_ROCK);
+            safe_ovl(lx_at(ty), ty, WALL);
+            safe_ovl(rx_at(ty), ty, WALL);
         }
     };
 
@@ -2012,16 +2179,6 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
             break;
         }
 
-        case DUNGEON_ENT_STONEHENGE: {
-            // 8 standing stones in a ring at radius 3 around the 2×2 center
-            int ccx = ex + sz/2, ccy = ey + sz/2;
-            const int ox[8] = { 0, 2, 3, 2, 0,-2,-3,-2};
-            const int oy[8] = {-3,-2, 0, 2, 3, 2, 0,-2};
-            for (int i = 0; i < 8; i++)
-                safe_ovl(ccx + ox[i], ccy + oy[i], TILE_ROCK);
-            break;
-        }
-
         case DUNGEON_ENT_PYRAMID: {
             // A cleared court three tiles deep around the 2×2 entrance. It is
             // PATH, a ground tile: it used to be TILE_ROCK as a base tile,
@@ -2035,38 +2192,53 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
             break;
         }
 
-        case DUNGEON_ENT_OASIS:
-            // Pond tiles at four cardinal neighbors of the 1×1 entrance. In
-            // snow the pool is ringed with boulders on the diagonals — a
-            // spring breaking through ice rather than a pool in the sand.
-            // Placeholder dressing, like the graveyard fence above, until it
-            // gets its own art.
-            //
-            // Two tiles out, not one: the sweep at the end of generation
-            // (clear_overlays_near_liquid) strips anything standing beside
-            // water, and every tile touching the entrance touches a pond.
-            safe_base(ex,   ey-1, TILE_POND);
-            safe_base(ex,   ey+1, TILE_POND);
-            safe_base(ex-1, ey,   TILE_POND);
-            safe_base(ex+1, ey,   TILE_POND);
-            if (biome == TILE_SNOW) {
-                safe_ovl(ex-2, ey-2, TILE_ROCK);
-                safe_ovl(ex+2, ey-2, TILE_ROCK);
-                safe_ovl(ex-2, ey+2, TILE_ROCK);
-                safe_ovl(ex+2, ey+2, TILE_ROCK);
-            }
+        case DUNGEON_ENT_OASIS: {
+            // A pool of real pond tiles north of the way in, its shape grown
+            // from the entrance's position so no two oases share one: an
+            // ellipse of its own size whose edge is pushed in and out by three
+            // waves of their own phase. Measured from its middle, so it is one
+            // piece; the shoreline the game draws round any pond rounds it off.
+            // The tile straight north of the ladder is always water -- the
+            // ladder stands on the shore -- and the pool stays off the stamp's
+            // row and off the two cells its palms (or boulders) stand up into,
+            // which are the art's (entrance_art_for; this is the only kind
+            // whose surround and art share ground).
+            unsigned int h = (unsigned int)ex * 73856093u ^ (unsigned int)ey * 19349663u;
+            auto u = [&]() { h = h * 1664525u + 1013904223u; return (float)((h >> 8) & 0xFFFF) / 65535.0f; };
+            const float cx = ex + 0.5f, cy = ey - 1.8f - u() * 0.7f;
+            const float rx = 2.3f + u() * 1.2f, ry = 1.5f + u() * 0.8f;
+            float amp[3], ph[3];
+            for (int i = 0; i < 3; i++) { amp[i] = 0.06f + u() * 0.12f; ph[i] = u() * 6.2832f; }
+            for (int ty = ey - 6; ty <= ey - 1; ty++)
+                for (int tx = ex - 5; tx <= ex + 5; tx++) {
+                    if (ty == ey - 1 && (tx == ex - 2 || tx == ex + 2)) continue;
+                    float dx = (tx + 0.5f - cx) / rx, dy = (ty + 0.5f - cy) / ry;
+                    float a = atan2f(dy, dx);
+                    float r = 1.0f + amp[0] * sinf(2 * a + ph[0]) + amp[1] * sinf(3 * a + ph[1])
+                                   + amp[2] * sinf(5 * a + ph[2]);
+                    if (dx * dx + dy * dy <= r * r || (tx == ex && ty == ey - 1)) {
+                        safe_base(tx, ty, TILE_POND);
+                        int wx = tx, wy = ty;
+                        if (in_world(&wx, &wy) && map->tiles[wy][wx] == TILE_POND)
+                            map->overlay[wy][wx] = OASIS_WATER_CELL;
+                    }
+                }
+            // In snow it is a hot spring: steam rises off a third of its water,
+            // picked by position like the shape. The overlay only marks the
+            // tile; the depth pass plays the puff over it (is_steam_cell).
+            if (biome == TILE_SNOW)
+                for (int ty = ey - 6; ty <= ey - 1; ty++)
+                    for (int tx = ex - 5; tx <= ex + 5; tx++) {
+                        int wx = tx, wy = ty;
+                        if (!in_world(&wx, &wy) || map->overlay[wy][wx] != OASIS_WATER_CELL) continue;
+                        if (((unsigned int)wx * 2654435761u ^ (unsigned int)wy * 40503u) % 3 == 0)
+                            map->overlay[wy][wx] = steam_cell(0);
+                    }
             break;
+        }
 
         case DUNGEON_ENT_LARGE_TREE:
             // Same as other dungeons — no special surround, just the entrance tile
-            break;
-
-        case DUNGEON_ENT_RUINS:
-            // Scattered rock debris around the entrance
-            safe_ovl(ex-2,    ey,      TILE_ROCK);
-            safe_ovl(ex+sz+1, ey+sz-1, TILE_ROCK);
-            safe_ovl(ex,      ey-2,    TILE_ROCK);
-            safe_ovl(ex+sz-1, ey+sz+1, TILE_ROCK);
             break;
 
         default: // CAVE — no surround, already embedded in clifftop terrain
@@ -2138,6 +2310,30 @@ static int entrance_tile_id(DungeonEntranceType type) {
 // it. It exists because "is this wide stretch one stroke or two" cannot be
 // answered from the finished route layer, and the two have different causes:
 // one stroke too wide is the painter, two side by side is the planner.
+int tilemap_debug_entrance_art(const Tilemap* map, int* whole) {
+    int n = 0;
+    *whole = 0;
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        const EntranceArt* a = entrance_art_for(e.type, e.size, e.biome);
+        if (!a) continue;
+        n++;
+        bool ok = true;
+        for (int cy = 0; cy < a->h && ok; cy++)
+            for (int cx = 0; cx < a->w && ok; cx++) {
+                if (!a->has(cx, cy)) continue;
+                int x, y, id;
+                entrance_art_tile(*a, e.x, e.y, cx, cy, &x, &y, &id);
+                ok = in_world(&x, &y) && map->overlay[y][x] == id;
+                if (!ok)
+                    printf("  broken: entrance %d,%d cell %d,%d -> tile %d overlay %d route %d\n",
+                           e.x, e.y, cx, cy, map->tiles[y][x], map->overlay[y][x], map->route[y][x]);
+            }
+        *whole += ok;
+    }
+    return n;
+}
+
 static std::vector<uint16_t> g_route_owner;
 static std::vector<uint8_t>  g_route_multi;
 const uint8_t* tilemap_debug_route_multi() {
@@ -4758,6 +4954,35 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             return false;
         };
 
+        // Whether the art a structure entrance stands up out of its stamp has
+        // room: every cell of it with art on, the stamp aside (door_ok has
+        // that), on open ground with nothing standing there -- the rows above
+        // are walked behind and the cells beside are wall, so either one over
+        // a hill, a road or a tree would be a wall in the wrong place.
+        auto art_fits = [&](int ex, int ey, DungeonEntranceType t, int size, int biome) -> bool {
+            const EntranceArt* a = entrance_art_for(t, size, biome);
+            if (!a) return true;
+            for (int cy = 0; cy < a->h; cy++)
+                for (int cx = 0; cx < a->w; cx++) {
+                    if (!a->has(cx, cy)) continue;
+                    int x, y, id;
+                    entrance_art_tile(*a, ex, ey, cx, cy, &x, &y, &id);
+                    if (entrance_art_role(id) == ART_STAMP) continue;
+                    if (!in_world(&x, &y)) return false;
+                    int base = map->tiles[y][x];
+                    if (base != TILE_GRASS && base != TILE_MEADOW && base != TILE_SAND &&
+                        base != TILE_SNOW  && base != TILE_WASTELAND && base != TILE_PATH)
+                        return false;
+                    // The large tree stands in a forest, among the trees it
+                    // replaces -- the same allowance door_ok gives its stamp.
+                    int ov = map->overlay[y][x];
+                    bool tree_ok = t == DUNGEON_ENT_LARGE_TREE && (ov == TILE_TREE || ov == TILE_DEAD_TREE);
+                    if ((ov && !tree_ok) || map->route[y][x]) return false;
+                    if (s_cliff_elev[y][x] || tilemap_face_at(x, y)) return false;
+                }
+            return true;
+        };
+
         // Which landforms already carry a cave. s_cliff_scratch is dead by this
         // point in generation — the last pass to touch it was inside
         // place_cliffs — so it is free to mark up, and marking the landform's
@@ -5011,6 +5236,15 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     }
             }
             stamp_dungeon_surround(map, ent_type, biome, ex, ey, sz);
+            // Its art, cell by cell into the overlay; art_fits has made room.
+            if (const EntranceArt* a = entrance_art_for(ent_type, ent_size, biome))
+                for (int cy = 0; cy < a->h; cy++)
+                    for (int cx = 0; cx < a->w; cx++) {
+                        if (!a->has(cx, cy)) continue;
+                        int x, y, id;
+                        entrance_art_tile(*a, ex, ey, cx, cy, &x, &y, &id);
+                        if (in_world(&x, &y)) map->overlay[y][x] = id;
+                    }
             map->dungeon_entrances[map->num_dungeon_entrances++] = {
                 ex, ey, ent_size, ent_type, cliff_lvl, difficulty, 0, -1, -1, -1, biome
             };
@@ -5048,6 +5282,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (hits_cliff(ex, ey, sz)) continue;
 
                 if (!door_ok(ex, ey, sz, ent_type)) continue;
+                if (!art_fits(ex, ey, ent_type, ent_size, biome)) continue;
 
                 place_entrance(ex, ey, ent_type, ent_size, cliff_lvl, biome);
                 break;
@@ -5152,6 +5387,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         int biome = biome_of(map, ex, ey);
                         if (round == 0 && !entrance_native_to_biome(biome, want)) continue;
                         if (!door_ok(ex, ey, sz, want)) continue;
+                        if (!art_fits(ex, ey, want, ent_size, biome)) continue;
 
                         place_entrance(ex, ey, want, ent_size, cliff_lvl, biome);
                         placed = true;
@@ -5404,6 +5640,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 t != TILE_SNOW  && t != TILE_WASTELAND &&
                 map->route[y][x] != ROUTE_ROAD) return false;
             if (s_cliff_elev[y][x] || tilemap_face_at(x, y)) return false;
+            if (entrance_art_role(map->overlay[y][x]) != ART_NONE) return false;
             return true;
         };
         // The route stays off the faces (road_region), but the stroke is
@@ -5412,6 +5649,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         auto road_paint_over = [&](int x, int y) {
             int t = map->tiles[y][x];
             if (tilemap_face_at(x, y)) return false;
+            if (entrance_art_role(map->overlay[y][x]) != ART_NONE) return false;
             return t == TILE_GRASS || t == TILE_MEADOW || t == TILE_SAND ||
                    t == TILE_SNOW  || t == TILE_WASTELAND;
         };
@@ -5493,6 +5731,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             // had overwritten; it lives in its own layer now.
             if (t != TILE_WASTELAND && map->route[y][x] != ROUTE_TRAIL) return false;
             if (water_keepout[y][x]) return false;
+            // A structure entrance's walls and the rows behind them stand on
+            // wasteland too, and a track worn through them would take them away.
+            if (entrance_art_role(map->overlay[y][x]) != ART_NONE) return false;
             // A wall is drawn over the tile: not ground a track can run on,
             // whatever the tile id underneath says. Plateau tops carry their
             // own ids and are excluded by the test above; the faces are the
@@ -5506,7 +5747,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         // The deck goes over raw lava only, and the trail over bare wasteland.
         auto raw_lava  = [&](int x, int y) { return map->tiles[y][x] == TILE_LAVA; };
-        auto paint_over = [&](int x, int y) { return map->tiles[y][x] == TILE_WASTELAND; };
+        auto paint_over = [&](int x, int y) {
+            return map->tiles[y][x] == TILE_WASTELAND &&
+                   entrance_art_role(map->overlay[y][x]) == ART_NONE;
+        };
 
         // Where the wasteland runs out under the edge of the track, let that
         // edge lean onto the ordinary ground beside it rather than stop dead --
@@ -5519,6 +5763,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 t != TILE_SAND  && t != TILE_SNOW) return false;
             if (water_keepout[y][x]) return false;
             if (tilemap_face_at(x, y)) return false;
+            if (entrance_art_role(map->overlay[y][x]) != ART_NONE) return false;
             if (abs(x - cx) <= guard_r && abs(y - cy) <= guard_r) return false;
             return true;
         };
@@ -5590,6 +5835,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
     // Last, after every pond, stream and town stamp has had its say.
     clear_overlays_near_liquid(map);
+    dress_cave_entrances(map, seed);
     GEN_STAGE(map, "final");
 }
 
@@ -5750,6 +5996,41 @@ static void blit_tile(SDL_Renderer* renderer, int tile_id,
     }
 }
 
+// A yard's side wall runs corner to corner across its tile, but the yard's
+// floor is laid a tile at a time, so the floor would step out past the wall
+// on one side and stop short of it on the other. Its tile keeps the ground
+// outside; the floor goes down on the inside half, cut along the wall's foot
+// -- the line y = 14 - x of the cell that yard_walls_design.py stands the
+// wall on. Which side is inside: whichever neighbour across is yard floor.
+static void draw_yard_floor(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
+                            int sx, int sy, int size) {
+    int arms = yard_wall_piece(map, x, y, false) - map->overlay[y][x];
+    if (!(arms & (4 | 8)) || (arms & (1 | 2)) || !s_tile_tex[TILE_PATH]) return;  // a side, not a corner
+    auto floor = [&](int dx) {
+        int nx = x + dx, ny = y;
+        return in_world(&nx, &ny) && map->tiles[ny][nx] == TILE_PATH && !is_yard_wall(map->overlay[ny][nx]);
+    };
+    const float k = 14.5f;
+    // the cell's corners and the line's ends on it, in cell pixels
+    float inner[2][10] = {
+        { k, 0,  16, 0,  16, 16,  0, 16,  0, k },              // below the line: the wall's right
+        { 0, 0,   k, 0,   0, k,   0, 0,   0, 0 },              // above it: the wall's left
+    };
+    int nv[2] = { 5, 3 };
+    for (int side = 0; side < 2; side++) {
+        if (!floor(side == 0 ? 1 : -1)) continue;
+        SDL_Vertex v[5];
+        for (int i = 0; i < nv[side]; i++) {
+            float px = inner[side][2 * i], py = inner[side][2 * i + 1];
+            v[i].position = { sx + px * size / 16.0f, sy + py * size / 16.0f };
+            v[i].color = { 255, 255, 255, 255 };
+            v[i].tex_coord = { px / 16.0f, py / 16.0f };
+        }
+        static const int fan[9] = { 0, 1, 2, 0, 2, 3, 0, 3, 4 };
+        SDL_RenderGeometry(renderer, s_tile_tex[TILE_PATH], v, nv[side], fan, 3 * (nv[side] - 2));
+    }
+}
+
 // ── Ground cover variants ───────────────────────────────────────────────────
 // Blocks of six 16px cells in assets/tileset.png, one per biome. Which cell a
 // tile draws is purely a draw-time choice: the map still stores TILE_GRASS,
@@ -5868,6 +6149,8 @@ static constexpr GroundCover COVER_ROAD = cover_nineslice(
 static constexpr GroundCover COVER_WATER = cover_single(sheet_cell(14, 0), TILE_WATER);
 // Lava, one cell to its right, same idea: dark base with its own hot speckle.
 static constexpr GroundCover COVER_LAVA  = cover_single(sheet_cell(15, 0), TILE_LAVA);
+// An oasis's pool: a flatter water of its own colour (oasis_water.aseprite).
+static constexpr GroundCover COVER_OASIS = cover_single(OASIS_WATER_CELL, TILE_POND);
 
 // ── Biome edge ──────────────────────────────────────────────────────────────
 // Where two biomes meet the join is one straight line along the tile grid,
@@ -5958,14 +6241,19 @@ static GroundBiome s_biomes[] = {
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1 },
     { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255 },
     { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1 },
+    // No tile of its own: biome_at hands an oasis's marked pond tiles here.
+    // Keep it last -- OASIS_BIOME is its index.
+    { { -1,             -1, -1, -1 },                  &COVER_OASIS,  true,  true,  false, 0,0,0, 220, 240, 255 },
 };
 static const int NUM_GROUND_BIOMES = (int)(sizeof(s_biomes) / sizeof(s_biomes[0]));
+static const int OASIS_BIOME = NUM_GROUND_BIOMES - 1;
 
 // Index into s_biomes, or -1 for a tile that takes no part in biome edges.
 static int biome_at(const Tilemap* map, int x, int y) {
     if (!in_world(&x, &y)) return -1;
     int t = map->tiles[y][x];
     if (t >= TILE_TOWN0_BASE) return 0;  // town cells paint grass behind themselves
+    if (t == TILE_POND && is_oasis_mark(map->overlay[y][x])) return OASIS_BIOME;
     // A plateau top is the ground it is a plateau of -- the same grass, snow
     // or waste as the field below, standing higher (cliff_top_cover draws it
     // so). Left out of the biome table it took no part in biome edges, and
@@ -6467,12 +6755,14 @@ static unsigned short s_mouth_ink[CAVE_MOUTH_H][CAVE_MOUTH_W][16];
 static bool cave_mouth_strip(int id, int* c0, int* c1) {
     int last = CAVE_MOUTH_H - 1;
     unsigned short row;
-    if (id == cave_mouth_cell(0, last)) {
+    int dx, dy;
+    if (!cave_mouth_pos(id, &dx, &dy) || dy != last) return false;
+    if (dx == 0) {
         row = s_mouth_ink[last][0][15];
         if (!row) return false;
         int lo = 0; while (!((row >> lo) & 1)) lo++;
         *c0 = lo; *c1 = 16;
-    } else if (id == cave_mouth_cell(CAVE_MOUTH_W - 1, last)) {
+    } else if (dx == CAVE_MOUTH_W - 1) {
         row = s_mouth_ink[last][CAVE_MOUTH_W - 1][15];
         if (!row) return false;
         int hi = 15; while (!((row >> hi) & 1)) hi--;
@@ -6512,7 +6802,8 @@ static void cliff_build_solid(SDL_Surface* sheet) {
     }
     for (int dy = 0; dy < CAVE_MOUTH_H; dy++)
         for (int dx = 0; dx < CAVE_MOUTH_W; dx++) {
-            int y0 = (CAVE_MOUTH_ROW + dy) * 16, x0 = (CAVE_MOUTH_COL + dx) * 16;
+            // Material 0's mouth: every material draws the same silhouette.
+            int y0 = (CAVE_ENT_ROW0 + dy) * 16, x0 = dx * 16;
             if (y0 + 16 > s->h || x0 + 16 > s->w) continue;
             for (int py = 0; py < 16; py++) {
                 const unsigned char* rowp =
@@ -6782,7 +7073,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             int screen_x = cam_px(cam, ux * TILE_SIZE);
             int screen_y = cam_py(cam, uy * TILE_SIZE);
 
-            // Helper: compute jitter offset for a tree tile
+            // Helper: how far a struck tile (tree, rock, yard wall) shakes
             // Which sheet column a tree draws from: two kinds on ordinary
             // ground (cols 16, 17), two conifers on snow (18, 19), half and
             // half by position. The canopy (row 0) and the trunk (row 1) are
@@ -6818,6 +7109,20 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 bool below = in_world(&bx, &by);
                 if (below && map->overlay[by][bx] == TILE_TREE) {
                     draw_tree_canopy(bx, by, screen_x, screen_y);
+                }
+                if (below && is_yard_wall(map->overlay[by][bx]))
+                    blit_tile(renderer, yard_wall_piece(map, bx, by, true),
+                              screen_x + tree_jox(bx, by), screen_y, draw_size);
+                // A structure entrance's upper rows, over the player.
+                if (entrance_art_role(map->overlay[y][x]) == ART_BEHIND)
+                    blit_tile(renderer, map->overlay[y][x], screen_x, screen_y, draw_size);
+                // Steam off a hot spring: the puff rising, each tile a quarter
+                // turn of the loop off its neighbours so the water does not
+                // breathe in step.
+                if (is_steam_cell(map->overlay[y][x])) {
+                    unsigned int phase = ((unsigned int)x * 2654435761u ^ (unsigned int)y * 40503u) >> 16;
+                    int frame = (int)((SDL_GetTicks() / 220u + phase) % STEAM_COUNT);
+                    blit_tile(renderer, steam_cell(frame), screen_x, screen_y - draw_size, draw_size);   // rising off the water into the air
                 }
                 if (below && map->overlay[by][bx] == TILE_DEAD_TREE) {
                     int jox = tree_jox(bx, by);
@@ -6857,16 +7162,40 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // drawn over whatever it lands on. is_cliff is still read below.
                 const GroundCover* cover = is_body ? cliff_top_cover(tile_id)
                                                    : tile_cover(map, x, y);
-                // A cave mouth's opening tile has no ground of its own, only
-                // the cave glyph; the mouth is drawn lifted off it, so what
-                // shows beneath is the ground the player walks up on.
-                if (!cover && map->overlay[y][x] == cave_mouth_cell(1, 1) && y + 1 < MAP_HEIGHT)
-                    cover = tile_cover(map, x, y + 1);
+                // A cave's tile has no ground of its own, only the cave
+                // glyph, and neither of its drawings covers the whole cell:
+                // the mouth is drawn lifted off it and the ladder hole has
+                // ground round it. What shows is a neighbour's ground -- the
+                // one below first, which for a mouth is the ground the player
+                // walks up on. The first neighbour that is not itself part of
+                // an entrance -- a 2x2 stamp's other tiles have no ground
+                // either -- and its plain tile where it has no cover: a
+                // pyramid's court is path, and path is drawn as a tile, so
+                // stopping at "no cover" showed the entrance's black glyph
+                // through every gap in the art.
+                int ground = tile_id;
+                if (!cover && (is_cave_opening_cell(map->overlay[y][x]) ||
+                               is_cave_ladder_cell(map->overlay[y][x]) ||
+                               tile_id == TILE_DUNGEON_GRAVEYARD_SM ||
+                               entrance_art_role(map->overlay[y][x]) == ART_STAMP)) {
+                    static const int nb[4][2] = { {0, 1}, {-1, 0}, {1, 0}, {0, -1} };
+                    for (int i = 0; i < 4; i++) {
+                        int nx = x + nb[i][0], ny = y + nb[i][1];
+                        if (!in_world(&nx, &ny)) continue;
+                        int nt = map->tiles[ny][nx];
+                        if (nt == TILE_DUNGEON ||
+                            (nt >= TILE_DUNGEON_CAVE && nt <= TILE_DUNGEON_LARGE_TREE)) continue;
+                        cover = cliff_body_elev(nt) > 0 ? cliff_top_cover(nt)
+                                                        : tile_cover(map, nx, ny);
+                        ground = nt;
+                        break;
+                    }
+                }
                 bool is_town = (tile_id >= TILE_TOWN0_BASE);
                 if (cover)
                     blit_tile(renderer, cover_variant(map, x, y, cover), screen_x, screen_y, draw_size);
                 else if (!is_cliff)
-                    blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                    blit_tile(renderer, ground, screen_x, screen_y, draw_size);
                 // The fringe of neighbouring ground goes on after the haze
                 // below -- except under a track, which has to cover it and
                 // takes the haze itself, so there it goes on now.
@@ -6900,9 +7229,17 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // The cave mouth's mound replaces the glyph: it is lifted off
                 // its cells, so the glyph would show beneath it.
                 bool mouth = is_cave_mouth_cell(map->overlay[y][x]);
-                if (!mouth && (tile_id == TILE_DUNGEON ||
+                if (!mouth && !is_cave_ladder_cell(map->overlay[y][x]) &&
+                    entrance_art_role(map->overlay[y][x]) != ART_STAMP &&
+                    (tile_id == TILE_DUNGEON ||
                     (tile_id >= TILE_DUNGEON_CAVE && tile_id <= TILE_DUNGEON_LARGE_TREE)))
-                    blit_tile(renderer, tile_id, screen_x, screen_y, draw_size);
+                    // A small graveyard's way in is what is left under the
+                    // gravestone that hid it: the cave's ladder down, in plain
+                    // stone. It is drawn from the tile rather than laid in the
+                    // overlay because the tile is all a broken stone writes.
+                    blit_tile(renderer, tile_id == TILE_DUNGEON_GRAVEYARD_SM
+                                        ? cave_ladder_cell(MAT_STONE) : tile_id,
+                              screen_x, screen_y, draw_size);
                 // The mound lies over the wall, raised CAVE_MOUTH_LIFT_AY art
                 // rows; its key pixels let the band through round it. Under a
                 // raised jamb, from its outer edge in to the opening, the
@@ -6933,8 +7270,9 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
 
             // Draw overlay (trees, rocks, gold ore) on top
             int ov = map->overlay[y][x];
-            if (is_cave_mouth_cell(ov)) {
-                // already painted, over the cliff, above
+            if (is_cave_mouth_cell(ov) || entrance_art_role(ov) == ART_BEHIND || is_oasis_mark(ov)) {
+                // already painted, over the cliff, above -- or drawn in the
+                // depth pass, over the player
             } else if (ov == TILE_TREE) {
                 // Each tree tile is fully independent.
                 // Every tree is two tiles tall: the trunk here, the canopy in
@@ -6949,18 +7287,14 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 SDL_Rect src_bot = { 20 * 16, 1 * 16, 16, 16 };
                 SDL_Rect dst_bot = { screen_x + jox, screen_y, draw_size, draw_size };
                 if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
+            } else if (is_yard_wall(ov)) {
+                draw_yard_floor(renderer, map, x, y, screen_x, screen_y, draw_size);
+                blit_tile(renderer, yard_wall_piece(map, x, y, false),
+                          screen_x + tree_jox(x, y), screen_y, draw_size);
             } else if (ov != 0) {
-                // Rocks, gold ore — draw over base with optional jitter
-                int draw_x = screen_x;
-                if (ov == TILE_ROCK) {
-                    auto jit = s_tile_jitter.find(tile_key(x, y));
-                    if (jit != s_tile_jitter.end()) {
-                        float elapsed = (float)((double)(SDL_GetPerformanceCounter() - jit->second)
-                                                / SDL_GetPerformanceFrequency());
-                        draw_x += (int)(sinf(elapsed * 80.0f) * 4.0f * z);
-                    }
-                }
-                blit_tile(renderer, ov, draw_x, screen_y, draw_size);
+                // Rocks, gold ore — draw over base, shaking when struck
+                blit_tile(renderer, ov, screen_x + (ov == TILE_ROCK ? tree_jox(x, y) : 0),
+                          screen_y, draw_size);
             }
         }
     }
@@ -7284,7 +7618,7 @@ static std::unordered_map<uint32_t, int> s_tile_hp;
 // For tall trees the bottom tile is the key so both tiles share the same pool.
 static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     int t = map->overlay[ty][tx];
-    if (t == TILE_ROCK)      return 3;
+    if (t == TILE_ROCK || is_yard_wall(t)) return 3;
     if (t == TILE_GOLD_ORE)  return 5;
     if (t == TILE_DEAD_TREE) return 3;
     if (t == TILE_TREE) {
@@ -7296,19 +7630,19 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
 }
 
 static bool tile_is_harvestable(int t) {
-    return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE;
+    return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE || is_yard_wall(t);
 }
 
 static HarvestTarget tile_target(int t) {
-    if (t == TILE_TREE || t == TILE_DEAD_TREE) return HARVEST_TREE;
-    if (t == TILE_ROCK)                        return HARVEST_ROCK;
+    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK) return HARVEST_TREE;
+    if (t == TILE_ROCK || t == YARD_WALL_MARK)                         return HARVEST_ROCK;
     if (t == TILE_GOLD_ORE)                    return HARVEST_ORE;
     return HARVEST_OTHER;
 }
 
 static int tile_award(int t) {
-    if (t == TILE_TREE || t == TILE_DEAD_TREE) return (int)RESOURCE_TREE;
-    if (t == TILE_ROCK)                        return (int)RESOURCE_ROCK;
+    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK) return (int)RESOURCE_TREE;
+    if (t == TILE_ROCK || t == YARD_WALL_MARK)                         return (int)RESOURCE_ROCK;
     if (t == TILE_GOLD_ORE)                    return (int)RESOURCE_GOLD;
     return -1;
 }
@@ -7546,6 +7880,9 @@ float tilemap_cliff_facing_at(int x, int y) {
 // per tile and an exact one per pixel — and they want the same ground under
 // them.
 static bool tile_ground_walkable(const Tilemap* map, int tile_x, int tile_y) {
+    // The wall of a structure entrance, beside its way in, closes its tile
+    // like a house wall does, whatever ground it stands on.
+    if (entrance_art_role(map->overlay[tile_y][tile_x]) == ART_SOLID) return false;
     switch (map->tiles[tile_y][tile_x]) {
         case TILE_GRASS:
         case TILE_PATH:
@@ -7661,7 +7998,7 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // The cave mouth's opening: the feet walk in over the checkered floor and
     // a few rows into the dark beyond it, and no further -- still well inside
     // the mouth tile, so the way in is still offered.
-    if (map->overlay[ty][tx] == cave_mouth_cell(1, 1)) {
+    if (is_cave_opening_cell(map->overlay[ty][tx])) {
         int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
         if (ay < CAVE_MOUTH_FLOOR_AY - CAVE_MOUTH_LIFT_AY) return true;
     }
@@ -7687,9 +8024,8 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
         // The cave mouth's jambs close the ground as the rock they draw.
         // Only its side columns: the middle one is the way in.
         int ov = map->overlay[ty][tx];
-        if (is_cave_mouth_cell(ov)) {
-            int rel = ov - cave_mouth_cell(0, 0);
-            int dy = rel / TOWN0_SHEET_COLS, dx = rel % TOWN0_SHEET_COLS;
+        int dx, dy;
+        if (cave_mouth_pos(ov, &dx, &dy)) {
             // Drawn lifted, so this pixel shows the sprite's row ay + lift,
             // which may be in the cell below -- or below the sprite entirely.
             int sy = ay + CAVE_MOUTH_LIFT_AY;
@@ -7707,9 +8043,10 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     // tile_ground_walkable here would call the whole tile solid and undo that.
     if (!mine_is_solid && !tile_ground_walkable(map, tx, ty)) return true;
 
-    // Trees, rocks, and gold ore live in the overlay — they're also solid.
+    // Trees, rocks, gold ore and yard walls live in the overlay — they're also solid.
     int ov = map->overlay[ty][tx];
-    return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
+    return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE
+        || is_yard_wall(ov);
 }
 
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,

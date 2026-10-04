@@ -306,6 +306,12 @@ typedef struct Tilemap {
     CastlePlacement  castles[4];       // [0-2] placed in phase2; [3] placed via dungeon diving
 } Tilemap;
 
+// Structure-entrance art audit for tools/shot.cpp (SHOT_ENTART): how many
+// entrances carry art, and in *whole how many still have every cell of it in
+// the overlay at the end of generation -- something later in worldgen
+// writing over a wall or the rows behind would show here as a shortfall.
+int tilemap_debug_entrance_art(const Tilemap* map, int* whole);
+
 // Forward declare to avoid circular include — resource_node.h includes no tilemap types.
 struct ResourceNodeList;
 

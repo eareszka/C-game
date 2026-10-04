@@ -12,6 +12,7 @@
 #include "tilemap.h"
 #include "camera.h"
 #include "towns.h"
+#include "resource_node.h"
 
 static Tilemap g_map;
 
@@ -112,7 +113,9 @@ int main(int argc, char** argv)
                     int x = e.x + dx, y = e.y + dy;
                     int ov = in_world(&x, &y) ? g_map.overlay[y][x] : -1;
                     int rel = ov - TILE_TOWN0_BASE, col = rel % 256, r = rel / 256;
-                    bool ok = ov >= TILE_TOWN0_BASE && col == 22 + dx && r == 7 + dy;
+                    // Any material's mouth (tilemap.cpp's CAVE_ENT_ROW0 = 12,
+                    // three cells to a material).
+                    bool ok = ov >= TILE_TOWN0_BASE && col < 21 && col % 3 == 1 + dx && r == 13 + dy;
                     good += ok;
                     n += snprintf(row + n, sizeof row - n, ok ? " ok" : " %d", ov);
                 }
@@ -120,6 +123,24 @@ int main(int argc, char** argv)
             printf("mouth %d,%d tile %d:%s\n", e.x, e.y, g_map.tiles[e.y][e.x], row);
         }
         printf("ground mouths %d, with the whole sprite %d\n", total, whole);
+        return 0;
+    }
+
+    // SHOT_ENTART=1 counts the structure entrances that carry art and how many
+    // still have all of it at the end of generation, then lists where every
+    // entrance but the caves stands, by DungeonEntranceType, so one can be shot.
+    if (getenv("SHOT_ENTART")) {
+        SDL_Surface* m = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_RGBA32);
+        tilemap_init_tile_cache(SDL_CreateSoftwareRenderer(m));
+        tilemap_build_overworld_phase1(&g_map, seed);
+        tilemap_build_overworld_phase2(&g_map, seed);
+        int whole, n = tilemap_debug_entrance_art(&g_map, &whole);
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = g_map.dungeon_entrances[i];
+            if (e.type != DUNGEON_ENT_CAVE)
+                printf("type %d at %d,%d size %d biome %d\n", (int)e.type, e.x, e.y, e.size, e.biome);
+        }
+        printf("entrances with art %d, whole %d\n", n, whole);
         return 0;
     }
 
@@ -388,6 +409,21 @@ int main(int argc, char** argv)
     SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
     SDL_RenderClear(ren);
     tilemap_draw_base(&g_map, &cam, ren, 0);
+    // SHOT_GRAVES=1 also spawns the gravestones of every graveyard in view, as
+    // the game does when the player comes near, and draws them. They are
+    // resource nodes, not tiles, so nothing else here would show them.
+    if (getenv("SHOT_GRAVES")) {
+        static ResourceNodeList nodes;
+        resource_nodes_init(&nodes);
+        for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = g_map.dungeon_entrances[i];
+            if (e.x < want_x || e.y < want_y || e.x >= want_x + tw || e.y >= want_y + th) continue;
+            tilemap_spawn_graveyard_nodes(&g_map, &nodes, i, seed);
+            tilemap_spawn_graveyard_lg_nodes(&g_map, &nodes, i, seed);
+        }
+        resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
+        printf("%d gravestones\n", nodes.count);
+    }
     tilemap_draw_depth(&g_map, &cam, ren, 0);
     SDL_RenderPresent(ren);
 

@@ -28,10 +28,11 @@ def cells(c0, c1, r0, r1):
 PRUNE = {
     "hollow stump, dark bush and palm":        cells(14, 17, 2, 3),
     "wasteland's spotty variants (see COVER_WASTE)": [(24, 4), (26, 4)],
-    "stone steps":                             cells(1, 3, 11, 11) + cells(0, 3, 12, 12)
-                                               + cells(0, 2, 13, 13),
-    "retired grass/snow ladder (see cliff_top_cover)": cells(18, 29, 12, 14),
-    "retired waste ladder":                    cells(31, 31, 12, 14),
+    "stone steps":                             cells(1, 3, 11, 11),
+    # The stone steps' rows 12-13 and the two retired ladders (cols 18-29 and
+    # 31, rows 12-14) were blanked and their cells reused: rows 12-14 from col
+    # 0 are the cave entrances now (art/structures/gen_cave_entrances.py).
+    "old one-material cave mouth (see gen_cave_entrances)": cells(21, 23, 6, 7),
 }
 
 
