@@ -24,7 +24,7 @@ stone, which would be a fifth in the doorway's cells.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, check, rect, fill, oblique, weather
+from entrance_shapes import Scene, check, rect, fill, oblique, weather, depth_layers
 
 W, H = 160, 112
 B = 109                      # the ground row under the front faces
@@ -67,12 +67,14 @@ def pyramid():
             right.append((x, d, z, stone(z + d, x + d, block=6) or 'S'))
     sc.points(0, front)
     sc.points(1, right)
+    sc.ground(X0, X1, 0, D1)
 
     def doorway(g):
         fill(g, rect(CX - 7, B - 18, CX + 6, B), 'X')    # the dark way in
         fill(g, rect(CX - 7, B - 18, CX + 6, B - 18), 'K')   # shadow under the lintel
         fill(g, rect(CX - 7, B - 18, CX - 7, B), 'K')    # and inside the left post
-    sc.flat(2, doorway, -0.5)
+    sc.flat(2, doorway, -0.5, opening=16)
+    sc.carve(CX - 7, CX + 6, -1, 8)                              # a step into the dark
 
     def frame(g):
         for x0 in (CX - 10, CX + 7):                     # side pillars
@@ -123,7 +125,8 @@ def step_pyramid():
             edge = x - x0 < 1.5 or x1 - x < 1.5
             pts.append((x, d - 0.3, z, 'D' if edge or int(z) % 3 == 0 else 'L'))
             k += 0.25
-    sc.points(N + 3, pts, nearer=4)          # built out in front of the terraces
+    sc.points(N + 3, pts, nearer=4)                       # built out in front of the terraces
+    sc.carve(CX - 8, CX + 7, -4, 5)                       # its foot, where the way in is
 
     for pid, x in ((N + 5, CX - 12), (N + 6, CX + 8)):   # the serpent heads
         sc.box(pid, x, x + 3, 0, 2, 0, 5, 'M')
@@ -147,7 +150,8 @@ def design():
     check(s, 'step pyramid')
     pal = dict(PAL, d='595965', m='9797aa', l='c6ccda')
     return {'pal': pal, 'view_w': W, 'order': ['pyramid', 'step'],
-            'views': {'pyramid': g.rows(), 'step': s.rows()}}
+            'views': {'pyramid': g.rows(), 'step': s.rows()},
+            'depth': depth_layers(2 * W, H, [(0, 0, g), (W, 0, s)])}
 
 
 if __name__ == '__main__':

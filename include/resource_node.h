@@ -25,6 +25,7 @@ typedef struct ResourceNode
     int height;
     int hp;
     int alive;
+    Uint64 hit_at;   // when last struck (SDL_GetPerformanceCounter), for the shake; 0 never
 
     // Gravestone-specific: when hides_entrance=1 and this node is destroyed,
     // the dungeon entrance tile is stamped at (reveal_tx, reveal_ty).
@@ -47,6 +48,10 @@ void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
                                    int hides_entrance, int reveal_tile_id,
                                    int reveal_tx, int reveal_ty);
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex);
+// After the player, as tilemap_draw_over_player: the pixels of gravestones that
+// stand in front of them.
+void resource_nodes_draw_over_player(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren,
+                                     float x, float y, float w, float h, float feet_y);
 // ── Harvest results ─────────────────────────────────────────────────────────
 // One swing can now strike several things at once (a scythe sweeps everything
 // in range), so a swing reports a list rather than a single outcome. Tile-based
@@ -107,7 +112,8 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
 // stop at whatever they meet. Returns 1 if something was struck.
 int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float radius,
                                 WeaponType weapon, HarvestResult* out);
-// TileSolidFn-compatible: returns true if (px,py) is inside any alive tree or rock node.
+// TileSolidFn-compatible: returns true if (px,py) is inside any alive node -- for a
+// gravestone, only on the ground its plinth stands on.
 bool resource_node_solid(const void* list, float px, float py);
 
 #endif

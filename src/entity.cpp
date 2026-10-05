@@ -82,9 +82,29 @@ void player_animate(Player* player, float dt, float anim_speed)
     }
 }
 
+bool player_crouching(const Input* in)
+{
+    return input_down(in, SDL_SCANCODE_LCTRL);
+}
+
+bool player_sprinting(const Input* in)
+{
+    return input_down(in, SDL_SCANCODE_LSHIFT) && !player_crouching(in);
+}
+
 void player_gait(const Input* in, float* speed, float* anim_speed)
 {
-    bool run = input_down(in, SDL_SCANCODE_LSHIFT);
-    *speed      = run ? PLAYER_RUN_SPEED : PLAYER_WALK_SPEED;
-    *anim_speed = run ? 0.10f : 0.20f;
+    if (player_crouching(in))      { *speed = PLAYER_CROUCH_SPEED; *anim_speed = 0.30f; }
+    else if (player_sprinting(in)) { *speed = PLAYER_RUN_SPEED;    *anim_speed = 0.10f; }
+    else                           { *speed = PLAYER_WALK_SPEED;   *anim_speed = 0.20f; }
+}
+
+const char* part_name(int part)
+{
+    switch (part) {
+        case PART_HIDE:    return "HIDE";
+        case PART_BONE:    return "BONE";
+        case PART_ESSENCE: return "ESSENCE";
+        default:           return "?";
+    }
 }

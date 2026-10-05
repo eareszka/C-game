@@ -104,7 +104,8 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         ow->at_dungeon_entrance = 0;
         if (in_world(&tx, &ty)) {
             int tile = map->tiles[ty][tx];
-            if (tile == TILE_DUNGEON || (tile >= TILE_DUNGEON_CAVE && tile <= TILE_DUNGEON_LARGE_TREE)) {
+            if ((tile == TILE_DUNGEON || (tile >= TILE_DUNGEON_CAVE && tile <= TILE_DUNGEON_LARGE_TREE)) &&
+                tilemap_way_in(map, feet_x, feet_y)) {
                 ow->at_dungeon_entrance = 1;
                 for (int i = 0; i < map->num_dungeon_entrances; i++) {
                     const DungeonEntrance& e = map->dungeon_entrances[i];

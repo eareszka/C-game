@@ -27,12 +27,16 @@ const char* weapon_name(WeaponType type);
 
 static const int ARENA_W  = 640;
 static const int ARENA_H  = 480;
+// The top HUD bar covers y < ARENA_TOP: the arena, and everything in it, is below.
+static const int ARENA_TOP = 28;
 static const int ENEMY_X  = 320;
 static const int ENEMY_Y  = 160;
 static const int ENEMY_R  = 24;
-// The player's hitbox: three quarters of the sprite's 22-pixel width, centred
-// on the body, as the old 32-pixel sprite's 12 was of it.
-static const int PLAYER_R = 8;
+// The player's hitbox: a small core at the body's centre, Touhou-sized, so a
+// pattern's gaps are read against the dot rather than the whole sprite. 1.5
+// just covers the white core of the crouch marker (one 2x2 art pixel), so
+// what the player sees is exactly what gets hit.
+static const float PLAYER_R = 1.5f;
 
 #define MAX_PLAYER_BULLETS 64
 #define MAX_ENEMY_BULLETS  256
@@ -57,6 +61,7 @@ struct Bullet {
 // ── Phase ─────────────────────────────────────────────────────────────────────
 
 enum BattlePhase {
+    BATTLE_PHASE_INTRO,      // fading up from black, everyone already in place
     BATTLE_PHASE_FIGHTING,
     BATTLE_PHASE_VICTORY,
     BATTLE_PHASE_DEFEAT,
@@ -72,18 +77,40 @@ struct BattlePlayer {
     ProjectileProfile weapon;
 };
 
+// One cancelled bullet flying to the player after the kill.
+struct Pickup {
+    float x, y, vx, vy;
+    bool  active;
+};
+
 // ── Battle scene ──────────────────────────────────────────────────────────────
 
 class BattleScene {
 public:
-    BattleScene(Player* player, int enemy_id);
+    // chained: the next fight of a pack. No fade in -- the player glides from
+    // (from_x, from_y), where the last fight left them, back to the start,
+    // while the new enemy drops in from the top.
+    BattleScene(Player* player, int enemy_id,
+                bool chained = false, float from_x = 0.0f, float from_y = 0.0f);
+
+    // More of the pack waits after this fight: a win ends without fading out.
+    void  set_more_after(bool more) { _more_after = more; }
+    float player_x() const { return _bp.x; }
+
+    // What the top HUD shows during a fight. hud_enemy is null once it's beaten.
+    float hud_hp()      const { return _bp.hp; }
+    float hud_max_hp()  const { return _bp.max_hp; }
+    float hud_stamina() const;   // 0..1, the weapon's cooldown refilling
+    const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY ? nullptr : _enemy; }
+    float player_y() const { return _bp.y; }
     ~BattleScene();
 
     void update(const Input* in, float dt);
     void draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const;
 
     BattlePhase get_phase() const { return _phase; }
-    bool is_done() const { return _phase != BATTLE_PHASE_FIGHTING; }
+    // True once the end panel is confirmed and the fade to black has played.
+    bool is_done() const { return _done; }
 
 private:
     BattlePhase  _phase;
@@ -94,7 +121,18 @@ private:
     bool         _tab_open;
     Bullet       _player_bullets[MAX_PLAYER_BULLETS];
     Bullet       _enemy_bullets[MAX_ENEMY_BULLETS];
+    Pickup       _pickups[MAX_ENEMY_BULLETS];
     int          _enemy_id;
+    float        _t        = 0.0f;   // seconds into the current phase
+    bool         _confirmed = false; // end panel dismissed
+    float        _outro_t  = 0.0f;   // seconds into the fade to black
+    bool         _chained  = false;
+    float        _from_x   = 0.0f, _from_y = 0.0f;
+    bool         _more_after = false;
+    bool         _done     = false;
+    bool         _focus    = false;  // crouching: slow move, hitbox shown
+    int          _drop_count = 0;
+    MonsterPart  _drop_part  = PART_HIDE;
     // The enemy's sprite sheet, loaded on the first draw (the scene has no
     // renderer before then); null when the enemy has no sprite yet.
     mutable SDL_Texture* _sheet       = nullptr;
@@ -109,6 +147,10 @@ private:
     void _update_enemy(float dt);
     void _move_bullets(float dt);
     void _check_collisions();
+    void _win();
+    void _update_pickups(float dt);
+    float _darkness() const;  // 1 = black: the fade in and the fade out
+    float _chain_in() const;  // 0..1 progress of a chained intro; 1 otherwise
     void _spawn_player_bullet(float angle);
     void _spawn_enemy_bullet(const BulletSpawn& bs);
     void _spawn_bullet_at(float ox, float oy, const BulletSpawn& bs);
@@ -117,9 +159,6 @@ private:
                             Uint8 r, Uint8 g, Uint8 b, Uint8 a);
     static void _draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int h,
                                     Uint8 r, Uint8 g, Uint8 b);
-    static void _draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
-                          float cur, float max,
-                          Uint8 fr, Uint8 fg, Uint8 fb);
 };
 
 #endif

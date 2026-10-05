@@ -33,6 +33,14 @@ static int frame_scale_for(SDL_Renderer* renderer, int lw, int lh) {
     return s < 1 ? 1 : s;
 }
 
+// Snap 0..1 to `levels` hard steps (rounding down; 1 stays 1), the way the
+// NES fades and moves: a few distinct states, nothing in between.
+static float nes_steps(float a, int levels) {
+    if (a <= 0.0f) return 0.0f;
+    if (a >= 1.0f) return 1.0f;
+    return (float)(int)(a * levels) / levels;
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -124,6 +132,16 @@ int main(int argc, char *argv[])
     FlashEntry   flash_entries[3]   = {};
     int          flash_count        = 0;
     float        pre_battle_timer   = -1.0f;  // -1 = inactive
+    float        post_battle_t      = 0.0f;   // back on the map: fade-in, chasers hold
+    // Test enemies in the spawn house: the ids being tuned, in a row above
+    // the player's start. Each is armed again once the player steps off it.
+    struct TestEnemy { int id; float x, y; };
+    TestEnemy    test_enemies[3]    = {
+        { 0,  6.5f * IMAP_TILE, 4.5f * IMAP_TILE },
+        { 1, 10.0f * IMAP_TILE, 4.5f * IMAP_TILE },
+        { 2, 13.5f * IMAP_TILE, 4.5f * IMAP_TILE },
+    };
+    bool         test_armed         = true;
 
     // Floating +N resource text — one active at a time above the last hit node.
     // Shared by the overworld and every dungeon (include/floattext.h).
@@ -299,12 +317,13 @@ int main(int argc, char *argv[])
     InteriorMap    imap    = {};
     InteriorPlayer iplayer = {};
 
-    // Begin the game inside the spawn house, standing mid-room. Exiting the
-    // doormat drops the player onto the overworld at start_x/start_y.
+    // Begin the game inside the spawn house, standing mid-room on the floor,
+    // by the bed. Exiting the doormat drops the player onto the overworld at
+    // start_x/start_y.
     interior_load(&imap, 0);
     interior_player_init(&iplayer, &player, &imap);
     iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
-    iplayer.y = 7 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+    iplayer.y = 10 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
     player.facing = FACE_DOWN;  // toward the door
     state = STATE_INTERIOR;
 
@@ -329,11 +348,102 @@ int main(int argc, char *argv[])
     const Uint64 FRAME_TICKS    = PERF_FREQ / 60;
     Uint64       frame_deadline = SDL_GetPerformanceCounter() + FRAME_TICKS;
 
+    // ── Battle entry, shared by every map that starts fights ─────────────────
+    // Each queued enemy flashes once in fight order, the screen blinks white,
+    // and black stripes wipe the map away; the battle then fades up with
+    // everyone in place. c is the map's camera.
+    static const float FLASH_STEP = 0.25f; // total time per enemy
+    static const float FLASH_ON   = 0.16f; // how long it's visible within that window
+    static const float HOLD       = 0.24f; // the screen flashes, after the enemy flashes
+    static const float FADE       = 0.24f; // stripe wipe to black
+    auto pre_battle_tick = [&](float step, GameState back) {
+        pre_battle_timer += step;
+        if (pre_battle_timer < flash_count * FLASH_STEP + HOLD + FADE) return;
+        pre_battle_timer = -1.0f;
+        delete battle_scene;
+        battle_scene = new BattleScene(&player, battle_queue[0]);
+        battle_scene->set_more_after(battle_queue_count > 1);
+        state_after_battle = back;
+        state = STATE_BATTLE;
+    };
+    // Black over the screen in the NES's four steps, not a smooth ramp: its
+    // fades are palette swaps, a few brightness levels and nothing between.
+    auto veil = [&](float a) {
+        if (a <= 0.0f) return;
+        a = a >= 1.0f ? 1.0f : (float)(int)(a * 4.0f + 0.999f) / 4.0f;  // round up: starts fully black
+        SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_BLEND);
+        fc_draw_color(plat.renderer, 0, 0, 0, (Uint8)(255 * a));
+        SDL_Rect r = { 0, 0, 640, 480 };
+        SDL_RenderFillRect(plat.renderer, &r);
+        SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_NONE);
+    };
+    auto chaser_rect = [&](const Camera* c, float wx, float wy) {
+        int sz = (int)(14 * c->zoom);
+        return SDL_Rect{ cam_px(c, wx) - sz / 2, cam_py(c, wy) - sz / 2, sz, sz };
+    };
+    // Drawn over the map: the flashes and fade going in, the fade-in coming back.
+    auto battle_veil_draw = [&](const Camera* c) {
+        if (pre_battle_timer >= 0.0f) {
+            int cur_step = (int)(pre_battle_timer / FLASH_STEP);
+            float local_t = pre_battle_timer - cur_step * FLASH_STEP;
+            for (int fi = 0; fi < flash_count; fi++) {
+                SDL_Rect cr = chaser_rect(c, flash_entries[fi].x, flash_entries[fi].y);
+                if (fi == cur_step && local_t < FLASH_ON) {
+                    // Currently flashing — bright yellow
+                    fc_draw_color(plat.renderer, 255, 220, 50, 255);
+                    SDL_RenderFillRect(plat.renderer, &cr);
+                    fc_draw_color(plat.renderer, 255, 255, 255, 255);
+                    SDL_RenderDrawRect(plat.renderer, &cr);
+                } else if (fi > cur_step) {
+                    // Not yet reached — shown dim
+                    fc_draw_color(plat.renderer, 80, 20, 20, 255);
+                    SDL_RenderFillRect(plat.renderer, &cr);
+                    fc_draw_color(plat.renderer, 120, 40, 40, 255);
+                    SDL_RenderDrawRect(plat.renderer, &cr);
+                } else {
+                    // Flashed already: back to its own red, there until the wipe.
+                    fc_draw_color(plat.renderer, 200, 30, 30, 255);
+                    SDL_RenderFillRect(plat.renderer, &cr);
+                    fc_draw_color(plat.renderer, 255, 80, 80, 255);
+                    SDL_RenderDrawRect(plat.renderer, &cr);
+                }
+            }
+            // After the flashes: the whole screen blinks white, the old
+            // encounter flash, then black stripes slide in from alternate
+            // sides a tile at a time until nothing is left.
+            float flash_end = flash_count * FLASH_STEP;
+            if (pre_battle_timer >= flash_end) {
+                float t = pre_battle_timer - flash_end;
+                if (t < HOLD) {
+                    if ((int)(t / 0.04f) % 2 == 0) {
+                        SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_BLEND);
+                        fc_draw_color(plat.renderer, 255, 255, 255, 170);
+                        SDL_Rect r = { 0, 0, 640, 480 };
+                        SDL_RenderFillRect(plat.renderer, &r);
+                        SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_NONE);
+                    }
+                } else {
+                    float k = (t - HOLD) / FADE;
+                    int cols = (int)(nes_steps(k > 1.0f ? 1.0f : k, 10) * 20.0f + 0.5f);  // of 20 32px tiles
+                    fc_draw_color(plat.renderer, 0, 0, 0, 255);
+                    for (int row = 0; row < 30; row++) {          // 16px stripes
+                        int w = cols * 32;
+                        SDL_Rect r = { row % 2 ? 640 - w : 0, row * 16, w, 16 };
+                        SDL_RenderFillRect(plat.renderer, &r);
+                    }
+                }
+            }
+        }
+        // Back from a fight: the map steps up out of black.
+        if (post_battle_t > 0.6f) veil((post_battle_t - 0.6f) / 0.4f);
+    };
+
     while (running)
     {
         double dt_d = time_delta_seconds();
         if (dt_d > 0.05) dt_d = 0.05; // cap at 50 ms — prevents big jumps on stalled frames
         float dt = (float)dt_d;
+        if (post_battle_t > 0.0f) post_battle_t -= dt;
         tilemap_update(dt);
 
         input_begin_frame(&in);
@@ -583,6 +693,10 @@ int main(int argc, char *argv[])
                 resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
+                tilemap_draw_over_player(map, &cam, plat.renderer, ow.x, ow.y,
+                                         (float)player.width, (float)player.height, ow.y + HB_Y2);
+                resource_nodes_draw_over_player(&resources, &cam, plat.renderer, ow.x, ow.y,
+                                                (float)player.width, (float)player.height, ow.y + HB_Y2);
                 tilemap_draw_depth(map, &cam, plat.renderer);
                 if (dbg_grid) tilemap_draw_debug_grid(map, &cam, plat.renderer);
 
@@ -766,15 +880,18 @@ int main(int argc, char *argv[])
                     battle_scene->update(game_in, dt);
                     battle_scene->draw(plat.renderer, player_sprite);
                     if (battle_scene->is_done()) {
-                        if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                            input_pressed(game_in, SDL_SCANCODE_Z)) {
+                        {
                             bool victory = battle_scene->get_phase() == BATTLE_PHASE_VICTORY;
+                            float last_x = battle_scene->player_x(), last_y = battle_scene->player_y();
                             delete battle_scene;
                             battle_scene = nullptr;
                             if (victory && battle_queue_idx + 1 < battle_queue_count) {
                                 battle_queue_idx++;
-                                battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx]);
+                                battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx],
+                                                               true, last_x, last_y);
+                                battle_scene->set_more_after(battle_queue_idx + 1 < battle_queue_count);
                             } else {
+                                post_battle_t = 1.0f;
                                 // Re-activate any queued enemies that were never fought.
                                 for (int qi = battle_queue_idx + 1; qi < battle_queue_count; qi++) {
                                     int cidx = battle_queue_chaser_idx[qi];
@@ -802,19 +919,11 @@ int main(int argc, char *argv[])
                 float dpcy = dplayer.y + player.height * 0.5f;
                 camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
 
-                // Pre-battle flash: each queued enemy flashes once in fight order,
-                // then 0.5s pause before battle starts.
-                static const float FLASH_STEP = 0.4f;  // total time per enemy
-                static const float FLASH_ON   = 0.25f; // how long it's visible within that window
                 if (pre_battle_timer >= 0.0f) {
-                    pre_battle_timer += dt;
-                    if (pre_battle_timer >= flash_count * FLASH_STEP + 0.5f) {
-                        pre_battle_timer = -1.0f;
-                        delete battle_scene;
-                        battle_scene = new BattleScene(&player, battle_queue[0]);
-                        state_after_battle = STATE_DUNGEON;
-                        state = STATE_BATTLE;
-                    }
+                    pre_battle_tick(dt, STATE_DUNGEON);
+                } else if (post_battle_t > 0.0f) {
+                    // Just back from a fight: everyone holds a beat, so the
+                    // next battle can't start before the player can move.
                 } else {
                     // Update chasers — activate when seen, move toward player, queue on contact.
                     // As fast as the player runs: outrunning them takes a lead.
@@ -1029,31 +1138,7 @@ int main(int argc, char *argv[])
                     SDL_RenderDrawRect(plat.renderer, &cr);
                 }
 
-                // Draw pre-battle flash: each enemy flashes once in fight order
-                if (pre_battle_timer >= 0.0f) {
-                    int cur_step = (int)(pre_battle_timer / FLASH_STEP);
-                    float local_t = pre_battle_timer - cur_step * FLASH_STEP;
-                    for (int fi = 0; fi < flash_count; fi++) {
-                        int sz = (int)(14 * cam.zoom);
-                        int sx = cam_px(&cam, flash_entries[fi].x) - sz / 2;
-                        int sy = cam_py(&cam, flash_entries[fi].y) - sz / 2;
-                        SDL_Rect cr = { sx, sy, sz, sz };
-                        if (fi == cur_step && cur_step < flash_count && local_t < FLASH_ON) {
-                            // Currently flashing — bright yellow
-                            fc_draw_color(plat.renderer, 255, 220, 50, 255);
-                            SDL_RenderFillRect(plat.renderer, &cr);
-                            fc_draw_color(plat.renderer, 255, 255, 255, 255);
-                            SDL_RenderDrawRect(plat.renderer, &cr);
-                        } else if (fi > cur_step && cur_step < flash_count) {
-                            // Not yet reached — shown dim
-                            fc_draw_color(plat.renderer, 80, 20, 20, 255);
-                            SDL_RenderFillRect(plat.renderer, &cr);
-                            fc_draw_color(plat.renderer, 120, 40, 40, 255);
-                            SDL_RenderDrawRect(plat.renderer, &cr);
-                        }
-                        // fi <= cur_step past FLASH_ON, or cur_step >= flash_count (pause): not drawn
-                    }
-                }
+                battle_veil_draw(&cam);
 
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
@@ -1154,19 +1239,66 @@ int main(int argc, char *argv[])
             }
 
             case STATE_INTERIOR: {
-                interior_player_update(&iplayer, &player, game_in, dt, &imap);
-
-                fc_draw_color(plat.renderer, 5, 5, 8, 255);
-                SDL_RenderClear(plat.renderer);
-
-                interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
-
                 // Interior fills the screen 1:1 — identity camera.
                 Camera icam = {};
                 icam.zoom = 1.0f;
                 icam.screen_w = LOGICAL_W;
                 icam.screen_h = LOGICAL_H;
+
+                if (pre_battle_timer >= 0.0f) {
+                    pre_battle_tick(dt, STATE_INTERIOR);
+                    if (state == STATE_BATTLE) break;
+                } else {
+                    interior_player_update(&iplayer, &player, game_in, dt, &imap);
+                    // Test dummies: walk into one and all three fight, as a
+                    // dungeon pack does -- the one touched first, then by
+                    // distance, each flashing in that order. Armed again once
+                    // the player is off all of them.
+                    float pcx = iplayer.x + player.width  * 0.5f;
+                    float pcy = iplayer.y + player.height * 0.5f;
+                    auto d2 = [&](const TestEnemy& te) {
+                        return (pcx - te.x) * (pcx - te.x) + (pcy - te.y) * (pcy - te.y);
+                    };
+                    int hit = -1;
+                    for (int i = 0; i < 3; i++)
+                        if (d2(test_enemies[i]) < 22.0f * 22.0f) hit = i;
+                    if (hit < 0) {
+                        test_armed = true;
+                    } else if (test_armed && post_battle_t <= 0.0f) {
+                        test_armed = false;
+                        int order[3] = { 0, 1, 2 };
+                        for (int a = 0; a < 3; a++)       // nearest first: the touched one leads
+                            for (int b = a + 1; b < 3; b++)
+                                if (d2(test_enemies[order[b]]) < d2(test_enemies[order[a]]))
+                                    { int t = order[a]; order[a] = order[b]; order[b] = t; }
+                        for (int q = 0; q < 3; q++) {
+                            const TestEnemy& te = test_enemies[order[q]];
+                            battle_queue[q]            = te.id;
+                            battle_queue_chaser_idx[q] = -1;
+                            flash_entries[q]           = { te.x, te.y };
+                        }
+                        battle_queue_count = flash_count = 3;
+                        battle_queue_idx   = 0;
+                        pre_battle_timer   = 0.0f;
+                    }
+                }
+
+                fc_draw_color(plat.renderer, 5, 5, 8, 255);
+                SDL_RenderClear(plat.renderer);
+
+                interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
+                for (const TestEnemy& te : test_enemies) {
+                    if (pre_battle_timer >= 0.0f) break;   // the flashes draw them
+                    SDL_Rect cr = chaser_rect(&icam, te.x, te.y);
+                    fc_draw_color(plat.renderer, 200, 30, 30, 255);
+                    SDL_RenderFillRect(plat.renderer, &cr);
+                    fc_draw_color(plat.renderer, 255, 80, 80, 255);
+                    SDL_RenderDrawRect(plat.renderer, &cr);
+                }
                 player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
+                interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
+                                          (float)player.width, (float)player.height, iplayer.y + HB_Y2);
+                battle_veil_draw(&icam);
 
                 // Doormat — exit back to the overworld; ow.x/ow.y were never
                 // touched, so the player reappears where they entered.
@@ -1200,34 +1332,64 @@ int main(int argc, char *argv[])
             input_consume(&in, SDL_SCANCODE_SPACE);
         }
 
-        // ── Resource bar (hidden during battle) ──────────────────────────────
-        if (state != STATE_BATTLE) {
-            static const int   res_idx[]    = { 0, 1, 3 };
-            static const char* res_labels[] = { "WOOD", "STONE", "GOLD" };
-            static const Uint8 res_r[] = {180, 160, 255};
-            static const Uint8 res_g[] = {120, 160, 210};
-            static const Uint8 res_b[] = { 60, 160,  40};
+        // ── Top HUD bar, every state ──────────────────────────────────────────
+        // Left: health, the stamina meter (the weapon refilling after an
+        // attack) and EXP. Right: the enemy's name and health in battle, the
+        // zoom slider everywhere else. Drawn last, so it stays up through the
+        // battle transitions too.
+        {
+            float hp = (float)player.stats.hp, max_hp = (float)player.stats.max_hp;
+            float stamina = 1.0f;
+            const Enemy* foe = nullptr;
+            const WeaponSwingState* sw = state == STATE_OVERWORLD ? &ow.swing
+                                       : state == STATE_DUNGEON   ? &dplayer.swing : nullptr;
+            if (state == STATE_BATTLE && battle_scene) {
+                hp      = battle_scene->hud_hp();
+                max_hp  = battle_scene->hud_max_hp();
+                stamina = battle_scene->hud_stamina();
+                foe     = battle_scene->hud_enemy();
+            } else if (sw) {
+                float cd = weapon_cooldown_seconds(player.equipped_weapon);
+                stamina = cd > 0.0f ? 1.0f - sw->tool_cd / cd : 1.0f;
+            }
+            if (stamina < 0.0f) stamina = 0.0f;
+            if (stamina > 1.0f) stamina = 1.0f;
 
             fc_draw_color(plat.renderer, 0, 0, 0, 255);
-            SDL_Rect res_bg = {0, 0, 640, 28};
-            SDL_RenderFillRect(plat.renderer, &res_bg);
+            SDL_Rect hud_bg = {0, 0, 640, ARENA_TOP};
+            SDL_RenderFillRect(plat.renderer, &hud_bg);
 
-            char buf[16];
-            int cx = NES_PAD + 2;
-            for (int ri = 0; ri < 3; ri++) {
-                SDL_snprintf(buf, sizeof(buf), "%s:%d", res_labels[ri], player.inventory[res_idx[ri]]);
-                draw_text(plat.renderer, buf, cx, 10, 1, res_r[ri], res_g[ri], res_b[ri]);
-                cx += text_width(buf, 1) + 10;
-            }
-
-            SDL_snprintf(buf, sizeof(buf), "EXP:%d", player.stats.exp);
-            int ew = text_width(buf, 1);
-            draw_text(plat.renderer, buf, 640 - ew - NES_PAD - 2, 10, 1, 255, 255, 255);
-
-            // Zoom slider — centered in bar
+            draw_text(plat.renderer, "HP", NES_PAD + 2, 7, 1, 255, 255, 255);
+            // Health in segments, Zelda II style: one per HP_PER_BAR, green
+            // while held, black once lost, in a white box.
             {
+                int bars = (int)max_hp / HP_PER_BAR;
+                int full = (int)ceilf(hp / HP_PER_BAR);
+                fc_draw_color(plat.renderer, 255, 255, 255, 255);
+                SDL_Rect box = { 27, 5, bars * 9 + 3, 10 };
+                SDL_RenderDrawRect(plat.renderer, &box);
+                for (int b = 0; b < bars; b++) {
+                    if (b < full) fc_draw_color(plat.renderer, 78, 220, 74, 255);
+                    else          fc_draw_color(plat.renderer, 0, 0, 0, 255);
+                    SDL_Rect seg = { 29 + b * 9, 7, 8, 6 };
+                    SDL_RenderFillRect(plat.renderer, &seg);
+                }
+            }
+            draw_bar(plat.renderer, 28, 17, 110, 5, stamina, 1.0f, 255, 220, 0);
+            char buf[24];
+            SDL_snprintf(buf, sizeof(buf), "EXP:%d", player.stats.exp);
+            draw_text(plat.renderer, buf, 150, 10, 1, 255, 255, 255);
+
+            if (state == STATE_BATTLE) {
+                if (foe) {
+                    const char* nm = foe->name();
+                    draw_text(plat.renderer, nm, 600 - text_width(nm, 1), 3, 1, 220, 220, 220);
+                    draw_bar(plat.renderer, 420, 14, 180, 8, foe->hp, foe->max_hp, 220, 60, 60);
+                }
+            } else {
+                // Zoom slider
                 const int SL_W  = 120;
-                const int SL_X  = (640 - SL_W) / 2;
+                const int SL_X  = 480 - SL_W / 2 + 40;
                 const int TRK_Y = 12;
                 const int TRK_H = 3;
 
@@ -1258,7 +1420,7 @@ int main(int argc, char *argv[])
 
         // ── Crafting menu overlay ─────────────────────────────────────────────
         if (crafting_open && state != STATE_BATTLE) {
-            const int PW = 460, PH = 180;
+            const int PW = 460, PH = 194;
             const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
 
             draw_nes_panel(plat.renderer, PX, PY, PW, PH);
@@ -1288,6 +1450,25 @@ int main(int argc, char *argv[])
                 rx += text_width(buf, 1) + 16;
                 SDL_snprintf(buf, sizeof(buf), "GRAVESTONE: %d", player.inventory[4]);
                 draw_text(plat.renderer, buf, rx, PY + 128, 1, 160, 160, 180);
+
+                // Monster parts from battle, on the line below.
+                rx = PX + NES_PAD + 2;
+                {
+                    static const int   res_idx[] = { 0, 1, 3 };
+                    static const char* res_lbl[] = { "WOOD", "STONE", "GOLD" };
+                    static const Uint8 res_rgb[3][3] = { {180,120,60}, {160,160,160}, {255,210,40} };
+                    int wx = PX + NES_PAD + 2;
+                    for (int ri = 0; ri < 3; ri++) {
+                        SDL_snprintf(buf, sizeof(buf), "%s: %d", res_lbl[ri], player.inventory[res_idx[ri]]);
+                        draw_text(plat.renderer, buf, wx, PY + 156, 1, res_rgb[ri][0], res_rgb[ri][1], res_rgb[ri][2]);
+                        wx += text_width(buf, 1) + 16;
+                    }
+                }
+                for (int pi = 0; pi < PART_COUNT; pi++) {
+                    SDL_snprintf(buf, sizeof(buf), "%s: %d", part_name(pi), player.parts[pi]);
+                    draw_text(plat.renderer, buf, rx, PY + 142, 1, 220, 200, 160);
+                    rx += text_width(buf, 1) + 16;
+                }
             }
 
             draw_text(plat.renderer, "[TAB] CLOSE",

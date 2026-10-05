@@ -18,6 +18,10 @@ int text_width(const char* text, int scale);
 // NES-style panel: black fill, outer white border, 1px gap, inner white border.
 // Content area starts at (x+4, y+4). Use NES_PAD (4) as inner margin constant.
 void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h);
+
+// A meter: black, filled cur/max of the way in (r,g,b), white outline.
+void draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
+              float cur, float max, Uint8 r, Uint8 g, Uint8 b);
 static const int NES_PAD = 4;
 
 // Half-period of the flashing player marker on both minimaps, in milliseconds.

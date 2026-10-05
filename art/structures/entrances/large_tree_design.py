@@ -18,7 +18,7 @@ tree is the same every build.
 """
 import json, math, os, random, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Grid, check, outline
+from entrance_shapes import Grid, check, outline, stand, depth_layers
 
 W, H, B = 144, 96, 95
 CX = 72                       # the trunk's middle: the middle of the stamp
@@ -109,6 +109,7 @@ def hollow(g):
     for x, y in opening:
         inner_right = (x + 2, y) not in opening and y > TOP + 3
         g.put(x, y, 'D' if inner_right else 'K')
+    return opening
 
 
 def tree():
@@ -120,7 +121,7 @@ def tree():
     # as it narrows rather than sitting on it: up, and out to either side
     for ang, length, width in ((150, 18, 13), (112, 22, 14), (72, 22, 14), (32, 18, 13)):
         limb(g, twigs, CX + (ang < 90) * 5 - (ang > 90) * 5, 66, ang, length, width, rng)
-    hollow(g)
+    g.hollow = hollow(g)
     outline(g)
     # the twigs last, in the dark line the game's dead tree is drawn in,
     # each grown from a limb so none floats free
@@ -139,10 +140,35 @@ def tree():
     return g
 
 
+# The ground the trunk stands on: an ellipse across its foot, as wide as the
+# trunk there and as deep as it reads; the hollow in its front is the stamp,
+# which is the way in whatever stands on it.
+FOOT_CY, FOOT_RX, FOOT_RY = B - 8, 18, 8
+
+
+def ground(g):
+    """Every pixel of the tree -- trunk, limbs, twigs -- stands where the
+    trunk does: on the front of its foot in that column, or its middle beyond
+    the foot (roots beyond it lie on the ground, each pixel on its own row --
+    stand() never puts a pixel's ground above it). The hollow is a way in: what
+    shows in it is the back of the foot, so whoever steps in is seen in it."""
+    def footy(x, y):
+        u = (x + .5 - CX) / FOOT_RX
+        return round(FOOT_CY + FOOT_RY * math.sqrt(1 - u * u)) if abs(u) < 1 else FOOT_CY
+    foot = {(x, y) for y in range(H) for x in range(W)
+            if ((x + .5 - CX) / FOOT_RX) ** 2 + ((y + .5 - FOOT_CY) / FOOT_RY) ** 2 <= 1}
+    way = {(x, y) for x, y in g.hollow if y >= FOOT_CY}             # in, to the middle of the foot
+    stand(g, footy, foot - way, way)
+    for x, y in g.hollow:                                          # the dark is the back of it
+        g.footy[y][x] = FOOT_CY - FOOT_RY
+    return g
+
+
 def design():
-    g = tree()
+    g = ground(tree())
     check(g, 'large tree')
-    return {'pal': PAL, 'view_w': W, 'order': ['tree'], 'views': {'tree': g.rows()}}
+    return {'pal': PAL, 'view_w': W, 'order': ['tree'], 'views': {'tree': g.rows()},
+            'depth': depth_layers(W, H, [(0, 0, g)])}
 
 
 if __name__ == '__main__':

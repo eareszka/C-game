@@ -54,6 +54,12 @@ public:
 // Creates enemy by id (0–49); caller owns the pointer.
 Enemy* enemy_create(int enemy_id);
 
+// The monster part enemy_id drops when beaten.
+MonsterPart enemy_part(int enemy_id);
+
+// The colour enemy_id's bullets are drawn in.
+SDL_Color enemy_bullet_color(int enemy_id);
+
 // Reseed enemy RNG so patterns vary between encounters.
 void seed_enemy_rng(unsigned int seed);
 

@@ -22,7 +22,7 @@ it with the same yard drawn whole.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, Grid
+from entrance_shapes import Scene, Grid, depth_layers
 
 PAL = {'K': '000000',
        'D': '463422', 'M': '8d6b4f', 'L': 'b2966a',          # weathered wood (the oak's bark)
@@ -104,17 +104,23 @@ WX, WY, CW, CH = 48, 48, 112, 112
 BASE = WY + CELL + GROUND                      # the ground under the post, d = 0
 
 
-def piece(build, arms):
+def piece(build, arms, recolour={}):
+    """The piece's window cut from its wall drawn whole, with the wall's ground
+    rows and the ground it stands on cut the same way."""
     g = scene(build, [(WX + P, 0, arms)], CW, CH, BASE)
-    return [g.g[WY + y][WX:WX + CELL] for y in range(2 * CELL)]
+    p = Grid(CELL, 2 * CELL)
+    p.g = [[recolour.get(c, c) for c in g.g[WY + y][WX:WX + CELL]] for y in range(2 * CELL)]
+    p.footy = [[None if f is None else f - WY for f in g.footy[WY + y][WX:WX + CELL]] for y in range(2 * CELL)]
+    p.foot = {(x - WX, y - WY) for x, y in g.foot if WX <= x < WX + CELL and WY <= y < WY + 2 * CELL}
+    return p
 
 
 def strip(build, recolour):
-    rows = [[] for _ in range(2 * CELL)]
-    for n in range(PIECES):
-        for y, r in enumerate(piece(build, n)):
-            rows[y] += [recolour.get(c, c) for c in r]
-    return [''.join(r) for r in rows]
+    return [piece(build, n, recolour) for n in range(PIECES)]
+
+
+def rows(pieces):
+    return [''.join(''.join(p.g[y]) for p in pieces) for y in range(2 * CELL)]
 
 
 def arms_at(cells, cx, cy):
@@ -164,12 +170,15 @@ def check_tiling(build, view):
 
 
 def design():
-    views = {'fence': strip(wood, {}), 'wall': strip(stone, STONE)}
+    fence, wall = strip(wood, {}), strip(stone, STONE)
+    views = {'fence': rows(fence), 'wall': rows(wall)}
     for name, build in (('fence', wood), ('wall', stone)):
         ink, tone, *_ = check_tiling(build, [r.translate(str.maketrans('dml', 'DML')) for r in views[name]])
         print('%s: against the yard drawn whole, %d pixels inked differently, %d toned differently'
               % (name, ink, tone), file=sys.stderr)
-    return {'pal': PAL, 'view_w': PIECES * CELL, 'order': ['fence', 'wall'], 'views': views}
+    return {'pal': PAL, 'view_w': PIECES * CELL, 'order': ['fence', 'wall'], 'views': views,
+            'depth': depth_layers(2 * PIECES * CELL, 2 * CELL,
+                                  [(i * CELL, 0, p) for i, p in enumerate(fence + wall)])}
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@ pediment.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, stair, check, rect, fill, oblique
+from entrance_shapes import Scene, stair, check, rect, fill, oblique, depth_layers
 
 PAL = {'K': '000000', 'D': '595965', 'M': '9797aa', 'L': 'c6ccda'}
 
@@ -28,6 +28,7 @@ def mausoleum():
     dx0, dy0 = oblique(19, 5, 22, B)
     dx1, dy1 = oblique(32, 5, 3, B)
     sc.flat(2, lambda g: stair(g, dx0, dx1, dy0, dy1, tread=3), 4.9)
+    sc.carve(dx0, dx1, -1, 7)                              # up the base and into the doorway
     sc.box(3, 10, 14, 1, 3, 3, 27, 'column')
     sc.box(4, 37, 41, 1, 3, 3, 27, 'column')
     sc.box(5, 6, 45, 0, 12, 28, 32, C)                     # the entablature
@@ -44,7 +45,8 @@ def mausoleum():
 def design():
     g = mausoleum()
     check(g, 'mausoleum')
-    return {'pal': PAL, 'view_w': 64, 'order': ['mausoleum'], 'views': {'mausoleum': g.rows()}}
+    return {'pal': PAL, 'view_w': 64, 'order': ['mausoleum'], 'views': {'mausoleum': g.rows()},
+            'depth': depth_layers(64, 64, [(0, 0, g)])}
 
 
 if __name__ == '__main__':

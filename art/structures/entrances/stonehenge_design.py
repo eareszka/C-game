@@ -17,7 +17,7 @@ cracked (entrance_shapes.weather). In the ruins' grey stone.
 """
 import json, math, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, check, rect, fill, stair, weather
+from entrance_shapes import Scene, check, rect, fill, stair, weather, depth_layers
 
 PAL = {'K': '000000', 'D': '595965', 'M': '9797aa', 'L': 'c6ccda'}
 W, H, B = 192, 80, 77
@@ -94,7 +94,7 @@ def henge():
             d = B - y                                      # treads, nearest lightest
             for x in range(X0 + d + 2, X1 + d + 1):
                 g.put(x, y, c)
-    sc.flat(pid, pit, (D0 + D1) / 2)
+    sc.flat(pid, pit, (D0 + D1) / 2, opening='ground')
     g = sc.render()
     weather(g, 77, 'M', 'D', chips=14, cracks=18, keep=[(X0 - 4, B - D1 - 6, X1 + D1 + 4, B + 2)])
     return g
@@ -103,7 +103,8 @@ def henge():
 def design():
     g = henge()
     check(g, 'stonehenge', objects=True)
-    return {'pal': PAL, 'view_w': W, 'order': ['henge'], 'views': {'henge': g.rows()}}
+    return {'pal': PAL, 'view_w': W, 'order': ['henge'], 'views': {'henge': g.rows()},
+            'depth': depth_layers(W, H, [(0, 0, g)])}
 
 
 if __name__ == '__main__':

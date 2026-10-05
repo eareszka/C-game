@@ -56,57 +56,158 @@ static float aim_at(float ox, float oy, float tx, float ty) {
 
 // ── Grassland enemies (IDs 0–6) ───────────────────────────────────────────────
 
+// Hops across the top of the arena: stands STAND_T, then arcs over HOP_T to a
+// new x at least a body-length away, and flags the landing. Shared by the
+// hopping hares, whose phase 2s fire off it.
+struct Hopper {
+    static constexpr float HOME_Y  = 160.0f;
+    static constexpr float HOP_T   = 0.5f;   // seconds in the air
+    static constexpr float STAND_T = 1.8f;   // seconds between hops
+    float hop_t   = -1.0f;   // seconds into a hop; -1 = standing
+    float stand_t = 0.0f;
+    float x0 = 0.0f, x1 = 0.0f;
+    bool  landed  = false;   // touched down; the owner clears it when it fires
+
+    bool airborne() const { return hop_t >= 0.0f; }
+    void update(float dt, float& x, float& y) {
+        if (hop_t >= 0.0f) {
+            hop_t += dt;
+            float k = hop_t / HOP_T;
+            if (k >= 1.0f) { k = 1.0f; hop_t = -1.0f; stand_t = 0.0f; landed = true; }
+            x = x0 + (x1 - x0) * k;
+            y = HOME_Y - 40.0f * sinf(PI * k);
+        } else if ((stand_t += dt) >= STAND_T) {
+            hop_t = 0.0f;
+            x0 = x;
+            do x1 = 140.0f + ernd() * 360.0f; while (fabsf(x1 - x) < 90.0f);
+        }
+    }
+};
+
+// Winged, antlered hare.
+// Phase 1, Antler Fan: 2 or 3 lines of bullets at the player, the count
+//   picked at random each volley -- three put one straight at you, two
+//   leave the gap there -- so you keep reading it rather than standing still.
+// Phase 2 (half HP), Hop & Gust: it hops across the top of the arena; each
+//   landing throws the antler fan again from the new spot, and while it
+//   stands a wing-gust stream sweeps back and forth through the player.
 class Skvader : public Enemy {
+    Hopper hop;
+    float  sweep = 0.0f;
+
+    // 2 or 3 lines at angle a, picked at random: three put one straight at
+    // the player, two leave the gap there.
+    static int antler_fan(float a, BulletSpawn out[]) {
+        int n = ernd() < 0.5f ? 2 : 3;
+        for (int i = 0; i < n; i++)
+            out[i] = mk(a + (i - (n - 1) * 0.5f) * 0.22f, 170.0f, 2.5f, 5.0f);
+        return n;
+    }
 public:
-    Skvader() : Enemy(320, 160, 10, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
+    Skvader() : Enemy(320, Hopper::HOME_Y, 240, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
     const char* name()          const override { return "SKVADER"; }
-    float       fire_interval() const override { return ENRAGED ? 0.1f : 0.2f; }
+    float       fire_interval() const override { return ENRAGED ? 0.11f : 0.55f; }
+    void update(float dt, float, float) override {
+        if (!ENRAGED) return;
+        sweep += dt;
+        hop.update(dt, x, y);
+    }
     int fire(float px, float py, BulletSpawn out[], int) override {
         float a = aim_at(x,y,px,py);
-        if (ENRAGED) {
-            for (int i = 0; i < 3; i++)
-                out[i] = mk(a + (i-1)*0.2f, 240.0f, 2.5f, 0.5f);
-            return 3;
+        if (!ENRAGED) return antler_fan(a, out);
+        if (hop.airborne()) return 0;   // nothing while airborne
+        if (hop.landed) {
+            hop.landed = false;
+            return antler_fan(a, out);
         }
-        out[0] = mk(a, 200.0f, 2.5f, 0.4f);
+        out[0] = mk(a + 0.6f * sinf(sweep * 3.0f), 210.0f, 2.5f, 5.0f);
         return 1;
     }
 };
 
+// Antlered, winged, fanged hare: the Skvader's harder cousin.
+// Phase 1, Antler Fan: a two-speed 5-way fan at the player, nudged half a gap
+//   every volley, so standing still is the one thing that doesn't work.
+// Phase 2 (half HP), Hop & Gust: it hops across the top of the arena; each
+//   landing throws a 16-bullet ring, and while it stands a wing-gust stream
+//   sweeps back and forth through the player.
 class Wolpertinger : public Enemy {
+    Hopper hop;
+    float  sweep  = 0.0f;
+    int    volley = 0;
 public:
-    Wolpertinger() : Enemy(320, 160, 14, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
+    Wolpertinger() : Enemy(320, Hopper::HOME_Y, 280, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
     const char* name()          const override { return "WOLPERTINGER"; }
-    float       fire_interval() const override { return ENRAGED ? 0.2f : 0.3f; }
+    float       fire_interval() const override { return ENRAGED ? 0.11f : 0.55f; }
+    void update(float dt, float, float) override {
+        if (!ENRAGED) return;
+        sweep += dt;
+        hop.update(dt, x, y);
+    }
     int fire(float px, float py, BulletSpawn out[], int) override {
         float a = aim_at(x,y,px,py);
-        if (ENRAGED) {
-            out[0] = mk(a - 0.25f, 230.0f, 2.5f, 0.5f);
-            out[1] = mk(a,         230.0f, 2.5f, 0.5f);
-            out[2] = mk(a + 0.25f, 230.0f, 2.5f, 0.5f);
-            out[3] = mkh(a + PI,   130.0f, 3.5f, 0.5f);
-            return 4;
+        if (!ENRAGED) {
+            float off = (volley++ & 1) ? 0.11f : 0.0f;
+            int n = 0;
+            for (int layer = 0; layer < 2; layer++)
+                for (int i = -2; i <= 2; i++)
+                    out[n++] = mk(a + off + i * 0.22f, layer ? 195.0f : 150.0f, 2.5f, 5.0f);
+            return n;
         }
-        out[0] = mkh(a, 140.0f, 3.5f, 0.4f);
+        if (hop.airborne()) return 0;   // nothing while airborne
+        if (hop.landed) {
+            hop.landed = false;
+            float base = ernd() * TAU;
+            for (int i = 0; i < 16; i++)
+                out[i] = mk(base + i * (TAU / 16.0f), 120.0f, 3.0f, 5.0f);
+            return 16;
+        }
+        out[0] = mk(a + 0.6f * sinf(sweep * 3.0f), 210.0f, 2.5f, 5.0f);
         return 1;
     }
 };
 
+// Lumberjack-lore tree creature, known for its squeak: its attacks are
+// sound rings.
+// Phase 1, Squeak: an expanding ring with one gap, somewhere within 60
+//   degrees of the player -- read the gap, slip through it.
+// Phase 2 (half HP), Echo: rings come quicker, each gap 45 degrees on from
+//   the last so you weave, and between rings a tight spread of slow acorns
+//   punishes waiting in the gap.
 class Treesqueak : public Enemy {
+    int   volley = 0;
+    float gap    = 0.0f;   // last ring's gap, relative to the aim at the player
+
+    // 24 around, the 4 nearest angle `at` left out.
+    static int ring(float at, BulletSpawn out[]) {
+        const int N = 24;
+        int n = 0;
+        for (int i = 0; i < N; i++) {
+            float ang = at + (i + 0.5f) * (TAU / N) - PI;   // `at` sits mid-gap at i = N/2
+            if (i >= N / 2 - 2 && i < N / 2 + 2) continue;
+            out[n++] = mk(ang, 110.0f, 2.5f, 5.0f);
+        }
+        return n;
+    }
 public:
-    Treesqueak() : Enemy(320, 160, 18, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
+    Treesqueak() : Enemy(320, 160, 320, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
     const char* name()          const override { return "TREESQUEAK"; }
-    float       fire_interval() const override { return ENRAGED ? 0.25f : 0.4f; }
+    float       fire_interval() const override { return ENRAGED ? 0.45f : 1.1f; }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        if (ENRAGED) {
-            float a = aim_at(x,y,px,py);
-            out[0] = mk(a, 220.0f, 2.5f, 0.5f);
-            for (int i = 1; i < 5; i++)
-                out[i] = mk(ernd() * TAU, 200.0f, 2.5f, 0.4f);
-            return 5;
+        float a = aim_at(x,y,px,py);
+        if (!ENRAGED) {
+            gap = (ernd() * 2.0f - 1.0f) * (PI / 3.0f);
+            return ring(a + gap, out);
+        }
+        if (volley++ % 2 == 0) {
+            // Next gap 45 degrees on, either way, kept within reach.
+            gap += ernd() < 0.5f ? PI / 4.0f : -PI / 4.0f;
+            if (gap >  PI / 3.0f) gap -= PI / 2.0f;
+            if (gap < -PI / 3.0f) gap += PI / 2.0f;
+            return ring(a + gap, out);
         }
         for (int i = 0; i < 3; i++)
-            out[i] = mk(ernd() * TAU, 180.0f, 2.5f, 0.4f);
+            out[i] = mk(a + (i - 1) * 0.12f, 140.0f, 4.0f, 5.0f);
         return 3;
     }
 };
@@ -1203,4 +1304,39 @@ Enemy* enemy_create(int id) {
         case 49: return new Physeter();
         default: return new Skvader();
     }
+}
+
+// What each enemy drops, by id: fur and feather give hide, shell, scale and
+// stone give bone, spirits and omens give essence.
+static const MonsterPart ENEMY_PARTS[] = {
+    PART_HIDE,    PART_HIDE,    PART_HIDE,    PART_HIDE,    PART_HIDE,      //  0-4
+    PART_BONE,    PART_HIDE,    PART_ESSENCE, PART_HIDE,    PART_BONE,      //  5-9
+    PART_BONE,    PART_HIDE,    PART_BONE,    PART_HIDE,    PART_BONE,      // 10-14
+    PART_BONE,    PART_ESSENCE, PART_ESSENCE, PART_BONE,    PART_BONE,      // 15-19
+    PART_HIDE,    PART_BONE,    PART_HIDE,    PART_BONE,    PART_BONE,      // 20-24
+    PART_BONE,    PART_ESSENCE, PART_BONE,    PART_HIDE,    PART_HIDE,      // 25-29
+    PART_ESSENCE, PART_BONE,    PART_BONE,    PART_HIDE,    PART_ESSENCE,   // 30-34
+    PART_ESSENCE, PART_HIDE,    PART_ESSENCE, PART_ESSENCE, PART_HIDE,      // 35-39
+    PART_BONE,    PART_BONE,    PART_ESSENCE, PART_BONE,    PART_HIDE,      // 40-44
+    PART_ESSENCE, PART_BONE,    PART_BONE,    PART_HIDE,    PART_BONE,      // 45-49
+};
+
+// Each enemy's bullet colour, picked from its art and brightened to an exact
+// palette entry that stands off the black. Ids past the table get pink until
+// their round.
+static const Uint8 ENEMY_BULLET_RGB[][3] = {
+    { 252, 152,  56 },   //  0 Skvader: orange, its gold-brown fur brightened
+    { 236, 132, 118 },   //  1 Wolpertinger: salmon, its red wings
+    {  78, 220,  74 },   //  2 Treesqueak: green, its leaf marks
+};
+
+SDL_Color enemy_bullet_color(int id) {
+    if (id < 0 || id >= (int)(sizeof(ENEMY_BULLET_RGB) / sizeof(ENEMY_BULLET_RGB[0])))
+        return { 252, 116, 180, 255 };
+    return { ENEMY_BULLET_RGB[id][0], ENEMY_BULLET_RGB[id][1], ENEMY_BULLET_RGB[id][2], 255 };
+}
+
+MonsterPart enemy_part(int id) {
+    if (id < 0 || id >= (int)(sizeof(ENEMY_PARTS) / sizeof(ENEMY_PARTS[0]))) return PART_HIDE;
+    return ENEMY_PARTS[id];
 }

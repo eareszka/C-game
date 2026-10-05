@@ -126,11 +126,20 @@ static int sheet_dir(int facing) {
 
 // ── BattleScene ───────────────────────────────────────────────────────────────
 
-BattleScene::BattleScene(Player* player, int enemy_id) {
+// The fade up from black at the start and down to black at the end, in seconds.
+static const float FADE_T  = 0.4f;
+// A pack's next fight: the player's glide back and the enemy's drop, in seconds.
+static const float CHAIN_T = 0.6f;
+
+BattleScene::BattleScene(Player* player, int enemy_id, bool chained, float from_x, float from_y) {
+    _chained = chained;
+    _from_x  = from_x;
+    _from_y  = from_y;
     memset(_player_bullets, 0, sizeof(_player_bullets));
     memset(_enemy_bullets,  0, sizeof(_enemy_bullets));
+    memset(_pickups,        0, sizeof(_pickups));
 
-    _phase       = BATTLE_PHASE_FIGHTING;
+    _phase       = BATTLE_PHASE_INTRO;
     _player_ref  = player;
     _weapon_type = player->equipped_weapon;
     _tab_open    = false;
@@ -154,11 +163,54 @@ BattleScene::~BattleScene() {
 
 // ── update ────────────────────────────────────────────────────────────────────
 
-void BattleScene::update(const Input* in, float dt) {
-    if (input_pressed(in, SDL_SCANCODE_TAB) && _phase == BATTLE_PHASE_FIGHTING)
-        _tab_open = !_tab_open;
+// Eased progress of a chained intro: quick off the mark, soft landing.
+float BattleScene::_chain_in() const {
+    if (!_chained || _phase != BATTLE_PHASE_INTRO) return 1.0f;
+    float k = _t / CHAIN_T;
+    if (k >= 1.0f) return 1.0f;
+    float u = 1.0f - k;
+    return 1.0f - u * u * u;
+}
 
-    if (_phase != BATTLE_PHASE_FIGHTING || _tab_open) return;
+// How dark the screen is, 0..1: up from black in the intro, down to black
+// once the end panel is dismissed.
+float BattleScene::_darkness() const {
+    if (_phase == BATTLE_PHASE_INTRO) return _chained ? 0.0f : 1.0f - _t / FADE_T;
+    if (_outro_t > 0.0f)              return _outro_t / FADE_T;
+    return 0.0f;
+}
+
+void BattleScene::update(const Input* in, float dt) {
+    _t += dt;
+    bool confirm = input_pressed(in, SDL_SCANCODE_RETURN) || input_pressed(in, SDL_SCANCODE_Z);
+
+    switch (_phase) {
+        case BATTLE_PHASE_INTRO:
+            if (_t >= (_chained ? CHAIN_T : FADE_T)) {
+                _phase = BATTLE_PHASE_FIGHTING;
+                _t = 0.0f;
+                // A beat to move before the first volley: control returns
+                // before danger does.
+                _enemy->fire_timer = 0.5f;
+            }
+            return;
+        case BATTLE_PHASE_VICTORY:
+            _update_pickups(dt);
+            // The wait keeps a held fire key (Z) from skipping the panel.
+            if (confirm && _t > 0.6f) _confirmed = true;
+            if (_confirmed && (_more_after || (_outro_t += dt) >= FADE_T)) _done = true;
+            return;
+        case BATTLE_PHASE_DEFEAT:
+            if (confirm && _t > 0.6f) _confirmed = true;
+            if (_confirmed && (_outro_t += dt) >= FADE_T) _done = true;
+            return;
+        default:
+            break;
+    }
+
+    if (input_pressed(in, SDL_SCANCODE_TAB))
+        _tab_open = !_tab_open;
+    if (_tab_open) return;
 
     // Debug: instantly win the current battle.
     if (input_pressed(in, SDL_SCANCODE_T))
@@ -173,18 +225,63 @@ void BattleScene::update(const Input* in, float dt) {
     if (_bp.iframes > 0.0f) _bp.iframes -= dt;
 
     if (!_enemy->is_alive()) {
-        _player_ref->stats.hp = (int)_bp.hp;
-        _phase = BATTLE_PHASE_VICTORY;
+        _win();
     } else if (_bp.hp <= 0.0f) {
         _player_ref->stats.hp = 0;
         _phase = BATTLE_PHASE_DEFEAT;
+        _t = 0.0f;
+    }
+}
+
+// Bullet cancel: every enemy bullet still in the air becomes a pickup that
+// flies to the player, and a denser screen pays more of the enemy's part.
+void BattleScene::_win() {
+    _player_ref->stats.hp = (int)_bp.hp;
+    _phase = BATTLE_PHASE_VICTORY;
+    _t = 0.0f;
+
+    int cancelled = 0;
+    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        Bullet& bl = _enemy_bullets[i];
+        if (!bl.active) continue;
+        bl.active = false;
+        // Pop back the way it came, then get pulled in.
+        _pickups[cancelled++] = { bl.x, bl.y, -bl.vx * 0.4f, -bl.vy * 0.4f, true };
+    }
+    _drop_part  = enemy_part(_enemy_id);
+    _drop_count = 1 + cancelled / 10;
+    // ponytail: credited now, not as pickups land -- the scene can be dismissed
+    // before they arrive, so the flight is only for show.
+    _player_ref->parts[_drop_part] += _drop_count;
+}
+
+void BattleScene::_update_pickups(float dt) {
+    const float PULL = 2200.0f, DRAG = 4.0f;
+    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        Pickup& p = _pickups[i];
+        if (!p.active) continue;
+        float dx = _bp.x - p.x, dy = _bp.y - p.y;
+        float d = sqrtf(dx*dx + dy*dy);
+        if (d < 10.0f) { p.active = false; continue; }
+        // Drag bleeds off the pop and any sideways drift, so nothing orbits.
+        float keep = 1.0f - DRAG * dt;
+        if (keep < 0.0f) keep = 0.0f;
+        p.vx = p.vx * keep + dx / d * PULL * dt;
+        p.vy = p.vy * keep + dy / d * PULL * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
     }
 }
 
 void BattleScene::_update_movement(const Input* in, float dt) {
-    const float PSPEED     = 160.0f;
+    // The map's keys: crouch (ctrl) is focus -- slow, precise, the hitbox
+    // shown -- and shift sprints.
+    bool focus  = player_crouching(in);
+    bool sprint = player_sprinting(in);
+    _focus = focus;
+    const float PSPEED     = focus ? 70.0f : sprint ? 250.0f : 160.0f;
     const float MARGIN     = 16.0f;
-    const float ANIM_SPEED = input_down(in, SDL_SCANCODE_LSHIFT) ? 0.10f : 0.20f;
+    const float ANIM_SPEED = focus ? 0.30f : sprint ? 0.10f : 0.20f;
 
     float mx, my;
     player_read_input(_player_ref, in, &mx, &my);
@@ -193,7 +290,7 @@ void BattleScene::_update_movement(const Input* in, float dt) {
 
     if (_bp.x < MARGIN)           _bp.x = MARGIN;
     if (_bp.x > ARENA_W - MARGIN) _bp.x = ARENA_W - MARGIN;
-    if (_bp.y < MARGIN)           _bp.y = MARGIN;
+    if (_bp.y < ARENA_TOP + MARGIN) _bp.y = ARENA_TOP + MARGIN;
     if (_bp.y > ARENA_H - MARGIN) _bp.y = ARENA_H - MARGIN;
 
     player_animate(_player_ref, dt, ANIM_SPEED);
@@ -236,7 +333,7 @@ void BattleScene::_move_bullets(float dt) {
         if (!bl.active) continue;
         bl.x += bl.vx * dt;
         bl.y += bl.vy * dt;
-        if (bl.x < 0 || bl.x > ARENA_W || bl.y < 0 || bl.y > ARENA_H)
+        if (bl.x < 0 || bl.x > ARENA_W || bl.y < ARENA_TOP || bl.y > ARENA_H)
             bl.active = false;
     }
 
@@ -281,17 +378,17 @@ void BattleScene::_move_bullets(float dt) {
                 bl.spawn_timer = bl.spawn_interval;
             }
             if (bl.x < -20 || bl.x > ARENA_W + 20 ||
-                bl.y < -20 || bl.y > ARENA_H + 20)
+                bl.y < ARENA_TOP - 20 || bl.y > ARENA_H + 20)
                 bl.active = false;
         } else if (bl.bouncing) {
             float r = bl.radius;
             if (bl.x - r < 0)       { bl.x = r;           bl.vx =  fabsf(bl.vx); bl.bounces++; }
             if (bl.x + r > ARENA_W) { bl.x = ARENA_W - r; bl.vx = -fabsf(bl.vx); bl.bounces++; }
-            if (bl.y - r < 0)       { bl.y = r;           bl.vy =  fabsf(bl.vy); bl.bounces++; }
+            if (bl.y - r < ARENA_TOP) { bl.y = ARENA_TOP + r; bl.vy = fabsf(bl.vy); bl.bounces++; }
             if (bl.y + r > ARENA_H) { bl.y = ARENA_H - r; bl.vy = -fabsf(bl.vy); bl.bounces++; }
             if (bl.bounces >= 3) bl.active = false;
         } else {
-            if (bl.x < 0 || bl.x > ARENA_W || bl.y < 0 || bl.y > ARENA_H)
+            if (bl.x < 0 || bl.x > ARENA_W || bl.y < ARENA_TOP || bl.y > ARENA_H)
                 bl.active = false;
         }
     }
@@ -330,8 +427,9 @@ void BattleScene::_check_collisions() {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
-        if (circles_overlap(bl.x, bl.y, bl.radius, px, py, (float)PLAYER_R)) {
-            _bp.hp -= bl.damage;
+        if (circles_overlap(bl.x, bl.y, bl.radius, px, py, PLAYER_R)) {
+            // Whole bars, at least one: every hit is a visible chunk.
+            _bp.hp -= ceilf(bl.damage / HP_PER_BAR) * HP_PER_BAR;
             if (_bp.hp < 0.0f) _bp.hp = 0.0f;
             _bp.iframes = 1.5f;
             bl.active = false;
@@ -394,24 +492,21 @@ void BattleScene::_draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int
     SDL_RenderDrawRect(ren, &rect);
 }
 
-void BattleScene::_draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
-                             float cur, float max, Uint8 fr, Uint8 fg, Uint8 fb) {
-    _fill_rect(ren, x, y, w, h, 0, 0, 0, 255);
-    if (max > 0.0f && cur > 0.0f) {
-        int filled = (int)(w * cur / max);
-        if (filled > w) filled = w;
-        _fill_rect(ren, x, y, filled, h, fr, fg, fb, 255);
-    }
-    _draw_rect_outline(ren, x, y, w, h, 255, 255, 255);
+float BattleScene::hud_stamina() const {
+    float max_cd = 1.0f / _bp.weapon.fire_rate;
+    return 1.0f - (_bp.fire_timer > 0.0f ? _bp.fire_timer / max_cd : 0.0f);
 }
 
 // ── draw ──────────────────────────────────────────────────────────────────────
 
 // The enemy faces the player and plays its idle loop, drawn at the player's 2x
-// and centred on its hitbox; enemies without a sheet yet draw as a box. The HP
-// bar and name sit above whichever is drawn.
+// and centred on its hitbox; enemies without a sheet yet draw as a box. On a
+// win it blinks out.
 void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
-    int ex = (int)_enemy->x, ey = (int)_enemy->y;
+    if (_phase == BATTLE_PHASE_VICTORY && (_t > 0.4f || (int)(_t * 20.0f) % 2)) return;
+    float k = _chain_in();
+    int ex = (int)_enemy->x;
+    int ey = (int)(-60.0f + (_enemy->y + 60.0f) * k);
     if (!_sheet_tried) {
         _sheet_tried = true;
         if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT) {
@@ -429,7 +524,6 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         }
     }
 
-    int half_h = ENEMY_R + 4;
     if (_sheet) {
         int sw, sh;
         SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
@@ -448,56 +542,64 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         SDL_Rect src = es.rows ? SDL_Rect{ frame * fw, dir * fh, fw, fh }
                                : SDL_Rect{ (dir * es.frames + frame) * fw, 0, fw, fh };
         SDL_Rect dst = { ex - fw, ey - fh, fw * 2, fh * 2 };
-        SDL_RenderCopy(ren, _sheet, &src, &dst);
-        half_h = fh;
+        if (k >= 1.0f) {
+            SDL_RenderCopy(ren, _sheet, &src, &dst);
+        } else {
+            // Phasing in, the map's stripe wipe in reverse: bands two art
+            // pixels tall fill in from alternate sides, in hard eighths.
+            float fill = (float)(int)((_t / CHAIN_T) * 8.0f) / 8.0f + 0.125f;
+            int sw = (int)(fw * (fill > 1.0f ? 1.0f : fill));
+            for (int row = 0, band = 0; row < fh; row += 2, band++) {
+                int rh = fh - row < 2 ? fh - row : 2;
+                int sx = band % 2 ? fw - sw : 0;
+                SDL_Rect bs = { src.x + sx, src.y + row, sw, rh };
+                SDL_Rect bd = { dst.x + sx * 2, dst.y + row * 2, sw * 2, rh * 2 };
+                SDL_RenderCopy(ren, _sheet, &bs, &bd);
+            }
+        }
     } else {
         int hw = ENEMY_R + 4;
         Uint8 pulse = (_phase == BATTLE_PHASE_FIGHTING) ? 200 : 80;
         _fill_rect(ren, ex - hw, ey - hw, hw*2, hw*2, 40, pulse, 40, 255);
         _draw_rect_outline(ren, ex - hw, ey - hw, hw*2, hw*2, 80, 255, 80);
     }
-    _draw_bar(ren, ex - 60, ey - half_h - 14, 120, 8,
-              _enemy->hp, _enemy->max_hp, 220, 60, 60);
-    const char* nm = _enemy->name();
-    draw_text(ren, nm, ex - text_width(nm, 1)/2, ey - half_h - 24, 1, 220, 220, 220);
 }
 
 void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, 255);
-    _draw_rect_outline(ren, 4, 4, ARENA_W - 8, ARENA_H - 8, 255, 255, 255);
+
 
     _draw_enemy(ren);
 
-    // Player bullets — yellow
-    fc_draw_color(ren, 255, 230, 50, 255);
+    // Player bullets: two-tone like the enemy's, bright yellow (#f0e880) with
+    // a white core -- a colour no enemy bullet uses, so they read as "mine".
     for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
         const Bullet& bl = _player_bullets[i];
         if (!bl.active) continue;
         int r = (int)bl.radius;
-        SDL_Rect rect = { (int)bl.x - r, (int)bl.y - r, r*2, r*2 };
-        SDL_RenderFillRect(ren, &rect);
+        _fill_rect(ren, (int)bl.x - r, (int)bl.y - r, r*2, r*2, 240, 232, 128, 255);
+        _fill_rect(ren, (int)bl.x - 1, (int)bl.y - 1, 2, 2, 252, 252, 252, 255);
     }
 
-    // Enemy bullets
+    // Enemy bullets, in the colour of the enemy firing them (exact palette
+    // colours, bright enough to pop off the black). The kind shows by shape,
+    // NES style: plain is solid with a white core, homing flickers white,
+    // bouncing is a hollow ring until its last bounce, a spawner orb has a
+    // yellow core.
+    SDL_Color c = enemy_bullet_color(_enemy_id);
     bool flash = (SDL_GetTicks() / 100) % 2 == 0;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
-        if (bl.spawner && bl.homing)
-            fc_draw_color(ren, 255, flash ? 255 : 140, flash ? 255 :   0, 255);
+        int r = (int)bl.radius, bx = (int)bl.x - r, by = (int)bl.y - r;
+        bool white = bl.homing && flash;
+        _fill_rect(ren, bx, by, r*2, r*2, white ? 252 : c.r, white ? 252 : c.g, white ? 252 : c.b, 255);
+        if (bl.bouncing && bl.bounces < 2 && r > 2)
+            _fill_rect(ren, bx + 2, by + 2, r*2 - 4, r*2 - 4, 0, 0, 0, 255);   // hollow
         else if (bl.spawner)
-            fc_draw_color(ren, 255, 140, 0, 255);
-        else if (bl.homing)
-            fc_draw_color(ren, flash ? 255 : 180, flash ? 255 :  30, 255, 255);
-        else if (bl.bouncing)
-            fc_draw_color(ren, bl.bounces >= 2 ? 255 : 60,
-                                        bl.bounces >= 2 ?  80 : 140,
-                                        bl.bounces >= 2 ?  30 : 255, 255);
+            _fill_rect(ren, (int)bl.x - 2, (int)bl.y - 2, 4, 4, 240, 188, 60, 255);
         else
-            fc_draw_color(ren, 255, 80, 30, 255);
-        int r = (int)bl.radius;
-        SDL_Rect rect = { (int)bl.x - r, (int)bl.y - r, r*2, r*2 };
-        SDL_RenderFillRect(ren, &rect);
+            _fill_rect(ren, (int)bl.x - 1, (int)bl.y - 1, 2, 2, 252, 252, 252, 255);
     }
 
     // Player sprite (flickers during iframes)
@@ -505,7 +607,9 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         bool visible = _bp.iframes <= 0.0f ||
                        ((int)(_bp.iframes * 10.0f) % 2 == 0);
         if (visible) {
-            int px = (int)_bp.x, py = (int)_bp.y;
+            float k = _chain_in();
+            float px = _from_x + (_bp.x - _from_x) * k;
+            float py = _from_y + (_bp.y - _from_y) * k;
             if (player_sprite) {
                 // The map's sheet at the map's 2x. The art is 11x15 at the
                 // bottom middle of a 14x20 frame, so the body's centre -- where
@@ -513,31 +617,62 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
                 int frame = player_frame(_player_ref);
 
                 SDL_Rect src = { frame * 14, 0, 14, 20 };
-                SDL_Rect dst = { px - 15, py - 25, 28, 40 };
+                // 29 down rather than the body's centre at 25: the hitbox sits
+                // two art pixels lower on the body, at the chest.
+                SDL_Rect dst = { (int)px - 15, (int)py - 29, 28, 40 };
                 SDL_RenderCopy(ren, player_sprite, &src, &dst);
             } else {
-                _fill_rect(ren, px - 6, py - 6, 12, 12, 220, 220, 255, 255);
+                _fill_rect(ren, (int)px - 6, (int)py - 6, 12, 12, 220, 220, 255, 255);
             }
-            _draw_rect_outline(ren, px - PLAYER_R, py - PLAYER_R,
-                               PLAYER_R*2, PLAYER_R*2, 0, 255, 255);
         }
-        // Weapon cooldown bar — yellow, above HP bar
-        {
-            float max_cd = 1.0f / _bp.weapon.fire_rate;
-            float ready  = 1.0f - (_bp.fire_timer > 0.0f ? _bp.fire_timer / max_cd : 0.0f);
-            _draw_bar(ren, ARENA_W/2 - 80, ARENA_H - 26, 160, 5,
-                      ready, 1.0f, 255, 220, 0);
+    }
+
+    // Cancelled bullets flying in, in the colour of the part they pay.
+    static const Uint8 PART_RGB[PART_COUNT][3] = {
+        { 200, 150,  90 },   // hide
+        { 235, 230, 210 },   // bone
+        {  90, 220, 255 },   // essence
+    };
+    const Uint8* pc = PART_RGB[_drop_part];
+    fc_draw_color(ren, pc[0], pc[1], pc[2], 255);
+    bool flying = false;
+    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        const Pickup& p = _pickups[i];
+        if (!p.active) continue;
+        flying = true;
+        SDL_Rect rect = { (int)p.x - 2, (int)p.y - 2, 4, 4 };
+        SDL_RenderFillRect(ren, &rect);
+    }
+
+    // Crouch marker: a 3x3 art-pixel diamond on the hitbox, its core the
+    // exact hit area. Drawn over everything, and core and arms swap colour
+    // every few frames -- NES flicker -- so no bullet colour can hide it.
+    if (_focus && _phase == BATTLE_PHASE_FIGHTING) {
+        // Outlined in black and coloured white and the palette's bright blue
+        // (#5c94fc) -- colours the player sprite doesn't use -- so it stands
+        // off the skin and red shirt.
+        int cx = (int)_bp.x, cy = (int)_bp.y;
+        const int BX[5] = { -3, 1, -1, -1, -1 }, BY[5] = { -1, -1, -3, 1, -1 };  // arms, then core
+        for (int i = 0; i < 5; i++)
+            _fill_rect(ren, cx + BX[i] - 2, cy + BY[i] - 2, 6, 6, 0, 0, 0, 255);
+        bool swap = (SDL_GetTicks() / 67) % 2;
+        for (int i = 0; i < 5; i++) {
+            bool white = (i == 4) != swap;   // core white, arms blue; swapped every few frames
+            _fill_rect(ren, cx + BX[i], cy + BY[i], 2, 2,
+                       white ? 252 : 92, white ? 252 : 148, 252, 255);
         }
-        _draw_bar(ren, ARENA_W/2 - 80, ARENA_H - 18, 160, 10,
-                  _bp.hp, _bp.max_hp, 60, 200, 60);
     }
 
     // Victory / defeat overlay
-    if (_phase == BATTLE_PHASE_VICTORY) {
+    // The win panel waits for the pickups to land and goes as the fade out starts.
+    if (_phase == BATTLE_PHASE_VICTORY && !_confirmed && (!flying || _t > 1.2f)) {
         draw_nes_panel(ren, 160, 180, 320, 70);
         draw_text(ren, "VICTORY",
-                  160 + (320 - text_width("VICTORY", 2)) / 2, 206, 2, 255, 255, 255);
-    } else if (_phase == BATTLE_PHASE_DEFEAT) {
+                  160 + (320 - text_width("VICTORY", 2)) / 2, 196, 2, 255, 255, 255);
+        char buf[32];
+        SDL_snprintf(buf, sizeof(buf), "+%d %s", _drop_count, part_name(_drop_part));
+        draw_text(ren, buf, 160 + (320 - text_width(buf, 1)) / 2, 222, 1, pc[0], pc[1], pc[2]);
+    } else if (_phase == BATTLE_PHASE_DEFEAT && !_confirmed) {
         draw_nes_panel(ren, 160, 180, 320, 70);
         draw_text(ren, "GAME OVER",
                   160 + (320 - text_width("GAME OVER", 2)) / 2, 206, 2, 255, 255, 255);
@@ -575,5 +710,14 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         const char* hint = "[TAB] CLOSE";
         draw_text(ren, hint, PX + (PW - text_width(hint, 1)) / 2,
                   PY + PH - 16, 1, 160, 160, 160);
+    }
+
+    // Fading in or out: black over everything in the NES's four hard steps.
+    float dark = _darkness();
+    if (dark > 0.0f) {
+        dark = dark >= 1.0f ? 1.0f : (float)(int)(dark * 4.0f + 0.999f) / 4.0f;
+        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+        _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, (Uint8)(255 * dark));
+        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
     }
 }

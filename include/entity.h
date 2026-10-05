@@ -198,6 +198,13 @@ typedef struct {
     int exp; //total or gained after ene killed
 } Stats;
 
+// Crafting materials enemies drop in battle -- a separate list from
+// ResourceType, which is the kinds of node on the map.
+enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_COUNT };
+
+// Display name, e.g. "HIDE": one list for the battle panel and the menus.
+const char* part_name(int part);
+
 typedef struct {
     Stats stats;
     int level;
@@ -216,6 +223,8 @@ typedef struct {
 
     // Inventory: counts indexed by ResourceType enum (TREE=0, ROCK=1, FLOWER=2, GOLD=3, GRAVESTONE=4)
     int   inventory[5];
+    // Monster parts from battle drops, indexed by MonsterPart.
+    int   parts[PART_COUNT];
 
     WeaponType equipped_weapon;
 } Player;
@@ -251,13 +260,23 @@ void player_read_input(Player* player, const Input* in, float* out_dx, float* ou
 // Advances the walk animation. Call after movement with the desired frame duration.
 void player_animate(Player* player, float dt, float anim_speed);
 
-// How fast the player walks, and runs with shift held, on the maps, in world
-// pixels a second. Scaled down with the sprite from the old 46-pixel one's 150
+// How fast the player walks, runs with shift held, and creeps crouched with
+// ctrl held, on the maps, in world pixels a second. Scaled down with the sprite from the old 46-pixel one's 150
 // and 300 (100 kept its body lengths a second exactly), then tuned up by feel.
 constexpr float PLAYER_WALK_SPEED = 120.0f;
 constexpr float PLAYER_RUN_SPEED  = 240.0f;
+constexpr float PLAYER_CROUCH_SPEED = 60.0f;
 
-// The speed and walk-frame duration for this frame: running while shift is held.
+// Health comes in bars of this much, Zelda II style: the HUD meter has one
+// segment per bar, and a hit in battle always costs whole bars.
+constexpr int HP_PER_BAR = 5;
+
+// The keys: shift sprints, ctrl crouches. Crouch wins if both are held.
+bool player_crouching(const Input* in);
+bool player_sprinting(const Input* in);
+
+// The speed and walk-frame duration for this frame: sprinting with shift,
+// crouching with ctrl.
 void player_gait(const Input* in, float* speed, float* anim_speed);
 
 typedef struct {

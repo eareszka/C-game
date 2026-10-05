@@ -64,12 +64,12 @@ static const PrebuiltInterior prebuilt_interiors[NUM_INTERIORS] = {
     { nullptr, nullptr },                    // 1 — white house (placeholder)
 };
 
+static void interior_find_entry(InteriorMap* im);
+
 void interior_load(InteriorMap* im, int interior_id)
 {
     if (interior_id < 0 || interior_id >= NUM_INTERIORS) interior_id = 0;
     im->id = interior_id;
-    im->exit_x = IMAP_W / 2;
-    im->exit_y = IMAP_H - 1;
 
     const PrebuiltInterior& pb = prebuilt_interiors[interior_id];
     im->prebuilt = (pb.tiles != nullptr);
@@ -78,7 +78,6 @@ void interior_load(InteriorMap* im, int interior_id)
     // prebuilt interiors, or from the ASCII placeholder layout otherwise.
     const char* const* layout = im->prebuilt ? pb.coll
                                              : all_interiors[interior_id];
-    bool exit_found = false;
     for (int y = 0; y < IMAP_H; y++) {
         const char* row = layout[y];
         int row_len = (int)strlen(row);
@@ -87,15 +86,40 @@ void interior_load(InteriorMap* im, int interior_id)
             uint8_t t = INT_VOID;
             if      (c == '#') t = INT_WALL;
             else if (c == '.') t = INT_FLOOR;
-            else if (c == 'E') {
-                t = INT_EXIT;
-                if (!exit_found) { im->exit_x = x; im->exit_y = y; exit_found = true; }
-            }
+            else if (c == 'E') t = INT_EXIT;
             im->tiles[y][x] = t;
             int val = im->prebuilt ? pb.tiles[y][x] : 0;
             im->atlas[y][x] = (val >= 6) ? val - 6 : -1;
         }
     }
+    interior_find_entry(im);
+}
+
+// The sheet cell a prebuilt interior draws at (tx, ty), as a tile id, or -1.
+static int interior_cell(const InteriorMap* im, int tx, int ty)
+{
+    if (!im->prebuilt || im->atlas[ty][tx] < 0) return -1;
+    return TILE_TOWN0_BASE + im->atlas[ty][tx];
+}
+
+static bool interior_solid(const void* ctx, float px, float py);
+
+// The middle of the way out's floor: every walkable pixel of its 'E' cells.
+static void interior_find_entry(InteriorMap* im)
+{
+    float sx = 0, sy = 0;
+    int n = 0;
+    for (int ty = 0; ty < IMAP_H; ty++)
+        for (int tx = 0; tx < IMAP_W; tx++) {
+            if (im->tiles[ty][tx] != INT_EXIT) continue;
+            for (int py = 1; py < IMAP_TILE; py += 2)
+                for (int px = 1; px < IMAP_TILE; px += 2) {
+                    float x = tx * IMAP_TILE + px, y = ty * IMAP_TILE + py;
+                    if (!interior_solid(im, x, y)) { sx += x; sy += y; n++; }
+                }
+        }
+    im->enter_x = n ? sx / n : IMAP_W * IMAP_TILE * 0.5f;
+    im->enter_y = n ? sy / n : IMAP_H * IMAP_TILE * 0.5f;
 }
 
 static bool interior_solid(const void* ctx, float px, float py)
@@ -106,20 +130,32 @@ static bool interior_solid(const void* ctx, float px, float py)
     int ty = (int)(py / IMAP_TILE);
     if (tx >= IMAP_W || ty >= IMAP_H) return true;
     uint8_t t = im->tiles[ty][tx];
-    return t == INT_WALL || t == INT_VOID;
+    if (t == INT_VOID) return true;
+    // A drawn room says to the pixel where the floor is and what stands on it.
+    if (const ArtCellDepth* d = tilemap_art_depth(interior_cell(im, tx, ty))) {
+        int ax = (int)((px - tx * IMAP_TILE) * 16.0f / IMAP_TILE);
+        int ay = (int)((py - ty * IMAP_TILE) * 16.0f / IMAP_TILE);
+        return (d->foot[ay & 15] >> (ax & 15)) & 1;
+    }
+    return t == INT_WALL;
+}
+
+bool interior_feet_fit(const InteriorMap* im, float x, float y)
+{
+    return can_occupy(im, x, y, interior_solid);
 }
 
 void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap* im)
 {
-    // Feet centred between the two doormat tiles, facing into the room.
-    float door_cx = (im->exit_x + 1) * (float)IMAP_TILE;
-    float door_cy =  im->exit_y * (float)IMAP_TILE + IMAP_TILE * 0.5f;
-    ip->x = door_cx - (HB_X1 + HB_X2) * 0.5f;
-    ip->y = door_cy - (HB_Y1 + HB_Y2) * 0.5f;
+    // Feet on the way out's floor, facing into the room.
+    ip->x = im->enter_x - (HB_X1 + HB_X2) * 0.5f;
+    ip->y = im->enter_y - (HB_Y1 + HB_Y2) * 0.5f;
     ip->speed   = PLAYER_WALK_SPEED;
     ip->at_exit = 1;
 
-    player->facing = FACE_UP;
+    float dx = IMAP_W * IMAP_TILE * 0.5f - im->enter_x, dy = IMAP_H * IMAP_TILE * 0.5f - im->enter_y;
+    player->facing = fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT)
+                                           : (dy < 0 ? FACE_UP : FACE_DOWN);
     player->facing_locked = 0;
     player->is_moving = 0;
     player->anim_step = 0;
@@ -152,6 +188,19 @@ void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
                    im->tiles[ty][tx] == INT_EXIT);
 
     player_animate(player, dt, anim_speed);
+}
+
+void interior_draw_over_player(const InteriorMap* im, SDL_Renderer* ren,
+                               float x, float y, float w, float h, float feet_y)
+{
+    for (int ty = (int)(y / IMAP_TILE); ty <= (int)((y + h - 1) / IMAP_TILE); ty++)
+        for (int tx = (int)(x / IMAP_TILE); tx <= (int)((x + w - 1) / IMAP_TILE); tx++) {
+            if (tx < 0 || ty < 0 || tx >= IMAP_W || ty >= IMAP_H) continue;
+            int id = interior_cell(im, tx, ty);
+            if (id >= 0)
+                tilemap_draw_cell_over(ren, id, tx * IMAP_TILE, ty * IMAP_TILE, IMAP_TILE,
+                                       (float)(tx * IMAP_TILE), (float)(ty * IMAP_TILE), x, y, w, h, feet_y);
+        }
 }
 
 void interior_draw(const InteriorMap* im, SDL_Renderer* ren, SDL_Texture* atlas_tex)

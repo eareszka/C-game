@@ -18,16 +18,20 @@ stone beside the doorway is solid and the upper rows are walked behind.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, stair, check
+from entrance_shapes import Scene, stair, check, depth_layers
 
 PAL = {'K': '000000', 'D': '595965', 'M': '9797aa', 'L': 'c6ccda'}
 
 
-def build(w, h, base, parts):
+def build(w, h, base, parts, hull, way):
     """parts: [[(x0, x1, d0, d1, z0, z1, front), ...] | ('door', x0, x1, z1, tread, d)].
     Each list is one piece of stone (no line between its blocks); the scene's
-    depth buffer decides what is in front."""
+    depth buffer decides what is in front. The ruin is stood on whole, hull
+    (x0, x1, d0, d1) -- walls, rubble and what lies between them -- but for
+    way (sx0, sx1, d0, d1), the doorway, walked into as far as its stair."""
     sc = Scene(w, h, base)
+    sc.ground(*hull)
+    sc.carve(*way)
     for pid, part in enumerate(parts):
         if part[0] == 'door':
             _, x0, x1, z1, tread, d = part
@@ -56,7 +60,7 @@ def large():
         [(58, 63, 0, 3, 0, 33, 'column')],
         [(28, 65, 0, 3, 34, 40, C)],          # the beam over the gate
         [(78, 89, 0, 3, 0, 5, 'column')],     # a fallen column
-    ])
+    ], hull=(4, 75, 0, 18), way=(36, 57, -1, 5))
 
 
 def small():
@@ -70,14 +74,15 @@ def small():
         [(11, 36, 0, 2, 22, 26, C)],
         [(3, 9, 0, 2, 0, 4, C)],
         [(37, 42, 0, 2, 0, 5, C)],
-    ])
+    ], hull=(3, 42, 0, 9), way=(18, 29, -1, 6))
 
 
 def design():
     lg, sm = large(), small()
     check(lg, 'ruins large'); check(sm, 'ruins small')
     return {'pal': PAL, 'view_w': 96, 'order': ['large'], 'views': {'large': lg.rows()},
-            'extras': [[96, 0, sm.rows()]]}
+            'extras': [[96, 0, sm.rows()]],
+            'depth': depth_layers(144, 80, [(0, 0, lg), (96, 0, sm)])}
 
 
 if __name__ == '__main__':

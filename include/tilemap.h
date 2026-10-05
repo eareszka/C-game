@@ -324,6 +324,39 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed);
 void tilemap_update(float dt); // advance hit-jitter timers
 void tilemap_draw_base (const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
 void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer, float = 0);
+// After the player: the pixels of structure entrances and yard walls that stand
+// in front of them, over the box their sprite covers (world pixels); feet_y is
+// where their feet meet the ground, the bottom of the feet box.
+void tilemap_draw_over_player(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
+                              float x, float y, float w, float h, float feet_y);
+
+// What a cell of overworld art means to the player, pixel by pixel
+// (art/structures/gen_entrance_art.py writes one for every cell of a structure
+// entrance, a yard wall and a gravestone): the ground it stands on, which the
+// feet cannot cross, a bit a pixel; and for each pixel how many art pixels
+// below it its ground line is -- the feet nearer the viewer than that line and
+// the pixel is behind them, farther and in front; and the ground of its way
+// in, where the feet must be to go in.
+struct ArtCellDepth {
+    uint16_t foot[16];
+    uint8_t  drop[256];                         // 255: nothing drawn
+    uint16_t way[16];
+};
+// Whether feet at world pixel (px, py), on a dungeon entrance's tile, are in its
+// way in: anywhere on the tile for one with no drawn way, else only on it --
+// so a building is entered through its door, not from behind it.
+bool tilemap_way_in(const Tilemap* map, float px, float py);
+// How far across something struck at hit_at (SDL_GetPerformanceCounter) is
+// drawn as it shakes, at this zoom; 0 once the shake has run out.
+int tilemap_shake_px(Uint64 hit_at, float zoom);
+// The sheet cell's, or null for a cell that has none.
+const ArtCellDepth* tilemap_art_depth(int sheet_id);
+// Lays over the player the pixels of sheet cell sheet_id that stand in front of
+// them: the cell drawn at screen (sx, sy), draw_size across, its top-left at
+// world (wx, wy); the player's sprite box and feet_y as for
+// tilemap_draw_over_player. Only the part of the cell the sprite covers.
+void tilemap_draw_cell_over(SDL_Renderer* renderer, int sheet_id, int sx, int sy, int draw_size,
+                            float wx, float wy, float x, float y, float w, float h, float feet_y);
 // Debug overlay: thin lines around every TILE_SIZE grid cell in view, labeled
 // with the tileset (col,row) the tile draws from -- see definition for the
 // ground-cover-variant caveat.

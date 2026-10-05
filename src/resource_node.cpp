@@ -25,6 +25,7 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
     n->width = 32;
     n->height = 32;
     n->alive = 1;
+    n->hit_at = 0;
     n->hides_entrance = 0;
     n->reveal_tile_id = 0;
     n->reveal_tx = -1;
@@ -135,6 +136,18 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
     }
 }
 
+// The sheet cell a gravestone is drawn from: one of the drawn stones, picked
+// by the tile the node stands on so a yard is a mix and each stone stays the
+// same one every frame. Mixed, not a bare multiply-xor: a large yard lays its
+// stones on a two-tile lattice, and that only ever reached three of the six.
+static int gravestone_cell(const ResourceNode* n) {
+    unsigned int tx = (unsigned int)(n->x / TILE_SIZE), ty = (unsigned int)(n->y / TILE_SIZE);
+    unsigned int hsh = tx * 0x9E3779B1u ^ ty * 0x85EBCA77u;
+    hsh ^= hsh >> 15; hsh *= 0x2C1B3C6Du; hsh ^= hsh >> 12;
+    return TILE_TOWN0_BASE + GRAVESTONE_SHEET_ROW * TOWN0_SHEET_COLS + GRAVESTONE_SHEET_COL
+         + (int)(hsh % GRAVESTONE_COUNT);
+}
+
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex)
 {
     float z = cam->zoom;
@@ -143,7 +156,7 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
         const ResourceNode* n = &list->nodes[i];
         if (!n->alive) continue;
 
-        int screen_x = cam_screen_x(cam, n->x);
+        int screen_x = cam_screen_x(cam, n->x) + tilemap_shake_px(n->hit_at, z);
         int screen_y = cam_screen_y(cam, n->y);
         int w = (int)(n->width * z);
         int h = (int)(n->height * z);
@@ -154,15 +167,8 @@ void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Re
             SDL_Rect dst = { screen_x, screen_y, w, h };
             SDL_RenderCopy(ren, tileset_tex, &src, &dst);
         } else if (n->type == RESOURCE_GRAVESTONE && tileset_tex) {
-            // One of the drawn stones, picked by the tile the node stands on so
-            // a yard is a mix and each stone stays the same one every frame.
-            // Mixed, not a bare multiply-xor: a large yard lays its stones on a
-            // two-tile lattice, and that only ever reached three of the six.
-            unsigned int tx = (unsigned int)(n->x / TILE_SIZE), ty = (unsigned int)(n->y / TILE_SIZE);
-            unsigned int hsh = tx * 0x9E3779B1u ^ ty * 0x85EBCA77u;
-            hsh ^= hsh >> 15; hsh *= 0x2C1B3C6Du; hsh ^= hsh >> 12;
-            int v = (int)(hsh % GRAVESTONE_COUNT);
-            SDL_Rect src = { (GRAVESTONE_SHEET_COL + v) * 16, GRAVESTONE_SHEET_ROW * 16, 16, 16 };
+            int rel = gravestone_cell(n) - TILE_TOWN0_BASE;
+            SDL_Rect src = { rel % TOWN0_SHEET_COLS * 16, rel / TOWN0_SHEET_COLS * 16, 16, 16 };
             SDL_Rect dst = { screen_x, screen_y, w, h };
             SDL_RenderCopy(ren, tileset_tex, &src, &dst);
         } else {
@@ -179,9 +185,32 @@ bool resource_node_solid(const void* vlist, float px, float py) {
         // Through the wrap: the player's hitbox is sampled either side of
         // the seam as they cross it, and the node is on one side only.
         float rx = wrap_dpx(px - n->x), ry = wrap_dpy(py - n->y);
-        if (rx >= 0.0f && rx < n->width && ry >= 0.0f && ry < n->height) return true;
+        if (!(rx >= 0.0f && rx < n->width && ry >= 0.0f && ry < n->height)) continue;
+        // A gravestone closes only the ground its plinth stands on, to the pixel.
+        if (n->type == RESOURCE_GRAVESTONE) {
+            const ArtCellDepth* d = tilemap_art_depth(gravestone_cell(n));
+            int ax = (int)(rx * 16.0f / n->width), ay = (int)(ry * 16.0f / n->height);
+            if (d && !((d->foot[ay] >> ax) & 1)) continue;
+        }
+        return true;
     }
     return false;
+}
+
+void resource_nodes_draw_over_player(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren,
+                                     float x, float y, float w, float h, float feet_y)
+{
+    int draw_size = (int)(TILE_SIZE * cam->zoom);
+    for (int i = 0; i < list->count; i++) {
+        const ResourceNode* n = &list->nodes[i];
+        if (!n->alive || n->type != RESOURCE_GRAVESTONE) continue;
+        // through the wrap, to the image of the node nearest the player
+        float wx = x + wrap_dpx(n->x - x), wy = y + wrap_dpy(n->y - y);
+        if (wx >= x + w || wx + n->width <= x || wy >= y + h || wy + n->height <= y) continue;
+        tilemap_draw_cell_over(ren, gravestone_cell(n), cam_screen_x(cam, wx) + tilemap_shake_px(n->hit_at, cam->zoom),
+                               cam_screen_y(cam, wy),
+                               draw_size, wx, wy, x, y, w, h, feet_y);
+    }
 }
 
 void harvest_add(HarvestResult* r, float x, float y, int resource, int destroyed)
@@ -238,6 +267,14 @@ static HarvestTarget node_target(ResourceType t)
     }
 }
 
+// One blow: its damage, and the shake it starts. Returns 1 if it finished the node.
+static int node_hit(ResourceNode* n, WeaponType weapon) {
+    n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
+    n->hit_at = SDL_GetPerformanceCounter();
+    if (n->hp <= 0) { n->alive = 0; return 1; }
+    return 0;
+}
+
 int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
                          float radius, float start_ang, float rel0, float rel1,
                          WeaponType weapon, HarvestResult* out)
@@ -258,9 +295,7 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
         float rel = sweep_relative_angle(start_ang, dx, dy);
         if (rel < rel0 || rel >= rel1) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
-        int destroyed = 0;
-        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+        int destroyed = node_hit(n, weapon);
 
         harvest_add(out, cx, cy, node_award(n->type), destroyed);
         struck++;
@@ -312,9 +347,7 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
         if (along < from || along >= to) continue;
         if (side < -half_width || side > half_width) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
-        int destroyed = 0;
-        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+        int destroyed = node_hit(n, weapon);
 
         harvest_add(out, cx, cy, node_award(n->type), destroyed);
         struck++;
@@ -334,9 +367,7 @@ int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float 
         if (rx < -radius || rx > n->width  + radius) continue;
         if (ry < -radius || ry > n->height + radius) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
-        int destroyed = 0;
-        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+        int destroyed = node_hit(n, weapon);
 
         harvest_add(out, n->x + n->width * 0.5f, n->y + n->height * 0.5f,
                     node_award(n->type), destroyed);
@@ -362,9 +393,7 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
         int dy = (int)wrap_dpy(cy - player_y);
         if (abs_int(dx) > range || abs_int(dy) > range) continue;
 
-        n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
-        int destroyed = 0;
-        if (n->hp <= 0) { n->alive = 0; destroyed = 1; }
+        int destroyed = node_hit(n, weapon);
 
         harvest_add(out, cx, cy, node_award(n->type), destroyed);
         struck++;

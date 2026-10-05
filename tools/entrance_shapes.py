@@ -12,9 +12,18 @@ not two that drift.
 
 
 class Grid:
+    """A drawing, and for the game two more things about it: footy, for each
+    pixel the row its ground line is on -- the player's feet nearer the
+    viewer than that row and the pixel is drawn under them, farther and over
+    them -- foot, the pixels of ground it stands on, which the feet cannot
+    cross, and way, the ground of its way in, where the feet must be to go in.
+    Set by Scene.render, or by stand() for a drawing made by hand."""
     def __init__(self, w, h):
         self.w, self.h = w, h
         self.g = [['.'] * w for _ in range(h)]
+        self.footy = None
+        self.foot = set()
+        self.way = set()
 
     def get(self, x, y):
         return self.g[y][x] if 0 <= x < self.w and 0 <= y < self.h else '.'
@@ -101,9 +110,14 @@ class Scene:
         self.g = Grid(w, h)
         self.base = base
         self.depth = [[float('inf')] * w for _ in range(h)]
+        self.at = [[float('inf')] * w for _ in range(h)]       # how far back it truly is
         self.pid = [[-1] * w for _ in range(h)]
         self.broken = {}
         self.slated = {}          # pid -> 'front' or 'slope': laid in slates at render
+        self.foot = set()         # the ground the pieces stand on (STEP or taller)
+        self.seen_to = {}         # pid -> the depth its pixels show (see flat)
+        self.carved = set()       # ground taken back out of foot: a way in
+        self.way = set()          # the ground of the way in, where the feet go in
 
     def break_off(self, pids, x0, x1, y, amp, seed):
         """A piece broken off above a line that wanders a pixel at a time, as
@@ -133,6 +147,7 @@ class Scene:
                 d = depth_at(x, y)
                 if d <= self.depth[y][x] and not self._gone(pid, x, y):
                     self.g.g[y][x], self.depth[y][x], self.pid[y][x] = c, d, pid
+                    self.at[y][x] = d
 
     def box(self, pid, x0, x1, d0, d1, z0, z1, front='courses', block_w=6):
         """Its front face (stonework, a pillar's drum shading, or flat), its
@@ -159,6 +174,9 @@ class Scene:
             fill(top, rect(xa, y, x - 1, y), 'L')
         self._merge(side, lambda x, y: x - x1, pid)              # column x1+d is depth d
         self._merge(top, lambda x, y: base - z1 - y, pid)        # row base-z1-d is depth d
+        if z0 <= 0 and z1 - z0 >= STEP:                          # its ground, x0..x1 by d0..d1
+            for d in range(d0, d1 + 1):
+                self.foot |= {(x + d, base - d) for x in range(x0, x1 + 1)}
 
     def points(self, pid, pts, nearer=0.0):
         """A surface given as points (x, d, z, tone), each projected and kept
@@ -177,6 +195,7 @@ class Scene:
             if (0 <= sx < g.w and 0 <= sy < g.h and dd <= self.depth[sy][sx]
                     and not self._gone(pid, sx, sy)):
                 g.g[sy][sx], self.depth[sy][sx], self.pid[sy][sx] = c, dd, pid
+                self.at[sy][sx] = d                       # not where `nearer` sorts it
 
     def gable(self, pid, x0, x1, d0, d1, z0, h, front_pid=None, shingles=False):
         """A gabled roof running back from d0 to d1 over x0..x1, eaves at z0
@@ -214,11 +233,35 @@ class Scene:
         self.points(pid, pts)
         self.points(fpid, front)
 
-    def flat(self, pid, draw, d):
-        """Anything drawn square-on at one depth: draw(grid) paints it."""
+    def ground(self, x0, x1, d0, d1):
+        """Ground stood on, x0..x1 by d0..d1, by something that is not a box --
+        a pyramid's base under its sloping sides."""
+        for d in range(d0, d1 + 1):
+            self.foot |= {(x + d, self.base - d) for x in range(x0, x1 + 1)}
+
+    def carve(self, sx0, sx1, d0, d1):
+        """The way in, walked into: the screen columns sx0..sx1 of a doorway,
+        from d0 to d1 back, are not stood on whatever stands there. Straight up
+        the screen, as the door is drawn and as the player walks into it, and
+        only as deep as the door goes, so it leads in and not through. It is
+        the way in, too: there, and only there, the feet go in."""
+        for d in range(d0, d1 + 1):
+            self.carved |= {(x, self.base - d) for x in range(sx0, sx1 + 1)}
+        self.way |= self.carved
+
+    def flat(self, pid, draw, d, opening=None):
+        """Anything drawn square-on at one depth: draw(grid) paints it.
+        opening: what it shows is not at d. A number for a way in -- the dark
+        of a doorway is the passage behind it, that deep, so whoever steps in
+        is seen in it rather than behind it -- or 'ground' for a hole lying
+        in the ground, each pixel on its own row, and the way in."""
         t = Grid(self.g.w, self.g.h)
         draw(t)
         self._merge(t, lambda x, y: d, pid)
+        if opening is not None:
+            self.seen_to[pid] = opening
+        if opening == 'ground':
+            self.way |= {(x, y) for y in range(t.h) for x in range(t.w) if t.g[y][x] != '.'}
 
     def slates(self):
         """Lay the slated pieces in fish-scale slates, pixel by pixel on the
@@ -272,7 +315,78 @@ class Scene:
                         line.add(q)
         for x, y in line:
             g.g[y][x] = 'K'
+        def footy(x, y):
+            o = self.seen_to.get(P[y][x])
+            if o == 'ground':
+                return y
+            d = o if o is not None else self.at[y][x]
+            return None if d == float('inf') else self.base - d
+        g.footy = [[footy(x, y) for x in range(g.w)] for y in range(g.h)]
+        fill_footy(g)
+        # What the way in crosses no higher than a step -- a base, a stair's
+        # lowest treads -- is floor underfoot, not something stood behind.
+        for x, y0 in self.carved:
+            for y in range(g.h):
+                f = g.footy[y][x]
+                if f is not None and round(f) == y0 and f - y <= STEP:
+                    g.footy[y][x] = y
+        inside = lambda p: 0 <= p[0] < g.w and 0 <= p[1] < g.h
+        g.foot = set(filter(inside, self.foot - self.carved))
+        g.way = set(filter(inside, self.way))
         return g
+
+
+STEP = 3      # anything this tall or taller stands in the way; lower is stepped over
+
+
+def fill_footy(g):
+    """A pixel with no ground line of its own -- an outline round the outside,
+    say -- takes its neighbour's, though never one above its own row."""
+    todo = [(x, y) for y in range(g.h) for x in range(g.w)
+            if g.g[y][x] != '.' and g.footy[y][x] is not None]
+    while todo:
+        nxt = []
+        for x, y in todo:
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                q, r = x + dx, y + dy
+                if 0 <= q < g.w and 0 <= r < g.h and g.g[r][q] != '.' and g.footy[r][q] is None:
+                    g.footy[r][q] = max(r, int(g.footy[y][x]))
+                    nxt.append((q, r))
+        todo = nxt
+
+
+def stand(g, footy, foot=(), way=()):
+    """For a drawing made by hand: footy(x, y) gives each pixel's ground row,
+    never above the pixel's own (what reaches below the line it was given
+    lies on the ground), foot the pixels of ground it stands on, way the
+    ground of its way in."""
+    g.footy = [[max(y, int(footy(x, y))) if g.g[y][x] != '.' else None for x in range(g.w)]
+               for y in range(g.h)]
+    fill_footy(g)
+    g.foot = set(foot)
+    g.way = set(way)
+    return g
+
+
+def depth_layers(w, h, pieces):
+    """The game's layers for an export w by h, from its pieces [(x, y, grid)]
+    where they lie in it: 'footy' rows (-1 where nothing is drawn), 'foot' rows
+    ('#' where the feet cannot go) and 'way' rows ('#' where they go in)."""
+    footy = [[-1] * w for _ in range(h)]
+    foot = [['.'] * w for _ in range(h)]
+    way = [['.'] * w for _ in range(h)]
+    for ox, oy, g in pieces:
+        if g.footy:
+            fill_footy(g)                # ink laid after the render: weathering
+        for y in range(g.h):
+            for x in range(g.w):
+                if g.footy and g.footy[y][x] is not None and g.g[y][x] != '.':
+                    footy[oy + y][ox + x] = oy + int(round(g.footy[y][x]))
+        for x, y in g.foot:
+            foot[oy + y][ox + x] = '#'
+        for x, y in g.way:
+            way[oy + y][ox + x] = '#'
+    return {'footy': footy, 'foot': [''.join(r) for r in foot], 'way': [''.join(r) for r in way]}
 
 
 def weather(grid, seed, faces, crack, chips=8, cracks=10, keep=()):
@@ -344,18 +458,31 @@ def drop_crumbs(grid, speck=16):
                     grid.g[py][px] = '.'
 
 
-def four_per_cell(grid, merge, cell=16):
+def four_per_cell(grid, merge, cell=16, by_count=True):
     """The four-colour rule, kept by the drawing rather than broken and found
     later: in any cell with more than four tones, merge them away in the order
     given -- merge is [(tone, into), ...], the least needed first (a stone's
-    lit and shaded edges before the glass in a window, say) -- until it fits."""
+    lit and shaded edges before the glass in a window, say) -- until it fits.
+    A pair merges whichever way the cell has less of: a shaded face keeps its
+    shade and loses its few base pixels, a lit face the other way round --
+    or, by_count=False, always as written: mortar into brick, never brick
+    into mortar."""
     for cy in range(0, grid.h, cell):
         for cx in range(0, grid.w, cell):
             pix = [(x, y) for y in range(cy, min(cy + cell, grid.h))
                    for x in range(cx, min(cx + cell, grid.w))]
+            gone = {}                                   # a tone merged away -> what took it
             for tone, into in merge:
                 if len({grid.g[y][x] for x, y in pix} - {'.'}) <= 4:
                     break
+                while tone in gone: tone = gone[tone]
+                while into in gone: into = gone[into]
+                n = lambda t: sum(grid.g[y][x] == t for x, y in pix)
+                if tone == into:
+                    continue
+                if by_count and n(tone) > n(into):
+                    tone, into = into, tone
+                gone[tone] = into
                 for x, y in pix:
                     if grid.g[y][x] == tone:
                         grid.g[y][x] = into

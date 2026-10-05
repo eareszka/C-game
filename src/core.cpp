@@ -117,6 +117,22 @@ void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h) {
     SDL_RenderFillRect(ren, &inner);
 }
 
+void draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
+              float cur, float max, Uint8 r, Uint8 g, Uint8 b) {
+    fc_draw_color(ren, 0, 0, 0, 255);
+    SDL_Rect bg = {x, y, w, h};
+    SDL_RenderFillRect(ren, &bg);
+    if (max > 0.0f && cur > 0.0f) {
+        int filled = (int)(w * cur / max);
+        if (filled > w) filled = w;
+        fc_draw_color(ren, r, g, b, 255);
+        SDL_Rect fill = {x, y, filled, h};
+        SDL_RenderFillRect(ren, &fill);
+    }
+    fc_draw_color(ren, 255, 255, 255, 255);
+    SDL_RenderDrawRect(ren, &bg);
+}
+
 void draw_fps(SDL_Renderer* renderer, float dt, float player_x, float player_y) {
     static float acc         = 0.0f;
     static int   frames      = 0;

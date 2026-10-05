@@ -13,6 +13,8 @@
 #include "camera.h"
 #include "towns.h"
 #include "resource_node.h"
+#include "collision.h"
+#include "interior.h"
 
 static Tilemap g_map;
 
@@ -120,7 +122,9 @@ int main(int argc, char** argv)
                     n += snprintf(row + n, sizeof row - n, ok ? " ok" : " %d", ov);
                 }
             if (good == 6) whole++;
-            printf("mouth %d,%d tile %d:%s\n", e.x, e.y, g_map.tiles[e.y][e.x], row);
+            int mrel = g_map.overlay[e.y][e.x] - TILE_TOWN0_BASE;   // its material: three cells each
+            printf("mouth %d,%d tile %d mat %d:%s\n", e.x, e.y, g_map.tiles[e.y][e.x],
+                   mrel >= 0 ? (mrel % 256) / 3 : -1, row);
         }
         printf("ground mouths %d, with the whole sprite %d\n", total, whole);
         return 0;
@@ -406,28 +410,100 @@ int main(int argc, char** argv)
         if (atoi(getenv("SHOT_BANK")) >= 2) { fflush(stdout); _exit(0); }
     }
 
-    SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
-    SDL_RenderClear(ren);
-    tilemap_draw_base(&g_map, &cam, ren, 0);
+    // SHOT_INTERIOR=<id> draws that interior instead, as the game does, the
+    // players of SHOT_PLAYER standing in it (feet at screen pixels), and says
+    // whether each one's feet fit. Give 20 15 for the tiles across and down.
+    if (const char* si = getenv("SHOT_INTERIOR")) {
+        static InteriorMap im;
+        interior_load(&im, atoi(si));
+        SDL_Texture* who = IMG_LoadTexture(ren, "assets/player_small.png");
+        float fx, fy;
+        int used;
+        const char* sp = getenv("SHOT_PLAYER");
+        SDL_SetRenderDrawColor(ren, 5, 5, 8, 255);
+        SDL_RenderClear(ren);
+        interior_draw(&im, ren, tilemap_get_town_tex());
+        for (int i = 0; sp && sscanf(sp, "%f,%f%n", &fx, &fy, &used) == 2; i++) {
+            float ox = fx - (HB_X1 + HB_X2) * 0.5f, oy = fy - (HB_Y1 + HB_Y2) * 0.5f;
+            SDL_Rect src = { 0, 0, 14, 20 }, dst = { (int)ox, (int)oy, 28, 40 };
+            SDL_RenderCopy(ren, who, &src, &dst);
+            interior_draw_over_player(&im, ren, ox, oy, 28, 40, oy + HB_Y2);
+            printf("player %d at %.0f,%.0f: %s\n", i, fx, fy,
+                   interior_feet_fit(&im, ox, oy) ? "fits" : "blocked");
+            sp += used;
+            if (*sp != ';') break;
+            sp++;
+        }
+        SDL_RenderPresent(ren);
+        if (IMG_SavePNG(surf, out) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+        printf("wrote %s\n", out);
+        return 0;
+    }
     // SHOT_GRAVES=1 also spawns the gravestones of every graveyard in view, as
     // the game does when the player comes near, and draws them. They are
     // resource nodes, not tiles, so nothing else here would show them.
+    static ResourceNodeList nodes;
+    resource_nodes_init(&nodes);
     if (getenv("SHOT_GRAVES")) {
-        static ResourceNodeList nodes;
-        resource_nodes_init(&nodes);
         for (int i = 0; i < g_map.num_dungeon_entrances; i++) {
             const DungeonEntrance& e = g_map.dungeon_entrances[i];
             if (e.x < want_x || e.y < want_y || e.x >= want_x + tw || e.y >= want_y + th) continue;
             tilemap_spawn_graveyard_nodes(&g_map, &nodes, i, seed);
             tilemap_spawn_graveyard_lg_nodes(&g_map, &nodes, i, seed);
         }
-        resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
         printf("%d gravestones\n", nodes.count);
+        for (int i = 0; i < nodes.count; i++)
+            printf("gravestone at %.0f,%.0f\n", nodes.nodes[i].x, nodes.nodes[i].y);
     }
-    tilemap_draw_depth(&g_map, &cam, ren, 0);
-    SDL_RenderPresent(ren);
-
-    if (IMG_SavePNG(surf, out) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+    // SHOT_PLAYER="x,y;x,y;..." stands the player with their feet at each of
+    // those world pixels (the middle of the feet box), drawn as the game draws
+    // them -- the sprite, then what stands in front of it -- and says whether
+    // the feet fit there: all in the one picture, or with SHOT_EACH=1 one
+    // picture each, <out>.<n>.png.
+    float px[64], py[64];
+    int np = 0;
+    if (const char* sp = getenv("SHOT_PLAYER")) {
+        int used;
+        while (np < 64 && sscanf(sp, "%f,%f%n", &px[np], &py[np], &used) == 2) {
+            np++;
+            sp += used;
+            if (*sp != ';') break;
+            sp++;
+        }
+    }
+    SDL_Texture* who = np ? IMG_LoadTexture(ren, "assets/player_small.png") : nullptr;
+    bool each = getenv("SHOT_EACH") != nullptr;
+    for (int pic = 0; pic < (each && np ? np : 1); pic++) {
+        SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
+        SDL_RenderClear(ren);
+        tilemap_draw_base(&g_map, &cam, ren, 0);
+        resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
+        for (int i = each ? pic : 0; i < (each ? pic + 1 : np); i++) {
+            float ox = px[i] - (HB_X1 + HB_X2) * 0.5f, oy = py[i] - (HB_Y1 + HB_Y2) * 0.5f;
+            SDL_Rect src = { 0, 0, 14, 20 };
+            SDL_Rect dst = { cam_screen_x(&cam, ox), cam_screen_y(&cam, oy), 28, 40 };
+            SDL_RenderCopy(ren, who, &src, &dst);
+            tilemap_draw_over_player(&g_map, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
+            resource_nodes_draw_over_player(&nodes, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
+            int blocked = 0;
+            for (int yy = HB_Y1; yy < HB_Y2; yy++)
+                for (int xx = HB_X1; xx < HB_X2; xx++)
+                    blocked += tilemap_pixel_solid(&g_map, ox + xx + 0.5f, oy + yy + 0.5f)
+                            || resource_node_solid(&nodes, ox + xx + 0.5f, oy + yy + 0.5f);
+            int tx = (int)floorf(px[i] / TILE_SIZE), ty = (int)floorf(py[i] / TILE_SIZE);
+            int t = (in_world(&tx, &ty)) ? g_map.tiles[ty][tx] : 0;
+            bool door = (t == TILE_DUNGEON || (t >= TILE_DUNGEON_CAVE && t <= TILE_DUNGEON_LARGE_TREE));
+            printf("player %d at %.0f,%.0f: %s (%d of the feet's pixels solid)%s\n", i, px[i], py[i],
+                   blocked ? "blocked" : "fits", blocked,
+                   !door ? "" : tilemap_way_in(&g_map, px[i], py[i]) ? ", enters" : ", on the entrance tile, not its way in");
+        }
+        tilemap_draw_depth(&g_map, &cam, ren, 0);
+        SDL_RenderPresent(ren);
+        char name[512];
+        if (each && np) snprintf(name, sizeof name, "%s.%d.png", out, pic);
+        else snprintf(name, sizeof name, "%s", out);
+        if (IMG_SavePNG(surf, name) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+    }
     printf("wrote %s (%dx%d) seed %u at %d,%d\n", out, W, H, seed, want_x, want_y);
     return 0;
 }

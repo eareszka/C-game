@@ -19,13 +19,14 @@ way to its base grey (four_per_cell).
 """
 import json, math, os, random, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
-from entrance_shapes import Scene, check, rect, fill, oblique, weather, four_per_cell, drop_crumbs
+from entrance_shapes import Scene, check, rect, fill, oblique, weather, four_per_cell, drop_crumbs, depth_layers
 
 PAL = {'K': '000000', 'D': '595965', 'M': '9797aa', 'L': 'c6ccda',     # the ruins' stone
-       'r': 'b70000', 'b': '5c94fc', 'y': 'f0bc3c'}                      # glass
+       'r': 'b70000', 'b': '5c94fc'}                                    # glass: every window the same two
 W, H, B = 160, 160, 157
 CX = 80                                   # the doorway's middle: the stamp's middle
-NX0, NX1, ND0, ND1 = 42, 117, 8, 34       # the nave: across, and from how far back to
+NX0, NX1, ND0, ND1 = 42, 117, 8, 29       # the nave: across, and from how far back to --
+                                          # in front of the yard's wall (d 33), which runs behind it
 WALL, GABLE = 52, 30                      # its walls' height, and its roof's above them
 TX0, TX1, TD = 63, 96, 10                 # the central tower: across, and how deep
 TALL, SPIRE = 92, 40                      # its height, and its spire's above that
@@ -84,15 +85,15 @@ def church():
     hole = []
     for k in range(0, 4 * 24):
         x = xm + 4 + k / 4
-        lo, hi = 14 + rng.random() * 2, 27 - rng.random() * 2
+        lo, hi = 13 + rng.random() * 2, 24 - rng.random() * 2
         dd = lo
         while dd <= hi:
-            rafter = abs(dd - 18) < .5 or abs(dd - 22.5) < .5
+            rafter = abs(dd - 16.5) < .5 or abs(dd - 20.5) < .5
             hole.append((x, dd, top(x) + .05, 'M' if rafter else 'K'))
             dd += .25
     sc.points(2, hole, nearer=1)
-    for k, d0 in enumerate((12, 20, 28)):                        # windows down its side
-        glass_window(sc, 3 + k, ('side', NX1), d0, d0 + 4, 14, 42, 'by')
+    for k, d0 in enumerate((11, 17, 23)):                        # windows down its side
+        glass_window(sc, 3 + k, ('side', NX1), d0, d0 + 4, 14, 42, 'rb')
     # a turret at each front corner of the nave
     for pid, x0 in ((6, NX0 - 4), (7, NX1 - 8)):
         sc.box(pid, x0, x0 + 12, ND0 - 6, ND0 + 4, 0, 70, C)
@@ -113,11 +114,12 @@ def church():
                 g.put(x, y, 'K')
         for x in range(x0 + 1, x1):                              # a worn step inside
             g.put(x, B - 2, 'D')
-    sc.flat(23, door, -.2)
+    sc.flat(23, door, -.2, opening=TD)
+    sc.carve(CX - 8, CX + 7, -1, TD - 1)                         # in through the door, to the tower's back
     g = sc.render()
     weather(g, 41, 'M', 'D', chips=34, cracks=36,
             keep=[(CX - 10, B - 35, CX + 10, B + 2), (CX - 10, B - 88, CX + 10, B - 69)])
-    four_per_cell(g, [('L', 'M'), ('y', 'b'), ('D', 'M')])
+    four_per_cell(g, [('L', 'M'), ('D', 'M')])
     drop_crumbs(g)                       # the weathering can leave its own
     return g
 
@@ -125,7 +127,8 @@ def church():
 def design():
     g = church()
     check(g, 'church', objects=True)
-    return {'pal': PAL, 'view_w': W, 'order': ['church'], 'views': {'church': g.rows()}}
+    return {'pal': PAL, 'view_w': W, 'order': ['church'], 'views': {'church': g.rows()},
+            'depth': depth_layers(W, H, [(0, 0, g)])}
 
 
 if __name__ == '__main__':

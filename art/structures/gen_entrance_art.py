@@ -11,14 +11,15 @@ stands; its stamp -- the entrance's 1x1 or 2x2 footprint -- is the bottom
 size+1 rows of the middle size+1 columns. Read by src/tilemap.cpp through the
 table this writes (src/entrance_art.inc):
 
-  - stamp rows: the stamp's cells are the way in ('E'); any other cell with
-    art on it is solid ('#'), like the wall of a house
-  - rows above: drawn over the player, who walks behind them ('^')
+  - the stamp's cells are the way in ('E')
+  - a cell with ground the art stands on is solid to a whole-tile question
+    ('#'); any other cell with art on it is not ('^'); '.' has no art
 
-That is worked out here for a building. Art that spreads back along the
-ground -- a pool -- gives its own roles instead, one character a cell row by
-row, as the eighth field of its ART entry, and may also use '_' for art on the
-ground that is walked over. Either way '.' is a cell with no art.
+Neither is what the player meets. Each design also gives two layers
+(entrance_shapes.depth_layers): for every pixel the row its ground line is on,
+and the ground the art stands on. Written per sheet cell to the same table,
+they are the feet's collision, pixel by pixel, and what is drawn over the
+player: a pixel whose ground line is nearer the viewer than the feet.
 
 Other overworld sprites drawn the same way -- the gravestones graveyards are
 scattered with -- are strips of single cells, listed in SPRITES and packed
@@ -26,6 +27,11 @@ after the blocks; their place goes to src/sheet_sprites.inc for whoever draws
 them. Blocks and strips are packed left to right on shelves from ROW0, and
 the band ROW0..ROW_END is this script's: it is cleared before every stamp, so
 a layout that moves leaves nothing stale behind.
+
+Building interiors are here too, a whole room a block (INTERIORS, from
+interiors/<name>_design.py), with the same layers; their layout -- which sheet
+cell each of the room's 20x15 cells draws, and what each cell is to the feet
+-- goes to include/interiors.h.
 
 Transparent in an export is the sheet's key colour. Caves are not here -- they
 are cut into cliffs and have their own generator (gen_cave_entrances.py).
@@ -40,6 +46,7 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 SHEET = os.path.join(ROOT, "assets", "tileset.png")
 INC = os.path.join(ROOT, "src", "entrance_art.inc")
 SPRITES_INC = os.path.join(ROOT, "src", "sheet_sprites.inc")
+INTERIORS_H = os.path.join(ROOT, "include", "interiors.h")
 GPL = os.path.join(ROOT, "art", "direction", "game_palette.gpl")
 CELL, KEY, MAX_COLOURS = 16, (255, 0, 0), 4
 ROW0 = 20                 # rows 17-19 left for the island library to grow into
@@ -49,15 +56,38 @@ NL = "\n"
 
 
 
-def design_roles(name, key):
-    """The ROLES a design file gives for one of its blocks, read from the file
-    itself so the roles live in one place."""
-    import importlib.util
-    path = os.path.join(HERE, "entrances", name + "_design.py")
-    spec = importlib.util.spec_from_file_location(name + "_design", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.ROLES[key]
+_designs = {}
+
+
+def design_of(export):
+    """What the design that drew an export says (<dir>/<name>.png from
+    <dir>/<name>_design.py)."""
+    if export not in _designs:
+        import contextlib, importlib.util, io
+        name = os.path.splitext(os.path.basename(export))[0]
+        path = os.path.join(HERE, os.path.dirname(export), name + "_design.py")
+        spec = importlib.util.spec_from_file_location(name + "_design", path)
+        mod = importlib.util.module_from_spec(spec)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            spec.loader.exec_module(mod)
+            _designs[export] = mod.design()
+    return _designs[export]
+
+
+def layers(export):
+    """The depth layers of an export, or None if its design gives none."""
+    return design_of(export).get("depth")
+
+
+def crop_layers(export, x, y, w, h):
+    """(footy, foot, y, way): the layers over one block, footy still counted
+    from the export's top, y."""
+    lay = layers(export)
+    if lay is None:
+        return None
+    return ([r[x:x + w] for r in lay["footy"][y:y + h]],
+            [r[x:x + w] for r in lay["foot"][y:y + h]], y,
+            [r[x:x + w] for r in lay["way"][y:y + h]])
 
 
 # (DungeonEntranceType, size 0/1, biome, export, crop x, y, w, h[, roles]).
@@ -72,20 +102,26 @@ ART = [
     ("DUNGEON_ENT_PYRAMID", 1, "-1", "entrances/pyramid.png", 160, 0, 160, 112),
     ("DUNGEON_ENT_STONEHENGE", 1, "-1", "entrances/stonehenge.png", 0, 0, 192, 80),
     ("DUNGEON_ENT_LARGE_TREE", 0, "-1", "entrances/large_tree.png", 0, 0, 144, 96),
-    ("DUNGEON_ENT_OASIS", 0, "-1", "entrances/oasis.png", 0, 0, 80, 32,
-     design_roles("oasis", "sand")),
-    ("DUNGEON_ENT_OASIS", 0, "TILE_SNOW", "entrances/oasis.png", 80, 0, 80, 32,
-     design_roles("oasis", "snow")),
+    ("DUNGEON_ENT_OASIS", 0, "-1", "entrances/oasis.png", 0, 0, 80, 32),
+    ("DUNGEON_ENT_OASIS", 0, "TILE_SNOW", "entrances/oasis.png", 80, 0, 80, 32),
 ]
 
 # (name, export, cells[, rows, x]) -- a strip of sprites from the export's top
-# left, or from x across: cells wide and rows cells tall (one if not given)
+# left, or from x across: cells wide and rows cells tall (one if not given).
+# Those whose design gives depth layers -- the walls and the gravestones the
+# player meets -- carry them, as a block does.
 SPRITES = [
     ("GRAVESTONE", "entrances/gravestones.png", 6),
     ("STEAM", "entrances/steam.png", 4),
     ("OASIS_WATER", "entrances/oasis_water.png", 1),
     ("YARD_FENCE", "entrances/yard_walls.png", 16, 2, 0),
     ("YARD_WALL", "entrances/yard_walls.png", 16, 2, 256),
+]
+
+
+# (interior id, export) -- a room, 320x240: the game's interior screen.
+INTERIORS = [
+    (0, "interiors/house0.png"),
 ]
 
 
@@ -98,28 +134,22 @@ def palette():
     return cols
 
 
-def roles(t, size, im, given):
-    """Each cell's role, row by row: worked out for a building, or checked if
-    the art gives its own -- every cell with art must have a role, and the
-    stamp's cells, and only those, are 'E'."""
+def roles(t, size, im, foot):
+    """Each cell's role, row by row: the stamp's 'E', '#' where the art stands
+    on the ground, '^' other art, '.' none."""
     p, cw, ch, sz = im.load(), im.width // CELL, im.height // CELL, size + 1
     fx = (cw - sz) // 2
     out = []
     for cy in range(ch):
         for cx in range(cw):
-            ink = any(p[x, y][3] for y in range(cy * CELL, (cy + 1) * CELL)
-                      for x in range(cx * CELL, (cx + 1) * CELL))
-            stamp = cy >= ch - sz and fx <= cx < fx + sz
-            want = 'E' if stamp else ('.' if not ink else '#' if cy >= ch - sz else '^')
-            if given is None:
-                out.append(want)
-                continue
-            c = given[cy * cw + cx]
-            if c not in "E#^_." or (c == 'E') != stamp or (ink and c == '.'):
-                sys.exit("%s %d: cell (%d,%d) has role %r" % (t, size, cx, cy, c))
-            out.append(c)
-    if given is not None and len(given) != cw * ch:
-        sys.exit("%s %d: %d roles for %d cells" % (t, size, len(given), cw * ch))
+            cell = [(x, y) for y in range(cy * CELL, (cy + 1) * CELL)
+                    for x in range(cx * CELL, (cx + 1) * CELL)]
+            if cy >= ch - sz and fx <= cx < fx + sz:
+                out.append('E')
+            elif any(foot[y][x] == '#' for x, y in cell):
+                out.append('#')
+            else:
+                out.append('^' if any(p[x, y][3] for x, y in cell) else '.')
     return "".join(out)
 
 
@@ -137,21 +167,46 @@ def blocks():
         shelf = max(shelf, ch)
         return at
 
-    for t, size, biome, path, x, y, w, h, *given in ART:
+    for t, size, biome, path, x, y, w, h in ART:
         if w % CELL or h % CELL:
             sys.exit("%s %d: %dx%d is not whole cells" % (t, size, w, h))
         cw, ch, sz = w // CELL, h // CELL, size + 1
         if (cw - sz) % 2 or ch < sz:
             sys.exit("%s %d: a %dx%d block cannot centre a %dx%d stamp" % (t, size, cw, ch, sz, sz))
         im = Image.open(os.path.join(HERE, path)).convert("RGBA").crop((x, y, x + w, y + h))
-        out.append((t, size, im) + place(cw, ch) + (roles(t, size, im, given[0] if given else None), biome))
+        lay = crop_layers(path, x, y, w, h)
+        out.append((t, size, im) + place(cw, ch) + (roles(t, size, im, lay[1]), biome, lay))
     for name, path, n, *more in SPRITES:
         rows, x = more if more else (1, 0)
         im = Image.open(os.path.join(HERE, path)).convert("RGBA").crop((x, 0, x + n * CELL, rows * CELL))
-        out.append((name, -1, im) + place(n, rows) + (None, None))
+        lay = crop_layers(path, x, 0, n * CELL, rows * CELL)
+        out.append((name, -1, im) + place(n, rows) + (None, None, lay))
+    for n, path in INTERIORS:
+        im = Image.open(os.path.join(HERE, path)).convert("RGBA")
+        lay = crop_layers(path, 0, 0, im.width, im.height)
+        out.append((n, -2, im) + place(im.width // CELL, im.height // CELL) + (path, None, lay))
     if row + shelf > ROW_END:
         sys.exit("the art runs past row %d" % ROW_END)
     return out
+
+
+def room_layout(n, im, col, row, foot, exits):
+    """interior_<n>_tiles and interior_<n>_coll, for include/interiors.h."""
+    p = im.load()
+    cw, ch = im.width // CELL, im.height // CELL
+    tiles, coll = [], []
+    for cy in range(ch):
+        trow, crow = [], ""
+        for cx in range(cw):
+            cell = [(x, y) for y in range(cy * CELL, (cy + 1) * CELL) for x in range(cx * CELL, (cx + 1) * CELL)]
+            ink = any(p[x, y][3] for x, y in cell)
+            trow.append(str((row + cy) * SHEET_COLS + col + cx + 6) if ink else "0")
+            crow += (" " if not ink else "E" if [cx, cy] in exits or (cx, cy) in exits
+                     else "." if any(foot[y][x] != '#' for x, y in cell) else "#")
+        tiles.append("    {" + ",".join(trow) + "},")
+        coll.append('    "%s",' % crow)
+    return NL.join(["static const int interior_%d_tiles[IMAP_H][IMAP_W] = {" % n] + tiles + ["};",
+                    "static const char* interior_%d_coll[IMAP_H] = {" % n] + coll + ["};", ""])
 
 
 def write_if_changed(path, text):
@@ -167,8 +222,8 @@ def main():
     sp = sheet.load()
     # the band as it should be: key everywhere, then the art
     want = {(x, y): KEY for y in range(ROW0 * CELL, ROW_END * CELL) for x in range(SHEET_COLS * CELL)}
-    lines, sprites = [], []
-    for t, size, im, col, row, role, biome in blocks():
+    lines, sprites, depth, at, rooms = [], [], [], {}, []
+    for t, size, im, col, row, role, biome, lay in blocks():
         p = im.load()
         cw, ch = im.width // CELL, im.height // CELL
         for cy in range(ch):
@@ -183,6 +238,23 @@ def main():
             for x in range(im.width):
                 if p[x, y][3]:
                     want[(col * CELL + x, row * CELL + y)] = p[x, y][:3]
+        if lay:
+            footy, foot, y0, way = lay
+            for cy in range(ch):
+                for cx in range(cw):
+                    xs, ys = range(cx * CELL, (cx + 1) * CELL), range(cy * CELL, (cy + 1) * CELL)
+                    bits = [sum(1 << (x - cx * CELL) for x in xs if foot[y][x] == '#') for y in ys]
+                    ways = [sum(1 << (x - cx * CELL) for x in xs if way[y][x] == '#') for y in ys]
+                    drop = [255 if not p[x, y][3] or footy[y][x] < 0 else min(254, max(0, footy[y][x] - y0 - y))
+                            for y in ys for x in xs]
+                    if not any(bits) and all(v == 255 for v in drop):
+                        continue
+                    at[(row + cy) * SHEET_COLS + col + cx] = len(depth) + 1
+                    depth.append("    { {%s}, {%s}, {%s} }," % (",".join(map(str, bits)), ",".join(map(str, drop)),
+                                                            ",".join(map(str, ways))))
+        if size == -2:
+            rooms.append(room_layout(t, im, col, row, lay[1], design_of(role).get("exit", [])))
+            continue
         if size < 0:
             sprites.append("#define %s_SHEET_COL %d%s#define %s_SHEET_ROW %d%s#define %s_COUNT %d%s"
                            % (t, col, NL, t, row, NL, t, cw, NL))
@@ -192,14 +264,38 @@ def main():
     t1 = write_if_changed(INC, NL.join([
         "// Generated by art/structures/gen_entrance_art.py -- do not edit.",
         "// type, size, biome (-1 any), sheet col, sheet row, width and height in cells, and each",
-        "// cell's role row by row (E way in, # solid, ^ walked behind, _ floor,",
-        "// . no art): worldgen reads this rather than the sheet, so a world",
+        "// cell's role row by row (E way in, # stands on some of its ground, ^ only",
+        "// drawn, . no art): worldgen reads this rather than the sheet, so a world",
         "// builds the same with no texture loaded.",
-        "static const EntranceArt ENTRANCE_ART[] = {"] + lines + ["};", ""]))
+        "static const EntranceArt ENTRANCE_ART[] = {"] + lines + ["};", "",
+        "// Every cell above with art on it, the yard walls' and the gravestones': the",
+        "// ground it stands on (a bit a pixel, row by row), how far below each pixel its",
+        "// ground line is, in art pixels (255: nothing drawn), and the ground of its way",
+        "// in, a bit a pixel. ART_CELL_AT gives each sheet cell of",
+        "// the band from row ART_BAND_ROW0 its entry plus one, 0 where it has none.",
+        "#define ART_BAND_ROW0 %d" % ROW0,
+        "#define ART_BAND_ROWS %d" % (max(at) // SHEET_COLS + 1 - ROW0),
+        "static const ArtCellDepth ART_CELL_DEPTH[] = {"] + depth + ["};",
+        "static const uint16_t ART_CELL_AT[ART_BAND_ROWS * %d] = {" % SHEET_COLS]
+        + ["    " + ",".join(str(at.get(r * SHEET_COLS + c, 0)) for c in range(SHEET_COLS)) + ","
+           for r in range(ROW0, max(at) // SHEET_COLS + 1)] + ["};", ""]))
     t2 = write_if_changed(SPRITES_INC, NL.join([
         "// Generated by art/structures/gen_entrance_art.py -- do not edit.",
         "// Where each strip of one-cell overworld sprites sits on the sheet.", ""]) + "".join(sprites))
-    print("structure art: %d sheet pixels differ, tables %s" % (changed, "differ" if t1 or t2 else "same"))
+    t3 = write_if_changed(INTERIORS_H, NL.join([
+        "// Generated by art/structures/gen_entrance_art.py -- do not edit.",
+        "#ifndef INTERIORS_H",
+        "#define INTERIORS_H",
+        "",
+        '#include "interior.h"',
+        "",
+        "// Each room's 20x15 cells: the sheet cell it draws, plus 6 (0 for none -- the",
+        "// dark outside the room), and what it is to the feet: ' ' outside, '#' all",
+        "// solid, '.' some floor (the feet meet the art to the pixel, ArtCellDepth),",
+        "// 'E' the doormat, the way out.",
+        ""] + rooms + ["#endif", ""]))
+    print("structure art: %d sheet pixels differ, tables %s"
+          % (changed, "differ" if t1 or t2 or t3 else "same"))
     if "--stamp" in sys.argv:
         if changed:
             for q, c in want.items():
