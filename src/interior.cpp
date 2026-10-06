@@ -5,66 +5,34 @@
 #include "tilemap.h"   // TOWN0_SHEET_COLS
 #include <string.h>
 
-// ---------------------------------------------------------------------------
-// Layout legend: '#'=wall, '.'=floor, 'E'=exit doormat, ' '=void
-// Top wall is 2 rows tall for pseudo-depth, matching the exterior sprites.
-// ---------------------------------------------------------------------------
-
-// interior 0 — stone house (small)
-static const char* interior_stone_house[IMAP_H] = {
-    "                    ",
-    "                    ",
-    "    ############    ",
-    "    ############    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #..........#    ",
-    "    #####EE#####    ",
-    "                    ",
-    "                    ",
-    "                    ",
-};
-
-// interior 1 — white house (large)
-static const char* interior_white_house[IMAP_H] = {
-    "                    ",
-    "  ################  ",
-    "  ################  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #..............#  ",
-    "  #######EE#######  ",
-    "                    ",
-    "                    ",
-};
-
-static const char** all_interiors[] = {
-    interior_stone_house,
-    interior_white_house,
-};
-#define NUM_INTERIORS (int)(sizeof(all_interiors) / sizeof(all_interiors[0]))
-
-// Prebuilt blueprint per interior id (interiors.h); null = use the ASCII placeholder.
+// A room per building on the starting island, each drawn whole
+// (art/structures/interiors, packed by gen_entrance_art.py into interiors.h):
+// which sheet cell each of its cells draws, and what each is to the feet.
 struct PrebuiltInterior {
     const int (*tiles)[IMAP_W];
     const char* const* coll;
 };
-static const PrebuiltInterior prebuilt_interiors[NUM_INTERIORS] = {
-    { interior_0_tiles, interior_0_coll },   // 0 — spawn / stone house
-    { nullptr, nullptr },                    // 1 — white house (placeholder)
+static const PrebuiltInterior prebuilt_interiors[] = {
+    { interior_0_tiles, interior_0_coll },   // 0 — the spawn house
+    { interior_1_tiles, interior_1_coll },   // 1 — the book shop
+    { interior_2_tiles, interior_2_coll },   // 2-6 — the other houses (gen_entrance_art.py HOUSES)
+    { interior_3_tiles, interior_3_coll },
+    { interior_4_tiles, interior_4_coll },
+    { interior_5_tiles, interior_5_coll },
+    { interior_6_tiles, interior_6_coll },
 };
+#define NUM_INTERIORS (int)(sizeof(prebuilt_interiors) / sizeof(prebuilt_interiors[0]))
 
 static void interior_find_entry(InteriorMap* im);
+
+bool interior_book_spot(int interior_id, int* tx, int* ty)
+{
+    // On the book shop's counter (bookshop_design.py), taken from the floor
+    // before it.
+    if (interior_id != 1) return false;
+    *tx = 9; *ty = 8;
+    return true;
+}
 
 void interior_load(InteriorMap* im, int interior_id)
 {
@@ -74,10 +42,7 @@ void interior_load(InteriorMap* im, int interior_id)
     const PrebuiltInterior& pb = prebuilt_interiors[interior_id];
     im->prebuilt = (pb.tiles != nullptr);
 
-    // Semantic layer (collision + exit) comes from the coll strings for
-    // prebuilt interiors, or from the ASCII placeholder layout otherwise.
-    const char* const* layout = im->prebuilt ? pb.coll
-                                             : all_interiors[interior_id];
+    const char* const* layout = pb.coll;
     for (int y = 0; y < IMAP_H; y++) {
         const char* row = layout[y];
         int row_len = (int)strlen(row);

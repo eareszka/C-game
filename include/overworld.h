@@ -27,6 +27,13 @@ typedef struct Overworld {
     // every dungeon (DungeonPlayer, include/dungeon.h).
     WeaponSwingState swing;
 
+    // On the raft: it holds the course it was launched on -- the way the
+    // player walked onto the water -- with no steering, until the feet reach
+    // land, or it runs into something it cannot land on, where it waits for a
+    // new push off. The player stands still on it.
+    bool  sailing;
+    float sail_dx, sail_dy;   // unit course
+
 } Overworld;
 
 void overworld_init(Overworld* ow, Player* player, float x, float y);

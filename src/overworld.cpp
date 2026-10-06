@@ -3,9 +3,13 @@
 #include "collision.h"
 #include <math.h>
 
-struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; };
+// float_ok: the player has a raft, so water is somewhere to be, not a wall.
+// Everything else that stops a walker still stops a raft.
+struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_ok; };
 static bool ow_solid(const void* ctx, float px, float py) {
     const OWCollCtx* c = static_cast<const OWCollCtx*>(ctx);
+    if (c->float_ok && tilemap_pixel_water(c->map, px, py))
+        return resource_node_solid(c->res, px, py);
     return tilemap_pixel_solid(c->map, px, py)
         || resource_node_solid(c->res, px, py);
 }
@@ -19,8 +23,16 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->at_interior_door    = 0;
     ow->interior_door_idx   = -1;
     ow->swing               = WeaponSwingState();
+    ow->sailing             = false;
 
-    player->equipped_weapon = WEAPON_KNIFE;
+    // Every shape has its slot; the player starts owning a stone knife.
+    for (int w = 0; w < WEAPON_COUNT; w++) {
+        player->arsenal[w] = Weapon{ (WeaponType)w, MAT_STONE };
+        player->owned[w]   = false;
+    }
+    player->owned[WEAPON_KNIFE] = true;
+    player->equipped = WEAPON_KNIFE;
+
     // 14x20 art pixels at 2x (assets/player_small.png); the feet box in collision.h sits at
     // the bottom of this frame.
     player->width  = 28;
@@ -52,7 +64,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     HarvestResult* h = out_harvest ? out_harvest : &local;
 
     weapon_swing_update(&ow->swing, player, in, dt, hx, hy, resources, map,
-                       cam, at_prompt, h);
+                       cam, at_prompt, -1, h);
 
     // Any destroyed gravestone may have been hiding a dungeon entrance.
     if (harvest_any_destroyed(h)) {
@@ -68,14 +80,33 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     }
 
     float dx = 0.0f, dy = 0.0f;
-    if (!weapon_swing_frozen_tick(&ow->swing, player, dt))
+    if (!weapon_swing_frozen_tick(&ow->swing, player, dt) && !ow->sailing)
         player_read_input(player, in, &dx, &dy);
 
     float anim_speed;
     player_gait(in, &ow->speed, &anim_speed);
 
-    if (dx != 0.0f || dy != 0.0f) {
-        OWCollCtx ctx = { map, resources };
+    auto feet_on_water = [&]() {
+        return player->raft > 0 &&
+               tilemap_pixel_water(map, ow->x + (HB_X1 + HB_X2) * 0.5f, ow->y + (HB_Y1 + HB_Y2) * 0.5f);
+    };
+
+    if (ow->sailing) {
+        // Afloat and under way: straight on along the course, no sliding
+        // round what is in the way. It ends at land, or against something.
+        OWCollCtx ctx = { map, resources, true };
+        float nx = ow->x + ow->sail_dx * RAFT_SPEED * dt;
+        float ny = ow->y + ow->sail_dy * RAFT_SPEED * dt;
+        if (noclip || can_occupy(&ctx, nx, ny, ow_solid)) {
+            ow->x = wrap_px(nx);
+            ow->y = wrap_py(ny);
+        } else {
+            ow->sailing = false;   // run aground: wait for a push off
+        }
+        if (!feet_on_water()) ow->sailing = false;   // landed
+        player->is_moving = 0;
+    } else if (dx != 0.0f || dy != 0.0f) {
+        OWCollCtx ctx = { map, resources, player->raft > 0 };
         if (noclip) {
             ow->x += dx * ow->speed * dt;
             ow->y += dy * ow->speed * dt;
@@ -93,6 +124,16 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         // is not, and follows the player through the seam on its own.
         ow->x = wrap_px(ow->x);
         ow->y = wrap_py(ow->y);
+
+        // Stepped onto the water with a raft: cast off the way the player was
+        // walking, and hold it.
+        if (feet_on_water()) {
+            float len = sqrtf(dx * dx + dy * dy);
+            ow->sailing = true;
+            ow->sail_dx = dx / len;
+            ow->sail_dy = dy / len;
+            player->is_moving = 0;
+        }
     }
 
     // Dungeon entrance detection

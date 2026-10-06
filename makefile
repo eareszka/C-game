@@ -146,6 +146,13 @@ seamcensus: seamcensus$(EXE)
 seamcensus$(EXE): tools/seamcensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/seamcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+# The crafting rules (costs, re-forging, caps), asserted. Exits non-zero on a
+# broken one.
+craftcheck: craftcheck$(EXE)
+
+craftcheck$(EXE): tools/craftcheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/craftcheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 # Headless overworld screenshot, and the whole-world mask views behind its
 # SHOT_* environment switches.
 shot: shot$(EXE)
@@ -192,7 +199,7 @@ sheetcensus$(EXE): tools/sheetcensus.cpp $(SHEET_TRACE_OBJ)
 	$(HEADLESS_CXX) -DSHEET_TRACE -include include/sheet_trace.h tools/sheetcensus.cpp $(SHEET_TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
 	rm -rf src/sheettrace
 
 endif

@@ -32,6 +32,9 @@ public:
     virtual float fire_interval() const = 0;
     virtual int   fire(float px, float py, BulletSpawn out[], int max_out) = 0;
     virtual void  update(float /*dt*/, float /*px*/, float /*py*/) {}
+    // 0..1 through a wing-flapping flight, or -1 when not flying: the battle
+    // plays the enemy's flap sheet (EnemySheet::flap) across it.
+    virtual float flap_phase() const { return -1.0f; }
     virtual const char* name() const = 0;
 
     float damage_mult(WeaponType wt) const {

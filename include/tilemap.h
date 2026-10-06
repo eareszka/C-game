@@ -159,6 +159,9 @@ enum TileId {
 #define DNG_FIXED_CAVE_X    1498
 #define DNG_FIXED_CAVE_Y    1572
 #define DNG_FIXED_CAVE_SEED 0xCA4E5EEDu
+// The starting island's small graveyard, stamped beside it the same way.
+#define DNG_FIXED_GRAVE_X   1463
+#define DNG_FIXED_GRAVE_Y   1471
 
 typedef enum {
     DUNGEON_ENT_CAVE         = 0,
@@ -231,6 +234,15 @@ typedef struct {
     // snow is not dressed like one in sand.
     int biome;
 } DungeonEntrance;
+
+// The two dungeons of the starting island, the cave and the small graveyard.
+// They are the first dungeons a player meets: never linked to any other
+// (worldgen's pairing and dungeon_wiring_for() both refuse), every way out
+// leading back to their own mouth, and holding the island's own enemies.
+inline bool dungeon_is_starter(const DungeonEntrance* e) {
+    return (e->x == DNG_FIXED_CAVE_X  && e->y == DNG_FIXED_CAVE_Y)
+        || (e->x == DNG_FIXED_GRAVE_X && e->y == DNG_FIXED_GRAVE_Y);
+}
 
 typedef struct {
     int x, y;    // top-left tile coordinate where the town was stamped
@@ -378,24 +390,24 @@ SDL_Texture* tilemap_get_town_dim_tex(void);
 // weapon decides damage and whether every tile in range is struck or only the
 // nearest. Destroys tiles on depletion, appends to *out, returns tiles struck.
 int tilemap_try_hit(Tilemap* map, float px, float py, int range,
-                    WeaponType weapon, HarvestResult* out);
+                    Weapon weapon, HarvestResult* out);
 
 // Tile counterpart of resource_nodes_sweep: strike harvestable overlay tiles
 // whose centre the blade crossed this frame.
 int tilemap_sweep(Tilemap* map, float px, float py, float radius,
                   float start_ang, float rel0, float rel1,
-                  WeaponType weapon, HarvestResult* out);
+                  Weapon weapon, HarvestResult* out);
 
 // Tile counterparts of the thrust pair.
 float tilemap_first_along(const Tilemap* map, float px, float py,
                           float angle, float half_width, float max_reach);
 int tilemap_thrust(Tilemap* map, float px, float py, float angle,
                    float half_width, float from, float to,
-                   WeaponType weapon, HarvestResult* out);
+                   Weapon weapon, HarvestResult* out);
 
 // Strike the harvestable tile a point lands on, if any. Returns 1 if struck.
 int tilemap_strike_point(Tilemap* map, float x, float y,
-                         WeaponType weapon, HarvestResult* out);
+                         Weapon weapon, HarvestResult* out);
 
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,
@@ -404,6 +416,10 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
 // TileSolidFn-compatible wrapper: returns true if pixel (px,py) is on a non-walkable tile.
 bool tilemap_pixel_solid(const void* map, float px, float py);
+// Whether pixel (px,py) is water -- sea, river, the ring round the start, a
+// pond -- along the same smoothed waterline the collision and the drawing use.
+// Not lava. What a raft floats on.
+bool tilemap_pixel_water(const Tilemap* map, float px, float py);
 
 // GRAVEYARD_SM entrances hide their entrance tile under gravestones.
 // Call this from the main thread (not the gen thread) when the player gets close.
@@ -412,6 +428,16 @@ bool tilemap_pixel_solid(const void* map, float px, float py);
 // GRAVEYARD_SM: hidden entrance under one of 5–10 randomly scattered gravestones.
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
                                    int entrance_idx, unsigned int seed);
+
+// The oilblooms: OILBLOOM_SITES per world, each at a point picked from the
+// world seed. Spawned like the graveyards, when the player first comes within
+// range of a site (the world is still generating elsewhere at start-up): the
+// node goes on the nearest open meadow, or grass, within a few tiles of the
+// point. Returns true once site `site` is dealt with -- placed, or found to
+// have nowhere to stand -- so the caller can stop asking.
+#define OILBLOOM_SITES 40   // FASTER takes 10 a weapon: enough to max several
+bool tilemap_spawn_oilbloom(Tilemap* map, ResourceNodeList* resources, unsigned int seed,
+                            int site, float px, float py);
 
 // The two visible-yard scales, GRAVEYARD_LG and CATACOMBS: gravestones in rows
 // inside the fence, filling half to three quarters of the slots the yard has

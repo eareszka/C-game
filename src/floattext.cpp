@@ -2,30 +2,30 @@
 #include "core.h"   // draw_text, text_width
 #include <math.h>
 
-void floattext_spawn(FloatText* ft, float wx, float wy, Uint8 r, Uint8 g, Uint8 b) {
+void floattext_spawn(FloatText* ft, float wx, float wy, int amount, Uint8 r, Uint8 g, Uint8 b) {
     if (ft->active && fabsf(ft->wx - wx) < 2.0f && fabsf(ft->wy - wy) < 2.0f) {
-        ft->count++;
+        ft->count += amount;
         ft->life = 1.0f;
         ft->drift = 0.0f;
     } else {
         *ft = FloatText();
         ft->wx = wx; ft->wy = wy;
-        ft->life = 1.0f; ft->active = true; ft->count = 1;
+        ft->life = 1.0f; ft->active = true; ft->count = amount;
         ft->r = r; ft->g = g; ft->b = b;
     }
     SDL_snprintf(ft->text, sizeof(ft->text), "+%d", ft->count);
 }
 
 void floattext_spawn_from_harvest(FloatText* ft, const HarvestResult* h) {
-    // One popup per thing struck -- a scythe sweep hits several, and a single
-    // "+1" would understate what was actually collected.
+    // One popup per thing broken, showing its whole yield -- what was paid,
+    // since a blow that breaks nothing pays nothing.
     for (int i = 0; i < h->count; i++) {
         int res = h->hits[i].resource;
-        if (res < 0) continue;
+        if (res < 0 || !h->hits[i].destroyed) continue;
         Uint8 r = 180, g = 120, b = 60;
         if      (res == (int)RESOURCE_ROCK) { r = 160; g = 160; b = 160; }
         else if (res == (int)RESOURCE_GOLD) { r = 255; g = 210; b =  40; }
-        floattext_spawn(ft, h->hits[i].x, h->hits[i].y, r, g, b);
+        floattext_spawn(ft, h->hits[i].x, h->hits[i].y, harvest_yield(res), r, g, b);
     }
 }
 

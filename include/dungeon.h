@@ -46,6 +46,7 @@ struct DungeonLoot {
     int  tx, ty;
     int  gold;
     bool collected;
+    int  item = -1;   // -1: a gold pile; otherwise the treasure it is, an Item (crafting.h)
 };
 
 // A cave under a mountain has one mouth in the south wall and one on the top of
@@ -72,6 +73,7 @@ struct DungeonMap {
     DungeonPortal portals[DMAP_MAX_PORTALS];
     int num_portals;
     int want_portals;                  // asked for before generating; 2 unless a cave
+    bool starter;                      // set before generating: a starting-island dungeon
     // Where this cave's mouths sit on the mountain, as offsets in overworld
     // tiles from their own centroid. Set before generating, alongside
     // want_portals, and used to lay the chambers out in the same arrangement —
@@ -103,7 +105,16 @@ struct DungeonPlayer {
     // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
     // the overworld (Overworld, include/overworld.h).
     WeaponSwingState swing;
+
+    // The treasure picked up this frame, an Item; -1 for none. The caller
+    // says so, and remembers this dungeon's treasure as taken.
+    int picked_item = -1;
 };
+
+// The special part a dungeon of this kind keeps as its one treasure (an Item,
+// crafting.h): the halberd's in ruins, the katana's at stonehenge, the
+// scythe's in catacombs. -1 for a kind with none.
+int dungeon_treasure_item(DungeonEntranceType type);
 
 // Which material a cave of this difficulty holds. Exposed so tools/oreprof.cpp
 // censuses the SHIPPED thresholds instead of its own copy of them -- a second
@@ -120,6 +131,11 @@ float material_min_difficulty(Material m);
 // tools/oreprof.cpp name the tiers from the table the game renders them from,
 // rather than each keeping a copy that can drift out of step with it.
 const char* material_name(Material m);
+
+// One tone of a material's colour ramp: the same ramps the ore's rock is
+// painted in (src/ore_tones.inc), so a weapon reads as the ore it came from.
+enum { ORE_SHADE = 1, ORE_BASE = 2, ORE_LIT = 3 };
+SDL_Color material_color(Material m, int tone);
 
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
                       float difficulty, unsigned int seed);
@@ -144,6 +160,7 @@ struct DungeonWiring {
     int   want_ox[DMAP_MAX_PORTALS],    want_oy[DMAP_MAX_PORTALS];
     int   n_mouths;
     int   my_mouth;                   // which mouth was walked into, or -1
+    bool  starter;                    // one of the starting island's two (dungeon_is_starter)
 };
 
 // Which dungeon the entrance at this index opens, and where its ways out lead.

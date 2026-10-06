@@ -20,6 +20,8 @@
 #include "tilemap.h"
 #include "resource_node.h"
 #include "floattext.h"
+#include "crafting.h"
+#include "game_menu.h"
 
 
 // How many whole pixels of frame there are to a logical pixel: as many as the
@@ -136,10 +138,13 @@ int main(int argc, char *argv[])
     // Test enemies in the spawn house: the ids being tuned, in a row above
     // the player's start. Each is armed again once the player steps off it.
     struct TestEnemy { int id; float x, y; };
+    // The practice dummies stand on the starting house's floor (interior 0,
+    // whose walkable floor starts at row 7), across the room from where the
+    // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[3]    = {
-        { 0,  6.5f * IMAP_TILE, 4.5f * IMAP_TILE },
-        { 1, 10.0f * IMAP_TILE, 4.5f * IMAP_TILE },
-        { 2, 13.5f * IMAP_TILE, 4.5f * IMAP_TILE },
+        { 0,  6.5f * IMAP_TILE, 8.5f * IMAP_TILE },
+        { 1, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },
+        { 2, 13.5f * IMAP_TILE, 8.5f * IMAP_TILE },
     };
     bool         test_armed         = true;
 
@@ -184,6 +189,7 @@ int main(int argc, char *argv[])
     resource_nodes_init(&resources);
 
     resource_nodes_add(&resources, RESOURCE_FLOWER, 320, 224);
+    bool oilbloom_done[OILBLOOM_SITES] = {};   // which of the world's sites are placed
 
 
     Input in = {0};
@@ -276,13 +282,19 @@ int main(int argc, char *argv[])
 
     bool dbg_open     = false;
     // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam
-    static const int DBG_ROW_COUNT = 8;
+    static const int DBG_ROW_COUNT = 10;
     int  dbg_sel      = 0;
     int  dbg_target   = 0;
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
     bool dbg_grid     = false;
-    bool crafting_open    = false;
+    GameMenu menu;            // the TAB menu: crafting and items
+    // A line at the foot of the screen that answers a pickup ("GOT RAFT
+    // BOOK"), and how long it stays.
+    int  item_last[ITEM_COUNT] = {};   // last frame's item counts, for items_note_gains
+    bool items_primed = false;
+    const char* pickup_note   = nullptr;
+    float       pickup_note_t = 0.0f;
     bool map_open         = false;
     bool battle_list_open = false;
     int  battle_list_sel  = 0;
@@ -333,6 +345,11 @@ int main(int argc, char *argv[])
     int num_chasers = 0;
 
     std::unordered_map<uint32_t, std::vector<uint8_t>> dungeon_explored_cache;
+    // Dungeons whose one treasure is taken, by seed (the same key as the
+    // explored cache): a dungeon is laid out again each visit, and must not
+    // put it back.
+    std::unordered_map<uint32_t, bool> treasure_taken;
+    char pickup_buf[48] = "";
     uint32_t current_dng_seed = 0;
 
     // Portal state: which overworld tiles DNG_ENTRY / DNG_EXIT map back to.
@@ -513,12 +530,17 @@ int main(int argc, char *argv[])
             // Weapon: applied straight to the player so the change is visible
             // immediately — it drives both battle damage and the overworld tool
             // cooldown, with no confirm step to forget.
-            if (dbg_sel == 5) {
-                int w = (int)player.equipped_weapon;
-                if (input_pressed(&in, SDL_SCANCODE_LEFT))
-                    player.equipped_weapon = (WeaponType)((w + WEAPON_COUNT - 1) % WEAPON_COUNT);
-                if (input_pressed(&in, SDL_SCANCODE_RIGHT))
-                    player.equipped_weapon = (WeaponType)((w + 1) % WEAPON_COUNT);
+            // Row 8 does the same for the ore it is made of.
+            {
+                int step = input_pressed(&in, SDL_SCANCODE_RIGHT) - input_pressed(&in, SDL_SCANCODE_LEFT);
+                if (dbg_sel == 5 && step) {
+                    // Debug hands over the weapon outright: owned from here on.
+                    player.equipped = (WeaponType)(((int)player.equipped + step + WEAPON_COUNT) % WEAPON_COUNT);
+                    player.owned[player.equipped] = true;
+                }
+                Weapon& eq = equipped_weapon(&player);
+                if (dbg_sel == 8)
+                    eq.material = (Material)(((int)eq.material + step + MAT_COUNT) % MAT_COUNT);
             }
 
             bool dbg_confirm = input_pressed(&in, SDL_SCANCODE_RETURN) ||
@@ -566,6 +588,7 @@ int main(int argc, char *argv[])
                 tilemap_build_overworld_phase1(map, map_seed);
                 gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
                 resource_nodes_init(&resources);
+                for (bool& b : oilbloom_done) b = false;
                 dbg_tour = -1;   // new world, new set of entrances to tour
                 ow.x = (MAP_WIDTH  / 2.0f) * TILE_SIZE;
                 ow.y = (MAP_HEIGHT / 2.0f) * TILE_SIZE;
@@ -585,6 +608,15 @@ int main(int argc, char *argv[])
             // Row 7: stand three tiles short of the seam, on the nearest
             // walkable tile to the middle of it, so the crossing can be tried
             // in seconds. The seam is the far edge of the wrap axis.
+            // Row 9: ten of every material, and every book and special part,
+            // to try every recipe. Never the raft: making it is the opening.
+            if (dbg_sel == 9 && dbg_confirm)
+                for (int it = 0; it < ITEM_COUNT; it++) {
+                    if (item_is_material((Item)it))      item_slot(&player, (Item)it) += 10;
+                    else if (it != ITEM_RAFT && item_count(&player, (Item)it) == 0)
+                        item_slot(&player, (Item)it) = 1;
+                }
+
             if (dbg_sel == 7 && dbg_confirm && state == STATE_OVERWORLD) {
                 int sx = MAP_WIDTH / 2, sy = MAP_HEIGHT / 2;
                 if (map->wrap_axis == WRAP_X) sx = MAP_WIDTH  - 4;
@@ -605,8 +637,33 @@ int main(int argc, char *argv[])
                 dbg_open = false;
         }
 
+        // Whatever was gained since last frame now counts as found; the first
+        // frame only takes stock, so what the game started with is not.
+        items_note_gains(&player, item_last, !items_primed);
+        items_primed = true;
+
+        // ── The TAB menu (src/game_menu.cpp) ──────────────────────────────────
+        // Opens anywhere but a battle (which has its own TAB panel) and the
+        // title. Handled before anything else reads a key, so while it is open
+        // the world sees none: game_in below is blank, and each raw key that
+        // reaches into the world (zoom, map, leaving a room or dungeon, the
+        // battle list) checks menu.open itself.
+        {
+            bool menu_ok  = state != STATE_BATTLE && state != STATE_TITLE;
+            bool was_open = menu.open;
+            if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open && menu_ok) game_menu_toggle(&menu);
+            else if (menu.open && menu_ok) game_menu_update(&menu, &player, &in, dt);
+            // The key that closed it (Z on CLOSE) is still held next frame;
+            // without this it would swing at whatever stands in front.
+            if (was_open && !menu.open) {
+                input_consume(&in, SDL_SCANCODE_RETURN);
+                input_consume(&in, SDL_SCANCODE_Z);
+                input_consume(&in, SDL_SCANCODE_SPACE);
+            }
+        }
+
         // ── Battle test list (F3) ─────────────────────────────────────────────
-        if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && state != STATE_BATTLE)
+        if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && !menu.open && state != STATE_BATTLE)
             battle_list_open = !battle_list_open;
 
         if (battle_list_open) {
@@ -627,10 +684,11 @@ int main(int argc, char *argv[])
 
         // Blank input fed to game logic while menu is open so the player stands still.
         Input in_blank = {0};
-        const Input* game_in = (dbg_open || crafting_open || map_open || battle_list_open)
+        const Input* game_in = (dbg_open || menu.open || map_open || battle_list_open)
                                 ? &in_blank : &in;
 
-        if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && state != STATE_BATTLE) {
+
+        if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && !menu.open && state != STATE_BATTLE) {
             delete battle_scene;
             battle_scene = new BattleScene(&player, 0);
             state = STATE_BATTLE;
@@ -638,7 +696,7 @@ int main(int argc, char *argv[])
 
         // Mouse wheel steps through pixel-perfect zoom levels
         // scroll up (+y) = zoom in = higher index; scroll down = zoom out = lower index
-        if (in.mouse_wheel != 0 && state != STATE_BATTLE) {
+        if (in.mouse_wheel != 0 && state != STATE_BATTLE && !menu.open) {
             zoom_idx += in.mouse_wheel;
             if (zoom_idx < 0)           zoom_idx = 0;
             if (zoom_idx >= zoom_count) zoom_idx = zoom_count - 1;
@@ -679,6 +737,12 @@ int main(int argc, char *argv[])
                     }
                 }
 
+                // Oilblooms, on the same lazy rule as the graveyards.
+                for (int s = 0; s < OILBLOOM_SITES; s++)
+                    if (!oilbloom_done[s])
+                        oilbloom_done[s] = tilemap_spawn_oilbloom(map, &resources, map_seed, s,
+                            ow.x + player.width * 0.5f, ow.y + player.height * 0.5f);
+
                 HarvestResult harvest = {};
                 overworld_update(&ow, &player, game_in, dt, &resources, map, &cam, dbg_noclip, &harvest);
                 floattext_spawn_from_harvest(&cur_float, &harvest);
@@ -691,6 +755,17 @@ int main(int argc, char *argv[])
 
                 tilemap_draw_base(map, &cam, plat.renderer);
                 resource_nodes_draw(&resources, &cam, plat.renderer, tilemap_get_town_tex());
+                // Afloat: the raft under the player's feet, the menu's own
+                // picture of it at 2x, while their feet are on water.
+                {
+                    float fx = ow.x + (HB_X1 + HB_X2) * 0.5f, fy = ow.y + (HB_Y1 + HB_Y2) * 0.5f;
+                    if (player.raft > 0 && tilemap_pixel_water(map, fx, fy)) {
+                        int size = (int)(32 * cam.zoom);
+                        game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT,
+                                            cam_screen_x(&cam, fx) - size / 2,
+                                            cam_screen_y(&cam, fy) - size / 2, size);
+                    }
+                }
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_over_player(map, &cam, plat.renderer, ow.x, ow.y,
@@ -705,7 +780,7 @@ int main(int argc, char *argv[])
                     // Same source the swing uses, so the bar always spans the
                     // cooldown this weapon actually sets rather than its raw
                     // fire rate — which several weapons no longer go by.
-                    float max_cd = weapon_cooldown_seconds(player.equipped_weapon);
+                    float max_cd = weapon_cooldown_seconds(equipped_weapon(&player));
                     float ready  = (max_cd > 0.0f && ow.swing.tool_cd > 0.0f)
                                  ? 1.0f - ow.swing.tool_cd / max_cd : 1.0f;
                     if (ready < 0.0f) ready = 0.0f;
@@ -787,6 +862,7 @@ int main(int argc, char *argv[])
                         int   my_mouth      = w.my_mouth;
 
                         dmap.want_portals = (n_cave_mouth >= 2) ? n_cave_mouth : 2;
+                        dmap.starter      = w.starter;
                         for (int m = 0; m < n_cave_mouth; m++) {
                             dmap.want_ox[m] = w.want_ox[m];
                             dmap.want_oy[m] = w.want_oy[m];
@@ -794,6 +870,9 @@ int main(int argc, char *argv[])
 
                         dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
                         current_dng_seed = w.seed;
+                        if (treasure_taken.count(current_dng_seed))
+                            for (int li = 0; li < dmap.num_loot; li++)
+                                if (dmap.loot[li].item >= 0) dmap.loot[li].collected = true;
                         {
                             auto exp_it = dungeon_explored_cache.find(current_dng_seed);
                             if (exp_it != dungeon_explored_cache.end())
@@ -854,10 +933,8 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open)
-                    crafting_open = !crafting_open;
 
-                if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open)
+                if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open && !menu.open)
                     map_open = !map_open;
 
                 if (map_open) {
@@ -913,6 +990,12 @@ int main(int argc, char *argv[])
                     HarvestResult dng_harvest = {};
                     dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, &cam, dbg_noclip, &dng_harvest);
                     floattext_spawn_from_harvest(&cur_float, &dng_harvest);
+                    if (dplayer.picked_item >= 0) {
+                        treasure_taken[current_dng_seed] = true;
+                        SDL_snprintf(pickup_buf, sizeof(pickup_buf), "GOT %s", item_name((Item)dplayer.picked_item));
+                        pickup_note   = pickup_buf;
+                        pickup_note_t = 2.5f;
+                    }
                 }
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
@@ -1210,10 +1293,8 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (input_pressed(&in, SDL_SCANCODE_TAB))
-                    crafting_open = !crafting_open;
 
-                if (input_pressed(&in, SDL_SCANCODE_M))
+                if (input_pressed(&in, SDL_SCANCODE_M) && !menu.open)
                     map_open = !map_open;
 
                 if (map_open) {
@@ -1230,7 +1311,7 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
+                if (!dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
                     dungeon_explored_cache[current_dng_seed].assign(
                         &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                     state = STATE_OVERWORLD;
@@ -1260,7 +1341,7 @@ int main(int argc, char *argv[])
                         return (pcx - te.x) * (pcx - te.x) + (pcy - te.y) * (pcy - te.y);
                     };
                     int hit = -1;
-                    for (int i = 0; i < 3; i++)
+                    for (int i = 0; i < 3 && imap.id == 0; i++)   // the starting house only
                         if (d2(test_enemies[i]) < 22.0f * 22.0f) hit = i;
                     if (hit < 0) {
                         test_armed = true;
@@ -1287,8 +1368,15 @@ int main(int argc, char *argv[])
                 SDL_RenderClear(plat.renderer);
 
                 interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
+
+                // The raft book, until it is taken.
+                int btx = 0, bty = 0;
+                bool book_here = player.raft_book == 0 && interior_book_spot(imap.id, &btx, &bty);
+                if (book_here)
+                    game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT_BOOK,
+                                        btx * IMAP_TILE, bty * IMAP_TILE, IMAP_TILE);
                 for (const TestEnemy& te : test_enemies) {
-                    if (pre_battle_timer >= 0.0f) break;   // the flashes draw them
+                    if (pre_battle_timer >= 0.0f || imap.id != 0) break;   // the flashes draw them; the starting house only
                     SDL_Rect cr = chaser_rect(&icam, te.x, te.y);
                     fc_draw_color(plat.renderer, 200, 30, 30, 255);
                     SDL_RenderFillRect(plat.renderer, &cr);
@@ -1315,10 +1403,40 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (!dbg_open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                // Standing by the book: take it. It teaches the raft, and
+                // stays in ITEMS as what the raft needs.
+                float fcx = iplayer.x + (HB_X1 + HB_X2) * 0.5f;
+                float fcy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
+                float bdx = fcx - (btx + 0.5f) * IMAP_TILE, bdy = fcy - (bty + 0.5f) * IMAP_TILE;
+                if (book_here && !iplayer.at_exit && bdx * bdx + bdy * bdy < 40.0f * 40.0f) {
+                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
+                    const char* lbl = "TAKE BOOK";
+                    draw_text(plat.renderer, lbl,
+                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        player.raft_book = 1;
+                        pickup_note   = "GOT RAFT BOOK";
+                        pickup_note_t = 2.0f;
+                        input_consume(&in, SDL_SCANCODE_Z);
+                        input_consume(&in, SDL_SCANCODE_RETURN);
+                        input_consume(&in, SDL_SCANCODE_SPACE);
+                    }
+                }
+
+                if (!dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
                     state = STATE_OVERWORLD;
                 break;
             }
+        }
+
+        // The answer to a pickup, at the foot of the screen, a moment.
+        if (pickup_note_t > 0.0f) {
+            pickup_note_t -= dt;
+            draw_nes_panel(plat.renderer, 0, 457, 640, 23);
+            draw_text(plat.renderer, pickup_note,
+                      (640 - text_width(pickup_note, 2)) / 2, 461, 2, 255, 255, 80);
         }
 
         // A scene change consumes the key that caused it. The prompts confirm on
@@ -1349,7 +1467,7 @@ int main(int argc, char *argv[])
                 stamina = battle_scene->hud_stamina();
                 foe     = battle_scene->hud_enemy();
             } else if (sw) {
-                float cd = weapon_cooldown_seconds(player.equipped_weapon);
+                float cd = weapon_cooldown_seconds(equipped_weapon(&player));
                 stamina = cd > 0.0f ? 1.0f - sw->tool_cd / cd : 1.0f;
             }
             if (stamina < 0.0f) stamina = 0.0f;
@@ -1419,61 +1537,8 @@ int main(int argc, char *argv[])
         }
 
         // ── Crafting menu overlay ─────────────────────────────────────────────
-        if (crafting_open && state != STATE_BATTLE) {
-            const int PW = 460, PH = 194;
-            const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
-
-            draw_nes_panel(plat.renderer, PX, PY, PW, PH);
-
-            draw_text(plat.renderer, "CRAFTING MENU",
-                      PX + (PW - text_width("CRAFTING MENU", 2)) / 2, PY + NES_PAD + 4, 2, 255, 255, 255);
-
-            fc_draw_color(plat.renderer, 255, 255, 255, 255);
-            SDL_Rect div1 = { PX + NES_PAD, PY + 36, PW - NES_PAD*2, 1 };
-            SDL_RenderFillRect(plat.renderer, &div1);
-
-            // ── Recipes row ───────────────────────────────────────────────────
-            draw_text(plat.renderer, "RECIPES", PX + NES_PAD + 2, PY + 44, 1, 255, 255, 255);
-            draw_text(plat.renderer, "COMING SOON...", PX + NES_PAD + 2, PY + 58, 1, 100, 100, 100);
-
-            fc_draw_color(plat.renderer, 255, 255, 255, 255);
-            SDL_Rect div2 = { PX + NES_PAD, PY + 106, PW - NES_PAD*2, 1 };
-            SDL_RenderFillRect(plat.renderer, &div2);
-
-            // ── Collectibles row ──────────────────────────────────────────────
-            draw_text(plat.renderer, "COLLECTIBLES", PX + NES_PAD + 2, PY + 114, 1, 255, 255, 255);
-            {
-                char buf[32];
-                int rx = PX + NES_PAD + 2;
-                SDL_snprintf(buf, sizeof(buf), "FLOWER: %d", player.inventory[2]);
-                draw_text(plat.renderer, buf, rx, PY + 128, 1, 255, 180, 220);
-                rx += text_width(buf, 1) + 16;
-                SDL_snprintf(buf, sizeof(buf), "GRAVESTONE: %d", player.inventory[4]);
-                draw_text(plat.renderer, buf, rx, PY + 128, 1, 160, 160, 180);
-
-                // Monster parts from battle, on the line below.
-                rx = PX + NES_PAD + 2;
-                {
-                    static const int   res_idx[] = { 0, 1, 3 };
-                    static const char* res_lbl[] = { "WOOD", "STONE", "GOLD" };
-                    static const Uint8 res_rgb[3][3] = { {180,120,60}, {160,160,160}, {255,210,40} };
-                    int wx = PX + NES_PAD + 2;
-                    for (int ri = 0; ri < 3; ri++) {
-                        SDL_snprintf(buf, sizeof(buf), "%s: %d", res_lbl[ri], player.inventory[res_idx[ri]]);
-                        draw_text(plat.renderer, buf, wx, PY + 156, 1, res_rgb[ri][0], res_rgb[ri][1], res_rgb[ri][2]);
-                        wx += text_width(buf, 1) + 16;
-                    }
-                }
-                for (int pi = 0; pi < PART_COUNT; pi++) {
-                    SDL_snprintf(buf, sizeof(buf), "%s: %d", part_name(pi), player.parts[pi]);
-                    draw_text(plat.renderer, buf, rx, PY + 142, 1, 220, 200, 160);
-                    rx += text_width(buf, 1) + 16;
-                }
-            }
-
-            draw_text(plat.renderer, "[TAB] CLOSE",
-                      PX + (PW - text_width("[TAB] CLOSE", 1)) / 2, PY + PH - 16, 1, 100, 100, 100);
-        }
+        // ── The TAB menu (src/game_menu.cpp) ─────────────────────────────────
+        if (state != STATE_BATTLE) game_menu_draw(&menu, &player, plat.renderer);
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
@@ -1482,7 +1547,7 @@ int main(int argc, char *argv[])
             // at scale 2 = 464px, which needs 24px of indent and a margin on
             // top of it. text_width() is exact (8px per char per scale step),
             // so this is arithmetic rather than a guess.
-            const int MX = 70, MY = 130, MW = 500, MH = 226;
+            const int MX = 70, MY = 130, MW = 500, MH = 270;
             const int LH = 22;  // line height
 
             draw_nes_panel(plat.renderer, MX, MY, MW, MH);
@@ -1545,7 +1610,7 @@ int main(int argc, char *argv[])
             {
                 char wbuf[64];
                 SDL_snprintf(wbuf, sizeof(wbuf), "WEAPON: < %s >",
-                             weapon_name(player.equipped_weapon));
+                             weapon_name(equipped_weapon(&player).type));
                 draw_row(5, wbuf, dbg_sel == 5);
             }
 
@@ -1564,6 +1629,18 @@ int main(int argc, char *argv[])
                              map->wrap_axis == WRAP_X ? "E-W" : "N-S");
                 draw_row(7, sb, dbg_sel == 7);
             }
+
+            // Row 8: what the equipped weapon is made of
+            {
+                char obuf[64];
+                SDL_snprintf(obuf, sizeof(obuf), "ORE: < %s >",
+                             material_name(equipped_weapon(&player).material));
+                SDL_strupr(obuf);   // the menu font has capitals only
+                draw_row(8, obuf, dbg_sel == 8);
+            }
+
+            // Row 9: give all
+            draw_row(9, "GIVE ALL", dbg_sel == 9);
 
             draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",
                       MX + 6, MY + MH - 16, 1, 180, 180, 180);
@@ -1643,6 +1720,7 @@ int main(int argc, char *argv[])
     }
 
     tilemap_cancel_gen();
+    game_menu_free(&menu);
     gen_thread.join();
     delete battle_scene;
     delete map;

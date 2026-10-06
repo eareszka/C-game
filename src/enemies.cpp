@@ -212,20 +212,63 @@ public:
     }
 };
 
+// Crested, rooster-like bird.
+// Phase 1, Peck: bursts of 4 quick shots down one line, aimed when the burst
+//   starts and then locked -- one step aside clears it, if you take it in time.
+// Phase 2 (half HP), Peck & Flap: bursts of 5, then a wing beat throws an arc
+//   of feathers out to each side, leaving the middle lane -- where the pecks
+//   come -- as the only room to move -- and it takes off on that beat, flying
+//   to a new perch across the top before the next burst.
 class Qique : public Enemy {
+    static constexpr float FLY_T = 0.7f;   // seconds in the air; lands before the next burst
+    int   shot  = 0;       // shots fired; a cycle is a burst, plus a flap in phase 2
+    float lock  = 0.0f;    // this burst's aim
+    float fly_t = -1.0f;   // seconds into a flight; -1 = perched
+    float fx0 = 0.0f, fy0 = 0.0f, fx1 = 0.0f, fy1 = 0.0f;
+
+    int cycle() const { return ENRAGED ? 6 : 4; }   // phase 2: 5 pecks + 1 flap
 public:
-    Qique() : Enemy(320, 160, 24, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
+    Qique() : Enemy(320, 160, 360, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
     const char* name()          const override { return "QIQUE"; }
-    float       fire_interval() const override { return ENRAGED ? 0.7f : 1.0f; }
+    // Quick within a burst, a breath between bursts.
+    float fire_interval() const override {
+        return shot % cycle() == 0 ? (ENRAGED ? 0.8f : 0.9f) : 0.08f;
+    }
+    float flap_phase() const override { return fly_t < 0.0f ? -1.0f : fly_t / FLY_T; }
+    // A flight eases out and in along a raised arc: a flap's lift, a glide down.
+    void update(float dt, float, float) override {
+        if (fly_t < 0.0f) return;
+        fly_t += dt;
+        float k = fly_t / FLY_T;
+        if (k >= 1.0f) { k = 1.0f; fly_t = -1.0f; }
+        float e = k * k * (3.0f - 2.0f * k);
+        x = fx0 + (fx1 - fx0) * e;
+        y = fy0 + (fy1 - fy0) * e - 30.0f * sinf(PI * k);
+    }
     int fire(float px, float py, BulletSpawn out[], int) override {
         float a = aim_at(x,y,px,py);
-        if (ENRAGED) {
-            out[0] = mk(a - 0.28f, 190.0f, 3.5f, 0.9f);
-            out[1] = mk(a,         190.0f, 3.5f, 1.0f);
-            out[2] = mk(a + 0.28f, 190.0f, 3.5f, 0.9f);
-            return 3;
+        int k = shot++ % cycle();
+        if (k == 0) lock = a;
+        if (ENRAGED && k == 5) {
+            // Take off: a short hop to a new perch, 50-180 to either side
+            // (turning back at the arena's edges) and up to 40 up or down.
+            fly_t = 0.0f;
+            fx0 = x; fy0 = y;
+            float dx = (50.0f + ernd() * 130.0f) * (ernd() < 0.5f ? -1.0f : 1.0f);
+            if (x + dx < 140.0f || x + dx > 500.0f) dx = -dx;
+            fx1 = x + dx;
+            fy1 = y + (ernd() * 2.0f - 1.0f) * 40.0f;
+            if (fy1 < 120.0f) fy1 = 120.0f;
+            if (fy1 > 200.0f) fy1 = 200.0f;
+            // Flap: 7 feathers each side, centred 1 radian off the aim, so
+            // the lane within about 0.6 of it stays open.
+            int n = 0;
+            for (int side = -1; side <= 1; side += 2)
+                for (int i = -3; i <= 3; i++)
+                    out[n++] = mk(a + side * 1.0f + i * 0.12f, 150.0f, 2.5f, 5.0f);
+            return n;
         }
-        out[0] = mk(a, 160.0f, 3.5f, 0.8f);
+        out[0] = mk(lock, 230.0f, 2.5f, 5.0f);
         return 1;
     }
 };
@@ -1224,7 +1267,8 @@ public:
 
 class Physeter : public Enemy {
 public:
-    Physeter() : Enemy(320, 171, 650, {0.75f,0.75f,1.0f,1.0f,1.5f,1.25f,1.25f}) {}
+    // TESTING: a million HP, a punching bag for weapon tests. Was 650.
+    Physeter() : Enemy(320, 171, 1000000, {0.75f,0.75f,1.0f,1.0f,1.5f,1.25f,1.25f}) {}
     const char* name()          const override { return "PHYSETER"; }
     float       fire_interval() const override { return ENRAGED ? 1.7f : 2.5f; }
     int fire(float px, float py, BulletSpawn out[], int) override {
@@ -1307,9 +1351,11 @@ Enemy* enemy_create(int id) {
 }
 
 // What each enemy drops, by id: fur and feather give hide, shell, scale and
-// stone give bone, spirits and omens give essence.
+// stone give bone, spirits and omens give essence. The Treesqueak, a tree
+// creature met on the starting island, gives vine -- the lashing for the raft
+// that is the way off it.
 static const MonsterPart ENEMY_PARTS[] = {
-    PART_HIDE,    PART_HIDE,    PART_HIDE,    PART_HIDE,    PART_HIDE,      //  0-4
+    PART_HIDE,    PART_HIDE,    PART_VINE,    PART_HIDE,    PART_HIDE,      //  0-4
     PART_BONE,    PART_HIDE,    PART_ESSENCE, PART_HIDE,    PART_BONE,      //  5-9
     PART_BONE,    PART_HIDE,    PART_BONE,    PART_HIDE,    PART_BONE,      // 10-14
     PART_BONE,    PART_ESSENCE, PART_ESSENCE, PART_BONE,    PART_BONE,      // 15-19
@@ -1328,6 +1374,7 @@ static const Uint8 ENEMY_BULLET_RGB[][3] = {
     { 252, 152,  56 },   //  0 Skvader: orange, its gold-brown fur brightened
     { 236, 132, 118 },   //  1 Wolpertinger: salmon, its red wings
     {  78, 220,  74 },   //  2 Treesqueak: green, its leaf marks
+    { 182, 156, 238 },   //  3 Qique: lavender, its dark purple plumage
 };
 
 SDL_Color enemy_bullet_color(int id) {

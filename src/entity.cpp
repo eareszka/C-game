@@ -105,6 +105,7 @@ const char* part_name(int part)
         case PART_HIDE:    return "HIDE";
         case PART_BONE:    return "BONE";
         case PART_ESSENCE: return "ESSENCE";
+        case PART_VINE:    return "VINE";
         default:           return "?";
     }
 }

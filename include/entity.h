@@ -35,10 +35,33 @@ enum WeaponType {
     WEAPON_COUNT   // keep last — number of weapons, not a weapon
 };
 
+// A weapon is a shape and what it is made of. The shape decides how it moves
+// (sweep, thrust, throw, fire rate); the material decides how hard it hits.
+// The upgrade levels are bought in the crafting menu (src/crafting.cpp) and
+// stay with the weapon when it is re-forged in another ore.
+struct Weapon {
+    WeaponType type;
+    Material   material;
+    int        oil  = 0;   // oilbloom oil: each level a shorter cooldown
+    int        echo = 0;   // essence: each level one more shot a volley
+};
+
+enum { WEAPON_OIL_MAX = 10, WEAPON_ECHO_MAX = 2 };
+
+// The cooldown multiplier oil gives on the map: 30% shorter at the top,
+// spread over the levels. The swings there are animations with lengths of
+// their own, so this stays gentle; in battle oil does far more -- see
+// faster_fire_rate (include/battle.h).
+inline float weapon_cooldown_mult(const Weapon& w) { return 1.0f - 0.3f * w.oil / WEAPON_OIL_MAX; }
+
+// How hard a material hits, as a multiple of stone: +50% per rung, so a
+// reality-shard weapon strikes four times as hard as the same one in stone.
+// Scales battle damage and, rounded, the blows a resource node takes.
+inline float material_power(Material m) { return 1.0f + 0.5f * (int)m; }
+
 // ── Harvesting ──────────────────────────────────────────────────────────────
-// Axe and scythe fell a tree in a single swing; everything else chips one point
-// off at a time. Non-tree nodes are unaffected, so rock and ore still take the
-// same work with any weapon.
+// Axe and scythe fell a tree in a single swing; otherwise a blow chips off
+// material_power() rounded: 1 for stone up to 4 for reality shard.
 // What a swing is landing on. Resource nodes and overlay tiles are separate
 // type systems, so both map onto this and the damage rules live in one place.
 typedef enum HarvestTarget {
@@ -48,13 +71,13 @@ typedef enum HarvestTarget {
     HARVEST_OTHER,   // gravestones, flowers — no shortcut applies
 } HarvestTarget;
 
-inline int weapon_harvest_damage(WeaponType w, HarvestTarget t) {
+inline int weapon_harvest_damage(Weapon w, HarvestTarget t) {
     if (t == HARVEST_OTHER) return 1;
     // The scythe goes through tree, rock and ore alike in a single pass — that
     // is what makes it the farming tool. The axe only fells trees outright.
-    if (w == WEAPON_SCYTHE) return 9999;
-    if (w == WEAPON_AXE && t == HARVEST_TREE) return 9999;
-    return 1;
+    if (w.type == WEAPON_SCYTHE) return 9999;
+    if (w.type == WEAPON_AXE && t == HARVEST_TREE) return 9999;
+    return (int)(material_power(w.material) + 0.5f);
 }
 
 // Some weapons swing as a travelling blade rather than striking one thing:
@@ -198,9 +221,13 @@ typedef struct {
     int exp; //total or gained after ene killed
 } Stats;
 
+// How many kinds of thing a map node yields (ResourceType, which lives in
+// resource_node.h because it includes this file).
+enum { INVENTORY_SLOTS = 6 };
+
 // Crafting materials enemies drop in battle -- a separate list from
 // ResourceType, which is the kinds of node on the map.
-enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_COUNT };
+enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_VINE, PART_COUNT };
 
 // Display name, e.g. "HIDE": one list for the battle panel and the menus.
 const char* part_name(int part);
@@ -221,13 +248,36 @@ typedef struct {
     int   last_hdir;        // -1=left, +1=right
     int   last_vdir;        // -1=up,   +1=down
 
-    // Inventory: counts indexed by ResourceType enum (TREE=0, ROCK=1, FLOWER=2, GOLD=3, GRAVESTONE=4)
-    int   inventory[5];
+    // Inventory: counts indexed by ResourceType (include/resource_node.h,
+    // which checks it has exactly this many).
+    int   inventory[INVENTORY_SLOTS];
     // Monster parts from battle drops, indexed by MonsterPart.
     int   parts[PART_COUNT];
+    // Ore mined in caves, by Material. Stone is not kept here: it is the
+    // ROCK inventory slot -- read both through ore_count().
+    int   ore[MAT_COUNT];
+    // The raft and the book that teaches it (src/crafting.cpp): counts, as
+    // every other item, though one of each is all there is.
+    int   raft_book;
+    int   raft;
+    // The weapons' special parts, found once each in their dungeons (old
+    // spearhead, moon steel, reaper's edge), and the books that teach the
+    // axe, katana and scythe -- crafting.h's ITEM_* order.
+    int   treasures[3];
+    int   books[3];
+    // Every item ever held, a bit per Item (include/crafting.h): what makes a
+    // drop NEW on the victory panel. See items_note_gains().
+    unsigned items_found;
 
-    WeaponType equipped_weapon;
+    // Every weapon the player could own, one per shape; owned[] says which
+    // they have. equipped is the one in hand -- read it via equipped_weapon().
+    Weapon     arsenal[WEAPON_COUNT];
+    bool       owned[WEAPON_COUNT];
+    WeaponType equipped;
 } Player;
+
+inline Weapon&       equipped_weapon(Player* p)       { return p->arsenal[p->equipped]; }
+inline const Weapon& equipped_weapon(const Player* p) { return p->arsenal[p->equipped]; }
 
 // The eight ways the player can face. Each value is that direction's idle frame
 // on the map sheet (assets/player_small.png). Down, up and the four diagonals
@@ -266,6 +316,8 @@ void player_animate(Player* player, float dt, float anim_speed);
 constexpr float PLAYER_WALK_SPEED = 120.0f;
 constexpr float PLAYER_RUN_SPEED  = 240.0f;
 constexpr float PLAYER_CROUCH_SPEED = 60.0f;
+// How fast the raft carries the player, a steady glide between walk and run.
+constexpr float RAFT_SPEED = 180.0f;
 
 // Health comes in bars of this much, Zelda II style: the HUD meter has one
 // segment per bar, and a hit in battle always costs whole bars.

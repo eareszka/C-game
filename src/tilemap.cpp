@@ -439,7 +439,12 @@ struct EntranceArt {
     char at(int cx, int cy) const { return role[cy * w + cx]; }
     bool has(int cx, int cy) const { return at(cx, cy) != '.'; }
 };
+// The starting town's houses are entrance art too (gen_entrance_art.py
+// HOUSES), so the feet meet them to the pixel; a kind no worldgen picks,
+// stamped by stamp_town_blueprint from town_houses.inc.
+enum { TOWN_HOUSE = -1 };
 #include "entrance_art.inc"
+#include "town_houses.inc"
 const ArtCellDepth* tilemap_art_depth(int id) {
     int rel = id - TILE_TOWN0_BASE - ART_BAND_ROW0 * TOWN0_SHEET_COLS;
     if (rel < 0 || rel >= ART_BAND_ROWS * TOWN0_SHEET_COLS || !ART_CELL_AT[rel]) return nullptr;
@@ -1685,11 +1690,6 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
             } else if (val == 4) { tile = TILE_WATER;
             } else if (val >= 6) {
                 tile = TILE_TOWN0_BASE + (val - 6);
-                // Left door tile of a building sprite → register an interior door.
-                // val 1288: stone house (2-wide door), val 1294: white house.
-                int interior_id = (val == 1288) ? 0 : (val == 1294) ? 1 : -1;
-                if (interior_id >= 0 && map->num_doors < MAX_INTERIOR_DOORS)
-                    map->doors[map->num_doors++] = { wx, wy, 2, interior_id };
             }
             if (tile < 0) continue;
             map->tiles[wy][wx]   = tile;
@@ -1722,6 +1722,20 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
             if (c == '#') map->depth_layer[wy][wx] = 1;
         }
     }
+    // The starting town's houses: their art into the overlay, cell by cell,
+    // as an entrance's is, and each door to its own room.
+    if (town_idx == 0)
+        for (const TownHouse& h : TOWN_HOUSES) {
+            for (int cy = 0; cy < h.h; cy++)
+                for (int cx = 0; cx < h.w; cx++) {
+                    int id = TILE_TOWN0_BASE + (h.row + cy) * TOWN0_SHEET_COLS + h.col + cx;
+                    int wx = tx + h.x + cx, wy = ty + h.y + cy;
+                    if (entrance_art_role(id) == ART_NONE || !in_bounds(wx, wy)) continue;
+                    map->overlay[wy][wx] = id;
+                }
+            if (map->num_doors < MAX_INTERIOR_DOORS)
+                map->doors[map->num_doors++] = { tx + h.door_x, ty + h.door_y, h.door_w, h.interior };
+        }
     map->towns[town_idx] = { tx, ty, town_idx };
 }
 
@@ -1945,10 +1959,13 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     }
 
     // Fixed graveyard dungeon — world pixel (46816, 47082), tile (1463, 1471).
-    // Stamped in phase 1 so it's visible immediately on load.
+    // Recorded in phase 1, but its mouth is not stamped: like every small
+    // graveyard it lies hidden under the ground until the gravestone over it
+    // is broken (tilemap_spawn_graveyard_nodes puts that stone there, and its
+    // reveal stamps the tile). Stamping it here drew the open mouth under and
+    // around the stone that was meant to hide it.
     {
-        const int gx = 1463, gy = 1471;
-        map->tiles[gy][gx]   = TILE_DUNGEON_GRAVEYARD_SM;
+        const int gx = DNG_FIXED_GRAVE_X, gy = DNG_FIXED_GRAVE_Y;
         map->overlay[gy][gx] = 0;
         float gdx = (float)(gx - MAP_WIDTH  / 2);
         float gdy = (float)(gy - MAP_HEIGHT / 2);
@@ -5575,6 +5592,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         auto pairable = [&](int idx) {
             const DungeonEntrance* e = &map->dungeon_entrances[idx];
+            if (dungeon_is_starter(e)) return false;   // by name, not only by distance
             if (near_start(e)) return false;
             if (system_mouths[idx] >= 2) return false;
             return true;
@@ -7858,7 +7876,7 @@ static int tile_award(int t) {
 }
 
 // Strike one tile. Returns 1 if it was destroyed.
-static int tilemap_strike(Tilemap* map, int tx, int ty, WeaponType weapon, HarvestResult* out) {
+static int tilemap_strike(Tilemap* map, int tx, int ty, Weapon weapon, HarvestResult* out) {
     int t = map->overlay[ty][tx];
     uint32_t key = tile_key(tx, ty);
 
@@ -7910,7 +7928,7 @@ static bool harvestable_at(const Tilemap* map, int ux, int uy, int* tx, int* ty)
 
 int tilemap_sweep(Tilemap* map, float px, float py, float radius,
                   float start_ang, float rel0, float rel1,
-                  WeaponType weapon, HarvestResult* out) {
+                  Weapon weapon, HarvestResult* out) {
     int tx0, ty0, tx1, ty1;
     tile_box(px, py, (int)radius, &tx0, &ty0, &tx1, &ty1);
 
@@ -7956,7 +7974,7 @@ float tilemap_first_along(const Tilemap* map, float px, float py,
 
 int tilemap_thrust(Tilemap* map, float px, float py, float angle,
                    float half_width, float from, float to,
-                   WeaponType weapon, HarvestResult* out) {
+                   Weapon weapon, HarvestResult* out) {
     int tx0, ty0, tx1, ty1;
     tile_box(px, py, (int)to + TILE_SIZE, &tx0, &ty0, &tx1, &ty1);
 
@@ -7979,7 +7997,7 @@ int tilemap_thrust(Tilemap* map, float px, float py, float angle,
 }
 
 int tilemap_strike_point(Tilemap* map, float x, float y,
-                         WeaponType weapon, HarvestResult* out) {
+                         Weapon weapon, HarvestResult* out) {
     int tx, ty;
     if (!harvestable_at(map, (int)floorf(x / TILE_SIZE), (int)floorf(y / TILE_SIZE), &tx, &ty))
         return 0;
@@ -7988,13 +8006,13 @@ int tilemap_strike_point(Tilemap* map, float x, float y,
 }
 
 int tilemap_try_hit(Tilemap* map, float px, float py, int range,
-                    WeaponType weapon, HarvestResult* out) {
+                    Weapon weapon, HarvestResult* out) {
     int tx0, ty0, tx1, ty1;
     tile_box(px, py, range, &tx0, &ty0, &tx1, &ty1);
 
     // A sweeping weapon takes everything in the box; anything else takes only
     // the nearest tile, which is the original single-target behaviour.
-    if (weapon_sweeps(weapon)) {
+    if (weapon_sweeps(weapon.type)) {
         int struck = 0;
         for (int uy = ty0; uy <= ty1; uy++) {
             for (int ux = tx0; ux <= tx1; ux++) {
@@ -8183,6 +8201,16 @@ static int field_owner_at(const Tilemap* map, int tx, int ty, float px, float py
     return owner;
 }
 
+bool tilemap_pixel_water(const Tilemap* map, float px, float py) {
+    px = wrap_px(px);
+    py = wrap_py(py);
+    int tx = (int)floorf(px / TILE_SIZE);
+    int ty = (int)floorf(py / TILE_SIZE);
+    if (!in_bounds(tx, ty)) return false;
+    int owner = field_owner_at(map, tx, ty, px, py);
+    return owner >= 0 && (owner == OASIS_BIOME || s_biomes[owner].cover == &COVER_WATER);
+}
+
 bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     const Tilemap* map = static_cast<const Tilemap*>(vmap);
     // Canonical first: the hitbox's samples run over the seam as the player
@@ -8333,6 +8361,44 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         resource_nodes_add_gravestone(resources, wx, wy, 0, 0, -1, -1);
         placed++;
     }
+}
+
+bool tilemap_spawn_oilbloom(Tilemap* map, ResourceNodeList* resources, unsigned int seed,
+                            int site, float px, float py) {
+    unsigned int rng = (seed ^ 0x0B100Du) + (unsigned int)site * 2654435761u;
+    rng = rng * 1664525u + 1013904223u;
+    int sx = (int)((rng >> 8) % MAP_WIDTH);
+    rng = rng * 1664525u + 1013904223u;
+    int sy = (int)((rng >> 8) % MAP_HEIGHT);
+
+    const float RANGE = 1000.0f;   // pixels, as the graveyards
+    float dx = wrap_dpx(px - (sx + 0.5f) * TILE_SIZE), dy = wrap_dpy(py - (sy + 0.5f) * TILE_SIZE);
+    if (dx * dx + dy * dy > RANGE * RANGE) return false;
+
+    // Rings outward from the point: the first open meadow wins, else the
+    // first open grass seen on the way.
+    const int SEARCH = 12;
+    int gx = -1, gy = -1;
+    for (int r = 0; r <= SEARCH; r++)
+        for (int oy = -r; oy <= r; oy++)
+            for (int ox = -r; ox <= r; ox++) {
+                if (abs(ox) != r && abs(oy) != r) continue;   // this ring only
+                int tx = sx + ox, ty = sy + oy;
+                if (!in_world(&tx, &ty)) continue;
+                int base = map->tiles[ty][tx];
+                if (base != TILE_MEADOW && base != TILE_GRASS) continue;
+                if (map->overlay[ty][tx] || !tilemap_is_walkable(map, tx, ty)) continue;
+                if (!overlay_site_dry(map, tx, ty) || tile_is_route(map, tx, ty)) continue;
+                if (base == TILE_MEADOW) {
+                    resource_nodes_add(resources, RESOURCE_OILBLOOM,
+                                       (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE));
+                    return true;
+                }
+                if (gx < 0) { gx = tx; gy = ty; }
+            }
+    if (gx >= 0)
+        resource_nodes_add(resources, RESOURCE_OILBLOOM, (float)(gx * TILE_SIZE), (float)(gy * TILE_SIZE));
+    return true;
 }
 
 void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,

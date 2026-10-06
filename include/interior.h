@@ -7,7 +7,8 @@
 #include "input.h"
 
 // Single-screen building interiors: 20x15 tiles of 32px fills 640x480 exactly,
-// so no camera/scrolling is needed. Layouts are hand-authored ASCII blueprints.
+// so no camera/scrolling is needed. Each building on the starting island has
+// its own, drawn (art/structures/interiors) and packed into interiors.h.
 
 #define IMAP_W    20
 #define IMAP_H    15
@@ -36,6 +37,9 @@ struct InteriorPlayer {
 };
 
 void interior_load(InteriorMap* im, int interior_id);
+// Where a room keeps the raft book, as a tile: the book shop, on its counter.
+// False for a room without one.
+bool interior_book_spot(int interior_id, int* tx, int* ty);
 // Whether the player, their sprite's top-left at (x, y), can stand there.
 bool interior_feet_fit(const InteriorMap* im, float x, float y);
 void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap* im);

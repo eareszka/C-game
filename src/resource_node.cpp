@@ -37,6 +37,8 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
         case RESOURCE_FLOWER:      n->hp = 1; break;
         case RESOURCE_GOLD:        n->hp = 5; break;
         case RESOURCE_GRAVESTONE:  n->hp = 2; break;
+        case RESOURCE_OILBLOOM:    n->hp = 1; break;
+        default:                   n->hp = 1; break;
     }
 }
 
@@ -64,6 +66,8 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
         case RESOURCE_FLOWER:     fc_draw_color(ren, 100,   0, 120, 255); break;
         case RESOURCE_GOLD:       fc_draw_color(ren,  60,  55,  50, 255); break;
         case RESOURCE_GRAVESTONE: fc_draw_color(ren,  55,  55,  60, 255); break;
+        case RESOURCE_OILBLOOM:   fc_draw_color(ren, 150, 100,  20, 255); break;   // placeholder until its art
+        default: break;
     }
     SDL_Rect bg = { screen_x, screen_y, w, h };
     SDL_RenderFillRect(ren, &bg);
@@ -119,7 +123,8 @@ static void draw_resource_ascii(SDL_Renderer* ren, int screen_x, int screen_y,
             SDL_RenderFillRect(ren, &ch);
             break;
         }
-        case RESOURCE_FLOWER: {
+        case RESOURCE_FLOWER:
+        case RESOURCE_OILBLOOM: {
             // '*' — center dot + 4 petals
             SDL_Rect dot = { cx - t, cy - t, t * 2, t * 2 };
             SDL_RenderFillRect(ren, &dot);
@@ -240,7 +245,18 @@ static int node_award(ResourceType t)
         case RESOURCE_ROCK:       return (int)RESOURCE_ROCK;
         case RESOURCE_GOLD:       return (int)RESOURCE_GOLD;
         case RESOURCE_GRAVESTONE: return (int)RESOURCE_ROCK;  // gravestones give rock
+        case RESOURCE_OILBLOOM:   return (int)RESOURCE_OILBLOOM;
         default:                  return -1;
+    }
+}
+
+int harvest_yield(int resource)
+{
+    switch (resource) {
+        case RESOURCE_TREE: return 3;
+        case RESOURCE_ROCK: return 3;
+        case RESOURCE_GOLD: return 5;
+        default:            return 1;
     }
 }
 
@@ -268,7 +284,7 @@ static HarvestTarget node_target(ResourceType t)
 }
 
 // One blow: its damage, and the shake it starts. Returns 1 if it finished the node.
-static int node_hit(ResourceNode* n, WeaponType weapon) {
+static int node_hit(ResourceNode* n, Weapon weapon) {
     n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
     n->hit_at = SDL_GetPerformanceCounter();
     if (n->hp <= 0) { n->alive = 0; return 1; }
@@ -277,7 +293,7 @@ static int node_hit(ResourceNode* n, WeaponType weapon) {
 
 int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
                          float radius, float start_ang, float rel0, float rel1,
-                         WeaponType weapon, HarvestResult* out)
+                         Weapon weapon, HarvestResult* out)
 {
     int struck = 0;
     for (int i = 0; i < list->count; i++)
@@ -332,7 +348,7 @@ float resource_nodes_first_along(const ResourceNodeList* list, float px, float p
 
 int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
                           float half_width, float from, float to,
-                          WeaponType weapon, HarvestResult* out)
+                          Weapon weapon, HarvestResult* out)
 {
     int struck = 0;
     for (int i = 0; i < list->count; i++) {
@@ -356,7 +372,7 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
 }
 
 int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float radius,
-                                WeaponType weapon, HarvestResult* out)
+                                Weapon weapon, HarvestResult* out)
 {
     for (int i = 0; i < list->count; i++) {
         ResourceNode* n = &list->nodes[i];
@@ -377,9 +393,9 @@ int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float 
 }
 
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y,
-                           int range, WeaponType weapon, HarvestResult* out)
+                           int range, Weapon weapon, HarvestResult* out)
 {
-    const bool sweep = weapon_sweeps(weapon);
+    const bool sweep = weapon_sweeps(weapon.type);
     int struck = 0;
 
     for (int i = 0; i < list->count; i++)

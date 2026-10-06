@@ -21,7 +21,7 @@ struct ThrownObject {
     int        live = 0;
     float      x = 0.0f, y = 0.0f;
     float      dx = 0.0f, dy = 0.0f;   // unit direction
-    WeaponType weapon = WEAPON_KNIFE;
+    Weapon     weapon = {};
     unsigned   seq = 0;                // launch order: the oldest gives way if all are flying
 };
 
@@ -33,9 +33,14 @@ struct WeaponSwingState {
     float      swing_t      = -1.0f;   // seconds into the current swing; -1 = idle
     float      swing_angle  = 0.0f;    // sweep: starting bearing. thrust: direction.
     float      swing_len    = 0.0f;    // thrust only: how far this one drives
-    WeaponType swing_weapon = WEAPON_KNIFE;
+    Weapon     swing_weapon = {};
 
     float      freeze_t     = 0.0f;    // seconds left rooted by a heavy weapon's swing
+
+    // The knife, club and dagger strike at once, with nothing travelling; this
+    // is the short swing of the weapon drawn for it, -1 when there is none.
+    float      slash_t      = -1.0f;
+    float      slash_angle  = 0.0f;    // the bearing it swings across
 
     ThrownObject thrown[MAX_THROWN];   // every thrown object in flight
     unsigned     throw_seq = 0;        // launches so far
@@ -45,7 +50,10 @@ struct WeaponSwingState {
 // their own animation as the cooldown and throws scale the fire rate, so this is
 // the one place that resolves it -- the swing and any HUD bar both read it, which
 // is what stops the bar from describing a cooldown the weapon doesn't have.
-float weapon_cooldown_seconds(WeaponType w);
+// Oil on the weapon shortens it (weapon_cooldown_mult).
+float weapon_cooldown_seconds(const Weapon& weapon);
+// The same for the shape alone, before oil.
+float weapon_shape_cooldown(WeaponType w);
 
 // Bearing the player is looking, one of eight (see Facing in entity.h).
 // World y grows downward, so down is +PI/2 and up is -PI/2.
@@ -61,10 +69,11 @@ float facing_angle(int facing);
 //
 // out must not be null: pass a scratch HarvestResult if the caller has no use
 // for the result itself. Every hit this frame is appended to it, and this
-// call also credits player->inventory for each one before returning.
+// call also credits the player for everything that broke before returning --
+// rock as ore of cave_ore (a Material) in a cave, or -1 outside one.
 void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, float dt,
                          float hx, float hy, ResourceNodeList* resources, Tilemap* tiles,
-                         const Camera* cam, bool attack_blocked, HarvestResult* out);
+                         const Camera* cam, bool attack_blocked, int cave_ore, HarvestResult* out);
 
 // Ticks freeze_t down by dt if a heavy swing is still rooting the player, and
 // reports whether movement should be suppressed this frame. Callers that read

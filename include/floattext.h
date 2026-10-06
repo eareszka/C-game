@@ -18,7 +18,7 @@ struct FloatText {
     int   count = 0;
 };
 
-void floattext_spawn(FloatText* ft, float wx, float wy, Uint8 r, Uint8 g, Uint8 b);
+void floattext_spawn(FloatText* ft, float wx, float wy, int amount, Uint8 r, Uint8 g, Uint8 b);
 
 // Feeds every resource hit in a HarvestResult through floattext_spawn(),
 // picking the popup colour by ResourceType -- the one place both the

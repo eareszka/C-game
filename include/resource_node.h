@@ -14,7 +14,22 @@ typedef enum ResourceType
     RESOURCE_FLOWER,
     RESOURCE_GOLD,
     RESOURCE_GRAVESTONE,
+    RESOURCE_OILBLOOM,    // the rare flower whose oil quickens a weapon
+    RESOURCE_COUNT        // keep last -- number of types, not a type
 } ResourceType;
+
+static_assert(RESOURCE_COUNT == INVENTORY_SLOTS, "Player::inventory has a slot per ResourceType");
+
+// How much of a resource one finished node or tile pays. Paid when it breaks,
+// not per blow, so a weapon that breaks things in fewer blows -- a better
+// ore -- never brings home less.
+int harvest_yield(int resource);
+
+// The player's count of an ore. Stone is the ROCK slot itself: overworld rock
+// and stone-cave rock are one material, forged into stone weapons.
+inline int& ore_count(Player* p, Material m) {
+    return m == MAT_STONE ? p->inventory[RESOURCE_ROCK] : p->ore[m];
+}
 
 typedef struct ResourceNode
 {
@@ -79,14 +94,14 @@ bool harvest_any_destroyed(const HarvestResult* r);
 // each node takes and whether every node in range is struck or only the first.
 // Appends to *out. Returns the number of nodes struck this call.
 int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_y,
-                           int range, WeaponType weapon, HarvestResult* out);
+                           int range, Weapon weapon, HarvestResult* out);
 
 // Strike nodes the blade crossed this frame: those within `radius` whose
 // bearing from the player falls in [rel0, rel1) measured clockwise from
 // `start_ang`. Each node is therefore struck once per turn of the blade.
 int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
                          float radius, float start_ang, float rel0, float rel1,
-                         WeaponType weapon, HarvestResult* out);
+                         Weapon weapon, HarvestResult* out);
 
 // Bearing of (x,y) from the player, folded to [0, 2PI) clockwise from start_ang.
 // Shared with the tile sweep so both agree on where the blade is.
@@ -106,12 +121,12 @@ float resource_nodes_first_along(const ResourceNodeList* list, float px, float p
 // the sweep — each node is struck once per thrust however the frames land.
 int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
                           float half_width, float from, float to,
-                          WeaponType weapon, HarvestResult* out);
+                          Weapon weapon, HarvestResult* out);
 
 // Strike the first node overlapping a point — used by thrown objects, which
 // stop at whatever they meet. Returns 1 if something was struck.
 int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float radius,
-                                WeaponType weapon, HarvestResult* out);
+                                Weapon weapon, HarvestResult* out);
 // TileSolidFn-compatible: returns true if (px,py) is inside any alive node -- for a
 // gravestone, only on the ground its plinth stands on.
 bool resource_node_solid(const void* list, float px, float py);

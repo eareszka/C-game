@@ -4,6 +4,8 @@
 #include "core.h"
 #include "resource_node.h"   // RESOURCE_GOLD inventory index
 #include "combat.h"          // weapon_swing_update/draw -- shared with the overworld harvest mechanic
+#include "crafting.h"        // Item, item_slot -- a dungeon's treasure
+#include <SDL2/SDL_image.h>
 #include <string.h>
 #include <math.h>
 
@@ -130,6 +132,15 @@ const char* material_name(Material m) {
     int mi = (int)m;
     if (mi < 0 || mi >= MAT_COUNT) mi = 0;
     return MATERIALS[mi].name;
+}
+
+#include "ore_tones.inc"
+
+SDL_Color material_color(Material m, int tone) {
+    int mi = (int)m;
+    if (mi < 0 || mi >= MAT_COUNT) mi = 0;
+    const unsigned char* c = ORE_TONES[1 + mi][tone & 3];
+    return SDL_Color{ c[0], c[1], c[2], 255 };
 }
 
 // Which material this cave is made of. Split out from cave_material() because
@@ -2032,6 +2043,12 @@ static inline int dng_loot_budget(DungeonEntranceType type) {
 
 // Spread spawners across all floor tiles using a regular grid + local floor search.
 // Spawner tiles are never visible when placed, so they only activate in darkness.
+// A starting-island dungeon (dmap->starter) holds the island's own enemies,
+// all three of them: the first three spawners are these, Treesqueak first --
+// the vine for the raft has to be findable -- and any more are drawn from them.
+static const int STARTER_ENEMIES[] = { 2, 0, 1 };
+static const int STARTER_COUNT = (int)(sizeof(STARTER_ENEMIES) / sizeof(STARTER_ENEMIES[0]));
+
 static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
     dmap->num_spawners = 0;
     const int STEP   = 24;   // grid spacing in tiles — guarantees spread
@@ -2068,8 +2085,34 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
             }
             if (best_tx < 0) continue;
             int eid = base + (int)(rng_next(rng) % 7);
+            if (dmap->starter)
+                eid = dmap->num_spawners < STARTER_COUNT ? STARTER_ENEMIES[dmap->num_spawners]
+                    : STARTER_ENEMIES[rng_next(rng) % STARTER_COUNT];
             dmap->spawners[dmap->num_spawners++] = { best_tx, best_ty, eid, false };
         }
+    }
+
+    // A starting dungeon too small for the grid to seat all three gets the
+    // rest on any floor tile clear of the portals and of the others, tried
+    // from random spots so they spread out. Closer in than the grid allows --
+    // the grid's clearance is what left no room -- but still a room's width.
+    const int FILL_PORTAL_CLEAR = 10, FILL_SPAWNER_CLEAR = 8;
+    for (int tries = 0; dmap->starter && dmap->num_spawners < STARTER_COUNT && tries < 4000; tries++) {
+        int tx = 1 + (int)(rng_next(rng) % (DMAP_W - 2));
+        int ty = 1 + (int)(rng_next(rng) % (DMAP_H - 2));
+        if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+        bool clear = true;
+        for (int q = 0; q < dmap->num_portals && clear; q++) {
+            int pdx = tx - dmap->portals[q].tx, pdy = ty - dmap->portals[q].ty;
+            if (pdx*pdx + pdy*pdy < FILL_PORTAL_CLEAR * FILL_PORTAL_CLEAR) clear = false;
+        }
+        for (int q = 0; q < dmap->num_spawners && clear; q++) {
+            int sdx = tx - dmap->spawners[q].tx, sdy = ty - dmap->spawners[q].ty;
+            if (sdx*sdx + sdy*sdy < FILL_SPAWNER_CLEAR * FILL_SPAWNER_CLEAR) clear = false;
+        }
+        if (!clear) continue;
+        dmap->spawners[dmap->num_spawners] = { tx, ty, STARTER_ENEMIES[dmap->num_spawners], false };
+        dmap->num_spawners++;
     }
 }
 
@@ -2099,6 +2142,60 @@ static bool cave_tile_is_rock_candidate(const DungeonMap* dmap, int tx, int ty);
 // Spread loot across floor tiles using the same grid + local-search shape as
 // place_spawners, but biased away from the entrance and away from dead ends /
 // wall-hugging pockets, so it rewards exploring the dungeon's open rooms.
+// One loot tile: a gold square, or a treasure as its icon (assets/items.png,
+// the menu's own picture). Out of view either is a dim square -- the dark
+// keeps what it is to itself.
+static void draw_loot(SDL_Renderer* ren, const DungeonLoot& lo, int sx, int sy, int tsz, bool lit) {
+    static SDL_Texture* icons = nullptr;
+    static bool tried = false;
+    if (!tried) { tried = true; icons = IMG_LoadTexture(ren, "assets/items.png"); }
+    if (lo.item >= 0 && lit && icons) {
+        SDL_Rect src = { lo.item * 16, 0, 16, 16 }, dst = { sx, sy, tsz, tsz };
+        SDL_RenderCopy(ren, icons, &src, &dst);
+        return;
+    }
+    int pad = tsz / 4;
+    SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
+    int lr = 255, lg = 215, lb = 60;
+    if (!lit) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
+    fc_draw_color(ren, lr, lg, lb, 255);
+    SDL_RenderFillRect(ren, &loot_rect);
+}
+
+int dungeon_treasure_item(DungeonEntranceType type) {
+    switch (type) {
+        case DUNGEON_ENT_RUINS:      return ITEM_OLD_SPEARHEAD;
+        case DUNGEON_ENT_STONEHENGE: return ITEM_MOON_STEEL;
+        case DUNGEON_ENT_CATACOMBS:  return ITEM_REAPERS_EDGE;
+        default:                     return -1;
+    }
+}
+
+// A dungeon's one treasure, if its kind keeps one: on the open floor tile
+// farthest from the way in -- the end of the dungeon is where it is earned.
+static void place_treasure(DungeonMap* dmap) {
+    int item = dungeon_treasure_item(dmap->type);
+    if (item < 0) return;
+    int best_tx = -1, best_ty = -1, best_d2 = -1;
+    for (int pass = 0; pass < 2 && best_tx < 0; pass++)   // open interior first, then any floor
+        for (int ty = 1; ty < DMAP_H - 1; ty++)
+            for (int tx = 1; tx < DMAP_W - 1; tx++) {
+                if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
+                if (pass == 0 && !tile_open_interior(dmap, tx, ty)) continue;
+                bool taken = false;
+                for (int li = 0; li < dmap->num_loot && !taken; li++)
+                    taken = dmap->loot[li].tx == tx && dmap->loot[li].ty == ty;
+                if (taken) continue;
+                int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
+                int d2 = dex*dex + dey*dey;
+                if (d2 > best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+            }
+    if (best_tx < 0) return;
+    // Room is always made for it: a full list gives up its last gold pile.
+    int slot = dmap->num_loot < DMAP_MAX_LOOT ? dmap->num_loot++ : DMAP_MAX_LOOT - 1;
+    dmap->loot[slot] = { best_tx, best_ty, 0, false, item };
+}
+
 static void place_loot(DungeonMap* dmap, uint32_t* rng) {
     dmap->num_loot = 0;
     const int STEP   = 48;   // sparser than spawners
@@ -2178,6 +2275,8 @@ static void place_loot(DungeonMap* dmap, uint32_t* rng) {
             dmap->loot[dmap->num_loot++] = { best_tx, best_ty, gold, false };
         }
     }
+
+    place_treasure(dmap);
 }
 
 // ── Public: generate ──────────────────────────────────────────────────────
@@ -2423,6 +2522,7 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
     w.seed        = dng_hash_xy(map_seed, e->x, e->y);
     w.entry_ow_x  = e->x; w.entry_ow_y = e->y;
     w.exit_ow_x   = e->x; w.exit_ow_y  = e->y;
+    w.starter     = dungeon_is_starter(e);
 
     // Gather the mouths of this mountain first -- in array order, so the mapping
     // from portal to mouth is the same whichever one you walked in by -- because
@@ -2475,6 +2575,11 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
         //    so it can never reach the rules below -- it is first anyway so that
         //    stays true if either of those ever changes.
         w.seed = DNG_FIXED_CAVE_SEED;
+
+    } else if (w.starter) {
+        // 1b. The starting graveyard: solo by name, so nothing below -- a
+        //     partner, a mountain -- can ever give it a way out anywhere but
+        //     its own mouth. The defaults above are exactly that.
 
     } else if (w.n_mouths >= 2) {
         // 2. A cave system. Every mouth of one mountain opens one cave: that is
@@ -2654,7 +2759,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     // harvest system, only rock nodes, and attack_blocked is always false:
     // dungeons have no door/entrance prompt competing for the same key.
     weapon_swing_update(&dp->swing, player, in, dt, hx, hy, &dmap->dungeon_rocks,
-                       nullptr, cam, false, h);
+                       nullptr, cam, false, (int)dmap->ore, h);
 
     // A destroyed rock node carves the wall tile it sat in open into floor --
     // the dungeon's equivalent of the gravestone-reveal tile write in
@@ -2720,13 +2825,20 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         dp->at_entry = 0;
     }
 
-    // Loot pickup: auto-collect when standing on an unclaimed loot tile.
+    // Loot pickup: auto-collect when standing on an unclaimed loot tile --
+    // gold into the purse, a treasure into the inventory.
+    dp->picked_item = -1;
     for (int li = 0; li < dmap->num_loot; li++) {
         DungeonLoot& lo = dmap->loot[li];
         if (lo.collected) continue;
         if (lo.tx == tx && lo.ty == ty) {
             lo.collected = true;
-            player->inventory[(int)RESOURCE_GOLD] += lo.gold;
+            if (lo.item >= 0) {
+                item_slot(player, (Item)lo.item) += 1;
+                dp->picked_item = lo.item;
+            } else {
+                player->inventory[(int)RESOURCE_GOLD] += lo.gold;
+            }
         }
     }
 
@@ -3268,12 +3380,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 for (int li = 0; li < dmap->num_loot; li++) {
                     const DungeonLoot& lo = dmap->loot[li];
                     if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                    int pad = tsz / 4;
-                    SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
-                    int lr = 255, lg = 215, lb = 60;
-                    if (!in_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
-                    fc_draw_color(ren, lr, lg, lb, 255);
-                    SDL_RenderFillRect(ren, &loot_rect);
+                    draw_loot(ren, lo, sx, sy, tsz, in_fov);
                     has_loot = true;
                     break;
                 }
@@ -3365,12 +3472,7 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                     for (int li = 0; li < dmap->num_loot; li++) {
                         const DungeonLoot& lo = dmap->loot[li];
                         if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                        int pad = tsz / 4;
-                        SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
-                        int lr = 255, lg = 215, lb = 60;
-                        if (!shg_fov) { lr = lr * 3 / 10; lg = lg * 3 / 10; lb = lb * 3 / 10; }
-                        fc_draw_color(ren, lr, lg, lb, 255);
-                        SDL_RenderFillRect(ren, &loot_rect);
+                        draw_loot(ren, lo, sx, sy, tsz, shg_fov);
                         has_loot = true;
                         break;
                     }
