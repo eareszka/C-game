@@ -59,10 +59,68 @@ struct DungeonLoot {
 struct DungeonPortal {
     int tx, ty;       // tile in the dungeon
     int ow_x, ow_y;   // overworld tile it returns you to
+    DungeonEntranceType ow_type;   // the entrance there: a graveyard's way out is
+                                   // a ladder up to a small one, a door to a large
 };
+
+// A piece of art the pyramid lays over its walls whole: a carved stone, a
+// cartouche, a mural. Sheet pixels and where they go, in art pixels (a tile is
+// 16); anchor is the walkable tile whose sight lights it.
+struct DungeonDecal {
+    int16_t sx, sy, w, h;     // on the sheet
+    int     x, y;             // in the dungeon, art pixels
+    int16_t ax, ay;           // anchor tile
+    bool    flip;
+};
+#define DMAP_MAX_DECALS   128
+#define DMAP_MAX_BARROW_BLOCKS 640
+#define DMAP_MAX_PYR_ROOMS 16
+#define DMAP_MAX_GYW_RECTS 160
+#define DMAP_MAX_GYW_SEGS  96
 
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
+    // The tile art of an interior with built walls -- the ruins, the pyramid
+    // (WallArt in src/dungeon.cpp): what each tile is drawn as -- floor, a
+    // face, a side wall, a flight strip -- and that piece's row and variant.
+    // Zero (none) everywhere for every other kind.
+    uint8_t art[DMAP_H][DMAP_W];
+    uint8_t art_p[DMAP_H][DMAP_W];
+    // Set before generating, from the entrance: a pyramid anywhere but the
+    // desert is a step pyramid, and inside it is Mayan rather than Egyptian.
+    bool step_pyramid;
+    struct { int16_t cx, yb; } pyr_rooms[DMAP_MAX_PYR_ROOMS];   // each chamber: its centre column, first floor row
+    int  num_pyr_rooms;
+    // The pyramid's passage has two ends and a middle: alone, it is entered in
+    // the middle and left by the far end; paired, it runs end to end, so the
+    // near end (this) becomes the way in.
+    int  alt_entry_x, alt_entry_y;
+    DungeonDecal decals[DMAP_MAX_DECALS];
+    int  num_decals;
+    // Stonehenge's barrow: its maze's blocks (ground x across and d back, in
+    // art pixels, a tile being 16), where ground (0, 0) lies on the map, and
+    // the box its picture fills -- the game composites the picture from these
+    // the first time it is drawn (src/dungeon.cpp barrow_bake).
+    struct { int16_t x, d; } barrow_blocks[DMAP_MAX_BARROW_BLOCKS];
+    int  num_barrow_blocks;
+    int  barrow_ox, barrow_oy;
+    int  barrow_x0, barrow_y0, barrow_w, barrow_h;
+    uint32_t barrow_seed;                // its grass and carvings, laid the same every visit
+    // The graveyard's walkways (carve_graveyard_walkways): rectangles in the
+    // world under the oblique view (u across, v back, art pixels), drawn at
+    // art pixel (gyw_ox + u + v, gyw_oy - v); the path's segments with the
+    // distance along it at each start, for where brick gives way to boards;
+    // the two way-out landings (world tiles, the landing spanning -1..+2) and
+    // the box the picture fills. Composited the first time it is drawn.
+    struct { int16_t u0, v0, u1, v1; } gyw_rects[DMAP_MAX_GYW_RECTS];
+    int  num_gyw_rects;
+    struct { int16_t ax, ay, bx, by; float arc; } gyw_segs[DMAP_MAX_GYW_SEGS];
+    int  num_gyw_segs;
+    float gyw_total;                     // the path's whole length
+    int  gyw_ox, gyw_oy;
+    int  gyw_way_u[2], gyw_way_v[2];     // 0 the way in, 1 the far end
+    int  gyw_x0, gyw_y0, gyw_w, gyw_h;
+    uint32_t gyw_seed;
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
     uint8_t visible[DMAP_H][DMAP_W];   // 1=currently in FOV (wall-blocked), reset each frame
     // Portal 0 is the entry and keeps the DNG_ENTRY tile; every other portal
@@ -153,6 +211,7 @@ struct DungeonWiring {
     float connect_angle;              // NAN unless a partnered pair
     int   entry_ow_x, entry_ow_y;     // portal 0 destination
     int   exit_ow_x,  exit_ow_y;      // portal 1 destination
+    DungeonEntranceType entry_type, exit_type;   // the entrances there
     // A cave system's mouths, in entrance-array order, and each one's offset
     // from their centroid for the carve to lay chambers out against. n_mouths is
     // 0 for anything that is not a mountain with two or more ways in.
@@ -161,6 +220,7 @@ struct DungeonWiring {
     int   n_mouths;
     int   my_mouth;                   // which mouth was walked into, or -1
     bool  starter;                    // one of the starting island's two (dungeon_is_starter)
+    bool  step_pyramid;               // a pyramid off the desert: the Mayan interior
 };
 
 // Which dungeon the entrance at this index opens, and where its ways out lead.
@@ -176,11 +236,14 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
 //
 // Solo: the way in is the only way out, so one portal and no DNG_EXIT tile.
 void dungeon_bind_solo(DungeonMap* dmap, int ow_x, int ow_y);
+// Each way out moved to the foot of the dungeon's outer wall, its ladder or
+// doorway on that wall. The binds call it; exposed for tools/dngshot.cpp.
+void dungeon_seat_portals(DungeonMap* dmap);
 // Partnered: orient the pair along the overworld bearing between the two linked
 // entrances, then give each end its landing.
 void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
-                       int entry_ow_x, int entry_ow_y,
-                       int exit_ow_x,  int exit_ow_y);
+                       int entry_ow_x, int entry_ow_y, DungeonEntranceType entry_type,
+                       int exit_ow_x,  int exit_ow_y,  DungeonEntranceType exit_type);
 // Cave system: one portal per mouth, each returning to the mouth it belongs to.
 // ow_x/ow_y are n overworld tiles, in the same order the portals were carved.
 void dungeon_bind_cave_mouths(DungeonMap* dmap, const int* ow_x, const int* ow_y, int n);
@@ -189,8 +252,15 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, const Camera* cam,
                            bool noclip = false, HarvestResult* out_harvest = nullptr);
+// Whether a point (dungeon pixels) is solid to the player's feet -- the
+// collision the game moves them by. Exposed for the tools.
+bool dungeon_solid_at(const void* dmap, float px, float py);
 void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                   const Camera* cam, SDL_Renderer* ren, bool show_all = false);
+// What stands in front of the player, drawn after them: a graveyard's way-out
+// wall when they are behind it. Nothing for any other kind.
+void dungeon_draw_front(const DungeonMap* dmap, const DungeonPlayer* dplayer,
+                        const Camera* cam, SDL_Renderer* ren);
 // Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
 // around weapon_swing_draw() (combat.h), the same one overworld_draw_swing()
 // (src/overworld.cpp) calls.

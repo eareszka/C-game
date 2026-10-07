@@ -109,3 +109,27 @@ const char* part_name(int part)
         default:           return "?";
     }
 }
+
+int exp_for_level(int level)
+{
+    if (level <= 1) return 0;
+    return (int)(100.0f * powf((float)(level - 1), 1.6f) + 0.5f);
+}
+
+float level_damage_mult(int level)
+{
+    return 1.0f + 0.05f * (level - 1);
+}
+
+int player_gain_exp(Player* p, int amount)
+{
+    p->stats.exp += amount;
+    int gained = 0;
+    while (p->stats.exp >= exp_for_level(p->level + 1)) {
+        p->level++;
+        p->stats.max_hp += HP_PER_BAR;
+        p->stats.hp = p->stats.max_hp;
+        gained++;
+    }
+    return gained;
+}

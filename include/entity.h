@@ -276,8 +276,22 @@ typedef struct {
     WeaponType equipped;
 } Player;
 
+// The one way EXP is added: every level it crosses gives an HP bar
+// (HP_PER_BAR more max HP) and heals fully. Returns the levels gained.
+int player_gain_exp(Player* p, int amount);
+
 inline Weapon&       equipped_weapon(Player* p)       { return p->arsenal[p->equipped]; }
 inline const Weapon& equipped_weapon(const Player* p) { return p->arsenal[p->equipped]; }
+// The next (dir +1) or previous (-1) owned weapon after the one in hand, in
+// arsenal order, wrapping: what Q / E swap to. The one in hand if it is the
+// only one owned.
+inline WeaponType owned_neighbour(const Player* p, int dir) {
+    for (int step = 1; step < WEAPON_COUNT; step++) {
+        int w = (((int)p->equipped + dir * step) % WEAPON_COUNT + WEAPON_COUNT) % WEAPON_COUNT;
+        if (p->owned[w]) return (WeaponType)w;
+    }
+    return p->equipped;
+}
 
 // The eight ways the player can face. Each value is that direction's idle frame
 // on the map sheet (assets/player_small.png). Down, up and the four diagonals
@@ -322,6 +336,14 @@ constexpr float RAFT_SPEED = 180.0f;
 // Health comes in bars of this much, Zelda II style: the HUD meter has one
 // segment per bar, and a hit in battle always costs whole bars.
 constexpr int HP_PER_BAR = 5;
+
+// EXP is the battle score -- hits + grazes + the defeat bonus -- and levels
+// come from it. exp_for_level is the total EXP to reach a level:
+// 100 (L-1)^1.6 -- L2 100, L3 303, L5 919, L10 ~3370 -- so the first fight
+// gives a level and later ones take two or three fights each.
+int   exp_for_level(int level);
+// Each level past the first: +5% damage in battle.
+float level_damage_mult(int level);
 
 // The keys: shift sprints, ctrl crouches. Crouch wins if both are held.
 bool player_crouching(const Input* in);

@@ -13,12 +13,20 @@ wall shows through):
     x 48..63, y 0..15   the pit: the same boulders round a hole, for a cave on
                         flat ground or a storey top (1 cell)
 
+and the ways out of a dungeon seen from inside, drawn by src/dungeon.cpp on
+the north wall at each way out: ladder_up.aseprite (ladder_up_design.py), the
+pit's ladder on the wall's face, a length of it and its foot, recoloured per
+material; and dungeon_doors.aseprite (dungeon_doors_design.py), the built
+entrances' doorways, each the size of its overworld one, in their own stone.
+
 Every material is the same drawing in its own rock: each of the four stone tones
 (line, shade, base, lit/ore fleck) is swapped for that material's. The layout
 on the sheet, which src/tilemap.cpp must agree with (CAVE_ENT_ROW0 there):
 
     rows ROW0..ROW0+1, cols 3*m .. 3*m+2   material m's wall mouth
     row  ROW0+2,       col  m              material m's pit
+    row  ROW0+2, ROW0+3, col LADDER_COL0+m material m's ladder: a length, its foot
+    rows ROW0+1..ROW0+3, cols 21..29      the doorways, bottoms on ROW0+3 (DOORS)
 """
 import os
 import sys
@@ -29,6 +37,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 SHEET = os.path.join(ROOT, "assets", "tileset.png")
 ART = os.path.join(HERE, "cave_entrance.png")
+LADDER_UP = os.path.join(HERE, "ladder_up.png")
+LADDER_COL0 = 7           # src/dungeon.cpp's LADDER_COL0
+DOORS_ART = os.path.join(HERE, "dungeon_doors.png")
+# (x in the export, w, h in cells, sheet col) -- src/dungeon.cpp's DOORS; each
+# stands with its foot on row ROW0 + 3
+DOORS = [(0, 3, 3, 21),     # ruins
+         (48, 2, 2, 24),    # pyramid
+         (96, 2, 2, 26),    # tree
+         (144, 1, 2, 28),   # graveyards
+         (192, 1, 3, 29)]   # catacombs
 GPL = os.path.join(ROOT, "art", "direction", "game_palette.gpl")
 CELL = 16
 KEY = (255, 0, 0)
@@ -67,34 +85,45 @@ def palette():
     return cols
 
 
+def recolour(art, swap, keep=()):
+    """A copy of art with its stone tones swapped for a material's."""
+    im = art.copy()
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            if a and (r, g, b) not in keep:
+                if (r, g, b) not in swap:
+                    sys.exit("%s at %d,%d is not one of the stone tones" % ((r, g, b), x, y))
+                px[x, y] = swap[(r, g, b)] + (255,)
+    return im
+
+
 def variants():
-    """[(name, mouth RGBA image, pit RGBA image)] in Material order."""
+    """[(name, mouth, pit, ladder up)] RGBA images in Material order."""
     art = Image.open(ART).convert("RGBA")
+    up = Image.open(LADDER_UP).convert("RGBA")
     master = TONES[0][1]
     out = []
     for name, tones in TONES:
         swap = dict(zip(master, tones))
-        im = art.copy()
-        px = im.load()
-        for y in range(im.height):
-            for x in range(im.width):
-                r, g, b, a = px[x, y]
-                if a:
-                    if (r, g, b) not in swap:
-                        sys.exit("cave_entrance.png has %s at %d,%d, not one of the stone tones"
-                                 % ((r, g, b), x, y))
-                    px[x, y] = swap[(r, g, b)] + (255,)
+        im = recolour(art, swap)
         crop = lambda r: im.crop((r[0], r[1], r[0] + r[2], r[1] + r[3]))
-        out.append((name, crop(MOUTH), crop(PIT)))
+        out.append((name, crop(MOUTH), crop(PIT), recolour(up, swap)))
     return out
 
 
 def placements():
     """[(image, col, row)] for every block this owns on the sheet."""
     res = []
-    for m, (name, mouth, pit) in enumerate(variants()):
+    for m, (name, mouth, pit, up) in enumerate(variants()):
         res.append((mouth, 3 * m, ROW0))
         res.append((pit, m, ROW0 + 2))
+        res.append((up.crop((0, 0, CELL, CELL)), LADDER_COL0 + m, ROW0 + 2))          # a length
+        res.append((up.crop((CELL, 0, 2 * CELL, CELL)), LADDER_COL0 + m, ROW0 + 3))   # its foot
+    doors = Image.open(DOORS_ART).convert("RGBA")
+    for x, w, h, col in DOORS:
+        res.append((doors.crop((x, 0, x + w * CELL, h * CELL)), col, ROW0 + 4 - h))
     return res
 
 
@@ -140,7 +169,7 @@ def main():
                 if sp[col * CELL + x, row * CELL + y] != c:
                     changed += 1
                     sp[col * CELL + x, row * CELL + y] = c
-    print("cave entrances: %d pixels differ from the sheet (rows %d..%d)" % (changed, ROW0, ROW0 + 2))
+    print("cave entrances: %d pixels differ from the sheet (rows %d..%d)" % (changed, ROW0, ROW0 + 3))
     if "--stamp" in sys.argv and changed:
         sheet.convert("RGBA").save(SHEET)
         print("stamped into", os.path.relpath(SHEET, ROOT), "-- now run: python tools/palette_pass.py --write")

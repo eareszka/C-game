@@ -11,7 +11,7 @@ import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from interior_room import *
 
-PAL = {'W': '967448', 'Z': '633e1b', 'm': 'fce4a0', 'T': '967448', 'e': '633e1b', 'L': 'b29e5c', 'R': 'b6433d', 'C': '375a94'}
+PAL = {'W': '967448', 'Z': '633e1b', 'm': 'fce4a0', 'T': '967448', 'R': 'b6433d', 'C': '375a94'}
 
 
 def design():
@@ -19,8 +19,8 @@ def design():
     wall_shelves(r, 80, 175, 15, 62)
     counter(r, 96, 105)                                      # its top under the raft book (interior_book_spot)
     bookcase(r, 150, 92)
-    bookcase(r, 182, 118)
-    return finish(r, 'book shop', PAL, merge=[('C', 'R')])
+    bookcase(r, 182, 118, book='C')                          # its books blue, the other's red
+    return finish(r, 'book shop', PAL)
 
 
 if __name__ == '__main__':

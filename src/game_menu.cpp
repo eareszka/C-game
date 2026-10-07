@@ -494,6 +494,17 @@ void game_menu_draw_item(GameMenu* m, SDL_Renderer* ren, int item, int x, int y,
     draw_item_icon(m, ren, item, x, y, size);
 }
 
+void game_menu_draw_weapon(GameMenu* m, SDL_Renderer* ren, WeaponType w, Material ore,
+                           int x, int y, int size, Uint8 shade) {
+    load_sheets(m, ren);
+    if (!m->weapons) return;
+    SDL_SetTextureColorMod(m->weapons, shade, shade, shade);
+    draw_weapon_icon(m, ren, w, ore, x, y, size);
+    SDL_SetTextureColorMod(m->weapons, 255, 255, 255);
+}
+
+const char* game_menu_ore_name(Material m) { return ore_short(m); }
+
 void game_menu_free(GameMenu* m) {
     if (m->items)   SDL_DestroyTexture(m->items);
     if (m->weapons) SDL_DestroyTexture(m->weapons);

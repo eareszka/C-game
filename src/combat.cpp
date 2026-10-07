@@ -201,7 +201,7 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
     }
 
     // Paid when a thing breaks, its whole yield at once. Rock broken in a
-    // cave is that cave's ore.
+    // cave is that cave's ore. Every resource mined is also 1 EXP.
     for (int i = 0; i < out->count; i++) {
         const HarvestHit& hit = out->hits[i];
         if (hit.resource < 0 || !hit.destroyed) continue;
@@ -210,6 +210,7 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
             ore_count(player, (Material)cave_ore) += n;
         else
             player->inventory[hit.resource] += n;
+        player_gain_exp(player, n);
     }
 }
 

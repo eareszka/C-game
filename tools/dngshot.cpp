@@ -5,7 +5,7 @@
 //   dngshot.exe <seed> <out.png> [tile_x tile_y] [tiles_w tiles_h]
 //
 // Env: DNGSHOT_TYPE=<0..8> archetype (default cave), DNGSHOT_ORE=<0..6> cave
-//      material, DNGSHOT_DIM simulate FOV memory-dimming, DNGSHOT_DUMP ASCII
+//      material, DNGSHOT_MAYA a pyramid's step-pyramid interior, DNGSHOT_DIM simulate FOV memory-dimming, DNGSHOT_DUMP ASCII
 //      floor/wall grid to stdout, DNGSHOT_GRID debug source-cell overlay.
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -15,6 +15,9 @@
 #include "tilemap.h"
 #include "camera.h"
 #include "fc_palette.h"
+#include "collision.h"
+#include "entity.h"
+#include "input.h"
 
 static DungeonMap g_dmap;
 
@@ -50,7 +53,14 @@ int main(int argc, char** argv) {
     }
 
     g_dmap.want_portals = 2;        // spine fallback (want_ox/oy left zero) — fine for a preview
+    g_dmap.step_pyramid = getenv("DNGSHOT_MAYA") != nullptr;   // the step pyramid's Mayan interior
     dungeon_generate(&g_dmap, dng_type, 0.5f, seed);
+    dungeon_seat_portals(&g_dmap);   // as the game's binds do: each way out on the outer wall
+    // DNGSHOT_WAYS=ab: the entrance type each way out returns to (digits, a
+    // DungeonEntranceType each) -- a graveyard's are a ladder or a door by it
+    if (const char* wv = getenv("DNGSHOT_WAYS"))
+        for (int p = 0; p < g_dmap.num_portals && wv[p]; p++)
+            g_dmap.portals[p].ow_type = (DungeonEntranceType)(wv[p] - '0');
 
     DungeonPlayer dp{};
     Camera cam;
@@ -97,6 +107,41 @@ int main(int argc, char** argv) {
     // is one dungeon or several disconnected pieces -- a floor tile the player
     // can never stand on looks exactly like one they can. So flood the floor
     // from the entrance and report what the flood missed.
+    // DNGSHOT_WALK: walk the player about at random from the way in for a
+    // while, by the game's own movement, and say where it got and whether it
+    // ever stood where it may not (inside a wall, off a walkway's edge), and
+    // how often a straight push slid along a slanted edge.
+    if (getenv("DNGSHOT_WALK")) {
+        static Input in;
+        Player pl{};
+        DungeonPlayer dp{};
+        input_init(&in);
+        dungeon_player_init(&dp, &pl, &g_dmap, 0);
+        static bool been[DMAP_H][DMAP_W];
+        int tiles = 0, bad = 0, slid = 0, frames = 40000;
+        const SDL_Scancode K[4] = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT };
+        unsigned r = seed;
+        int keys = 0;
+        for (int f = 0; f < frames; f++) {
+            if (f % 40 == 0) {
+                r = r * 1664525u + 1013904223u;
+                keys = (int)((r >> 16) % 8);                 // one key or two
+            }
+            static const int SETS[8][2] = {{0,-1},{1,-1},{2,-1},{3,-1},{0,2},{0,3},{1,2},{1,3}};
+            for (int k = 0; k < 4; k++) in.keys[K[k]] = KEY_UP;
+            for (int j = 0; j < 2; j++)
+                if (SETS[keys][j] >= 0) in.keys[K[SETS[keys][j]]] = f % 40 == 0 ? KEY_PRESSED : KEY_HELD;
+            float x0 = dp.x, y0 = dp.y;
+            dungeon_player_update(&dp, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
+            if (SETS[keys][1] < 0 && dp.x != x0 && dp.y != y0) slid++;
+            if (!can_occupy(&g_dmap, dp.x, dp.y, dungeon_solid_at)) bad++;
+            int tx = (int)((dp.x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE), ty = (int)((dp.y + HB_Y2) / DMAP_TILE);
+            if (tx >= 0 && ty >= 0 && tx < DMAP_W && ty < DMAP_H && !been[ty][tx]) { been[ty][tx] = true; tiles++; }
+        }
+        printf("walk: %d frames, %d tiles stood on, %d frames where it may not stand, %d straight pushes slid\n",
+               frames, tiles, bad, slid);
+    }
+
     if (getenv("DNGSHOT_STATS")) {
         static bool seen[DMAP_H][DMAP_W];
         static int qx[DMAP_H * DMAP_W], qy[DMAP_H * DMAP_W];
@@ -136,6 +181,7 @@ int main(int argc, char** argv) {
                exit_ok ? "REACHED" : "UNREACHABLE",
                g_dmap.num_spawners, g_dmap.num_loot,
                (!exit_ok || reached != floor_n) ? "   <-- STRANDED FLOOR" : "");
+        printf("entry %d,%d  exit %d,%d\n", g_dmap.entry_x, g_dmap.entry_y, g_dmap.exit_x, g_dmap.exit_y);
     }
 
     fc_draw_color(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear in main.cpp

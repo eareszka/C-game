@@ -12,6 +12,19 @@ struct BulletSpawn {
     float spawn_interval = 0.0f;
     bool  homing         = false;
     float homing_timer   = 0.0f;  // seconds before homing turns off; 0 = never
+    // A mine: sits where it was dropped for `delay` seconds, then launches at
+    // the player at launch_speed, launch_off radians off the line to them.
+    float delay          = 0.0f;
+    float launch_speed   = 0.0f;
+    float launch_off     = 0.0f;
+    // A boomerang: `accel` px/s^2 along its first heading -- negative slows
+    // it, stops it, and brings it back the way it came, until the enemy
+    // swallows it.
+    float accel          = 0.0f;
+    // With min_speed set, `accel` only slows it -- down to min_speed, then
+    // on at that -- instead of turning it back: a shot that eases off as it
+    // nears the player.
+    float min_speed      = 0.0f;
 };
 
 struct WeaponMults {
@@ -35,6 +48,19 @@ public:
     // 0..1 through a wing-flapping flight, or -1 when not flying: the battle
     // plays the enemy's flap sheet (EnemySheet::flap) across it.
     virtual float flap_phase() const { return -1.0f; }
+    // A Facing to draw it in -- the way it is running -- or -1 to face the
+    // player as usual.
+    virtual int   move_facing() const { return -1; }
+    // True to idle on the alternate idle sheet (EnemySheet::alt) instead --
+    // the same animation in another pose, like Paoxiao with its eye shut.
+    virtual bool  alt_pose() const { return false; }
+    // Called each time its idle animation reaches frame 2 -- the breath
+    // frame, for a creature whose idle breathes fire -- so a volley can leave
+    // exactly as the sprite shows it. Returns the bullets, like fire().
+    virtual int   breathe(float /*px*/, float /*py*/, BulletSpawn /*out*/[], int /*max_out*/) { return 0; }
+    // Damage for touching its body (whole HP bars, like a bullet's); 0 for
+    // an enemy that is harmless to touch.
+    virtual float contact_damage() const { return 0.0f; }
     virtual const char* name() const = 0;
 
     float damage_mult(WeaponType wt) const {

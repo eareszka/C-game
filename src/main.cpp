@@ -135,17 +135,17 @@ int main(int argc, char *argv[])
     int          flash_count        = 0;
     float        pre_battle_timer   = -1.0f;  // -1 = inactive
     float        post_battle_t      = 0.0f;   // back on the map: fade-in, chasers hold
-    // Test enemies in the spawn house: the ids being tuned, in a row above
-    // the player's start. Each is armed again once the player steps off it.
+    // Test enemies in the spawn house: the enemy being tuned (swap in each new
+    // one as its patterns are done; more entries fight as a pack). Armed
+    // again once the player steps off them.
     struct TestEnemy { int id; float x, y; };
     // The practice dummies stand on the starting house's floor (interior 0,
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
-    TestEnemy    test_enemies[3]    = {
-        { 0,  6.5f * IMAP_TILE, 8.5f * IMAP_TILE },
-        { 1, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },
-        { 2, 13.5f * IMAP_TILE, 8.5f * IMAP_TILE },
+    TestEnemy    test_enemies[]     = {
+        { 12, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 12 Ebigane
     };
+    const int    TEST_N             = (int)(sizeof(test_enemies) / sizeof(test_enemies[0]));
     bool         test_armed         = true;
 
     // Floating +N resource text — one active at a time above the last hit node.
@@ -281,8 +281,16 @@ int main(int argc, char *argv[])
     int  dbg_tour     = -1;
 
     bool dbg_open     = false;
+    float ow_swap_t   = 99.0f;   // seconds since Q / E swapped weapons outside battle, for the weapon box
+    bool dbg_readout  = false;   // F1: the FPS and position readout, off in normal play
     // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam
-    static const int DBG_ROW_COUNT = 10;
+    static const int DBG_ROW_COUNT = 11;
+    // The rows in two columns: the world (0-4, 6, 7) on the left, the player
+    // (5, 8-10) on the right. dbg_sel is a row's id; UP/DOWN step through this
+    // order, down the left column and on into the right.
+    static const int DBG_ORDER[DBG_ROW_COUNT] = { 0, 1, 2, 3, 4, 6, 7,   5, 8, 9, 10 };
+    static const int DBG_PLAYER_AT = 7;   // where the player column starts in DBG_ORDER
+    auto dbg_pos = [&](int id) { int i = 0; while (DBG_ORDER[i] != id) i++; return i; };
     int  dbg_sel      = 0;
     int  dbg_target   = 0;
     bool dbg_noclip   = false;
@@ -323,7 +331,9 @@ int main(int argc, char *argv[])
         "MOHA-MOHA", "BJARNDYRAKONGUR", "PHYSETER",
     };
 
-    DungeonMap    dmap    = {};
+    // Static: the map is megabytes (its tiles, sight and the pyramid's art),
+    // far past what main's stack holds.
+    static DungeonMap dmap = {};
     DungeonPlayer dplayer = {};
 
     InteriorMap    imap    = {};
@@ -498,6 +508,9 @@ int main(int argc, char *argv[])
             SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
         }
 
+        if (input_pressed(&in, SDL_SCANCODE_F1))
+            dbg_readout = !dbg_readout;
+
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
             Uint32 flags = SDL_GetWindowFlags(plat.window);
             SDL_SetWindowFullscreen(plat.window,
@@ -510,17 +523,31 @@ int main(int argc, char *argv[])
             dbg_sel  = 0;
         }
         if (dbg_open) {
-            if (input_pressed(&in, SDL_SCANCODE_UP))
-                dbg_sel = (dbg_sel + DBG_ROW_COUNT - 1) % DBG_ROW_COUNT;
-            if (input_pressed(&in, SDL_SCANCODE_DOWN))
-                dbg_sel = (dbg_sel + 1) % DBG_ROW_COUNT;
+            // W/S up and down a column, wrapping; A/D across to the other
+            // column, on the same line or its last. Q/E step the selected
+            // row's value back and on, or flip it if it is on/off.
+            {
+                int pos   = dbg_pos(dbg_sel);
+                int right = pos >= DBG_PLAYER_AT;
+                int first = right ? DBG_PLAYER_AT : 0;
+                int len   = right ? DBG_ROW_COUNT - DBG_PLAYER_AT : DBG_PLAYER_AT;
+                int line  = pos - first;
+                if (input_pressed(&in, SDL_SCANCODE_W)) line = (line + len - 1) % len;
+                if (input_pressed(&in, SDL_SCANCODE_S)) line = (line + 1) % len;
+                if (input_pressed(&in, SDL_SCANCODE_A) || input_pressed(&in, SDL_SCANCODE_D)) {
+                    right = !right;
+                    first = right ? DBG_PLAYER_AT : 0;
+                    len   = right ? DBG_ROW_COUNT - DBG_PLAYER_AT : DBG_PLAYER_AT;
+                    if (line >= len) line = len - 1;
+                }
+                dbg_sel = DBG_ORDER[first + line];
+            }
+            int  dbg_step   = input_pressed(&in, SDL_SCANCODE_E) - input_pressed(&in, SDL_SCANCODE_Q);
+            bool dbg_toggle = input_pressed(&in, SDL_SCANCODE_E) || input_pressed(&in, SDL_SCANCODE_Q);
 
             if (dbg_sel == 0) {
                 int was = dbg_target;
-                if (input_pressed(&in, SDL_SCANCODE_LEFT))
-                    dbg_target = (dbg_target + DBG_TARGET_COUNT - 1) % DBG_TARGET_COUNT;
-                if (input_pressed(&in, SDL_SCANCODE_RIGHT))
-                    dbg_target = (dbg_target + 1) % DBG_TARGET_COUNT;
+                dbg_target = (dbg_target + dbg_step + DBG_TARGET_COUNT) % DBG_TARGET_COUNT;
                 // A different target is a different tour. Carrying the position
                 // over would start the Dravium caves at the third one purely
                 // because that is where the Kharvite tour had got to.
@@ -532,7 +559,7 @@ int main(int argc, char *argv[])
             // cooldown, with no confirm step to forget.
             // Row 8 does the same for the ore it is made of.
             {
-                int step = input_pressed(&in, SDL_SCANCODE_RIGHT) - input_pressed(&in, SDL_SCANCODE_LEFT);
+                int step = dbg_step;
                 if (dbg_sel == 5 && step) {
                     // Debug hands over the weapon outright: owned from here on.
                     player.equipped = (WeaponType)(((int)player.equipped + step + WEAPON_COUNT) % WEAPON_COUNT);
@@ -545,6 +572,7 @@ int main(int argc, char *argv[])
 
             bool dbg_confirm = input_pressed(&in, SDL_SCANCODE_RETURN) ||
                                input_pressed(&in, SDL_SCANCODE_Z);
+            bool dbg_flip    = dbg_confirm || dbg_toggle;   // the on/off rows take either
 
             if (dbg_sel == 1 && dbg_confirm) {
                 // Step to the NEXT place answering the target, not the nearest:
@@ -596,13 +624,13 @@ int main(int argc, char *argv[])
                 dbg_open = false;
             }
 
-            if (dbg_sel == 3 && dbg_confirm)
+            if (dbg_sel == 3 && dbg_flip)
                 dbg_noclip = !dbg_noclip;
 
-            if (dbg_sel == 4 && dbg_confirm)
+            if (dbg_sel == 4 && dbg_flip)
                 dbg_show_all = !dbg_show_all;
 
-            if (dbg_sel == 6 && dbg_confirm)
+            if (dbg_sel == 6 && dbg_flip)
                 dbg_grid = !dbg_grid;
 
             // Row 7: stand three tiles short of the seam, on the nearest
@@ -615,6 +643,16 @@ int main(int argc, char *argv[])
                     if (item_is_material((Item)it))      item_slot(&player, (Item)it) += 10;
                     else if (it != ITEM_RAFT && item_count(&player, (Item)it) == 0)
                         item_slot(&player, (Item)it) = 1;
+                }
+
+            // Row 10: every weapon held, as good as it gets -- the best ore,
+            // FASTER and MORE SHOTS at their tops.
+            if (dbg_sel == 10 && dbg_confirm)
+                for (int w = 0; w < WEAPON_COUNT; w++) {
+                    if (!player.owned[w]) continue;
+                    player.arsenal[w].material = (Material)(MAT_COUNT - 1);
+                    player.arsenal[w].oil      = WEAPON_OIL_MAX;
+                    player.arsenal[w].echo     = WEAPON_ECHO_MAX;
                 }
 
             if (dbg_sel == 7 && dbg_confirm && state == STATE_OVERWORLD) {
@@ -702,6 +740,16 @@ int main(int argc, char *argv[])
             if (zoom_idx >= zoom_count) zoom_idx = zoom_count - 1;
             cam.zoom = zoom_levels[zoom_idx];
         }
+
+        // Q / E swap weapons on the map and in dungeons too (battle does its
+        // own, in BattleScene::_cycle).
+        ow_swap_t += dt;
+        if ((state == STATE_OVERWORLD || state == STATE_DUNGEON) && !menu.open && !dbg_open)
+            for (int dir : { -1, 1 })
+                if (input_pressed(&in, dir < 0 ? SDL_SCANCODE_Q : SDL_SCANCODE_E)) {
+                    player.equipped = owned_neighbour(&player, dir);
+                    ow_swap_t = 0.0f;   // the box shows even with only one weapon
+                }
 
         GameState state_before = state;
 
@@ -863,6 +911,7 @@ int main(int argc, char *argv[])
 
                         dmap.want_portals = (n_cave_mouth >= 2) ? n_cave_mouth : 2;
                         dmap.starter      = w.starter;
+                        dmap.step_pyramid = w.step_pyramid;
                         for (int m = 0; m < n_cave_mouth; m++) {
                             dmap.want_ox[m] = w.want_ox[m];
                             dmap.want_oy[m] = w.want_oy[m];
@@ -888,8 +937,8 @@ int main(int argc, char *argv[])
                                                      n_cave_mouth);
                         } else if (!isnan(connect_angle)) {
                             dungeon_bind_pair(&dmap, connect_angle,
-                                              dng_entry_portal_x, dng_entry_portal_y,
-                                              dng_exit_portal_x,  dng_exit_portal_y);
+                                              dng_entry_portal_x, dng_entry_portal_y, w.entry_type,
+                                              dng_exit_portal_x,  dng_exit_portal_y,  w.exit_type);
                         } else {
                             dungeon_bind_solo(&dmap, dng_entry_portal_x, dng_entry_portal_y);
                         }
@@ -1202,6 +1251,7 @@ int main(int argc, char *argv[])
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
                 player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
+                dungeon_draw_front(&dmap, &dplayer, &cam, plat.renderer);
                 dungeon_draw_swing(&dplayer, &cam, plat.renderer);
 
                 // --- Floating resource text ---
@@ -1331,7 +1381,7 @@ int main(int argc, char *argv[])
                     if (state == STATE_BATTLE) break;
                 } else {
                     interior_player_update(&iplayer, &player, game_in, dt, &imap);
-                    // Test dummies: walk into one and all three fight, as a
+                    // Test dummies: walk into one and they all fight, as a
                     // dungeon pack does -- the one touched first, then by
                     // distance, each flashing in that order. Armed again once
                     // the player is off all of them.
@@ -1341,24 +1391,25 @@ int main(int argc, char *argv[])
                         return (pcx - te.x) * (pcx - te.x) + (pcy - te.y) * (pcy - te.y);
                     };
                     int hit = -1;
-                    for (int i = 0; i < 3 && imap.id == 0; i++)   // the starting house only
+                    for (int i = 0; i < TEST_N && imap.id == 0; i++)   // the starting house only
                         if (d2(test_enemies[i]) < 22.0f * 22.0f) hit = i;
                     if (hit < 0) {
                         test_armed = true;
                     } else if (test_armed && post_battle_t <= 0.0f) {
                         test_armed = false;
-                        int order[3] = { 0, 1, 2 };
-                        for (int a = 0; a < 3; a++)       // nearest first: the touched one leads
-                            for (int b = a + 1; b < 3; b++)
+                        int order[3] = { 0, 1, 2 };       // a pack is at most 3
+                        int n = TEST_N < 3 ? TEST_N : 3;
+                        for (int a = 0; a < n; a++)       // nearest first: the touched one leads
+                            for (int b = a + 1; b < n; b++)
                                 if (d2(test_enemies[order[b]]) < d2(test_enemies[order[a]]))
                                     { int t = order[a]; order[a] = order[b]; order[b] = t; }
-                        for (int q = 0; q < 3; q++) {
+                        for (int q = 0; q < n; q++) {
                             const TestEnemy& te = test_enemies[order[q]];
                             battle_queue[q]            = te.id;
                             battle_queue_chaser_idx[q] = -1;
                             flash_entries[q]           = { te.x, te.y };
                         }
-                        battle_queue_count = flash_count = 3;
+                        battle_queue_count = flash_count = n;
                         battle_queue_idx   = 0;
                         pre_battle_timer   = 0.0f;
                     }
@@ -1495,8 +1546,49 @@ int main(int argc, char *argv[])
             }
             draw_bar(plat.renderer, 28, 17, 110, 5, stamina, 1.0f, 255, 220, 0);
             char buf[24];
-            SDL_snprintf(buf, sizeof(buf), "EXP:%d", player.stats.exp);
-            draw_text(plat.renderer, buf, 150, 10, 1, 255, 255, 255);
+            // Level and EXP, just right of the HP box (it grows a bar a level).
+            // In battle the score climbs live with this fight's hits and
+            // grazes; levels are only applied when the fight is won.
+            int exp_shown = player.stats.exp + ((state == STATE_BATTLE && battle_scene) ? battle_scene->hud_exp() : 0);
+            SDL_snprintf(buf, sizeof(buf), "LV%d EXP:%d", player.level, exp_shown);
+            draw_text(plat.renderer, buf, 27 + ((int)max_hp / HP_PER_BAR) * 9 + 12, 10, 1, 255, 255, 255);
+
+            // The weapon in hand, in the item menu's own box and pictures: a
+            // textbox hanging from the bar, the icon at 2x with ore and name
+            // beside it as the menu writes them, and -- with more than one
+            // owned -- the previous and next, dimmed, with the keys that reach
+            // them in the menu's grey hint style. The outline blinks the menu's
+            // selection yellow for a moment after a swap. Shown only then:
+            // up for WEAPON_BOX_T after a swap (Q / E), then gone.
+            const float WEAPON_BOX_T = 1.5f;
+            float swap_t = (state == STATE_BATTLE && battle_scene) ? battle_scene->hud_swap_t() : ow_swap_t;
+            if (swap_t < WEAPON_BOX_T) {
+                const int WX = 245, WY = 2, WW = 150, WH = 40;
+                const Weapon& eq = equipped_weapon(&player);
+                draw_nes_panel(plat.renderer, WX, WY, WW, WH);
+                if (swap_t < 0.3f && (int)(swap_t * 20.0f) % 2 == 0) {
+                    fc_draw_color(plat.renderer, 255, 255, 80, 255);
+                    for (int t = 0; t < 4; t++) {
+                        SDL_Rect r = { WX + t, WY + t, WW - 2 * t, WH - 2 * t };
+                        SDL_RenderDrawRect(plat.renderer, &r);
+                    }
+                }
+                game_menu_draw_weapon(&menu, plat.renderer, eq.type, eq.material, WX + 6, WY + 4, 32);
+                draw_text(plat.renderer, weapon_name(eq.type), WX + 44, WY + 10, 1, 252, 252, 252);
+                draw_text(plat.renderer, game_menu_ore_name(eq.material), WX + 44, WY + 22, 1, 120, 120, 120);
+
+                int owned_n = 0;
+                for (int w = 0; w < WEAPON_COUNT; w++) owned_n += player.owned[w];
+                if (owned_n > 1) {
+                    int pw = owned_neighbour(&player, -1), nw = owned_neighbour(&player, 1);
+                    game_menu_draw_weapon(&menu, plat.renderer, (WeaponType)pw, player.arsenal[pw].material,
+                                          WX - 20, WY + 6, 16, 110);
+                    game_menu_draw_weapon(&menu, plat.renderer, (WeaponType)nw, player.arsenal[nw].material,
+                                          WX + WW + 4, WY + 6, 16, 110);
+                    draw_text(plat.renderer, "Q", WX - 16, WY + 26, 1, 120, 120, 120);
+                    draw_text(plat.renderer, "E", WX + WW + 8, WY + 26, 1, 120, 120, 120);
+                }
+            }
 
             if (state == STATE_BATTLE) {
                 if (foe) {
@@ -1542,27 +1634,30 @@ int main(int argc, char *argv[])
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
-            // Still centred in the 640px logical screen, but wider than it was:
-            // the longest row is now "WARP: < CAVE: REALITY SHARD >", 29 chars
-            // at scale 2 = 464px, which needs 24px of indent and a margin on
-            // top of it. text_width() is exact (8px per char per scale step),
-            // so this is arithmetic rather than a guess.
-            const int MX = 70, MY = 130, MW = 500, MH = 270;
-            const int LH = 22;  // line height
+            // Two columns, world and player, each under its heading. The rows
+            // are in the small font (8px a character): the longest, the seam
+            // row, is 32 characters, 256px, inside a 270px column.
+            const int MX = 50, MY = 110, MW = 540, MH = 230;
+            const int LH = 20;  // line height
+            const int COL_W = 270;
 
             draw_nes_panel(plat.renderer, MX, MY, MW, MH);
 
             draw_text(plat.renderer, "DEBUG MENU", MX + NES_PAD + 2, MY + NES_PAD + 4, 2, 255, 255, 255);
 
-            // Helper lambda: draw one menu row
+            // A column's heading, then its rows; a row goes where DBG_ORDER puts it.
+            draw_text(plat.renderer, "WORLD",  MX + 8,         MY + 36, 2, 120, 120, 120);
+            draw_text(plat.renderer, "PLAYER", MX + 8 + COL_W, MY + 36, 2, 120, 120, 120);
             auto draw_row = [&](int row, const char* label, bool selected) {
-                int ry = MY + 36 + row * LH;
+                int pos = dbg_pos(row), right = pos >= DBG_PLAYER_AT;
+                int rx  = MX + right * COL_W;
+                int ry  = MY + 36 + LH + 6 + (pos - right * DBG_PLAYER_AT) * LH;
                 Uint8 r = selected ? 255 : 180;
                 Uint8 g = selected ? 255 : 180;
                 Uint8 b = selected ? 80  : 180;
                 if (selected)
-                    draw_text(plat.renderer, ">", MX + 8, ry, 2, r, g, b);
-                draw_text(plat.renderer, label, MX + 24, ry, 2, r, g, b);
+                    draw_text(plat.renderer, ">", rx + 10, ry, 1, r, g, b);
+                draw_text(plat.renderer, label, rx + 20, ry, 1, r, g, b);
             };
 
             // Row 0: warp target selector
@@ -1641,8 +1736,9 @@ int main(int argc, char *argv[])
 
             // Row 9: give all
             draw_row(9, "GIVE ALL", dbg_sel == 9);
+            draw_row(10, "MAX OUT WEAPONS", dbg_sel == 10);
 
-            draw_text(plat.renderer, "UP/DN:NAV  LT/RT:CHANGE  Z:SELECT  F2:CLOSE",
+            draw_text(plat.renderer, "WASD:MOVE  Q/E:CHANGE  Z:SELECT  F2:CLOSE",
                       MX + 6, MY + MH - 16, 1, 180, 180, 180);
         }
 
@@ -1677,9 +1773,11 @@ int main(int argc, char *argv[])
                       PX + 6, PY + PH - 14, 1, 180, 180, 180);
         }
 
-        float dbg_px = (state == STATE_DUNGEON) ? dplayer.x : ow.x;
-        float dbg_py = (state == STATE_DUNGEON) ? dplayer.y : ow.y;
-        draw_fps(plat.renderer, dt, dbg_px, dbg_py);
+        if (dbg_readout) {
+            float dbg_px = (state == STATE_DUNGEON) ? dplayer.x : ow.x;
+            float dbg_py = (state == STATE_DUNGEON) ? dplayer.y : ow.y;
+            draw_fps(plat.renderer, dt, dbg_px, dbg_py);
+        }
 
         if (esc_hold_time > 0.f) {
             const int BAR_W = 80;

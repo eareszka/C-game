@@ -24,6 +24,7 @@ enum InteriorTile : uint8_t {
 struct InteriorMap {
     uint8_t tiles[IMAP_H][IMAP_W];  // semantic layer: void/wall/floor/exit
     int     atlas[IMAP_H][IMAP_W];  // tileset.png index per cell, -1 = none (prebuilt only)
+    int     furn[IMAP_H][IMAP_W];   // the furniture's layer over it: the same, -1 = none
     bool    prebuilt;               // true: draw from the atlas; false: flat placeholder colours
     float enter_x, enter_y;   // where the feet stand coming in: the middle of
                               // the way out's floor (its 'E' cells, walkable part)

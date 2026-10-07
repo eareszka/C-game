@@ -11,7 +11,7 @@ import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from interior_room import *
 
-PAL = {'W': '7c0a1b', 'Z': '5d1e1f', 'm': 'bcbeca', 'R': '375a94', 'C': 'b6433d'}
+PAL = {'W': '7c0a1b', 'Z': '5d1e1f', 'm': 'bcbeca', 'R': '375a94', 'C': 'b6433d', 'c': 'ec8476'}
 
 
 def design():

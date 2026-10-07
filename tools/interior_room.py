@@ -5,11 +5,13 @@ A room as simple as Mother 1 draws one -- thin black lines, one screen, the
 back wall square on and the side walls and floor running back at 45 degrees
 (the shape of art/reference/interiors_reference.png) -- in the house's own
 materials: a back wall of its brick -- three tones a brick, as outside: its
-base, a shade along each brick's bottom and right edge, the mortar -- over a
-wooden wainscot, the side walls plain in its mortar's tone, a floor of bevelled boards running back
-into the room, the plank door on the left wall (the way out), windows in
-wooden frames. The furniture is boxes in the oblique view, sized against the
-player (tools/interior_sizes.py).
+base, a shade along each brick's bottom and right edge, the mortar -- the
+side walls plain in its mortar's tone, a floor of boards running back into
+the room, the plank door on the left wall (the way out), windows in wooden
+frames. The furniture is boxes in the oblique view, sized against the player
+(tools/interior_sizes.py), on a layer of its own over the room, as an NES
+draws sprites over its background: the room keeps four tones a tile -- every
+brick its three, the floor its boards -- and each piece three a tile.
 
 Drawn at 1:1 in the reference's 256x128 frame, set on the screen at (OX, OY)
 -- a row down from a tile row, so the floor starts one and the wall's tiles
@@ -18,16 +20,16 @@ keep to four colours. Each thing drawn says the floor row it stands on
 goes over the player.
 
 Tones: K line; W brick, Z its shade, m mortar (also the side walls and the
-trim); F wood (the wainscot too),
-P a lighter wood for tops; T, e, L the floor's boards, seams and lit edges;
-U glass; R and C cloth (a blanket, a sofa, books); N iron.
+trim); F wood,
+P a lighter wood for tops; T the floor's boards (black seams);
+U glass; R and C cloth (a blanket, a sofa, books), c the second lit; N iron, I lit.
 """
 from entrance_shapes import Grid, check, stand, depth_layers, four_per_cell, STEP
 from interior_sizes import DOOR, BED, TALL, WINDOW
 
 BASE = {'K': '000000', 'F': '94703d', 'P': 'd7a175',
-        'T': 'c18a39', 'e': '815423', 'L': 'd89830',      # honey boards
-        'U': '84a7e9', 'N': '474751'}
+        'T': 'c18a39',                                    # honey boards
+        'U': '84a7e9', 'N': '474751', 'I': '848694'}     # glass; iron and lit iron
 W, H = 320, 240
 OX, OY = 32, 49                  # the frame's place: the floor's back row starts a tile row
 EDGE0, EDGE1 = 8, 247            # the room across the frame
@@ -52,10 +54,12 @@ def part(x, y):
 
 
 class Room:
-    """The frame's pixels, what row each stands on, and the ground covered."""
+    """The frame's pixels and what row each stands on -- the room's, and the
+    furniture's on its own layer, with the ground the furniture covers."""
     def __init__(self):
-        self.c, self.fy, self.foot = {}, {}, set()
-        self.near = {}                                       # the boxes' depth buffer: the floor row each shows
+        self.c, self.fy = {}, {}                             # the room: walls, floor, windows, door
+        self.fc, self.ffy, self.foot = {}, {}, set()         # the furniture's layer
+        self.near = {}                                       # its depth buffer: the floor row each shows
 
     def put(self, x, y, c, fy):
         self.c[(x, y)], self.fy[(x, y)] = c, fy
@@ -65,7 +69,7 @@ class Room:
             for x in range(x0, x1 + 1):
                 self.put(x, y, c, fy(x, y) if callable(fy) else fy)
 
-    def obox(self, x0, fy, w, dep, high, front, top, side, flip=False):
+    def obox(self, x0, fy, w, dep, high, front, top, side, flip=False, room=False):
         """A box in the game's oblique view (entrance_shapes.oblique): its
         front face w wide square on, standing on floor row fy, `high` up; its
         top and right side running back `dep` rows, up and to the right at 45
@@ -73,14 +77,20 @@ class Room:
         right wall runs. Each face a tone, or a tone for each pixel --
         front(a, z), top(a, k), side(k, z), a across, k back, z up; None
         leaves the floor showing, between legs -- outlined in black. What
-        stands STEP or taller covers its ground."""
+        stands STEP or taller covers its ground. Furniture is drawn on its
+        own layer; with room, something lying flat on the floor -- a rug --
+        is drawn into the room's."""
         tone = lambda c, *p: c(*p) if callable(c) else c
         s = -1 if flip else 1
         x1 = x0 + w - 1
         def put(x, y, c, f):                                 # the nearer -- the lower floor row -- wins
-            if c is not None and f >= self.near.get((x, y), -1):
-                self.near[(x, y)] = f
+            if c is None:
+                return
+            if room:
                 self.put(x, y, c, f)
+            elif f >= self.near.get((x, y), -1):
+                self.near[(x, y)] = f
+                self.fc[(x, y)], self.ffy[(x, y)] = c, f
         for k in range(1, dep + 1):                          # the top, row by row back
             for a in range(w):
                 edge = a in (0, w - 1) or k == dep
@@ -102,20 +112,15 @@ class Room:
 def floor_tone(x, y):
     """Boards running back into the room in the oblique view, up and to the
     right at 45 degrees as the furniture's depth runs (along a board x + y is
-    fixed): a dark seam on one side of each, a lit edge on the other, their
-    ends falling a board's length apart, each board's on its own row."""
+    fixed): a black seam between them, their ends falling a board's length
+    apart, each board's on its own row. One tone and the black every tile has
+    already, so the texture keeps to every tile of the floor -- by the walls,
+    round the furniture -- with room for what shares it."""
     along = (x + y) % BOARD
     board = (x + y) // BOARD
     if along == 0 or (y + board * 13) % BOARD_LEN == 0:
-        return 'e'
-    if along == 1 or (y + board * 13) % BOARD_LEN == 1:
-        return 'L'
+        return 'K'
     return 'T'
-
-
-WAINSCOT = 47                    # the back wall's lowest tile row, wood: what stands against the
-                                 # wall shares its tiles with wood, not brick, so every brick keeps
-                                 # its three tones
 
 
 def shell(r):
@@ -133,8 +138,6 @@ def shell(r):
                 c = 'K'                                      # the line at the wall's foot
             elif up <= 2 or p != 'back':
                 c = 'm'                                      # a band above it; the side walls plain, as the gable end outside
-            elif y >= WAINSCOT:
-                c = 'K' if y == WAINSCOT else 'F'            # the wainscot: plain wood, a black line atop
             else:
                 course, rc = (up - 3) // COURSE, (up - 3) % COURSE
                 lx = (x + (course % 2) * (BRICK // 2)) % BRICK
@@ -180,64 +183,85 @@ def door(r):
 
 
 # ---- furniture: boxes in the oblique view --------------------------------
+#
+# Each piece is drawn as an NES sprite would be: a black outline, a base tone
+# and a lit tone of its material -- three a tile. Light falls from the upper
+# left, as on the houses: tops lit, fronts in the base tone, the detail (a
+# drawer's edge, a cushion's seam, a quilt) picked out in the lit tone.
 
 def bed(r, x0, fy, flip=False):
-    """Seen side on as Mother 1 draws one: a blanket (R) hanging over its
-    front, a pillow at the head, a headboard at the head's end -- the left,
-    or with flip the right, the bed running back up and to the left as the
-    right wall does. Painted in the trim's tone, so where it stands against
-    the brick its tiles keep to the wall's tones and the blanket's. x0 is its
-    front's left end."""
+    """Seen side on as Mother 1 draws one: a quilted blanket (R, stitched in
+    cream) over the top and hanging down the front with a cream stripe, the
+    cream sheet turned back by the pillow, a cream headboard at the head's
+    end -- the left, or with flip the right, the bed running back up and to
+    the left as the right wall does. x0 is its front's left end."""
     dep, high, head = 8, 5, 10
     w = BED[0] - dep
     hx = x0 + w - 2 if flip else x0                          # the headboard's two columns
     r.obox(hx, fy, 2, dep, head, 'm', 'm', 'm', flip=flip)
     bx = x0 if flip else x0 + 2
-    pillow = (lambda a, k: a >= w - 2 - 7) if flip else (lambda a, k: a < 7)
-    r.obox(bx, fy, w - 2, dep, high, lambda a, z: 'm' if z < 2 else 'R',
-           lambda a, k: 'm' if pillow(a, k) else 'R', 'R', flip=flip)
+    bw = w - 2
+    head_end = (lambda a: a >= bw - 7) if flip else (lambda a: a < 7)
+    fold = (lambda a: a == bw - 9) if flip else (lambda a: a == 8)
+    def top(a, k):
+        if head_end(a) or fold(a):
+            return 'm'                                       # the pillow, the sheet turned back
+        return 'm' if (a % 5 == 2 and k % 2 == 0) or k == 4 else 'R'   # the quilt's stitching
+    r.obox(bx, fy, bw, dep, high, lambda a, z: 'm' if z < 2 or z == 3 else 'R', top, 'R', flip=flip)
 
 
 def dresser(r, x0):
-    """Against the back wall: a wooden chest of three drawers, black lines
-    between them, a knob on each -- the wood one tone, as the wall's tiles
-    hold no more."""
+    """Against the back wall: a wooden chest of three drawers -- each a panel
+    lit along its top edge, a lit knob -- under a lit top."""
     dep, high = 6, TALL[1] - 7
     w = TALL[0] - dep
-    drawer = lambda a, z: 'K' if z in (4, 8) else 'm' if a == w // 2 and z in (2, 6, 10) else 'F'
-    r.obox(x0, BACK + dep, w, dep, high, drawer, 'F', 'F')
-
-
-def legs(w, high):
-    """A front face that is an apron and two legs, the floor showing between."""
-    return lambda a, z: 'F' if z >= high - 2 or a in (1, w - 2) else None
-
-
-def low_table(r, x0, fy, w=18):
-    """A low table before a sofa, all one wood: it stands on a rug."""
-    r.obox(x0, fy, w, 6, 5, legs(w, 5), 'F', lambda k, z: 'F' if z >= 3 or k == 5 else None)
+    def front(a, z):
+        if z in (4, 8):
+            return 'K'                                       # between the drawers
+        if z in (3, 7, 11) and 1 < a < w - 2:
+            return 'P'                                       # a drawer's lit top edge
+        return 'P' if a == w // 2 and z in (2, 6, 10) else 'F'
+    r.obox(x0, BACK + dep, w, dep, high, front, 'P', 'F')
 
 
 def rug(r, x0, fy, w, dep, border=True):
-    """Flat on the floor: cloth (R) with a border in the trim's tone -- or
-    none, where something stands on it and its tiles hold no more."""
-    r.obox(x0, fy, w, dep, 0, 'K',
-           lambda a, k: 'm' if border and (a in (2, w - 3) or k in (2, dep - 2)) else 'R', 'K')
+    """Flat on the floor, so part of the room's layer as the boards are:
+    cloth (R) with a cream border and a cream diamond in its middle."""
+    def top(a, k):
+        if border and (a in (2, w - 3) or k in (2, dep - 2)):
+            return 'm'
+        u, v = abs(a - (w - 1) / 2) / (w / 2), abs(k - dep / 2) / (dep / 2)
+        return 'm' if 0.45 <= u + v <= 0.6 else 'R'
+    r.obox(x0, fy, w, dep, 0, 'K', top, 'K', room=True)
 
 
-def books(a, z, shelf=8):
-    """Shelves of books on a face: a board every `shelf` rows, the books
-    between them two wide, black between, in the two cloths by turns."""
+def books(a, z, shelf=8, tones='RC', board='P'):
+    """Shelves of books on a face: a board of light wood every `shelf` rows,
+    the books between them two wide, black between, in the given cloths by
+    turns -- every other book with a black band across its spine for a title,
+    some shorter than the shelf so the dark shows over them, now and then a
+    gap where one has been taken."""
     if z % shelf == 0:
-        return 'F'
+        return board
     if a % 3 == 0:
         return 'K'
-    return 'R' if (a // 3 + z // shelf) % 2 == 0 else 'C'
+    book, row = a // 3, z // shelf
+    h = z % shelf                                        # how far up the shelf
+    if (book * 7 + row * 3) % 11 == 0:
+        return 'K'                                       # a book taken out
+    if h >= shelf - 1 - (book + row) % 3:
+        return 'K'                                       # over a shorter book
+    if book % 2 == 0 and h == shelf // 2:
+        return 'K'                                       # its title band
+    return tones[(book + row) % len(tones)]
 
 
-def bookcase(r, x0, fy, w=22, high=24, dep=5):
-    """A free-standing bookcase, its shelves of books facing the room."""
-    r.obox(x0, fy, w, dep, high, books, 'F', 'F')
+def bookcase(r, x0, fy, w=22, high=24, dep=5, book='R'):
+    """A free-standing bookcase: a light wooden frame, top and shelves full
+    of books all one cloth -- light wood, black and the books, three tones a
+    tile."""
+    frame = lambda a, z: 'P' if a in (1, w - 2) or z == high - 1 else books(a, z, tones=book)
+    r.obox(x0, fy, w, dep, high, frame, 'P', 'P')
 
 
 def wall_shelves(r, x0, x1, y0, y1):
@@ -250,65 +274,92 @@ def wall_shelves(r, x0, x1, y0, y1):
 
 
 def counter(r, x0, fy, w=36, dep=8, high=11):
-    """A shop counter: wooden panels in front, a lighter top."""
-    r.obox(x0, fy, w, dep, high, lambda a, z: 'K' if a % 9 == 0 or z == 2 else 'F', 'P', 'F')
+    """A shop counter: wooden panels in front, each lit along its top, under
+    a lit top."""
+    def front(a, z):
+        if a % 9 == 0 or z == 2:
+            return 'K'
+        return 'P' if z == high - 2 else 'F'
+    r.obox(x0, fy, w, dep, high, front, 'P', 'F')
 
 
 def sofa(r, x0, fy, w=34):
-    """A sofa in the second cloth (C): its back, its seat, an arm each end."""
+    """A sofa in the second cloth (C), lit (c) along the tops of its back,
+    its seat and its arms, black seams between the seat's three cushions."""
     dep = 8
     # the back, standing at the seat's back edge: that far back in the
     # oblique view is that far to the right as well
-    r.obox(x0 + dep - 2, fy - dep + 2, w, 2, 11, 'C', 'C', 'C')
-    r.obox(x0, fy, w, dep - 2, 5, 'C', 'C', 'C')               # the seat
+    r.obox(x0 + dep - 2, fy - dep + 2, w, 2, 11, lambda a, z: 'c' if z >= 9 else 'C', 'c', 'C')
+    third = (w - 6) // 3
+    r.obox(x0, fy, w, dep - 2, 5, 'C',
+           lambda a, k: 'K' if a in (3 + third, 3 + 2 * third) else 'c', 'C')   # the seat
     for ax in (x0, x0 + w - 3):                                # the arms
-        r.obox(ax, fy, 3, dep - 2, 8, 'C', 'C', 'C')
+        r.obox(ax, fy, 3, dep - 2, 8, 'C', 'c', 'C')
 
 
 def stove(r, x0):
-    """An iron stove against the back wall: an oven door, burners on top."""
+    """An iron stove against the back wall: a lit iron top with black
+    burners, an oven door with a lit rim."""
     dep, high, w = 7, 10, 16
-    r.obox(x0, BACK + dep, w, dep, high,
-           lambda a, z: 'K' if (a in (3, w - 4) or z in (2, 7)) and 3 <= a <= w - 4 and 2 <= z <= 7 else 'N',
-           lambda a, k: 'K' if (a in (4, 5, 10, 11) and k in (2, 3, 5)) else 'N', 'N')
+    def front(a, z):
+        if 3 <= a <= w - 4 and 2 <= z <= 7:
+            if a in (3, w - 4) or z in (2, 7):
+                return 'K'
+            return 'I' if z == 6 or a == 4 else 'N'           # the door's lit rim
+        return 'N'
+    r.obox(x0, BACK + dep, w, dep, high, front,
+           lambda a, k: 'K' if (a in (4, 5, 10, 11) and k in (2, 3, 5)) else 'I', 'N')
 
 
 def cupboard(r, x0, w=30):
-    """A kitchen cupboard against the back wall: two doors and their
-    knobs, all one wood, as the wall's tiles hold no more."""
+    """A kitchen cupboard against the back wall: two doors, each a panel lit
+    along its top and left edge, lit knobs, a lit top."""
     dep, high = 7, 10
-    r.obox(x0, BACK + dep, w, dep, high,
-           lambda a, z: 'K' if a in (w // 2, 2, w - 3) and z <= high - 2 else 'm' if a in (w // 2 - 2, w // 2 + 2) and z == 5 else 'F',
-           'F', 'F')
+    def front(a, z):
+        if a in (w // 2, 2, w - 3) and z <= high - 2:
+            return 'K'
+        if a in (w // 2 - 2, w // 2 + 2) and z == 5:
+            return 'P'                                       # the knobs
+        if z == high - 2 or a in (3, w // 2 + 1):
+            return 'P'                                       # the panels' lit edges
+        return 'F'
+    r.obox(x0, BACK + dep, w, dep, high, front, 'P', 'F')
 
 
 # ---- the room as the game takes it ---------------------------------------
 
-def finish(r, name, pal, merge=()):
-    """The design for draw_views and gen_entrance_art: the room on the screen,
-    its layers -- the floor walkable but where a thing stands on it -- and the
-    way out. The four-colour rule is kept by merging the least needed tones
-    first: the floor's bevels and seams, then the brick's mortar, then any
-    the room adds."""
+def finish(r, name, pal):
+    """The design for draw_views and gen_entrance_art: the room and, beside
+    it, the furniture's layer -- each with its layers, the floor walkable but
+    where a piece stands on it -- and the way out. The room keeps to four tones
+    a tile with nothing merged; every tile of the furniture to three."""
     pal = dict(BASE, **pal)
     # tones the room gives one colour are one tone: the brick may be the
-    # floor's colour, say -- to the four-colour rule and to the drawing
+    # floor's colour, say -- to the colour rules and to the drawing
     same = {}
     for k, v in pal.items():
         same.setdefault(v, k)
     one = {k: same[v] for k, v in pal.items()}
-    g = Grid(W, H)
+    g, gf = Grid(W, H), Grid(W, H)
     for (x, y), c in r.c.items():
         g.put(OX + x, OY + y, one.get(c, c))
+    for (x, y), c in r.fc.items():
+        gf.put(OX + x, OY + y, one.get(c, c))
     walk = {(OX + x, OY + y) for y in range(FRONT + 1) for x in range(EDGE0, EDGE1 + 1)
-            if part(x, y) == 'floor' and (x, y) not in r.foot}
-    foot = {(x, y) for y in range(H) for x in range(W) if (x, y) not in walk}
+            if part(x, y) == 'floor'}
     fy = {(OX + x, OY + y): v + OY for (x, y), v in r.fy.items()}
-    stand(g, lambda x, y: fy.get((x, y), y), foot)
-    four_per_cell(g, [('L', 'T'), ('e', 'T')] + list(merge) + [('m', 'W')], by_count=False)
+    stand(g, lambda x, y: fy.get((x, y), y), {(x, y) for y in range(H) for x in range(W) if (x, y) not in walk})
+    ffy = {(OX + x, OY + y): v + OY for (x, y), v in r.ffy.items()}
+    stand(gf, lambda x, y: ffy.get((x, y), y), {(OX + x, OY + y) for x, y in r.foot})
+    for grid, most, what in ((g, 4, 'room'), (gf, 3, 'furniture')):
+        rows = grid.rows()
+        over = [(cx, cy) for cy in range(0, H, 16) for cx in range(0, W, 16)
+                if len({rows[y][x] for y in range(cy, cy + 16) for x in range(cx, cx + 16)} - {'.'}) > most]
+        assert not over, f"{name}: {what} tiles over {most} tones at {over}"
     check(g, name, objects=True)
-    return {'pal': {k: v for k, v in pal.items() if one[k] == k}, 'view_w': W, 'order': ['room'], 'views': {'room': g.rows()},
-            'depth': depth_layers(W, H, [(0, 0, g)]), 'exit': EXIT}
+    return {'pal': {k: v for k, v in pal.items() if one[k] == k}, 'view_w': W,
+            'order': ['room', 'furniture'], 'views': {'room': g.rows(), 'furniture': gf.rows()},
+            'depth': depth_layers(2 * W, H, [(0, 0, g), (W, 0, gf)]), 'exit': EXIT}
 
 
 def new_room(windows=((80, 15), (160, 15))):        # on tiles: x a multiple of 16, y 15 past one

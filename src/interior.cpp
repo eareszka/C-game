@@ -4,22 +4,27 @@
 #include "collision.h"
 #include "tilemap.h"   // TOWN0_SHEET_COLS
 #include <string.h>
+#include <initializer_list>
 
 // A room per building on the starting island, each drawn whole
 // (art/structures/interiors, packed by gen_entrance_art.py into interiors.h):
 // which sheet cell each of its cells draws, and what each is to the feet.
+// The furniture is a layer of its own drawn over the room (interior_N_furn),
+// as an NES draws sprites over its background, so neither shares a tile's
+// colours with the other.
 struct PrebuiltInterior {
     const int (*tiles)[IMAP_W];
     const char* const* coll;
+    const int (*furn)[IMAP_W];
 };
 static const PrebuiltInterior prebuilt_interiors[] = {
-    { interior_0_tiles, interior_0_coll },   // 0 — the spawn house
-    { interior_1_tiles, interior_1_coll },   // 1 — the book shop
-    { interior_2_tiles, interior_2_coll },   // 2-6 — the other houses (gen_entrance_art.py HOUSES)
-    { interior_3_tiles, interior_3_coll },
-    { interior_4_tiles, interior_4_coll },
-    { interior_5_tiles, interior_5_coll },
-    { interior_6_tiles, interior_6_coll },
+    { interior_0_tiles, interior_0_coll, interior_0_furn },   // 0 — the spawn house
+    { interior_1_tiles, interior_1_coll, interior_1_furn },   // 1 — the book shop
+    { interior_2_tiles, interior_2_coll, interior_2_furn },   // 2-6 — the other houses (gen_entrance_art.py HOUSES)
+    { interior_3_tiles, interior_3_coll, interior_3_furn },
+    { interior_4_tiles, interior_4_coll, interior_4_furn },
+    { interior_5_tiles, interior_5_coll, interior_5_furn },
+    { interior_6_tiles, interior_6_coll, interior_6_furn },
 };
 #define NUM_INTERIORS (int)(sizeof(prebuilt_interiors) / sizeof(prebuilt_interiors[0]))
 
@@ -55,16 +60,28 @@ void interior_load(InteriorMap* im, int interior_id)
             im->tiles[y][x] = t;
             int val = im->prebuilt ? pb.tiles[y][x] : 0;
             im->atlas[y][x] = (val >= 6) ? val - 6 : -1;
+            int fv = im->prebuilt ? pb.furn[y][x] : 0;
+            im->furn[y][x] = (fv >= 6) ? fv - 6 : -1;
         }
     }
     interior_find_entry(im);
 }
 
-// The sheet cell a prebuilt interior draws at (tx, ty), as a tile id, or -1.
-static int interior_cell(const InteriorMap* im, int tx, int ty)
+// The sheet cell a prebuilt interior draws at (tx, ty), as a tile id, or -1:
+// the room's, or with furn the furniture's over it.
+static int interior_cell(const InteriorMap* im, int tx, int ty, bool furn = false)
 {
-    if (!im->prebuilt || im->atlas[ty][tx] < 0) return -1;
-    return TILE_TOWN0_BASE + im->atlas[ty][tx];
+    int idx = furn ? im->furn[ty][tx] : im->atlas[ty][tx];
+    if (!im->prebuilt || idx < 0) return -1;
+    return TILE_TOWN0_BASE + idx;
+}
+
+// Whether the art of (tx, ty) -- the room or the furniture over it -- stands
+// on the ground at art pixel (ax, ay) of the cell.
+static bool cell_foot(int id, int ax, int ay)
+{
+    const ArtCellDepth* d = tilemap_art_depth(id);
+    return d && ((d->foot[ay & 15] >> (ax & 15)) & 1);
 }
 
 static bool interior_solid(const void* ctx, float px, float py);
@@ -96,11 +113,13 @@ static bool interior_solid(const void* ctx, float px, float py)
     if (tx >= IMAP_W || ty >= IMAP_H) return true;
     uint8_t t = im->tiles[ty][tx];
     if (t == INT_VOID) return true;
-    // A drawn room says to the pixel where the floor is and what stands on it.
-    if (const ArtCellDepth* d = tilemap_art_depth(interior_cell(im, tx, ty))) {
+    // A drawn room says to the pixel where the floor is, its furniture what
+    // stands on it.
+    if (tilemap_art_depth(interior_cell(im, tx, ty))) {
         int ax = (int)((px - tx * IMAP_TILE) * 16.0f / IMAP_TILE);
         int ay = (int)((py - ty * IMAP_TILE) * 16.0f / IMAP_TILE);
-        return (d->foot[ay & 15] >> (ax & 15)) & 1;
+        return cell_foot(interior_cell(im, tx, ty), ax, ay) ||
+               cell_foot(interior_cell(im, tx, ty, true), ax, ay);
     }
     return t == INT_WALL;
 }
@@ -161,10 +180,12 @@ void interior_draw_over_player(const InteriorMap* im, SDL_Renderer* ren,
     for (int ty = (int)(y / IMAP_TILE); ty <= (int)((y + h - 1) / IMAP_TILE); ty++)
         for (int tx = (int)(x / IMAP_TILE); tx <= (int)((x + w - 1) / IMAP_TILE); tx++) {
             if (tx < 0 || ty < 0 || tx >= IMAP_W || ty >= IMAP_H) continue;
-            int id = interior_cell(im, tx, ty);
-            if (id >= 0)
-                tilemap_draw_cell_over(ren, id, tx * IMAP_TILE, ty * IMAP_TILE, IMAP_TILE,
-                                       (float)(tx * IMAP_TILE), (float)(ty * IMAP_TILE), x, y, w, h, feet_y);
+            for (bool furn : { false, true }) {              // the room, then its furniture
+                int id = interior_cell(im, tx, ty, furn);
+                if (id >= 0)
+                    tilemap_draw_cell_over(ren, id, tx * IMAP_TILE, ty * IMAP_TILE, IMAP_TILE,
+                                           (float)(tx * IMAP_TILE), (float)(ty * IMAP_TILE), x, y, w, h, feet_y);
+            }
         }
 }
 
@@ -175,11 +196,12 @@ void interior_draw(const InteriorMap* im, SDL_Renderer* ren, SDL_Texture* atlas_
             SDL_Rect r = { x * IMAP_TILE, y * IMAP_TILE,
                            IMAP_TILE, IMAP_TILE };
             if (im->prebuilt && atlas_tex) {
-                int idx = im->atlas[y][x];
-                if (idx < 0) continue;  // void — leave the dark clear colour
-                SDL_Rect src = { (idx % TOWN0_SHEET_COLS) * 16,
-                                 (idx / TOWN0_SHEET_COLS) * 16, 16, 16 };
-                SDL_RenderCopy(ren, atlas_tex, &src, &r);
+                for (int idx : { im->atlas[y][x], im->furn[y][x] }) {   // the room, the furniture over it
+                    if (idx < 0) continue;  // void — leave the dark clear colour
+                    SDL_Rect src = { (idx % TOWN0_SHEET_COLS) * 16,
+                                     (idx / TOWN0_SHEET_COLS) * 16, 16, 16 };
+                    SDL_RenderCopy(ren, atlas_tex, &src, &r);
+                }
                 continue;
             }
             switch (im->tiles[y][x]) {

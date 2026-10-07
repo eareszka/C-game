@@ -517,6 +517,10 @@ static constexpr int YARD_FENCE_MARK =
 static constexpr int YARD_WALL_MARK =
     TILE_TOWN0_BASE + (YARD_WALL_SHEET_ROW + 1) * TOWN0_SHEET_COLS + YARD_WALL_SHEET_COL;
 static inline bool is_yard_wall(int id) { return id == YARD_FENCE_MARK || id == YARD_WALL_MARK; }
+// A town's signpost (sheet cell 0,0; a town layout's value 6). Stamped into
+// the overlay on grass, like a rock, so it can be struck, shakes and breaks --
+// for a little wood and stone.
+static constexpr int SIGN_CELL = TILE_TOWN0_BASE;
 // Which wall stands at (x, y), or 0. A building on the yard's line -- the
 // mausoleum, the church -- takes over the wall's cells in the overlay, but the
 // wall runs on behind it: a cell of entrance art with the same wall on both
@@ -1683,6 +1687,10 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
             int tile = -1;
             if (val == 5) {
                 map->overlay[wy][wx] = TILE_TREE;
+                continue;
+            } else if (val == 6) {
+                map->tiles[wy][wx]   = TILE_GRASS;
+                map->overlay[wy][wx] = SIGN_CELL;
                 continue;
             } else if (val == 1) { tile = TILE_GRASS;
             } else if (val == 2) { tile = TILE_PATH;
@@ -5644,6 +5652,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 bool compat = (ei->type == ej->type) ||
                               (dungeon_is_graveyard(ei->type) &&
                                dungeon_is_graveyard(ej->type));
+                // Pyramids pair only with their own exterior: the desert's
+                // sandstone tombs with each other, the step pyramids with
+                // each other -- their insides differ (dungeon_wiring_for).
+                if (ei->type == DUNGEON_ENT_PYRAMID && ej->type == DUNGEON_ENT_PYRAMID &&
+                    (ei->biome == TILE_SAND) != (ej->biome == TILE_SAND))
+                    compat = false;
                 if (!compat) continue;
                 // Same-type pairing spends two of one quota, so the partner has
                 // to be affordable alongside the site already being spent for.
@@ -6025,10 +6039,12 @@ static void cliff_build_solid(SDL_Surface* sheet);
 // palette. It used to be a colour multiply to 30%, which is a colour for every
 // colour the art has and none of them FC World's. Now 11 of every 16 pixels go
 // black by fc_bayer() rank and the rest keep their own colour, so the dim is
-// as dark as it was and every pixel of it is still one of the 64. The cave art
-// is all in the sheet's first rows (tools/gen_cave_tiles.py BLOCK_ROWS), so
-// only those are copied; coordinates match the sheet's.
-static const int DIM_ROWS = 8;
+// as dark as it was and every pixel of it is still one of the 64. Only the
+// rows the dungeons draw from are copied -- the cave art in the first eight
+// (tools/gen_cave_tiles.py BLOCK_ROWS), the ladders and doorways out on rows
+// 14-15, the pyramids' blocks on rows 44-63 (tools/gen_dungeon_wall_tiles.py) --
+// so the copy runs to the last of them; coordinates match the sheet's.
+static const int DIM_ROWS = 64;
 static SDL_Texture* build_dim_texture(SDL_Renderer* renderer, SDL_Surface* sheet) {
     SDL_Surface* s = SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0);
     if (!s) return nullptr;
@@ -7449,7 +7465,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
             } else if (ov != 0) {
                 // Rocks, gold ore — draw over base, shaking when struck
-                blit_tile(renderer, ov, screen_x + (ov == TILE_ROCK ? tree_jox(x, y) : 0),
+                blit_tile(renderer, ov, screen_x + (ov == TILE_ROCK || ov == SIGN_CELL ? tree_jox(x, y) : 0),
                           screen_y, draw_size);
             }
             // A tree, rock or ore drawn over art sharing its tile -- the top of
@@ -7847,6 +7863,7 @@ static std::unordered_map<uint32_t, int> s_tile_hp;
 static int tile_max_hp(const Tilemap* map, int tx, int ty) {
     int t = map->overlay[ty][tx];
     if (t == TILE_ROCK || is_yard_wall(t)) return 3;
+    if (t == SIGN_CELL)      return 2;
     if (t == TILE_GOLD_ORE)  return 5;
     if (t == TILE_DEAD_TREE) return 3;
     if (t == TILE_TREE) {
@@ -7858,18 +7875,19 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
 }
 
 static bool tile_is_harvestable(int t) {
-    return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE || is_yard_wall(t);
+    return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE || is_yard_wall(t) ||
+           t == SIGN_CELL;
 }
 
 static HarvestTarget tile_target(int t) {
-    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK) return HARVEST_TREE;
+    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK || t == SIGN_CELL) return HARVEST_TREE;
     if (t == TILE_ROCK || t == YARD_WALL_MARK)                         return HARVEST_ROCK;
     if (t == TILE_GOLD_ORE)                    return HARVEST_ORE;
     return HARVEST_OTHER;
 }
 
 static int tile_award(int t) {
-    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK) return (int)RESOURCE_TREE;
+    if (t == TILE_TREE || t == TILE_DEAD_TREE || t == YARD_FENCE_MARK || t == SIGN_CELL) return (int)RESOURCE_TREE;
     if (t == TILE_ROCK || t == YARD_WALL_MARK)                         return (int)RESOURCE_ROCK;
     if (t == TILE_GOLD_ORE)                    return (int)RESOURCE_GOLD;
     return -1;
@@ -7892,6 +7910,7 @@ static int tilemap_strike(Tilemap* map, int tx, int ty, Weapon weapon, HarvestRe
         s_tile_jitter.erase(key);
         map->overlay[ty][tx] = 0;
         harvest_add(out, cx, cy, tile_award(t), 1);
+        if (t == SIGN_CELL) harvest_add(out, cx, cy - TILE_SIZE / 2, (int)RESOURCE_ROCK, 1);   // and stone
         return 1;
     }
 
@@ -8292,7 +8311,7 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
 
     // Trees, rocks, and gold ore live in the overlay — they're also solid.
     int ov = map->overlay[ty][tx];
-    return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE;
+    return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK || ov == TILE_GOLD_ORE || ov == SIGN_CELL;
 }
 
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,

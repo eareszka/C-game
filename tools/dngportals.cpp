@@ -109,7 +109,7 @@ static void flood(const DungeonMap* d, int sx, int sy) {
     }
 }
 
-// One generated-and-bound dungeon, checked against all five rules. Returns the
+// One generated-and-bound dungeon, checked against all six rules. Returns the
 // number of rules it broke.
 static int audit(int type, Form form, unsigned seed, float angle) {
     const DungeonMap* d = &g_dmap;
@@ -163,6 +163,17 @@ static int audit(int type, Form form, unsigned seed, float angle) {
             if (!g_seen[ty][tx])
                 fail(type, form, seed, angle, "portal unreachable from entry", p, 0);
         }
+    }
+
+    // Rule 6: every way out stands at the foot of a wall (dungeon_seat_portals),
+    // its ladder or doorway on it, with floor to its south to step off onto.
+    for (int p = 0; p < d->num_portals; p++) {
+        int tx = d->portals[p].tx, ty = d->portals[p].ty;
+        if (tx < 1 || ty < 1 || tx >= DMAP_W - 1 || ty >= DMAP_H - 1) continue;
+        if (d->tiles[ty - 1][tx] != DNG_WALL)
+            fail(type, form, seed, angle, "way out not under a wall", p, (int)d->tiles[ty - 1][tx]);
+        if (d->tiles[ty + 1][tx] == DNG_WALL)
+            fail(type, form, seed, angle, "way out walled in to the south", p, 0);
     }
 
     return (int)g_fails.size() - before;
@@ -220,6 +231,7 @@ int main(int argc, char** argv) {
                 float angle = (float)(si % 8) * 0.7853982f;
 
                 g_dmap.want_portals = (form.mouths > 0) ? form.mouths : 2;
+                g_dmap.step_pyramid = (si & 1) != 0;   // both pyramid interiors
                 if (form.mouths > 0) {
                     // Mouths spread around the mountain's centroid, the shape
                     // main.cpp hands the carve.
@@ -237,7 +249,7 @@ int main(int argc, char** argv) {
                     for (int m = 0; m < form.mouths; m++) { ow_x[m] = 100 + m * 10; ow_y[m] = 200 + m * 10; }
                     dungeon_bind_cave_mouths(&g_dmap, ow_x, ow_y, form.mouths);
                 } else if (f == 1) {
-                    dungeon_bind_pair(&g_dmap, angle, 100, 200, 300, 400);
+                    dungeon_bind_pair(&g_dmap, angle, 100, 200, (DungeonEntranceType)t, 300, 400, (DungeonEntranceType)t);
                 } else {
                     dungeon_bind_solo(&g_dmap, 100, 200);
                 }
@@ -254,6 +266,27 @@ int main(int argc, char** argv) {
             else                    snprintf(pcol, sizeof(pcol), "%d", portals_seen);
             printf("%-13s %-9s %7d %7s   %s\n", ENT_NAME[t], form.name, nseed, pcol,
                    bad ? "FAIL" : "ok");
+        }
+    }
+
+    // A graveyard's way out is a ladder up to a small graveyard and a door to a
+    // large one (user), drawn from the exterior each portal returns to: linked
+    // across scales the pair shares the large interior, one end of each.
+    {
+        struct { DungeonEntranceType in, a, b; bool solo; } ways[] = {
+            { DUNGEON_ENT_GRAVEYARD_LG, DUNGEON_ENT_GRAVEYARD_SM, DUNGEON_ENT_GRAVEYARD_LG, false },
+            { DUNGEON_ENT_GRAVEYARD_SM, DUNGEON_ENT_GRAVEYARD_SM, DUNGEON_ENT_GRAVEYARD_SM, false },
+            { DUNGEON_ENT_GRAVEYARD_SM, DUNGEON_ENT_GRAVEYARD_SM, DUNGEON_ENT_GRAVEYARD_SM, true },
+            { DUNGEON_ENT_GRAVEYARD_LG, DUNGEON_ENT_GRAVEYARD_LG, DUNGEON_ENT_GRAVEYARD_LG, true },
+        };
+        for (auto& c : ways) {
+            g_dmap.want_portals = 2;
+            dungeon_generate(&g_dmap, c.in, 0.5f, 0xD006u);
+            if (c.solo) dungeon_bind_solo(&g_dmap, 100, 200);
+            else        dungeon_bind_pair(&g_dmap, 0.0f, 100, 200, c.a, 300, 400, c.b);
+            bool ok = g_dmap.portals[0].ow_type == c.a && (c.solo || g_dmap.portals[1].ow_type == c.b);
+            if (!ok) fail((int)c.in, FORMS[c.solo ? 0 : 1], 0xD006u, 0.0f, "way out's exterior wrong", 0, 0);
+            total_cases++;
         }
     }
 
@@ -340,6 +373,7 @@ int main(int argc, char** argv) {
             for (int i = 0; i < n; i += step) {
                 DungeonWiring w = dungeon_wiring_for(&map, wseed, i);
                 g_dmap.want_portals = (w.n_mouths >= 2) ? w.n_mouths : 2;
+                g_dmap.step_pyramid = w.step_pyramid;
                 for (int m = 0; m < w.n_mouths; m++) {
                     g_dmap.want_ox[m] = w.want_ox[m];
                     g_dmap.want_oy[m] = w.want_oy[m];
@@ -349,8 +383,8 @@ int main(int argc, char** argv) {
                     dungeon_bind_cave_mouths(&g_dmap, w.mouth_ow_x, w.mouth_ow_y, w.n_mouths);
                 else if (!isnan(w.connect_angle))
                     dungeon_bind_pair(&g_dmap, w.connect_angle,
-                                      w.entry_ow_x, w.entry_ow_y,
-                                      w.exit_ow_x,  w.exit_ow_y);
+                                      w.entry_ow_x, w.entry_ow_y, w.entry_type,
+                                      w.exit_ow_x,  w.exit_ow_y,  w.exit_type);
                 else
                     dungeon_bind_solo(&g_dmap, w.entry_ow_x, w.entry_ow_y);
                 audit((int)w.type, wf, wseed, 0.0f);

@@ -60,13 +60,13 @@ static const int ENEMY_X  = 320;
 static const int ENEMY_Y  = 160;
 static const int ENEMY_R  = 24;
 // The player's hitbox: a small core at the body's centre, Touhou-sized, so a
-// pattern's gaps are read against the dot rather than the whole sprite. 1.5
-// just covers the white core of the crouch marker (one 2x2 art pixel), so
-// what the player sees is exactly what gets hit.
-static const float PLAYER_R = 1.5f;
+// pattern's gaps are read against the dot rather than the whole sprite. 3
+// reaches the edge of the crouch marker's white dot, so what the player sees
+// is exactly what gets hit.
+static const float PLAYER_R = 3.0f;
 
 #define MAX_PLAYER_BULLETS 128   // a Touhou-rate stream of three, piercing, stays well under
-#define MAX_ENEMY_BULLETS  256
+#define MAX_ENEMY_BULLETS  512   // Grand'Goule's phase 2 keeps ~270 in the air
 
 // ── Bullet ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +84,18 @@ struct Bullet {
     bool  homing;         // steers toward player each frame
     float homing_timer;   // counts down; when 0 homing turns off
     float age;            // player shots: seconds since fired
+    float delay;          // a mine's seconds left sitting before it launches
+    float launch_speed;   // its speed then, at the player
+    float launch_off;     // radians off the line to the player
+    float accel;          // a boomerang's px/s^2 along its first heading
+    float ux, uy;         // that heading
+    float min_speed;      // slows to this and keeps going, instead of turning back
+    // Player shots: what fired it, so a shot in flight keeps its own weapon's
+    // look and strike after the player swaps.
+    int   weapon;         // WeaponType
+    int   material;       // Material
+    bool  pierces;
+    bool  grazed;         // enemy shots: already counted as a graze (once each)
 };
 
 // ── Phase ─────────────────────────────────────────────────────────────────────
@@ -131,6 +143,13 @@ public:
     float hud_hp()      const { return _bp.hp; }
     float hud_max_hp()  const { return _bp.max_hp; }
     float hud_stamina() const;   // 0..1, the weapon's cooldown refilling
+    float hud_swap_t()   const { return _swap_t; }    // seconds since the weapon was swapped
+    // EXP earned this fight so far, not yet paid: the top bar adds it to the
+    // player's so the score climbs live. Paid (and any level-up applied) only
+    // on the win, so afterwards this is 0.
+    int   hud_exp()      const { return _phase == BATTLE_PHASE_VICTORY ? 0 : _hits + _grazes; }
+    float hud_hit_t()    const { return _hit_t; }     // seconds since the player was last hit
+    int   hud_hit_bars() const { return _hit_bars; }  // how many bars that hit took
     const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY ? nullptr : _enemy; }
     float player_y() const { return _bp.y; }
     ~BattleScene();
@@ -160,9 +179,18 @@ private:
     float        _from_x   = 0.0f, _from_y = 0.0f;
     bool         _more_after = false;
     bool         _done     = false;
-    bool         _focus    = false;  // crouching: slow move, hitbox shown
+    float        _hit_t    = 99.0f;  // seconds since the player was last hit
+    float        _swap_t   = 99.0f;  // seconds since the weapon was swapped
+    int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
+    float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
+    int          _hit_bars = 0;      // bars that hit took
     // What the win paid, by Item, for the victory panel.
     int          _won[32]    = {};
+    // The score -- EXP is hits + grazes + the defeat bonus, paid on the win.
+    int          _hits       = 0;   // the player's shots that landed
+    int          _grazes     = 0;   // enemy shots that passed close without hitting
+    int          _exp_gain   = 0;   // what the win paid
+    int          _levels     = 0;   // levels that gained
     unsigned     _won_new    = 0;   // which of them the player had never held before
     // The item icons, for the pickups (assets/items.png); loaded on first draw.
     mutable SDL_Texture* _item_icons       = nullptr;
@@ -172,9 +200,11 @@ private:
     mutable SDL_Texture* _sheet       = nullptr;
     mutable bool         _sheet_tried = false;
     mutable SDL_Texture* _flap        = nullptr;   // wing-flap sheet, if the enemy has one
-    // The same two sheets as solid white silhouettes, for the hit flash.
+    mutable SDL_Texture* _alt         = nullptr;   // alternate idle sheet, if the enemy has one
+    // The same sheets as solid white silhouettes, for the hit flash.
     mutable SDL_Texture* _sheet_white = nullptr;
     mutable SDL_Texture* _flap_white  = nullptr;
+    mutable SDL_Texture* _alt_white   = nullptr;
     // The player's bullets, one cell per weapon and ore (art/battle/
     // gen_shots.py); loaded on the first draw like the enemy's.
     mutable SDL_Texture* _bullets       = nullptr;
@@ -202,6 +232,8 @@ private:
     void _update_enemy(float dt);
     void _move_bullets(float dt);
     void _check_collisions();
+    void _equip(WeaponType w);   // set up firing for w: profile, upgrades, shot hitbox
+    void _cycle(int dir);        // next (+1) or previous (-1) owned weapon
     double _shot_angle(const Bullet& bl) const;   // degrees, as drawn
     float  _shot_scale(const Bullet& bl) const;   // size against the sprite, as drawn
     float  _shot_edge_gap(const Bullet& bl) const; // centre to the edge it is heading for

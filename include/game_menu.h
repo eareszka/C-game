@@ -39,5 +39,11 @@ void game_menu_free(GameMenu* m);
 // world to show the same picture the menu does (the book on the floor, the
 // raft under the player).
 void game_menu_draw_item(GameMenu* m, SDL_Renderer* ren, int item, int x, int y, int size);
+// A weapon's icon in its ore, the same picture the menu shows; shade < 255
+// dims it (the battle box's previous and next weapons).
+void game_menu_draw_weapon(GameMenu* m, SDL_Renderer* ren, WeaponType w, Material ore,
+                           int x, int y, int size, Uint8 shade = 255);
+// An ore's name as the menu writes it before a weapon ("IRON", "SHARD").
+const char* game_menu_ore_name(Material m);
 
 #endif
