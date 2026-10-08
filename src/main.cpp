@@ -125,6 +125,11 @@ int main(int argc, char *argv[])
     player.stats.max_iq      = 8;   player.stats.iq      = 8;
 
     BattleScene* battle_scene = nullptr;
+    // The oasis's air: 1 full, 0 gone. It runs out over 16 s under water and
+    // fills again at a surface; once gone, the swimmer drowns a bar of HP
+    // every 2 s, never below 1 HP. A fight stops the clock (user).
+    float oxygen = 1.0f, oxy_hurt_t = 0.0f;
+    float drown_t = 9.0f;      // seconds since drowning last hurt: the fight's shake and red flash
     GameState    state_after_battle = STATE_OVERWORLD;
     int          battle_queue[3]             = {};
     int          battle_queue_chaser_idx[3] = { -1, -1, -1 };
@@ -143,7 +148,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 12, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 12 Ebigane
+        { 57, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 57 Dingbat
     };
     const int    TEST_N             = (int)(sizeof(test_enemies) / sizeof(test_enemies[0]));
     bool         test_armed         = true;
@@ -305,9 +310,10 @@ int main(int argc, char *argv[])
     float       pickup_note_t = 0.0f;
     bool map_open         = false;
     bool battle_list_open = false;
-    int  battle_list_sel  = 0;
+    int  battle_list_sel  = 0;        // position in the filtered list
+    char battle_query[24] = "";       // typed search: part of a name, or an id
 
-    static const char* ENEMY_NAMES[50] = {
+    static const char* ENEMY_NAMES[] = {
         // Grassland 0–6
         "SKVADER", "WOLPERTINGER", "TREESQUEAK", "QIQUE", "LILI",
         "CROWING CRESTED COBRA", "WAKMANGGANCHI ARAGONDI",
@@ -329,7 +335,19 @@ int main(int argc, char *argv[])
         // Ocean 42–49
         "NYKUR", "SAZAE-ONI", "ITQIIRPAK", "KUSA KAP", "LUSCA",
         "MOHA-MOHA", "BJARNDYRAKONGUR", "PHYSETER",
+        // Later cryptids, 50 on
+        "TEAKETTLER", "ASPIDOCHELONE", "SANNAJA",
+        "COME-AT-A-BODY", "BILLDAD", "WAPALOOSIE", "MOSKITTO", "DINGBAT", "AGROPELTER", "TRIPODERO", "RUMPTIFUSEL", "ROPERITE", "HUGAG", "HIDEBEHIND", "DUNGAVENHOOTER",
+        // Folklore creatures, 65-99
+        "MICE THAT EAT IRON", "AYOTOCHTLI", "LAGOPUS", "SHUYU", "BES CHEM",
+        "TROLLGADDA", "NAMUNGUMI", "MAHWOT", "LIDERC", "BES RAP",
+        "MAKALALA", "LOCH OICH MONSTER", "HOGA", "ZANKALLALA", "UGJUKNARPAK",
+        "BES KOTAK", "IELTXU", "NADUBI", "BEAST OF BARRISDALE", "KIGUTILIK",
+        "NANABOLELE", "LEUCROCOTTA", "COROCOTTA", "AMIXSAK", "CUERO",
+        "CHIPEKWE", "KURREA", "SIEHNAM", "CHIPIQUE", "TROCHUS",
+        "WITKES", "BREGDI", "RO", "BOIUNA", "FAD FELEN",
     };
+    static_assert(sizeof(ENEMY_NAMES) / sizeof(ENEMY_NAMES[0]) == ENEMY_COUNT, "a name per enemy in the roster");
 
     // Static: the map is megabytes (its tiles, sight and the pyramid's art),
     // far past what main's stack holds.
@@ -471,6 +489,17 @@ int main(int argc, char *argv[])
         if (dt_d > 0.05) dt_d = 0.05; // cap at 50 ms — prevents big jumps on stalled frames
         float dt = (float)dt_d;
         if (post_battle_t > 0.0f) post_battle_t -= dt;
+        drown_t += dt;
+        if (state == STATE_DUNGEON && dmap.type == DUNGEON_ENT_OASIS) {
+            if (dungeon_breathing(&dmap, &dplayer)) oxygen = SDL_min(1.0f, oxygen + dt * 1.5f);
+            else oxygen = SDL_max(0.0f, oxygen - dt / 16.0f);
+            if (oxygen > 0.0f) oxy_hurt_t = 0.0f;
+            else if ((oxy_hurt_t += dt) >= 2.0f) {
+                oxy_hurt_t -= 2.0f;
+                player.stats.hp = SDL_max(1, player.stats.hp - HP_PER_BAR);
+                drown_t = 0.0f;
+            }
+        }
         tilemap_update(dt);
 
         input_begin_frame(&in);
@@ -704,20 +733,52 @@ int main(int argc, char *argv[])
         if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && !menu.open && state != STATE_BATTLE)
             battle_list_open = !battle_list_open;
 
+        // The list, filtered by what's typed: letters match anywhere in the
+        // name, a number matches the id (its digits from the start).
+        int battle_hits[ENEMY_COUNT], battle_n = 0;
+        for (int e = 0; e < ENEMY_COUNT; e++) {
+            char id[8];
+            SDL_snprintf(id, sizeof(id), "%02d", e);
+            bool digits = battle_query[0] >= '0' && battle_query[0] <= '9';
+            bool hit = digits ? (SDL_strncmp(id, battle_query, SDL_strlen(battle_query)) == 0 ||
+                                 SDL_atoi(battle_query) == e)
+                              : SDL_strstr(ENEMY_NAMES[e], battle_query) != nullptr;
+            if (hit) battle_hits[battle_n++] = e;
+        }
+        if (battle_list_sel >= battle_n) battle_list_sel = battle_n > 0 ? battle_n - 1 : 0;
+
         if (battle_list_open) {
-            if (input_pressed(&in, SDL_SCANCODE_UP))
-                battle_list_sel = (battle_list_sel + 49) % 50;
-            if (input_pressed(&in, SDL_SCANCODE_DOWN))
-                battle_list_sel = (battle_list_sel + 1) % 50;
-            if (input_pressed(&in, SDL_SCANCODE_RETURN) ||
-                input_pressed(&in, SDL_SCANCODE_Z)) {
-                delete battle_scene;
-                battle_scene = new BattleScene(&player, battle_list_sel);
-                state = STATE_BATTLE;
-                battle_list_open = false;
+            // Typing: A-Z, 0-9, space, - and ' (names like COME-AT-A-BODY,
+            // GRAND'GOULE); backspace takes one off. Enter fights.
+            size_t ql = SDL_strlen(battle_query);
+            auto type = [&](char c) {
+                if (ql + 1 < sizeof(battle_query)) { battle_query[ql++] = c; battle_query[ql] = 0; battle_list_sel = 0; }
+            };
+            for (int k = 0; k < 26; k++)
+                if (input_pressed(&in, (SDL_Scancode)(SDL_SCANCODE_A + k))) type((char)('A' + k));
+            for (int k = 0; k < 10; k++)   // SDL lists 1..9 then 0
+                if (input_pressed(&in, (SDL_Scancode)(SDL_SCANCODE_1 + k))) type((char)(k == 9 ? '0' : '1' + k));
+            if (input_pressed(&in, SDL_SCANCODE_SPACE))      type(' ');
+            if (input_pressed(&in, SDL_SCANCODE_MINUS))      type('-');
+            if (input_pressed(&in, SDL_SCANCODE_APOSTROPHE)) type('\'');
+            if (input_pressed(&in, SDL_SCANCODE_BACKSPACE) && ql > 0) { battle_query[--ql] = 0; battle_list_sel = 0; }
+
+            if (battle_n > 0) {
+                if (input_pressed(&in, SDL_SCANCODE_UP))
+                    battle_list_sel = (battle_list_sel + battle_n - 1) % battle_n;
+                if (input_pressed(&in, SDL_SCANCODE_DOWN))
+                    battle_list_sel = (battle_list_sel + 1) % battle_n;
+                if (input_pressed(&in, SDL_SCANCODE_RETURN)) {
+                    delete battle_scene;
+                    battle_scene = new BattleScene(&player, battle_hits[battle_list_sel]);
+                    state = STATE_BATTLE;
+                    battle_list_open = false;
+                }
             }
-            if (input_pressed(&in, SDL_SCANCODE_ESCAPE))
-                battle_list_open = false;
+            if (input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
+                if (ql > 0) { battle_query[0] = 0; battle_list_sel = 0; }   // first clears the search
+                else battle_list_open = false;
+            }
         }
 
         // Blank input fed to game logic while menu is open so the player stands still.
@@ -963,6 +1024,8 @@ int main(int argc, char *argv[])
                             };
                         }
                         state = STATE_DUNGEON;
+                        oxygen = 1.0f; oxy_hurt_t = 0.0f;          // a breath at the top of the shaft
+                        dplayer.vx = dplayer.vy = 0.0f;
                     }
                 }
                 // Building door — prompt and enter the interior.
@@ -1049,7 +1112,9 @@ int main(int argc, char *argv[])
 
                 float dpcx = dplayer.x + player.width  * 0.5f;
                 float dpcy = dplayer.y + player.height * 0.5f;
+                cam.zoom = dmap.type == DUNGEON_ENT_OASIS ? 1.0f : zoom_levels[zoom_idx];   // the oasis is one screen tall
                 camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
+                dungeon_frame_camera(&dmap, &cam);
 
                 if (pre_battle_timer >= 0.0f) {
                     pre_battle_tick(dt, STATE_DUNGEON);
@@ -1248,9 +1313,12 @@ int main(int argc, char *argv[])
                 fc_draw_color(plat.renderer, 5, 5, 8, 255);
                 SDL_RenderClear(plat.renderer);
 
+                SDL_Rect drown_vp;
+                hurt_shake_begin(plat.renderer, drown_t, &drown_vp);     // drowning: hurt as a fight shows it
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
                 if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
-                player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
+                if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer))
+                    player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
                 dungeon_draw_front(&dmap, &dplayer, &cam, plat.renderer);
                 dungeon_draw_swing(&dplayer, &cam, plat.renderer);
 
@@ -1270,6 +1338,8 @@ int main(int argc, char *argv[])
                     fc_draw_color(plat.renderer, 255, 80, 80, 255);
                     SDL_RenderDrawRect(plat.renderer, &cr);
                 }
+                hurt_shake_end(plat.renderer, &drown_vp);
+                hurt_flash(plat.renderer, drown_t, 640, 480);
 
                 battle_veil_draw(&cam);
 
@@ -1596,6 +1666,9 @@ int main(int argc, char *argv[])
                     draw_text(plat.renderer, nm, 600 - text_width(nm, 1), 3, 1, 220, 220, 220);
                     draw_bar(plat.renderer, 420, 14, 180, 8, foe->hp, foe->max_hp, 220, 60, 60);
                 }
+            } else if (state == STATE_DUNGEON && dmap.type == DUNGEON_ENT_OASIS) {
+                // In the oasis the zoom is held, and its air goes where the slider was
+                dungeon_draw_oxygen(plat.renderer, oxygen, 452, 6);
             } else {
                 // Zoom slider
                 const int SL_W  = 120;
@@ -1745,7 +1818,7 @@ int main(int argc, char *argv[])
         // ── Battle test list overlay ──────────────────────────────────────────
         if (battle_list_open) {
             static const int VIEW = 10;
-            const int PW = 360, PH = 34 + VIEW * 18 + 18;
+            const int PW = 360, PH = 46 + VIEW * 18 + 18;
             const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
 
             draw_nes_panel(plat.renderer, PX, PY, PW, PH);
@@ -1753,23 +1826,32 @@ int main(int argc, char *argv[])
                       PX + (PW - text_width("BATTLE TEST", 2)) / 2,
                       PY + NES_PAD + 4, 2, 255, 255, 255);
 
+            // The search line, then the filtered list -- all ENEMY_COUNT of
+            // them with nothing typed.
+            char qline[40];
+            SDL_snprintf(qline, sizeof(qline), "FIND:%s_", battle_query);
+            draw_text(plat.renderer, qline, PX + 8, PY + 32, 1, 255, 255, 80);
+
             int top = battle_list_sel - VIEW / 2;
-            if (top < 0)       top = 0;
-            if (top > 50-VIEW) top = 50 - VIEW;
+            if (top > battle_n - VIEW) top = battle_n - VIEW;
+            if (top < 0)               top = 0;
 
             for (int i = 0; i < VIEW; i++) {
-                int idx = top + i;
-                if (idx >= 50) break;
-                bool sel = (idx == battle_list_sel);
-                int ry = PY + 34 + i * 18;
+                int li = top + i;
+                if (li >= battle_n) break;
+                int idx = battle_hits[li];
+                bool sel = (li == battle_list_sel);
+                int ry = PY + 46 + i * 18;
                 Uint8 cr = sel ? 255 : 180, cg = sel ? 255 : 180, cb = sel ? 80 : 180;
                 if (sel) draw_text(plat.renderer, ">", PX + 8, ry, 2, cr, cg, cb);
-                char label[32];
+                char label[40];
                 SDL_snprintf(label, sizeof(label), "%02d  %s", idx, ENEMY_NAMES[idx]);
                 draw_text(plat.renderer, label, PX + 24, ry, 2, cr, cg, cb);
             }
+            if (battle_n == 0)
+                draw_text(plat.renderer, "NO MATCH", PX + 24, PY + 46, 2, 180, 180, 180);
 
-            draw_text(plat.renderer, "UP/DN:SELECT  Z:FIGHT  F3:CLOSE",
+            draw_text(plat.renderer, "TYPE:FIND  UP/DN:SELECT  ENTER:FIGHT  ESC:CLEAR  F3:CLOSE",
                       PX + 6, PY + PH - 14, 1, 180, 180, 180);
         }
 

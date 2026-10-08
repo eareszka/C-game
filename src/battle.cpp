@@ -126,6 +126,23 @@ static bool circles_overlap(float ax, float ay, float ar,
     return dx*dx + dy*dy < rsum*rsum;
 }
 
+// The point of a shot's middle nearest (x, y): its centre, or for a log the
+// nearest point of the line it lies along.
+static void bullet_nearest(const Bullet& bl, float x, float y, float* nx, float* ny) {
+    *nx = bl.x; *ny = bl.y;
+    if (bl.half_len <= 0.0f) return;
+    float ux = cosf(bl.ang), uy = sinf(bl.ang);
+    float t = fminf(fmaxf((x - bl.x) * ux + (y - bl.y) * uy, -bl.half_len), bl.half_len);
+    *nx = bl.x + ux * t; *ny = bl.y + uy * t;
+}
+
+// An enemy shot touching a circle: round shots as circles, logs as capsules.
+static bool bullet_touches(const Bullet& bl, float x, float y, float r) {
+    float nx, ny;
+    bullet_nearest(bl, x, y, &nx, &ny);
+    return circles_overlap(nx, ny, bl.radius, x, y, r);
+}
+
 // ── Enemy sprites ─────────────────────────────────────────────────────────────
 
 // Sheets built by tools/build_enemy.py: one row, 8 directions
@@ -138,7 +155,10 @@ static bool circles_overlap(float ax, float ay, float ar,
 // FLAP_FRAMES frames a direction.
 struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; bool rows = false;   // rows: one row per direction
                     const char* flap = nullptr;
-                    const char* alt  = nullptr; };   // alt: the idle in another pose (Enemy::alt_pose), same layout
+                    const char* alt  = nullptr;      // alt: the idle in another pose (Enemy::alt_pose), same layout
+                    const char* log  = nullptr;      // log: its log bullet, drawn lying flat (BulletSpawn::half_len) --
+                    int log_frames   = 1;            // a row of this many frames, rolling, LOG_MS each
+                    int log_rows     = 1; };         // 3: rows flat / right end up / right end down, stepped 0 1 0 2 to rock
 static const int FLAP_FRAMES = 4;   // wings up, mid, down, mid
 static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/00_skvader.png",                {0, 1, 0, 2} },
@@ -157,9 +177,9 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/12_ebigane.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/12_ebigane_fly.png" },
     { "assets/enemies/13_beast_of_the_charred_forests.png", {0, 1, 0, 2} },
     { "assets/enemies/14_lodsilungur.png",            {0, 1, 0, 2} },
-    { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2} },
+    { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2}, 3, false, "assets/enemies/15_ofuguggi_swim.png" },  // swim = backwards, tail first
     { "assets/enemies/16_kamaitachi.png",             {0, 1, 0, 2} },
-    { "assets/enemies/17_qiqirn.png",                 {0, 1, 0, 2} },
+    { "assets/enemies/17_qiqirn.png",                 {0, 1, 0, 2}, 3, false, "assets/enemies/17_qiqirn_run.png" },  // run = its frightened gallop round the edge
     { "assets/enemies/18_vatnaormur.png",             {}, 5 },
     { "assets/enemies/19_skeljaskrimsli.png",         {}, 5 },
     { "assets/enemies/20_sermilik.png",               {}, 5 },
@@ -192,8 +212,35 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/47_moha_moha.png",              {}, 5 },
     { "assets/enemies/48_bjarndyrakongur.png",        {0, 1, 0, 2} },
     { "assets/enemies/49_physeter.png",               {}, 8, true },   // fills the top of the arena: one row per direction
+    { "assets/enemies/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
+    { nullptr },                                                       // 51 Aspidochelone: not drawn yet, a box
+    { nullptr },                                                       // 52 Sannaja: not drawn yet, a box
+    { "assets/enemies/53_come_at_a_body.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/53_come_at_a_body_dash.png" },  // frame 1: it spits; dash = rush and flight
+    { "assets/enemies/54_billdad.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/54_billdad_slap.png" },  // frame 1: the spring; slap (phase 2) = tail hammer, already turned to show its back
+    { "assets/enemies/55_wapaloosie.png",             {0, 1, 0, 2}, 3, false, nullptr,
+      "assets/enemies/55_wapaloosie_up.png", "assets/enemies/55_wapaloosie_log.png", 8, 3 },                         // frame 1: the inchworm hump; alt: reared up on its back legs
+    { "assets/enemies/56_moskitto.png",               {}, 5, false, "assets/enemies/56_moskitto_grab.png" },  // big: always aloft; grab = lunging to snatch
+    { "assets/enemies/57_dingbat.png",                {}, 5, false, nullptr, "assets/enemies/57_dingbat_catch.png" },  // big, 6 dirs; alt = catching pose, while perched
+    { "assets/enemies/58_agropelter.png",             {}, 5 },         // big: squatting, its long skinny arms flailing
+    { nullptr }, { nullptr },                                          // 59-60: not drawn yet, boxes
+    { nullptr }, { nullptr }, { nullptr }, { nullptr },                // 61-64: not drawn yet
+    { nullptr },                                                       // 65 Mice That Eat Iron: skipped for now
+    { "assets/enemies/66_ayotochtli.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/66_ayotochtli_roll.png" },  // frame 1: hunched into its shell; flap = curled in a ball, rolling
+    { "assets/enemies/67_lagopus.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/67_lagopus_fly.png" },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
+    { "assets/enemies/68_shuyu.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/68_shuyu_flap.png" },  // frames 1, 2: heads plucking the air; flap (phase 2) = wings beating
+    { "assets/enemies/69_bes_chem.png",               {0, 1, 0, 2} },  // frame 1: the fanged mouth gapes wide
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
+
+// A log whose sheet has tilt rows rocks by stepping them -- flat, right end
+// up, flat, right end down -- ROCK_STEP s each, from its own age; its hitbox
+// tilts with the row (LOG_TILT: the drawn rows lean ~10 degrees).
+static const float ROCK_STEP = 0.25f;
+static const float LOG_TILT  = 0.18f;   // radians
+static int log_row(const Bullet& bl, const EnemySheet& es) {
+    static const int STEPS[4] = { 0, 1, 0, 2 };
+    return es.log_rows > 1 ? STEPS[(int)(bl.age / ROCK_STEP) % 4] : 0;
+}
 static const Uint32 LOOP_MS[4] = { 400, 250, 400, 250 };
 static const Uint32 STEP_MS = 260;
 
@@ -320,6 +367,7 @@ BattleScene::~BattleScene() {
     if (_sheet) SDL_DestroyTexture(_sheet);
     if (_flap)  SDL_DestroyTexture(_flap);
     if (_alt)   SDL_DestroyTexture(_alt);
+    if (_log)   SDL_DestroyTexture(_log);
     if (_alt_white) SDL_DestroyTexture(_alt_white);
     if (_sheet_white) SDL_DestroyTexture(_sheet_white);
     if (_flap_white)  SDL_DestroyTexture(_flap_white);
@@ -352,6 +400,36 @@ float BattleScene::_darkness() const {
 // land like one.
 static const float HITSTOP = 0.12f;
 static const float SHAKE_T = 0.30f;
+static const float FLASH_T = 0.40f;
+
+void hurt_shake_begin(SDL_Renderer* ren, float t, SDL_Rect* saved) {
+    SDL_RenderGetViewport(ren, saved);
+    if (t < SHAKE_T) {
+        int amp = 2 * (int)(3.0f * (1.0f - t / SHAKE_T) + 0.5f);   // 6, 4, 2 px
+        SDL_Rect shaken = *saved;
+        shaken.x += ((int)(t * 30.0f) % 2) ? amp : -amp;
+        SDL_RenderSetViewport(ren, &shaken);
+    }
+}
+
+void hurt_shake_end(SDL_Renderer* ren, const SDL_Rect* saved) {
+    SDL_RenderSetViewport(ren, saved);
+}
+
+// White over the first HITSTOP, then red fading out in hard steps, NES
+// palette-flash style.
+void hurt_flash(SDL_Renderer* ren, float t, int w, int h) {
+    if (t >= FLASH_T) return;
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+    SDL_Rect all = { 0, 0, w, h };
+    if (t < HITSTOP) fc_draw_color(ren, 252, 252, 252, 150);
+    else {
+        float k = 1.0f - (t - HITSTOP) / (FLASH_T - HITSTOP);
+        fc_draw_color(ren, 183, 0, 0, (Uint8)(110 * ((int)(k * 3.0f + 0.999f) / 3.0f)));
+    }
+    SDL_RenderFillRect(ren, &all);
+    SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+}
 
 void BattleScene::update(const Input* in, float dt) {
     if (_hit_t < HITSTOP) { _hit_t += dt; return; }
@@ -464,10 +542,10 @@ void BattleScene::_win() {
         item_slot(_player_ref, (Item)_pickups[i].item) += 1;
         _won[_pickups[i].item]++;
     }
-    // The score: hits + grazes + the defeat bonus, which grows with the
-    // enemy's place in the run (Skvader 50 ... later ones more). A level-up
-    // heals: the battle's own HP follows.
-    _exp_gain = _hits + _grazes + 50 + 25 * _enemy_id;
+    // The score: hits + grazes + the defeat bonus (enemy_defeat_exp: a
+    // common's grows with its rank, a boss pays far more). A level-up heals:
+    // the battle's own HP follows.
+    _exp_gain = _hits + _grazes + enemy_defeat_exp(_enemy_id);
     _levels   = player_gain_exp(_player_ref, _exp_gain);
     if (_levels > 0) {
         _bp.max_hp = (float)_player_ref->stats.max_hp;
@@ -550,11 +628,16 @@ void BattleScene::_update_enemy(float dt) {
             _spawn_enemy_bullet(spawns[i]);
         _enemy->fire_timer = _enemy->fire_interval();
     }
-    // The breath frame: the moment the idle animation turns to frame 2.
+    // The breath frame: the moment the idle animation turns to it.
     if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT) {
-        int f = idle_frame_now(ENEMY_SHEETS[_enemy_id]);
-        if (f == 2 && _idle_frame != 2) {
+        int f = idle_frame_now(ENEMY_SHEETS[_enemy_id]), bf = _enemy->breath_frame();
+        if (f == bf && _idle_frame != bf) {
             int count = _enemy->breathe(_bp.x, _bp.y, spawns, 128);
+            for (int i = 0; i < count; i++)
+                _spawn_enemy_bullet(spawns[i]);
+        }
+        if (f != _idle_frame) {
+            int count = _enemy->on_idle_frame(f, _bp.x, _bp.y, spawns, 128);
             for (int i = 0; i < count; i++)
                 _spawn_enemy_bullet(spawns[i]);
         }
@@ -578,21 +661,32 @@ void BattleScene::_move_bullets(float dt) {
     struct OrbSpawn { float x, y; };
     OrbSpawn orb_pending[32];
     int n_orb = 0;
+    struct Shed { float x, y, heading, spread, speed, damage; int n; float spin; };
+    Shed shed_pending[32];
+    int n_shed = 0;
 
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
+        bl.age += dt;   // from its spawn, waiting or not
 
         // A boomerang slows along its heading, stops, and flies back; once
         // it is returning and reaches the enemy, the enemy swallows it.
-        if (bl.accel != 0.0f && bl.min_speed > 0.0f) {
-            // Easing off: slows along its heading, never below min_speed.
-            float sp = fmaxf(bl.vx * bl.ux + bl.vy * bl.uy + bl.accel * dt, bl.min_speed);
-            bl.vx = bl.ux * sp;
-            bl.vy = bl.uy * sp;
+        if (bl.accel != 0.0f && bl.min_speed > 0.0f && bl.ow != 0.0f) {
+            bl.ovr = fmaxf(bl.ovr + bl.accel * dt, bl.min_speed);   // orbiting: it's the speed outward that eases
+        } else if (bl.accel != 0.0f && bl.min_speed > 0.0f) {
+            // Easing off: slows along the way it is going now (a ricochet
+            // turns it), never below min_speed.
+            float cur = sqrtf(bl.vx * bl.vx + bl.vy * bl.vy);
+            float sp  = fmaxf(cur + bl.accel * dt, bl.min_speed);
+            if (cur > 0.0f) { bl.vx = bl.vx / cur * sp; bl.vy = bl.vy / cur * sp; }
         } else if (bl.accel != 0.0f) {
             bl.vx += bl.ux * bl.accel * dt;
             bl.vy += bl.uy * bl.accel * dt;
+            if (bl.max_speed > 0.0f) {                  // coming back no faster than this
+                float sp = sqrtf(bl.vx * bl.vx + bl.vy * bl.vy);
+                if (sp > bl.max_speed) { bl.vx *= bl.max_speed / sp; bl.vy *= bl.max_speed / sp; }
+            }
             float ddx = bl.x - _enemy->x, ddy = bl.y - _enemy->y;
             if (bl.vx * bl.ux + bl.vy * bl.uy < 0.0f && ddx * ddx + ddy * ddy < 24.0f * 24.0f) {
                 bl.active = false;
@@ -631,8 +725,43 @@ void BattleScene::_move_bullets(float dt) {
             }
         }
 
-        bl.x += bl.vx * dt;
-        bl.y += bl.vy * dt;
+        if (bl.ow != 0.0f) {
+            // Orbiting: straight out from its centre while turning round it.
+            bl.orad += bl.ovr * dt;
+            bl.oang += bl.ow * dt;
+            float nx = bl.ocx + cosf(bl.oang) * bl.orad, ny = bl.ocy + sinf(bl.oang) * bl.orad;
+            if (dt > 0.0f) { bl.vx = (nx - bl.x) / dt; bl.vy = (ny - bl.y) / dt; }
+            bl.x = nx; bl.y = ny;
+        } else {
+            if (bl.zig_every > 0.0f && (bl.zig_t -= dt) <= 0.0f) {
+                // Swing across its course to the other side.
+                bl.zig_t += bl.zig_every;
+                float r = -2.0f * bl.zig * bl.zig_s, c = cosf(r), sn = sinf(r), vx = bl.vx, vy = bl.vy;
+                bl.vx = vx * c - vy * sn; bl.vy = vx * sn + vy * c;
+                bl.zig_s = -bl.zig_s;
+            }
+            bl.x += bl.vx * dt;
+            bl.y += bl.vy * dt;
+        }
+        if (bl.shed_every > 0.0f && bl.shed_left != 0 && (bl.shed_t -= dt) <= 0.0f) {
+            bl.shed_t += bl.shed_every;
+            if (bl.shed_left > 0) bl.shed_left--;
+            bool still = bl.vx == 0.0f && bl.vy == 0.0f;     // a sitting egg sheds from its middle
+            if (n_shed < 32)
+                shed_pending[n_shed++] = { bl.x, still ? bl.y : bl.y + bl.radius, atan2f(bl.vy, bl.vx),
+                                           bl.shed_spread, bl.shed_speed, bl.damage, bl.shed_n, bl.shed_spin };
+            if (bl.shed_left == 0 && bl.shed_dies) { bl.active = false; continue; }
+        }
+        bl.ang += bl.spin * dt;   // a log turns -- or rocks, turning back at its tilt
+        if (bl.half_len > 0.0f && _enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT
+            && ENEMY_SHEETS[_enemy_id].log_rows > 1) {
+            int row = log_row(bl, ENEMY_SHEETS[_enemy_id]);   // the hitbox leans with the drawn row
+            bl.ang = row == 1 ? -LOG_TILT : row == 2 ? LOG_TILT : 0.0f;
+        }
+        if (bl.max_tilt > 0.0f && fabsf(bl.ang) > bl.max_tilt) {
+            bl.ang  = copysignf(bl.max_tilt, bl.ang);
+            bl.spin = -bl.spin;
+        }
 
         if (bl.spawner) {
             bl.spawn_timer -= dt;
@@ -651,7 +780,11 @@ void BattleScene::_move_bullets(float dt) {
             if (bl.y + r > ARENA_H) { bl.y = ARENA_H - r; bl.vy = -fabsf(bl.vy); bl.bounces++; }
             if (bl.bounces >= 3) bl.active = false;
         } else {
-            if (bl.x < 0 || bl.x > ARENA_W || bl.y < ARENA_TOP || bl.y > ARENA_H)
+            // Gone once its centre leaves the arena -- for a log, once all of
+            // it has (m: its reach), so one can enter from out of sight
+            // above (spawned up to m over the top) and leave the same way.
+            float m = bl.half_len > 0.0f ? bl.half_len + bl.radius : 0.0f;
+            if (bl.x < -m || bl.x > ARENA_W + m || bl.y < ARENA_TOP - 2.0f * m || bl.y > ARENA_H + m)
                 bl.active = false;
         }
     }
@@ -659,6 +792,17 @@ void BattleScene::_move_bullets(float dt) {
     // Emit 8-way ring from each orb that ticked.
     // Minimum distance: at d < 50px the ring gaps (39px) are too small for the
     // player circle (r=12) to fit through, making the hit unavoidable.
+    for (int p = 0; p < n_shed; p++) {
+        const Shed& s = shed_pending[p];
+        float dx = s.x - _bp.x, dy = s.y - _bp.y;
+        if (dx*dx + dy*dy < 40.0f*40.0f) continue;   // never point-blank
+        for (int k = 0; k < s.n; k++) {
+            float a = s.heading + (s.n > 1 ? (k / (float)(s.n - 1) - 0.5f) * s.spread : 0.0f);
+            BulletSpawn chip = { cosf(a) * s.speed, sinf(a) * s.speed, 2.5f, s.damage };
+            chip.orbit_w = s.spin;
+            _spawn_bullet_at(s.x, s.y, chip);
+        }
+    }
     for (int p = 0; p < n_orb; p++) {
         float dx = orb_pending[p].x - _bp.x;
         float dy = orb_pending[p].y - _bp.y;
@@ -708,6 +852,10 @@ void BattleScene::_check_collisions() {
         // A piercing shot inside the enemy strikes again only every
         // PIERCE_REHIT_T, however long it takes to pass through.
         if (bl.pierces && _pierce_wait > 0.0f) continue;
+        if (float cr = _enemy->catch_radius()) {      // caught out of the air: no hit
+            float cdx = bl.x - _enemy->x, cdy = bl.y - _enemy->y;
+            if (cdx * cdx + cdy * cdy < cr * cr) { bl.active = false; _enemy->catch_shot(bl.x, bl.y); continue; }
+        }
         // The enemy's centre in the shot's own frame, then its distance to
         // the nearest point of the shot's box -- grown with it -- against the
         // enemy's radius.
@@ -723,7 +871,7 @@ void BattleScene::_check_collisions() {
         float qx = lx < x0 ? x0 : lx > x1 ? x1 : lx;
         float qy = ly < y0 ? y0 : ly > y1 ? y1 : ly;
         if ((lx - qx) * (lx - qx) + (ly - qy) * (ly - qy) < _hit_r * _hit_r) {
-            _enemy->take_damage(bl.damage * _enemy->damage_mult((WeaponType)bl.weapon));
+            _enemy->take_damage(bl.damage * _enemy->damage_mult((WeaponType)bl.weapon) * _enemy->armor());
             _hits++;
             _pierce_wait = PIERCE_REHIT_T;
             if (_flash_gap <= 0.0f) { _enemy_flash = ENEMY_FLASH_T; _flash_gap = ENEMY_FLASH_GAP; }
@@ -738,8 +886,8 @@ void BattleScene::_check_collisions() {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active || bl.grazed) continue;
-        if (circles_overlap(bl.x, bl.y, bl.radius, px, py, PLAYER_R + GRAZE_MARGIN) &&
-            !circles_overlap(bl.x, bl.y, bl.radius, px, py, PLAYER_R)) {
+        if (bullet_touches(bl, px, py, PLAYER_R + GRAZE_MARGIN) &&
+            !bullet_touches(bl, px, py, PLAYER_R)) {
             bl.grazed = true;
             _grazes++;
         }
@@ -756,7 +904,7 @@ void BattleScene::_check_collisions() {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
-        if (circles_overlap(bl.x, bl.y, bl.radius, px, py, PLAYER_R)) {
+        if (bullet_touches(bl, px, py, PLAYER_R)) {
             hurt(bl.damage);
             bl.active = false;
         }
@@ -806,6 +954,30 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
         bl.launch_off     = bs.launch_off;
         bl.accel          = bs.accel;
         bl.min_speed      = bs.min_speed;
+        bl.max_speed      = bs.max_speed;
+        bl.age            = 0.0f;
+        bl.half_len       = bs.half_len;
+        bl.ang            = bs.ang;
+        bl.spin           = bs.spin;
+        bl.max_tilt       = bs.max_tilt;
+        bl.shed_every     = bs.shed_every;
+        bl.shed_t         = bs.shed_first;
+        bl.shed_n         = bs.shed_n;
+        bl.shed_spread    = bs.shed_spread;
+        bl.shed_speed     = bs.shed_speed;
+        bl.shed_left      = bs.shed_times > 0 ? bs.shed_times : -1;
+        bl.shed_dies      = bs.shed_dies;
+        bl.shed_spin      = bs.shed_spin;
+        bl.ow             = bs.orbit_w;
+        bl.zig = bs.zig; bl.zig_every = bs.zig_every; bl.zig_t = bs.zig_every * 0.5f; bl.zig_s = 1;
+        if (bs.zig != 0.0f) {                         // it starts on one side of its course
+            float c = cosf(bs.zig), sn = sinf(bs.zig), vx = bl.vx, vy = bl.vy;
+            bl.vx = vx * c - vy * sn; bl.vy = vx * sn + vy * c;
+        }
+        bl.ocx = ox; bl.ocy = oy; bl.orad = 0.0f;
+        bl.oang = atan2f(bs.vy, bs.vx);
+        bl.ovr  = sqrtf(bs.vx * bs.vx + bs.vy * bs.vy);
+        bl.flash_in       = bs.flash_in;
         bl.grazed         = false;
         {
             float sp = sqrtf(bs.vx * bs.vx + bs.vy * bs.vy);
@@ -818,8 +990,18 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
     }
 }
 
+// No enemy shot is ever made on top of the player: one whose start is within
+// SAFE_SPAWN (plus its own size) of the hitbox is left out. One rule for every
+// enemy -- hugging a body, standing under a rain, a muzzle off to one side --
+// instead of a guard in each pattern (the pattern tester's finding).
+static const float SAFE_SPAWN = 24.0f;
+
 void BattleScene::_spawn_enemy_bullet(const BulletSpawn& bs) {
-    _spawn_bullet_at(_enemy->x, _enemy->y, bs);
+    float ox = bs.from ? bs.ox : _enemy->x, oy = bs.from ? bs.oy : _enemy->y;
+    float reach = SAFE_SPAWN + bs.radius + bs.half_len;
+    float dx = ox - _bp.x, dy = oy - _bp.y;
+    if (dx * dx + dy * dy < reach * reach) return;
+    _spawn_bullet_at(ox, oy, bs);
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
@@ -855,7 +1037,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
     int ey = (int)(-60.0f + (_enemy->y + 60.0f) * k);
     if (!_sheet_tried) {
         _sheet_tried = true;
-        if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT) {
+        if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT && ENEMY_SHEETS[_enemy_id].path) {
             _sheet = load_with_white(ren, ENEMY_SHEETS[_enemy_id].path, &_sheet_white);
             if (!_sheet) SDL_Log("enemy sheet %s: %s", ENEMY_SHEETS[_enemy_id].path, IMG_GetError());
             if (const char* fp = ENEMY_SHEETS[_enemy_id].flap) {
@@ -865,6 +1047,10 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
             if (const char* ap = ENEMY_SHEETS[_enemy_id].alt) {
                 _alt = load_with_white(ren, ap, &_alt_white);
                 if (!_alt) SDL_Log("enemy alt sheet %s: %s", ap, IMG_GetError());
+            }
+            if (const char* lp = ENEMY_SHEETS[_enemy_id].log) {
+                _log = IMG_LoadTexture(ren, lp);
+                if (!_log) SDL_Log("enemy log sprite %s: %s", lp, IMG_GetError());
             }
         }
         if (_sheet) {
@@ -933,13 +1119,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     // Hit shake: the arena jumps side to side on the 2px art grid, dying
     // away over SHAKE_T. The HUD, drawn after, stays still.
     SDL_Rect vp;
-    SDL_RenderGetViewport(ren, &vp);
-    if (_hit_t < SHAKE_T) {
-        int amp = 2 * (int)(3.0f * (1.0f - _hit_t / SHAKE_T) + 0.5f);   // 6, 4, 2 px
-        SDL_Rect shaken = vp;
-        shaken.x += ((int)(_hit_t * 30.0f) % 2) ? amp : -amp;
-        SDL_RenderSetViewport(ren, &shaken);
-    }
+    hurt_shake_begin(ren, _hit_t, &vp);
 
 
     _draw_enemy(ren);
@@ -998,9 +1178,54 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active) continue;
+        if (bl.half_len > 0.0f && _log) {
+            // A log: the enemy's log sprite at 2x, centred, turned to lie
+            // at its angle, its frames rolling -- each log a few frames out
+            // of step with the last, so they don't roll in unison.
+            // A sheet with tilt rows rocks by its rows (drawn on the grid,
+            // log_row) and is never turned by the engine.
+            const Uint32 LOG_MS = 90;
+            const EnemySheet& es = ENEMY_SHEETS[_enemy_id];
+            int nf = es.log_frames, sw, sh;
+            SDL_QueryTexture(_log, NULL, NULL, &sw, &sh);
+            // The roll runs off the log's own age, so what it sheds (BulletSpawn
+            // shed_*) can leave on a frame of the roll -- the stub at the bottom.
+            int lw = sw / nf, lh = sh / es.log_rows, f = (int)(bl.age * 1000.0f / LOG_MS) % nf;
+            SDL_Rect src = { f * lw, log_row(bl, es) * lh, lw, lh };
+            SDL_Rect dst = { (int)bl.x - lw, (int)bl.y - lh, lw * 2, lh * 2 };
+            if (es.log_rows > 1) SDL_RenderCopy(ren, _log, &src, &dst);
+            else SDL_RenderCopyEx(ren, _log, &src, &dst, bl.ang * (180.0 / PI), NULL, SDL_FLIP_NONE);
+            continue;
+        }
+        if (bl.half_len > 0.0f) {
+            // A log without a sprite, on the 2px grid: in the enemy's bullet colour
+            // like any of its shots, with the white core along its middle.
+            // A capsule is convex, so each 2px row is one run.
+            float reach = bl.half_len + bl.radius + 2.0f;
+            int y0 = ((int)(bl.y - reach)) & ~1, y1 = (int)(bl.y + reach);
+            int x0 = ((int)(bl.x - reach)) & ~1, x1 = (int)(bl.x + reach);
+            for (int yy = y0; yy <= y1; yy += 2) {
+                for (int pass = 0; pass < 2; pass++) {
+                    float lim = pass ? 1.5f : bl.radius + 1.0f;   // body, then core
+                    int xa = x1 + 2, xb = x0 - 2;
+                    for (int xx = x0; xx <= x1; xx += 2) {
+                        float nx, ny;
+                        bullet_nearest(bl, xx + 1.0f, yy + 1.0f, &nx, &ny);
+                        float dx = xx + 1.0f - nx, dy = yy + 1.0f - ny;
+                        if (dx * dx + dy * dy <= lim * lim) { if (xx < xa) xa = xx; xb = xx; }
+                    }
+                    if (xa > xb) continue;
+                    if (pass) _fill_rect(ren, xa, yy, xb - xa + 2, 2, 252, 252, 252, 255);
+                    else      _fill_rect(ren, xa, yy, xb - xa + 2, 2, c.r, c.g, c.b, 255);
+                }
+            }
+            continue;
+        }
         int h  = 2 * (int)ceilf((bl.radius + 1.0f) / 2.0f);
         int cx = (int)bl.x & ~1, cy = (int)bl.y & ~1;
-        bool white = bl.homing && flash;
+        // Homing shots flicker white; a flash_in shot flickers as it appears.
+        const float FLASH_IN = 0.25f;
+        bool white = (bl.homing && flash) || (bl.flash_in && bl.age < FLASH_IN && (int)(bl.age * 20.0f) % 2 == 0);
         Uint8 r = white ? 252 : c.r, g = white ? 252 : c.g, b = white ? 252 : c.b;
         _fill_rect(ren, cx - h + 2, cy - h, 2*h - 4, 2*h, r, g, b, 255);
         _fill_rect(ren, cx - h, cy - h + 2, 2*h, 2*h - 4, r, g, b, 255);
@@ -1109,7 +1334,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         // The score under the haul: what earned it, the total, and a level-up.
         {
             char line[48];
-            SDL_snprintf(line, sizeof(line), "HITS %d  GRAZE %d  DEFEAT %d", _hits, _grazes, 50 + 25 * _enemy_id);
+            SDL_snprintf(line, sizeof(line), "HITS %d  GRAZE %d  DEFEAT %d", _hits, _grazes, enemy_defeat_exp(_enemy_id));
             draw_text(ren, line, 320 - text_width(line, 1) / 2, 266, 1, 200, 200, 200);
             SDL_snprintf(line, sizeof(line), "+%d EXP", _exp_gain);
             draw_text(ren, line, 320 - text_width(line, 2) / 2, 280, 2, 252, 252, 252);
@@ -1158,19 +1383,8 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
                   PY + PH - 16, 1, 160, 160, 160);
     }
 
-    // Hit flash: white over the freeze, then red fading out in hard steps,
-    // NES palette-flash style.
-    if (_hit_t < 0.4f) {
-        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-        if (_hit_t < HITSTOP)
-            _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 252, 252, 252, 150);
-        else {
-            float k = 1.0f - (_hit_t - HITSTOP) / (0.4f - HITSTOP);
-            _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 183, 0, 0,
-                       (Uint8)(110 * ((int)(k * 3.0f + 0.999f) / 3.0f)));
-        }
-        SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-    }
+    // Hit flash: white over the freeze, then red fading out in hard steps.
+    hurt_flash(ren, _hit_t, ARENA_W, ARENA_H);
 
     // Fading in or out: black over everything in the NES's four hard steps.
     float dark = _darkness();
@@ -1181,5 +1395,5 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
     }
 
-    SDL_RenderSetViewport(ren, &vp);
+    hurt_shake_end(ren, &vp);
 }

@@ -5,6 +5,7 @@
 #include "resource_node.h"   // RESOURCE_GOLD inventory index
 #include "combat.h"          // weapon_swing_update/draw -- shared with the overworld harvest mechanic
 #include "crafting.h"        // Item, item_slot -- a dungeon's treasure
+#include "enemy.h"           // enemy_is_boss: bosses are placed, never spawned at random
 #include <SDL2/SDL_image.h>
 #include <string.h>
 #include <math.h>
@@ -227,13 +228,20 @@ static inline SDL_Texture* cave_atlas(SDL_Texture* lit_tex, bool lit) {
 // dark. No fog, no dimming.
 static bool dungeon_open_sight(const DungeonMap* dmap) {
     return dmap->type == DUNGEON_ENT_STONEHENGE || dmap->type == DUNGEON_ENT_GRAVEYARD_SM ||
-           dmap->type == DUNGEON_ENT_GRAVEYARD_LG;
+           dmap->type == DUNGEON_ENT_GRAVEYARD_LG || dmap->type == DUNGEON_ENT_OASIS;
 }
 
 // The graveyards: walkways floating in the dark (carve_graveyard_walkways).
 // The catacombs keep the old rooms.
 static bool gyw_walkways(const DungeonMap* dmap) {
     return dmap->type == DUNGEON_ENT_GRAVEYARD_SM || dmap->type == DUNGEON_ENT_GRAVEYARD_LG;
+}
+
+// The dungeons whose ways out the layout stands where they belong -- the
+// graveyard's walls on its landings, stonehenge's ladders on flat back walls
+// -- so binding only says which is which and nothing moves them.
+static bool fixed_ways(const DungeonMap* dmap) {
+    return gyw_walkways(dmap) || dmap->type == DUNGEON_ENT_STONEHENGE || dmap->type == DUNGEON_ENT_OASIS;
 }
 
 // A way out's wall stands across the back of its landing, GYW_FOOT deep: its
@@ -1557,154 +1565,221 @@ static void carve_pyramid_layout(DungeonMap* dmap, uint32_t* rng) {
 
 static void ca_ensure_connectivity(DungeonMap* dmap, int entry_x, int entry_y); // forward decl
 
-// ── OASIS: radial biome, 128×128 ─────────────────────────────────────────
-//
-// Algorithm:
-//  1. Three organic growth rings (sinusoidally distorted annuli) centred on
-//     a circular impassable water source.
-//  2. Curved radial paths pierce every ring, connecting water-edge to outer wall.
-//  3. Optional localised BSP micro-structures (small rooms) seeded in the
-//     mid/outer ring at random angles.
-//  4. Palm obstacle clusters scattered across ring floors.
-//  5. Connectivity fix; entry at inner ring, exit at farthest walkable tile.
-static void carve_oasis_layout(DungeonMap* dmap, uint32_t* rng) {
-    int cx = DMAP_W/2, cy = DMAP_H/2;
-    const int OAS_R = 64;   // half-side → 128×128 region
-
-    // ── Layered organic growth rings ──────────────────────────────────────
-    // Each ring is an annulus whose inner/outer edges are each independently
-    // distorted by a sinusoid: edge(angle) = base ± amp*sin(freq*angle+phase).
-    struct OasRing {
-        float rmin, rmax;          // base radii
-        float amp;                  // distortion amplitude (tiles)
-        float freq;                 // angular frequency (cycles per 2π)
-        float phase_in, phase_out;  // phase offsets for inner/outer edge
-    };
-    OasRing rings[3];
-
-    // Base ring geometry
-    rings[0] = { 10.f, 19.f, 2.2f, 5.f, 0.f, 0.f };   // inner shore
-    rings[1] = { 22.f, 31.f, 2.8f, 4.f, 0.f, 0.f };   // mid ring
-    rings[2] = { 34.f, 43.f, 3.0f, 6.f, 0.f, 0.f };   // outer ring
-
-    // Randomise phase offsets so every seed looks different.
-    for (int ri = 0; ri < 3; ri++) {
-        rings[ri].phase_in  = (float)(rng_next(rng) % 628) * 0.01f;
-        rings[ri].phase_out = (float)(rng_next(rng) % 628) * 0.01f;
+// ── OASIS: a flooded cave seen from the side ──────────────────────────────
+// The user's reference (a Mother 1 cave strip, tools/gen_oasis.py -> oasis.inc)
+// and its mirror end to end: a level is a stretch of that run 5-15 screens
+// long, cut so both ends land in its narrow passage. Then, as the approved
+// mock-up (scratchpad oasis_gen.py) laid them: each end tapers to a rounded
+// point (the user's dead end); air sits in the ceiling's hollows, its water
+// line at the higher of the hollow's two lips (the user's red line), a dome
+// bitten into the rock where no hollow lies near, never more than 34 tiles
+// from the last air; a shaft up to the spring at each end, its water line
+// where it meets the ceiling; sections read off the shape; weed on the
+// seabed, its foot at the lowest of the seabed under it.
+#include "oasis.inc"
+static inline bool oasis_rock(const DungeonMap* d, int x, int y) {
+    if (x < 0 || y < 0 || x >= d->oasis_w || y >= OASIS_PX_H) return true;
+    return d->oasis_solid[y][x >> 3] >> (x & 7) & 1;
+}
+static inline void oasis_set(DungeonMap* d, int x, int y, bool rock) {
+    if (x < 0 || y < 0 || x >= d->oasis_w || y >= OASIS_PX_H) return;
+    if (rock) d->oasis_solid[y][x >> 3] |= (uint8_t)(1 << (x & 7));
+    else      d->oasis_solid[y][x >> 3] &= (uint8_t)~(1 << (x & 7));
+}
+// What stops the swimmer, in level pixels: the rock, and the air above a
+// pocket's or a shaft's water line past a head's height -- one surfaces, the
+// head up out of the water, and goes no higher (user).
+static const int OASIS_HEAD = 10;              // how far the head comes up out of the water, art pixels
+static bool oasis_blocked(const DungeonMap* d, int x, int y) {
+    if (oasis_rock(d, x, y)) return true;
+    for (int i = 0; i < d->num_oasis_air; i++) {
+        const auto& a = d->oasis_air[i];
+        if (x >= a.x0 && x < a.x1 && y < a.line - OASIS_HEAD) return true;
     }
+    return false;
+}
+// The swimmer's body, not only its feet -- seen from the side the head comes
+// up under the rock too: of its 28 x 40 frame, x 4..24 and y 10..40 (dungeon
+// pixels), in level pixels.
+static void oasis_body(const DungeonMap* d, float x, float y, int* x0, int* y0, int* x1, int* y1) {
+    *x0 = (int)floorf((x + 4) * 16 / DMAP_TILE) - d->oasis_x0;  *x1 = (int)floorf((x + 24) * 16 / DMAP_TILE) - d->oasis_x0;
+    *y0 = (int)floorf((y + 10) * 16 / DMAP_TILE) - d->oasis_y0; *y1 = (int)floorf((y + 40) * 16 / DMAP_TILE) - d->oasis_y0;
+}
+static bool oasis_body_free(const DungeonMap* d, float x, float y) {
+    int x0, y0, x1, y1;
+    oasis_body(d, x, y, &x0, &y0, &x1, &y1);
+    for (int py = y0; py < y1; py++)
+        for (int px = x0; px < x1; px++)
+            if (oasis_blocked(d, px, py)) return false;
+    return true;
+}
 
-    for (int y = cy - OAS_R + 1; y < cy + OAS_R - 1; y++) {
-        for (int x = cx - OAS_R + 1; x < cx + OAS_R - 1; x++) {
-            if (x < 1 || x >= DMAP_W-1 || y < 1 || y >= DMAP_H-1) continue;
-            float dx = (float)(x - cx), dy = (float)(y - cy);
-            float r   = sqrtf(dx*dx + dy*dy);
-            float ang = atan2f(dy, dx);
-            for (int ri = 0; ri < 3; ri++) {
-                float rlo = rings[ri].rmin + rings[ri].amp * sinf(rings[ri].freq * ang + rings[ri].phase_in);
-                float rhi = rings[ri].rmax + rings[ri].amp * sinf(rings[ri].freq * ang + rings[ri].phase_out);
-                if (r >= rlo && r < rhi) { dmap->tiles[y][x] = DNG_FLOOR; break; }
+static bool oasis_narrow_col(int c) {          // a run column whose water is the narrow passage's
+    int wet = 0;
+    for (int y = 0; y < OASIS_ROWS; y++) {
+        const unsigned short* m = OASIS_MASK[OASIS_RUN_IDS[y][c % OASIS_RUN]];
+        bool water = true;
+        for (int r = 0; r < 16; r++) water &= m[r] == 0;
+        wet += water;
+    }
+    return wet < 4;
+}
+
+static void carve_oasis(DungeonMap* d, uint32_t* rng) {
+    const int S = 16, TAPER = 6 * S;
+    auto rr = [&](int n) { return (int)(rng_next(rng) % (uint32_t)n); };
+    int NS = 5 + rr(11), TW = NS * 20, W = TW * S;
+    d->oasis_w = W;
+    d->oasis_seed = rng_next(rng);
+    // the stretch of the run: both ends in the narrow passage
+    std::vector<int> ok;
+    for (int x = 0; x < OASIS_RUN; x++)
+        if (oasis_narrow_col(x + 6) && oasis_narrow_col(x + TW - 7)) ok.push_back(x);
+    int x0 = ok.empty() ? rr(OASIS_RUN) : ok[rr((int)ok.size())];
+    memset(d->oasis_solid, 0, sizeof d->oasis_solid);
+    std::vector<bool> narrow(TW);
+    for (int c = 0; c < TW; c++) {
+        narrow[c] = oasis_narrow_col(x0 + c);
+        for (int row = 0; row < OASIS_ROWS; row++) {
+            const unsigned short* m = OASIS_MASK[OASIS_RUN_IDS[row][(x0 + c) % OASIS_RUN]];
+            for (int r = 0; r < 16; r++)
+                for (int b = 0; b < 16; b++)
+                    if (m[r] >> b & 1) oasis_set(d, c * S + b, row * S + r, true);
+        }
+    }
+    // the two ends taper to a rounded point, 8 px inside the level's edge
+    for (int side = 0; side < 2; side++) {
+        int xe = side ? W - 1 - TAPER : TAPER, c0 = -1, f0 = -1;
+        for (int y = 0; y < OASIS_PX_H; y++)
+            if (!oasis_rock(d, xe, y)) { if (c0 < 0) c0 = y; f0 = y; }
+        if (c0 < 0) continue;
+        float yc = (c0 + f0) / 2.0f, hmax = (f0 - c0) / 2.0f;
+        for (int x = 0; x < TAPER; x++) {
+            int px = side ? W - 1 - x : x;
+            float t = std::max(0.0f, (x - 8) / (float)(TAPER - 8));
+            float h = hmax * powf(t, 0.7f) + (t > 0 ? 2.5f * sinf(x / 5.0f + side) : -1.0f);
+            float lo = yc - h * (((x / 10) % 2) ? 1.15f : 1.0f), hi = yc + h;
+            for (int y = 0; y < OASIS_PX_H; y++)
+                if (!(lo < y && y < hi)) oasis_set(d, px, y, true);
+        }
+    }
+    // the ceiling's underside, column by column
+    std::vector<int> ceil(W);
+    auto ceiling = [&]() {
+        for (int px = 0; px < W; px++) {
+            int y = 0;
+            while (y < OASIS_PX_H && oasis_rock(d, px, y)) y++;
+            ceil[px] = y;
+        }
+    };
+    ceiling();
+    struct Hollow { int x0, x1, line; };
+    auto hollows = [&]() {
+        std::vector<int> lips;
+        for (int px = 24; px < W - 24; px++) {
+            int m = 0;
+            for (int k = -24; k <= 24; k++) m = std::max(m, ceil[px + k]);
+            if (ceil[px] == m && (px == 24 || ceil[px - 1] != ceil[px])) lips.push_back(px);
+        }
+        std::vector<Hollow> out;
+        for (size_t i = 0; i + 1 < lips.size(); i++) {
+            int a = lips[i], b = lips[i + 1], line = std::min(ceil[a], ceil[b]);
+            int lo = W, hi = -1, top = OASIS_PX_H, room = 0, n = 0;
+            for (int px = a + 1; px < b; px++)
+                if (ceil[px] < line) { lo = std::min(lo, px); hi = std::max(hi, px); room += line - ceil[px]; n++; }
+            for (int px = a + 1; px < b; px++) top = std::min(top, ceil[px]);
+            if (n >= 16 && line - top >= 8 && room >= 500) out.push_back({ lo, hi + 1, line });
+        }
+        return out;
+    };
+    std::vector<Hollow> pockets;
+    int last = 8 * S;                                         // the way in's shaft: air
+    while ((TW - 8) * S - last > 34 * S) {
+        int target = std::min(W - TAPER - 30, last + (24 + rr(11)) * S);
+        std::vector<Hollow> near;
+        for (auto& h : hollows()) { int c = (h.x0 + h.x1) / 2; if (c >= last + 12 * S && c <= target) near.push_back(h); }
+        if (near.empty()) {                                   // a dome bitten up into the rock
+            int c = ceil[target];
+            for (int px = target - 20; px <= target + 20; px++)
+                for (int y = std::max(2, c - 18); y <= c; y++) {
+                    float u = (px - target) / 20.5f, v = (y - c) / 16.5f;
+                    if (u * u + v * v <= 1) oasis_set(d, px, y, false);
+                }
+            ceiling();
+            for (auto& h : hollows()) if (h.x0 <= target && target < h.x1) near.push_back(h);
+            if (near.empty()) {                               // the dome is the hollow: its flanks its lips
+                int line = std::min(ceil[target - 22], ceil[target + 22]), lo = W, hi = -1;
+                for (int px = target - 21; px <= target + 21; px++)
+                    if (ceil[px] < line) { lo = std::min(lo, px); hi = std::max(hi, px); }
+                if (hi < 0) { lo = target - 8; hi = target + 8; }
+                near.push_back({ lo, hi + 1, line });
             }
         }
+        Hollow best = near[0];
+        for (auto& h : near) if (h.x0 + h.x1 > best.x0 + best.x1) best = h;
+        pockets.push_back(best);
+        last = (best.x0 + best.x1) / 2;
     }
-
-    // ── Curved radial connective paths ────────────────────────────────────
-    // Each path sweeps from just outside the water core (r=9) to the outer
-    // ring edge (r=44) with a sinusoidal angular deviation — piercing all
-    // ring walls to guarantee ring-to-ring connectivity.
-    int num_paths = 4 + (int)(rng_next(rng) % 3);   // 4–6
-    for (int p = 0; p < num_paths; p++) {
-        float base_ang = (float)p / num_paths * 2.f * 3.14159f;
-        base_ang += ((float)(rng_next(rng) % 40) - 20.f) * 3.14159f / 180.f;
-        float curve_amp  = ((float)(rng_next(rng) % 30) - 15.f) * 3.14159f / 180.f;
-        float curve_freq = 1.5f + (float)(rng_next(rng) % 20) * 0.1f;
-
-        int steps = 80;
-        for (int s = 0; s <= steps; s++) {
-            float t   = (float)s / steps;
-            float rad = 9.f + t * 35.f;   // r=9 → r=44
-            float ang = base_ang + curve_amp * sinf(t * 3.14159f * curve_freq);
-            int px = cx + (int)(cosf(ang) * rad);
-            int py = cy + (int)(sinf(ang) * rad);
-            // 2×2 brush minimum
-            for (int dy2 = 0; dy2 <= 1; dy2++)
-                for (int dx2 = 0; dx2 <= 1; dx2++) {
-                    int tx = px+dx2, ty = py+dy2;
-                    if (tx>=1&&tx<DMAP_W-1&&ty>=1&&ty<DMAP_H-1)
-                        dmap->tiles[ty][tx] = DNG_FLOOR;
-                }
+    // the shafts: entries 0 and 1 of the air, then the pockets
+    d->num_oasis_air = 0;
+    const int ends[2] = { 7, TW - 9 };
+    for (int e : ends) {
+        int sx0 = e * S + 2, sx1 = (e + 1) * S + 14;
+        int line = std::min(ceil[sx0 - 1], ceil[sx1]), open_to = line;
+        for (int px = sx0; px < sx1; px++) open_to = std::max(open_to, ceil[px]);
+        for (int px = sx0; px < sx1; px++)
+            for (int y = 0; y < open_to; y++) oasis_set(d, px, y, false);
+        d->oasis_air[d->num_oasis_air++] = { (int16_t)sx0, (int16_t)sx1, (int16_t)line };
+    }
+    for (auto& h : pockets)
+        if (d->num_oasis_air < 24) d->oasis_air[d->num_oasis_air++] = { (int16_t)h.x0, (int16_t)h.x1, (int16_t)h.line };
+    // sections: narrow stretches are tunnels; the open ones cut 1-3 screens at
+    // a time into cave, cavern and the leviathan's pass, never twice running
+    d->num_oasis_sec = 0;
+    int lastk = -1;
+    for (int x = 0; x < TW && d->num_oasis_sec < 40;) {
+        int e = x;
+        while (e < TW && narrow[e] == narrow[x]) e++;
+        if (narrow[x]) { d->oasis_sec[d->num_oasis_sec++] = { 0, (int16_t)(x * S), (int16_t)(e * S) }; lastk = 0; x = e; continue; }
+        while (x < e && d->num_oasis_sec < 40) {
+            int n = std::min(e - x, (1 + rr(3)) * 20);
+            if (e - (x + n) < 10) n = e - x;
+            int k;
+            do k = 1 + rr(3); while (k == lastk);
+            d->oasis_sec[d->num_oasis_sec++] = { (uint8_t)k, (int16_t)(x * S), (int16_t)((x + n) * S) };
+            lastk = k; x += n;
         }
     }
-
-    // ── Central water source (painted last — overwrites any floor) ────────
-    for (int dy = -9; dy <= 9; dy++)
-        for (int dx = -9; dx <= 9; dx++) {
-            if (sqrtf((float)(dx*dx+dy*dy)) >= 8.5f) continue;
-            int tx = cx+dx, ty = cy+dy;
-            if (tx>=1&&tx<DMAP_W-1&&ty>=1&&ty<DMAP_H-1)
-                dmap->tiles[ty][tx] = DNG_WALL;
+    // weed on the seabed, out of the tunnels: its foot at the lowest of the
+    // seabed under it, so none of it shows cut off above a dip
+    d->num_oasis_weed = 0;
+    for (int x = 0; x < TW && d->num_oasis_weed < 320; x++) {
+        if (narrow[x] || pyr_hash((uint32_t)x * 31u, d->oasis_seed) % 5) continue;
+        int foot = 0;
+        for (int px = x * S + 2; px < x * S + 14; px++) {
+            int y = ceil[px];
+            while (y < OASIS_PX_H && !oasis_rock(d, px, y)) y++;
+            foot = std::max(foot, y);
         }
-
-    // ── Localised BSP micro-structures (optional, 60 % chance each) ──────
-    // Small rectangular rooms seeded at random angles in the mid/outer ring.
-    int num_micro = 2 + (int)(rng_next(rng) % 3);   // 2–4 attempts
-    for (int m = 0; m < num_micro; m++) {
-        if (rng_next(rng) % 10 < 4) continue;   // 60 % chance
-        float ang = (float)(rng_next(rng) % 628) * 0.01f;
-        float rad = 24.f + (float)(rng_next(rng) % 16);   // r 24–40
-        int mx = cx + (int)(cosf(ang) * rad);
-        int my = cy + (int)(sinf(ang) * rad);
-        int rw = 5 + (int)(rng_next(rng) % 5);   // 5–9
-        int rh = 4 + (int)(rng_next(rng) % 4);   // 4–7
-        carve_rect(dmap, mx - rw/2, my - rh/2, rw, rh, DNG_FLOOR);
+        foot += 2;
+        if (foot - 32 > ceil[x * S + 8] + 4) d->oasis_weed[d->num_oasis_weed++] = { (int16_t)(x * S), (int16_t)(foot - 32) };
     }
-
-    // ── Palm obstacle clusters in ring floor areas ────────────────────────
-    for (int k = 0; k < 25; k++) {
-        int px = cx - OAS_R + 2 + (int)(rng_next(rng) % (OAS_R*2 - 4));
-        int py = cy - OAS_R + 2 + (int)(rng_next(rng) % (OAS_R*2 - 4));
-        float d = sqrtf((float)((px-cx)*(px-cx)+(py-cy)*(py-cy)));
-        if (d < 10.f || d > 44.f) continue;
-        if (dmap->tiles[py][px] != DNG_FLOOR) continue;
-        if (near_special_tile(dmap, px, py, 3)) continue;
-        dmap->tiles[py][px] = DNG_WALL;
-        if (rng_next(rng) % 2 == 0) {
-            const int off[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
-            place_obstacle(dmap, px+off[rng_next(rng)%4][0], py+off[rng_next(rng)%4][1], 3);
-        }
+    // on the map: the level's top left at tile (8, 8); a tile walkable where
+    // its middle is water; the ways out at the top of each shaft, the tile
+    // above them rock (the ladder goes up from there)
+    d->oasis_x0 = 8 * S; d->oasis_y0 = 8 * S;
+    for (int ty = 8; ty < 8 + OASIS_ROWS; ty++)
+        for (int tx = 8; tx < 8 + TW && tx < DMAP_W; tx++)
+            if (!oasis_rock(d, (tx - 8) * S + 8, (ty - 8) * S + 8)) d->tiles[ty][tx] = DNG_FLOOR;
+    // the ways out at each shaft's surface: the tile under the swimmer's feet
+    // when it has surfaced, its head up out of the water (the feet 12 below the head)
+    for (int i = 0; i < 2; i++) {
+        int tx = 8 + (d->oasis_air[i].x0 + d->oasis_air[i].x1) / 2 / S;
+        int ty = 8 + (d->oasis_air[i].line - OASIS_HEAD + 12) / S;
+        if (i == 0) { d->entry_x = tx; d->entry_y = ty; } else { d->exit_x = tx; d->exit_y = ty; }
+        d->tiles[ty][tx] = i == 0 ? DNG_ENTRY : DNG_EXIT;
+        d->tiles[ty - 1][tx] = DNG_WALL;
     }
-
-    // ── Entry: inner ring accessible tile; exit: farthest walkable tile ───
-    dmap->entry_x = cx; dmap->entry_y = cy - 12;
-    if (dmap->tiles[cy-12][cx] == DNG_WALL) {
-        for (int r = 1; r < 20; r++) {
-            bool found = false;
-            for (int dy = -r; dy <= r && !found; dy++)
-                for (int dx = -r; dx <= r && !found; dx++) {
-                    if (abs(dx)!=r && abs(dy)!=r) continue;
-                    int tx = cx+dx, ty = cy-12+dy;
-                    if (tx<1||tx>=DMAP_W-1||ty<1||ty>=DMAP_H-1) continue;
-                    if (dmap->tiles[ty][tx] != DNG_WALL) {
-                        dmap->entry_x = tx; dmap->entry_y = ty; found = true;
-                    }
-                }
-            if (found) break;
-        }
-    }
-    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_FLOOR;
-
-    ca_ensure_connectivity(dmap, dmap->entry_x, dmap->entry_y);
-
-    int best = -1;
-    dmap->exit_x = dmap->entry_x; dmap->exit_y = dmap->entry_y;
-    for (int ty = 1; ty < DMAP_H-1; ty++)
-        for (int tx = 1; tx < DMAP_W-1; tx++) {
-            if (dmap->tiles[ty][tx] == DNG_WALL) continue;
-            int d = abs(tx - dmap->entry_x) + abs(ty - dmap->entry_y);
-            if (d > best) { best = d; dmap->exit_x = tx; dmap->exit_y = ty; }
-        }
-
-    dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
-    dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
 }
 
 // ── STONEHENGE: the barrow, a block maze after the user's reference ──────
@@ -1780,39 +1855,68 @@ static void shg_add_loops(uint8_t grid[SHG_H][SHG_W], uint32_t* rng) {
     }
 }
 
+// The ways out: corridor cells (odd, odd) with a flat wall straight behind
+// them, so each ladder stands in the middle of one (user) -- the first such
+// cell, and the one furthest from it.
 static void shg_pick_portals(uint8_t grid[SHG_H][SHG_W],
                              int* entry_u, int* entry_v,
                              int* exit_u,  int* exit_v) {
+    auto ok = [&](int x, int y) {
+        return (x & 1) && (y & 1) && grid[y][x] == SHG_CELL_FLOOR && grid[y - 1][x] == SHG_CELL_WALL;
+    };
     int eu = 1, ev = 1;
     bool found = false;
     for (int y = 0; y < SHG_H && !found; y++)
         for (int x = 0; x < SHG_W; x++)
-            if (grid[y][x] == SHG_CELL_FLOOR) { eu=x; ev=y; found=true; break; }
+            if (ok(x, y)) { eu=x; ev=y; found=true; break; }
     int fu = eu, fv = ev, best = -1;
     for (int y = 0; y < SHG_H; y++)
         for (int x = 0; x < SHG_W; x++) {
-            if (grid[y][x] != SHG_CELL_FLOOR) continue;
+            if (!ok(x, y)) continue;
             int dist = abs(x-eu) + abs(y-ev);
             if (dist > best) { best=dist; fu=x; fv=y; }
         }
     *entry_u=eu; *entry_v=ev; *exit_u=fu; *exit_v=fv;
 }
 
-// Whether a block -- ground (x0, bd), ground (0, 0) at art pixel (OX, OY) --
-// draws on art pixel (sx, sy): its front, its right side a column a step
-// back, its top a row a step back.
-static bool barrow_covers(int OX, int OY, int x0, int bd, int sx, int sy) {
-    int fx = OX + x0 + bd;
-    if (sx >= fx && sx < fx + BRW_BW && sy >= OY - bd - BRW_BZ && sy < OY - bd) return true;
-    int dd = sx - (fx + BRW_BW);
-    if (dd >= 0 && dd < BRW_BD) {
-        int d = bd + dd;
-        if (sy >= OY - d - BRW_BZ && sy < OY - d) return true;
+// A parallelogram of ground -- x across [x0, x1), d back [da, db) -- as the
+// oblique view draws it (art pixel (OX + x + d, OY - 1 - d)), added to the
+// map's collision as a box and two triangles, or two triangles when it is
+// deeper than it is wide. Its slanted edges sit half a pixel in, so a pixel
+// is inside exactly when its middle is; the right one a pixel further, over
+// the foot of the side face the view shows there.
+static void col_add_ground(DungeonMap* dm, int OX, int OY, int x0, int x1, int da, int db) {
+    float Yb = (float)(OY - da), Yt = (float)(OY - db), h = (float)(db - da);
+    float L = OX + x0 + da - 0.5f, R = OX + x1 + 1 + da - 0.5f;
+    auto add = [&](bool box, float ax, float ay, float bx, float by, float cx, float cy) {
+        if (dm->num_col_shapes < DMAP_MAX_COL_SHAPES)
+            dm->col_shapes[dm->num_col_shapes++] = { box, { ax, bx, cx }, { ay, by, cy } };
+    };
+    if (R - L >= h) {
+        add(true, L + h, Yt, R, Yb, 0, 0);                    // the box between the slants
+        add(false, L, Yb, L + h, Yb, L + h, Yt);              // the left slant
+        add(false, R, Yb, R + h, Yt, R, Yt);                  // the right slant
+    } else {
+        add(false, L, Yb, R, Yb, R + h, Yt);
+        add(false, L, Yb, R + h, Yt, L + h, Yt);
     }
-    int td = OY - BRW_BZ - 1 - sy;
-    if (td >= bd && td < bd + BRW_BD) {
-        int tx = OX + x0 + td;
-        if (sx >= tx && sx < tx + BRW_BW) return true;
+}
+
+// Whether art pixel (ax, ay)'s middle is in any of the map's collision shapes.
+static bool col_solid(const DungeonMap* dm, int ax, int ay) {
+    float px = ax + 0.5f, py = ay + 0.5f;
+    for (int i = 0; i < dm->num_col_shapes; i++) {
+        const auto& s = dm->col_shapes[i];
+        if (s.box) {
+            if (px >= s.x[0] && px <= s.x[1] && py >= s.y[0] && py <= s.y[1]) return true;
+            continue;
+        }
+        float e[3];
+        for (int k = 0; k < 3; k++) {
+            int j = (k + 1) % 3;
+            e[k] = (s.x[j] - s.x[k]) * (py - s.y[k]) - (s.y[j] - s.y[k]) * (px - s.x[k]);
+        }
+        if ((e[0] >= 0 && e[1] >= 0 && e[2] >= 0) || (e[0] <= 0 && e[1] <= 0 && e[2] <= 0)) return true;
     }
     return false;
 }
@@ -1838,11 +1942,13 @@ static void carve_stonehenge_layout(DungeonMap* dmap, uint32_t* rng) {
     dmap->barrow_x0 = OX;                            dmap->barrow_y0 = OY - depth - BRW_BZ - BRW_BD;
     dmap->barrow_w  = xs[SHG_W] + depth + BRW_BD;    dmap->barrow_h  = depth + BRW_BZ + BRW_BD;
 
-    // every wall cell filled with blocks
+    // every wall cell filled with blocks, its ground footprint solid
     int nb = 0;
+    dmap->num_col_shapes = 0;
     for (int v = 0; v < SHG_H; v++)
         for (int u = 0; u < SHG_W; u++) {
             if (grid[v][u] != SHG_CELL_WALL) continue;
+            col_add_ground(dmap, OX, OY, xs[u], xs[u + 1], d0[v], d0[v] + dsz[v]);
             for (int x = xs[u]; x < xs[u + 1]; x += BRW_BW)
                 for (int d = d0[v]; d < d0[v] + dsz[v]; d += BRW_BD)
                     if (nb < DMAP_MAX_BARROW_BLOCKS)
@@ -1850,48 +1956,41 @@ static void carve_stonehenge_layout(DungeonMap* dmap, uint32_t* rng) {
         }
     dmap->num_barrow_blocks = nb;
 
-    // the tiles: walkable where the middle shows corridor floor; the rest of
-    // the picture is wall art (its sight is the floor's in front of it)
-    auto corridor = [&](int sx, int sy) {
+    // the tiles: walkable where the middle is the maze's ground and in no
+    // wall's footprint -- behind a wall too, where the wall stands over you;
+    // the rest of the picture is wall art
+    auto ground = [&](int sx, int sy) {
         int d = OY - 1 - sy, x = sx - OX - d;
-        if (d < 0 || d >= depth || x < 0 || x >= xs[SHG_W]) return false;
-        int u = 0, v = 0;
-        while (x >= xs[u + 1]) u++;
-        while (!(d >= d0[v] && d < d0[v] + dsz[v])) v++;
-        return grid[v][u] == SHG_CELL_FLOOR;
-    };
-    auto covered = [&](int sx, int sy) {
-        for (int i = 0; i < nb; i++)
-            if (barrow_covers(OX, OY, dmap->barrow_blocks[i].x, dmap->barrow_blocks[i].d, sx, sy)) return true;
-        return false;
+        return d >= 0 && d < depth && x >= 0 && x < xs[SHG_W];
     };
     int tx0 = dmap->barrow_x0 / 16, ty0 = dmap->barrow_y0 / 16;
     int tx1 = (dmap->barrow_x0 + dmap->barrow_w) / 16 + 1, ty1 = (dmap->barrow_y0 + dmap->barrow_h) / 16 + 1;
     for (int ty = ty0; ty <= ty1; ty++)
         for (int tx = tx0; tx <= tx1; tx++) {
             int cx = tx * 16 + 8, cy = ty * 16 + 8;
-            if (corridor(cx, cy) && !covered(cx, cy)) {
+            if (ground(cx, cy) && !col_solid(dmap, cx, cy)) {
                 dmap->tiles[ty][tx] = DNG_FLOOR; dmap->art[ty][tx] = WA_FLOOR;
             } else {
                 dmap->art[ty][tx] = WA_BAND;
             }
         }
 
-    // the ways out: each in its corridor cell, by the foot of the wall behind
-    // it (dungeon_seat_portals then stands it right at that wall's foot)
+    // the ways out: a ladder in the middle of each one's flat back wall -- of
+    // the part of it in sight to its foot: the wall column to the corridor's
+    // east stands 64 tall in front of it and hides all but its west 32 -- the
+    // portal on the first tile row in front of that wall's foot (so the tile
+    // above it is under the wall)
     int eu, ev, xu, xv;
     shg_pick_portals(grid, &eu, &ev, &xu, &xv);
-    auto place = [&](int u, int v, int* px, int* py) {
-        int gx = xs[u] + BRW_CX / 2, gd = d0[v] + dsz[v] - 8;
-        int tx = (OX + gx + gd) / 16, ty = (OY - gd - 1) / 16;
-        for (int r = 0; r < 12; r++)                  // the nearest floor to it
-            for (int j = -r; j <= r; j++)
-                for (int i = -r; i <= r; i++)
-                    if (dmap->tiles[ty + j][tx + i] == DNG_FLOOR) { *px = tx + i; *py = ty + j; return; }
-        *px = tx; *py = ty;
+    auto place = [&](int w, int u, int v, int* px, int* py) {
+        dmap->barrow_way_x[w] = xs[u] + BRW_BW / 2;
+        dmap->barrow_way_d[w] = d0[v] + dsz[v];
+        int yf = OY - dmap->barrow_way_d[w];               // the first floor row before the wall
+        *py = (yf - 8 + 15) / 16;
+        *px = (OX + dmap->barrow_way_x[w] + (OY - 1 - (*py * 16 + 8))) / 16;
     };
-    place(eu, ev, &dmap->entry_x, &dmap->entry_y);
-    place(xu, xv, &dmap->exit_x, &dmap->exit_y);
+    place(0, eu, ev, &dmap->entry_x, &dmap->entry_y);
+    place(1, xu, xv, &dmap->exit_x, &dmap->exit_y);
     dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
     dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
 }
@@ -1934,7 +2033,8 @@ static void clear_portal_surroundings(DungeonMap* dmap) {
     // done before a pair is oriented -- and each way out is seated at a wall's
     // foot with floor in front of it anyway.
     bool built = dmap->type == DUNGEON_ENT_PYRAMID || dmap->type == DUNGEON_ENT_RUINS ||
-                 dmap->type == DUNGEON_ENT_STONEHENGE || gyw_walkways(dmap);
+                 dmap->type == DUNGEON_ENT_STONEHENGE || gyw_walkways(dmap) ||
+                 dmap->type == DUNGEON_ENT_OASIS;
     for (int p = 0; p < dmap->num_portals && !built; p++) {
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -2422,11 +2522,41 @@ static inline int dng_loot_budget(DungeonEntranceType type) {
 static const int STARTER_ENEMIES[] = { 2, 0, 1 };
 static const int STARTER_COUNT = (int)(sizeof(STARTER_ENEMIES) / sizeof(STARTER_ENEMIES[0]));
 
+// Difficulty -> tier band. The cuts are QUANTILES of the dungeons' measured
+// difficulty (tools/spawncensus.cpp prints them), so each of the five common
+// tiers gets about a fifth of the world's dungeons: LOW nearest and lowest,
+// SEVERE farthest and highest. Re-measure if the world's difficulty formula
+// (tilemap.cpp) changes.
+static const float TIER_CUTS[4] = { 0.268f, 0.345f, 0.406f, 0.463f };   // q20 q40 q60 q80, 16 seeds
+static const EnemyTier BAND_TIER[5] = { T_LOW, T_MEDIUM, T_UPPER, T_HARD, T_SEVERE };
+// Elites join the pool in the hardest tenth (q90) -- and always in the ruins.
+static const float ELITE_DIFFICULTY = 0.510f;
+
+int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng) {
+    int band = 0;
+    while (band < 4 && difficulty >= TIER_CUTS[band]) band++;
+    EnemyTier tier = BAND_TIER[band], below = band > 0 ? BAND_TIER[band - 1] : T_STARTER;
+    int base = spawner_enemy_base(type);
+    bool elites = type == DUNGEON_ENT_RUINS || difficulty >= ELITE_DIFFICULTY;
+    // Weighted pool: the band's tier, the region's own enemies weighing most;
+    // the tier below now and then, so a dungeon isn't one tier wall to wall;
+    // elites where they live.
+    int pick[ENEMY_COUNT], weight[ENEMY_COUNT], n = 0, total = 0;
+    for (int e = 0; e < ENEMY_COUNT; e++) {
+        EnemyTier t = enemy_tier(e);
+        bool native = enemy_region(e) == base / 7;
+        int w = t == tier ? (native ? 4 : 2) : t == below ? 1 : (t == T_ELITE && elites) ? 2 : 0;
+        if (w) { pick[n] = e; weight[n] = w; n++; total += w; }
+    }
+    int r = (int)(rng_next(rng) % (uint32_t)total);
+    for (int i = 0; i < n; i++) if ((r -= weight[i]) < 0) return pick[i];
+    return pick[n - 1];
+}
+
 static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
     dmap->num_spawners = 0;
     const int STEP   = 24;   // grid spacing in tiles — guarantees spread
     const int SEARCH = 8;    // radius to search for a floor tile near each grid point
-    int base = spawner_enemy_base(dmap->type);
     // Only catacombs is allowed past the budget every other archetype has always
     // had, so every existing dungeon generates exactly as it did before.
     int budget = dng_spawner_budget(dmap->type);
@@ -2457,7 +2587,7 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
                 }
             }
             if (best_tx < 0) continue;
-            int eid = base + (int)(rng_next(rng) % 7);
+            int eid = dungeon_pick_enemy(dmap->type, dmap->difficulty, rng);
             if (dmap->starter)
                 eid = dmap->num_spawners < STARTER_COUNT ? STARTER_ENEMIES[dmap->num_spawners]
                     : STARTER_ENEMIES[rng_next(rng) % STARTER_COUNT];
@@ -2865,7 +2995,7 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type,
 
     // ── Oasis: BSP + circular pool (corridors carved after pool) ─────────
     if (type == DUNGEON_ENT_OASIS) {
-        carve_oasis_layout(dmap, &rng);
+        carve_oasis(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
         place_loot(dmap, &rng);
@@ -3190,7 +3320,7 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
 // on it. Only the tile moves; where it leads stays. A portal with no such tile
 // in reach stays where it is (tools/dngportals.cpp reports it).
 void dungeon_seat_portals(DungeonMap* dmap) {
-    if (gyw_walkways(dmap)) return;          // its ways out stand on their landings already
+    if (fixed_ways(dmap)) return;            // its ways out stand where they belong already
     static bool perim[DMAP_H][DMAP_W];
     static int qx[DMAP_H * DMAP_W], qy[DMAP_H * DMAP_W];
     static uint8_t seen[DMAP_H][DMAP_W];
@@ -3304,9 +3434,9 @@ void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
         }
         dmap->tiles[dmap->entry_y][dmap->entry_x] = DNG_ENTRY;
         dmap->tiles[dmap->exit_y][dmap->exit_x]   = DNG_EXIT;
-    } else if (gyw_walkways(dmap)) {
-        // The graveyard's two ways out stand at the path's two ends: the one
-        // further along the bearing to the partner is the way there.
+    } else if (fixed_ways(dmap)) {
+        // The two ways out stand where the layout put them: the one further
+        // along the bearing to the partner is the way there.
         float ex = cosf(exit_angle), ey = sinf(exit_angle);
         if (dmap->exit_x * ex + dmap->exit_y * ey < dmap->entry_x * ex + dmap->entry_y * ey) {
             int x = dmap->exit_x, y = dmap->exit_y;
@@ -3347,6 +3477,12 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
     dp->speed    = PLAYER_WALK_SPEED;
     dp->at_exit  = 0;
     dp->at_entry = 0;
+    if (dmap->type == DUNGEON_ENT_OASIS && dmap->num_oasis_air >= 2) {   // up at the shaft's surface
+        const auto& a = dmap->oasis_air[from_exit ? 1 : 0];
+        dp->x = (float)(((dmap->oasis_x0 + (a.x0 + a.x1) / 2) * DMAP_TILE / 16) - 14);
+        dp->y = (float)(((dmap->oasis_y0 + a.line - OASIS_HEAD + 1) * DMAP_TILE / 16) - 10);
+        dp->vx = dp->vy = 0;
+    }
 
     dp->swing = WeaponSwingState();
 
@@ -3369,6 +3505,11 @@ static bool tile_solid(const void* map, float px, float py) {
     // where they are drawn, not on the tile grid
     if (gyw_walkways(dmap))
         return !gyw_on_path(dmap, (int)floorf(px * 16 / DMAP_TILE), (int)floorf(py * 16 / DMAP_TILE), true);
+    if (dmap->type == DUNGEON_ENT_STONEHENGE)
+        return col_solid(dmap, (int)floorf(px * 16 / DMAP_TILE), (int)floorf(py * 16 / DMAP_TILE));
+    if (dmap->type == DUNGEON_ENT_OASIS)
+        return oasis_blocked(dmap, (int)floorf(px * 16 / DMAP_TILE) - dmap->oasis_x0,
+                             (int)floorf(py * 16 / DMAP_TILE) - dmap->oasis_y0);
     return dmap->tiles[ty][tx] == DNG_WALL;
 }
 
@@ -3464,22 +3605,48 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
 
     player_gait(in, &dp->speed, &anim_speed);
 
+    if (dmap->type == DUNGEON_ENT_OASIS) {
+        // Swimming (the oasis): the way pressed is where the swimmer heads, at
+        // three quarters of walking pace, eased into and out of -- the drift --
+        // each axis stopping where the rock does. It faces left or right only.
+        float k = std::min(1.0f, dt * 5.0f), sp = dp->speed * 0.75f;
+        dp->vx += (dx * sp - dp->vx) * k;
+        dp->vy += (dy * sp - dp->vy) * k;
+        float nx = dp->x + dp->vx * dt, ny = dp->y + dp->vy * dt;
+        if (noclip || oasis_body_free(dmap, nx, dp->y)) dp->x = nx; else dp->vx = 0;
+        if (noclip || oasis_body_free(dmap, dp->x, ny)) dp->y = ny; else dp->vy = 0;
+        if (dx < 0) player->facing = FACE_LEFT;
+        if (dx > 0) player->facing = FACE_RIGHT;
+        if (player->facing != FACE_LEFT && player->facing != FACE_RIGHT) player->facing = FACE_RIGHT;
+        player->is_moving = fabsf(dp->vx) + fabsf(dp->vy) > 8.0f;
+        dx = dy = 0.0f;                                   // the walk below has nothing to do
+    }
     if (dx != 0.0f || dy != 0.0f) {
         float nx = dp->x + dx * dp->speed * dt;
         float ny = dp->y + dy * dp->speed * dt;
         float px = dp->x, py = dp->y;
         if (noclip || can_occupy(dmap, nx, dp->y, tile_solid)) dp->x = nx;
         if (noclip || can_occupy(dmap, dp->x, ny, tile_solid)) dp->y = ny;
-        // On the graveyard's walkways a straight push against a 45-degree
-        // edge slides along it, so up or down follows a slanted run.
-        if (dp->x == px && dp->y == py && gyw_walkways(dmap) && (dx == 0.0f) != (dy == 0.0f)) {
+        // Where walls slant (the graveyard's walkways, stonehenge's maze) a
+        // straight push against a 45-degree edge slides along it, so up or
+        // down follows a slanted run. A full step on both axes keeps to the
+        // edge's pixel staircase (a shorter one snags on its corners), so it
+        // is taken on 1 frame in 1.414 -- walking speed along the slant.
+        if (dp->x == px && dp->y == py && fixed_ways(dmap) && (dx == 0.0f) != (dy == 0.0f)) {
             float step = (dx != 0.0f ? fabsf(dx) : fabsf(dy)) * dp->speed * dt;
-            for (int sgn = -1; sgn <= 1; sgn += 2) {
+            bool along = false;
+            for (int sgn = -1; sgn <= 1 && !along; sgn += 2) {
                 float sx = dx != 0.0f ? nx : px + sgn * step, sy = dy != 0.0f ? ny : py + sgn * step;
-                if (can_occupy(dmap, sx, sy, tile_solid)) { dp->x = sx; dp->y = sy; break; }
+                if (!can_occupy(dmap, sx, sy, tile_solid)) continue;
+                along = true;
+                dp->slide += 0.70710678f;
+                if (dp->slide >= 1.0f) { dp->x = sx; dp->y = sy; dp->slide -= 1.0f; }
             }
+            if (!along) dp->slide = 0;                       // a flat wall: no way along it
+            else player->is_moving = 1;                      // between steps, still walking
         }
-        if (dp->x == px && dp->y == py) player->is_moving = 0;
+        if (dp->x == px && dp->y == py && !(fixed_ways(dmap) && player->is_moving && dp->slide > 0))
+            player->is_moving = 0;
     }
 
     // detect which special tile (entry or exit) the player is standing on.
@@ -4164,11 +4331,15 @@ struct BarrowArt {
     SDL_Texture *lit = nullptr, *dim = nullptr;
     int tw = 0, th = 0;
     std::vector<uint8_t> has;                     // a tile with any of the picture on it
+    int w = 0, h = 0;
+    std::vector<uint32_t> px;                     // the picture's pixels, and each one's ground
+    std::vector<int16_t> dep;                     // depth (-1: none) -- for drawing walls over the player
 };
 static BarrowArt s_barrow;
 
 static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
     uint32_t key = d->barrow_seed * 2654435761u ^ (uint32_t)d->num_barrow_blocks ^ 1u;
+    for (int p = 0; p < d->num_portals; p++) key = key * 31u + (uint32_t)(d->portals[p].tx * 977 + d->portals[p].ty);
     if (s_barrow.key == key && s_barrow.ren == ren && s_barrow.lit) return;
     SDL_Surface* sh = sheet_pixels();
     if (!sh) return;
@@ -4282,6 +4453,26 @@ static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
             }
         }
 
+    // the ways out that have a portal: a ladder in the middle of the flat back
+    // wall, from its foot up the whole face to the grass
+    for (int w = 0; w < 2; w++) {
+        int bd = d->barrow_way_d[w], yf = OY - bd;
+        int ptx = (OX + d->barrow_way_x[w] + (OY - 1 - (((yf - 8 + 15) / 16) * 16 + 8))) / 16, pty = (yf - 8 + 15) / 16;
+        bool stands = false;
+        for (int p = 0; p < d->num_portals; p++) stands |= d->portals[p].tx == ptx && d->portals[p].ty == pty;
+        if (!stands) continue;
+        int lx = OX + d->barrow_way_x[w] - 8 + bd;
+        for (int z = 0; z < BRW_BZ; z++)
+            for (int i = 0; i < 16; i++) {
+                int cy = z < 16 ? LADDER_ROW + 1 : LADDER_ROW;
+                uint32_t c = sheet(LADDER_COL0 * 16 + i, cy * 16 + 15 - z % 16);
+                int x = lx + i - X0, y = OY - bd - 1 - z - Y0;
+                if (!c || x < 0 || y < 0 || x >= W || y >= H) continue;
+                if (rank[y * W + x] >= 0 && dep[y * W + x] < bd) continue;   // behind something nearer
+                out[y * W + x] = c; rank[y * W + x] = 1; dep[y * W + x] = (int16_t)bd;
+            }
+    }
+
     // lit and dim (11 pixels of 16 to black by the bayer rank, as the cave's)
     SDL_Surface* lit = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_Surface* dim = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
@@ -4296,6 +4487,11 @@ static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
             ((uint32_t*)((uint8_t*)dim->pixels + y * dim->pitch))[x] = dark ? 0xFF000000u : c;
             if (c) s_barrow.has[(y / 16) * s_barrow.tw + x / 16] = 1;
         }
+    s_barrow.w = W; s_barrow.h = H;
+    s_barrow.px.assign(W * H, 0);
+    s_barrow.dep.assign(W * H, -1);
+    for (int i = 0; i < W * H; i++)
+        if (rank[i] >= 0) { s_barrow.px[i] = out[i]; s_barrow.dep[i] = dep[i]; }
     s_barrow.lit = SDL_CreateTextureFromSurface(ren, lit);
     s_barrow.dim = SDL_CreateTextureFromSurface(ren, dim);
     SDL_FreeSurface(lit); SDL_FreeSurface(dim);
@@ -4644,7 +4840,296 @@ static void draw_graveyard(const DungeonMap* d, const Camera* cam, SDL_Renderer*
     }
 }
 
+// ── Oasis: the picture ───────────────────────────────────────────────────
+// Baked once: the rock filled with the overworld cliffs' texture
+// (cliff_texture.inc) in the oasis's darker olive -- line, 2d230c, 5c4616,
+// 7b601d -- outlined black; the water's dot lattice; the air. Every frame,
+// behind it: the water, the far wall and its light at a quarter of the
+// camera's pace (brighter shafts over a cavern), the far leviathan at a sixth,
+// the sunken town's walls and the eyes at half, the close leviathan swimming
+// through its pass and the bubbles at three quarters, the tunnels darker;
+// the weed (behind the rock, its foot in it); in front: the air pockets'
+// water lines and the shafts' ladders. Weed and water lines step through
+// three poses a second each (the graveyard roots' beat).
+#include "cliff_texture.inc"
+struct OasisArt {
+    uint32_t key = 0;
+    SDL_Renderer* ren = nullptr;
+    SDL_Texture* tex = nullptr;                    // the baked level
+    SDL_Texture* art = nullptr;                    // assets/oasis.png
+    SDL_Texture* swim = nullptr;                   // assets/player_swim.png
+    SDL_Surface* art_px = nullptr;                 // assets/oasis.png, for the water lines' pixels
+};
+static OasisArt s_oasis;
+
+static void oasis_load(SDL_Renderer* ren) {
+    if (s_oasis.ren == ren && s_oasis.art) return;
+    s_oasis.ren = ren;
+    s_oasis.art = IMG_LoadTexture(ren, "assets/oasis.png");
+    s_oasis.swim = IMG_LoadTexture(ren, "assets/player_swim.png");
+    if (!s_oasis.art_px)
+        if (SDL_Surface* raw = IMG_Load("assets/oasis.png")) {
+            s_oasis.art_px = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_RGBA32, 0);
+            SDL_FreeSurface(raw);
+        }
+}
+
+static void oasis_bake(const DungeonMap* d, SDL_Renderer* ren) {
+    uint32_t key = d->oasis_seed * 2654435761u ^ (uint32_t)d->oasis_w;
+    if (s_oasis.key == key && s_oasis.ren == ren && s_oasis.tex) return;
+    if (s_oasis.tex) SDL_DestroyTexture(s_oasis.tex);
+    s_oasis.tex = nullptr;
+    const int W = d->oasis_w, H = OASIS_PX_H;
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!surf) return;
+    const uint32_t RAMP[4] = { 0xFF000000u, 0xFF0C232Du, 0xFF16465Cu, 0xFF1D607Bu };   // RGBA32 as ABGR words
+    const uint32_t DOT = 0xFF582A3Bu, AIR = 0xFF703C42u, BLACK = 0xFF000000u;
+    for (int y = 0; y < H; y++) {
+        uint32_t* row = (uint32_t*)((uint8_t*)surf->pixels + y * surf->pitch);
+        for (int x = 0; x < W; x++) {
+            uint32_t c = 0;
+            if (oasis_rock(d, x, y)) {
+                bool edge = !oasis_rock(d, x - 1, y) || !oasis_rock(d, x + 1, y) ||
+                            !oasis_rock(d, x, y - 1) || !oasis_rock(d, x, y + 1);
+                c = edge ? BLACK : RAMP[CLIFF_TEX[y % CLIFF_TEX_N][x % CLIFF_TEX_N] - '0'];
+            } else {
+                for (int i = 0; i < d->num_oasis_air; i++) {
+                    const auto& a = d->oasis_air[i];
+                    if (x >= a.x0 && x < a.x1 && y < a.line) c = AIR;
+                }
+                if (!c)
+                    for (const auto& dt : OASIS_DOTS)
+                        if (x % 8 == dt[0] && y % 8 == dt[1]) c = DOT;
+            }
+            row[x] = c;
+        }
+    }
+    s_oasis.tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_FreeSurface(surf);
+    if (s_oasis.tex) SDL_SetTextureBlendMode(s_oasis.tex, SDL_BLENDMODE_BLEND);
+    s_oasis.key = key;
+}
+
+static void oasis_piece(SDL_Renderer* ren, int p, int sx, int sy, int s, int clip_x0 = -100000, int clip_x1 = 100000) {
+    if (!s_oasis.art) return;
+    const short* q = OASIS_PIECE[p];
+    SDL_Rect src = { q[0], q[1], q[2], q[3] }, dst = { sx, sy, q[2] * s, q[3] * s };
+    if (dst.x + dst.w <= clip_x0 || dst.x >= clip_x1) return;
+    if (dst.x < clip_x0) { int cut = (clip_x0 - dst.x + s - 1) / s; src.x += cut; src.w -= cut; dst.x += cut * s; dst.w -= cut * s; }
+    if (dst.x + dst.w > clip_x1) { int cut = (dst.x + dst.w - clip_x1 + s - 1) / s; src.w -= cut; dst.w -= cut * s; }
+    if (src.w > 0) SDL_RenderCopy(ren, s_oasis.art, &src, &dst);
+}
+
+static void draw_oasis(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren, int tx0, int ty0, int tx1, int ty1, int tsz) {
+    oasis_load(ren);
+    oasis_bake(d, ren);
+    const int s = tsz / 16 > 0 ? tsz / 16 : 1;
+    const int bx = cam_px(cam, (float)(d->oasis_x0 * DMAP_TILE / 16)), by = cam_py(cam, (float)(d->oasis_y0 * DMAP_TILE / 16));
+    const int W = d->oasis_w, H = OASIS_PX_H, camx = -bx / s;   // the level's pixel at the screen's left
+    const Uint32 now = SDL_GetTicks();
+    fc_draw_color(ren, 0, 0, 0, 255);
+    SDL_Rect all = { 0, 0, cam->screen_w, cam->screen_h };
+    SDL_RenderFillRect(ren, &all);
+    fc_draw_color(ren, 0x2b, 0x1f, 0x40, 255);
+    SDL_Rect lvl = { bx, by, W * s, H * s };
+    SDL_RenderFillRect(ren, &lvl);
+    SDL_RenderSetClipRect(ren, &lvl);                         // the background stays in the level
+    auto span_px = [&](int k, int i) { return std::make_pair(bx + d->oasis_sec[i].x0 * s, bx + d->oasis_sec[i].x1 * s); };
+    // a quarter: the far wall, and over a cavern its brighter light
+    for (int k = -1; k * 128 * s - (camx / 4) * s < cam->screen_w + 128 * s; k++)
+        oasis_piece(ren, OP_FAR, k * 128 * s - (camx / 4) % 128 * s - 0 + 0, by + 16 * s, s);
+    for (int i = 0; i < d->num_oasis_sec; i++) {
+        if (d->oasis_sec[i].kind != 2) continue;
+        auto sp = span_px(2, i);
+        for (int k = -1; k * 96 * s < cam->screen_w + 96 * s; k++)
+            oasis_piece(ren, OP_SHAFT, k * 96 * s - (camx / 4) % 96 * s, by + 16 * s, s, sp.first, sp.second);
+    }
+    // a sixth: the leviathan far off
+    for (int cx = (camx / 6) / 900 - 1; cx * 900 - camx / 6 < cam->screen_w / s + 300; cx++) {
+        uint32_t h = pyr_hash((uint32_t)cx * 31337u, d->oasis_seed);
+        if (h % 2 == 0) oasis_piece(ren, OP_LEVI, (cx * 900 + (int)(h % 300) - camx / 6) * s, by + (70 + (int)((h >> 4) % 50)) * s, s);
+    }
+    // a half: the town's broken walls, and eyes open in the dark
+    for (int cx = (camx / 2) / 160 - 1; cx * 160 - camx / 2 < cam->screen_w / s + 160; cx++) {
+        uint32_t h = pyr_hash((uint32_t)cx * 7919u, d->oasis_seed);
+        if (h % 2 == 0) oasis_piece(ren, OP_RUIN, (cx * 160 + (int)(h % 80) - camx / 2) * s, by + (H - 40 - 64) * s, s);
+    }
+    for (int cx = (camx / 2) / 96 - 1; cx * 96 - camx / 2 < cam->screen_w / s + 96; cx++) {
+        uint32_t h = pyr_hash((uint32_t)cx * 92821u, d->oasis_seed * 7u);
+        if (h % 5) continue;
+        int t = (int)((now / 250 + (h >> 7)) % 24);                         // a blink now and then
+        oasis_piece(ren, t == 0 ? OP_EYE2 : t == 1 ? OP_EYE1 : OP_EYE0,
+                    (cx * 96 + (int)(h % 60) - camx / 2) * s, by + (80 + (int)((h >> 6) % 70)) * s, s);
+    }
+    // three quarters: the leviathan close, swimming through its pass; bubbles
+    for (int i = 0; i < d->num_oasis_sec; i++) {
+        if (d->oasis_sec[i].kind != 3) continue;
+        auto sp = span_px(3, i);
+        int len = d->oasis_sec[i].x1 - d->oasis_sec[i].x0 + 256;
+        int base = d->oasis_sec[i].x1 - (int)((now / 60) % (Uint32)len);     // drifting right to left
+        oasis_piece(ren, OP_LEVI_NEAR, bx + (base + camx / 4) * s, by + 80 * s, s, sp.first, sp.second);
+    }
+    for (int cx = (camx * 3 / 4) / 48 - 1; cx * 48 - camx * 3 / 4 < cam->screen_w / s + 48; cx++) {
+        uint32_t h = pyr_hash((uint32_t)cx * 104729u, d->oasis_seed * 3u);
+        if (h % 2) continue;
+        int b = (int)((h >> 3) % 3);
+        oasis_piece(ren, OP_BUB0 + b, (cx * 48 + (int)(h % 40) - camx * 3 / 4) * s, by + (70 + (int)((h >> 6) % 90)) * s, s);
+    }
+    // the tunnels, a step darker, their ends dithered
+    fc_draw_color(ren, 0x14, 0x10, 0x1e, 255);
+    for (int i = 0; i < d->num_oasis_sec; i++) {
+        if (d->oasis_sec[i].kind != 0) continue;
+        int a = d->oasis_sec[i].x0 + 16, b = d->oasis_sec[i].x1 - 16;
+        if (b > a) { SDL_Rect r = { bx + a * s, by, (b - a) * s, H * s }; SDL_RenderFillRect(ren, &r); }
+        std::vector<SDL_Rect> dots;
+        for (int x : { (int)d->oasis_sec[i].x0, b })
+            for (int yy = 0; yy < H; yy++)
+                for (int xx = x; xx < x + 16; xx++)
+                    if ((xx + yy) % 2 == 0) dots.push_back({ bx + xx * s, by + yy * s, s, s });
+        if (!dots.empty()) SDL_RenderFillRects(ren, dots.data(), (int)dots.size());
+    }
+    // the weed, behind the rock, three poses a second each
+    for (int i = 0; i < d->num_oasis_weed; i++) {
+        const auto& w = d->oasis_weed[i];
+        int sx = bx + w.x * s;
+        if (sx + 16 * s < 0 || sx > cam->screen_w) continue;
+        oasis_piece(ren, OP_WEED0 + (int)((now / 1000 + w.x / 32) % 3), sx, by + w.y * s, s);
+    }
+    SDL_RenderSetClipRect(ren, nullptr);
+    // the level: rock, the water's dots, the air
+    if (s_oasis.tex) SDL_RenderCopy(ren, s_oasis.tex, nullptr, &lvl);
+    // the water lines, between each hollow's lips, rolling a frame a second
+    if (s_oasis.art_px) {
+        const short* q = OASIS_PIECE[OP_SURF0 + (int)((now / 1000) % 3)];
+        for (int i = 0; i < d->num_oasis_air; i++) {
+            const auto& a = d->oasis_air[i];
+            for (int px = a.x0; px < a.x1; px++) {
+                int sx = bx + px * s;
+                if (sx + s < 0 || sx > cam->screen_w) continue;
+                for (int j = 0; j < 6; j++) {
+                    int y = a.line - 3 + j;
+                    if (y < 0 || oasis_rock(d, px, y)) continue;
+                    const uint8_t* p = (const uint8_t*)s_oasis.art_px->pixels + (q[1] + j) * s_oasis.art_px->pitch + (q[0] + px % 64) * 4;
+                    if (!p[3]) continue;
+                    fc_draw_color(ren, p[0], p[1], p[2], 255);
+                    SDL_Rect r = { sx, by + y * s, s, s };
+                    SDL_RenderFillRect(ren, &r);
+                }
+            }
+        }
+    }
+    // the shafts' ladders, up to the spring
+    if (SDL_Texture* sheet = tilemap_get_town_tex())
+        for (int i = 0; i < 2 && i < d->num_oasis_air; i++) {
+            const auto& a = d->oasis_air[i];
+            int lx = bx + ((a.x0 + a.x1) / 2 - 8) * s;
+            for (int y = 0; y < a.line - 4; y += 16) {
+                int h = std::min(16, a.line - 4 - y);
+                SDL_Rect src = { LADDER_COL0 * 16, LADDER_ROW * 16, 16, h };
+                SDL_Rect dst = { lx, by + y * s, 16 * s, h * s };
+                SDL_RenderCopy(ren, sheet, &src, &dst);
+            }
+        }
+    for (int li = 0; li < d->num_loot; li++) {
+        const DungeonLoot& lo = d->loot[li];
+        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz, true);
+    }
+}
+
+bool dungeon_player_fits(const DungeonMap* d, const DungeonPlayer* dp) {
+    return d->type == DUNGEON_ENT_OASIS ? oasis_body_free(d, dp->x, dp->y) : can_occupy(d, dp->x, dp->y, tile_solid);
+}
+
+bool dungeon_breathing(const DungeonMap* d, const DungeonPlayer* dp) {
+    if (d->type != DUNGEON_ENT_OASIS) return true;
+    // surfaced: the head up out of the water, under a pocket or in a shaft
+    int x0, y0, x1, y1;
+    oasis_body(d, dp->x, dp->y, &x0, &y0, &x1, &y1);
+    int cx = (x0 + x1) / 2;
+    for (int i = 0; i < d->num_oasis_air; i++) {
+        const auto& a = d->oasis_air[i];
+        if (cx >= a.x0 && cx < a.x1 && y0 <= a.line - 2) return true;
+    }
+    return false;
+}
+
+void dungeon_frame_camera(const DungeonMap* d, Camera* cam) {
+    if (d->type != DUNGEON_ENT_OASIS) return;
+    int left = d->oasis_x0 * DMAP_TILE / 16, right = left + d->oasis_w * DMAP_TILE / 16;
+    int ox = cam->ox;
+    if (ox > right - cam->screen_w) ox = right - cam->screen_w;
+    if (ox < left) ox = left;
+    cam->ox = ox;
+    cam->oy = d->oasis_y0 * DMAP_TILE / 16;                     // the level's top at the screen's
+    cam->x = (float)cam->ox; cam->y = (float)cam->oy;
+}
+
+bool dungeon_draw_swimmer(const DungeonMap* d, const DungeonPlayer* dp, const Player* player,
+                          const Camera* cam, SDL_Renderer* ren) {
+    if (d->type != DUNGEON_ENT_OASIS) return false;
+    oasis_load(ren);
+    if (!s_oasis.swim) return false;
+    Uint32 now = SDL_GetTicks();
+    int f = player->is_moving ? (int)((now / 180) % 3) : (int)((now / 450) % 3);   // stroking, or treading water
+    int col = (player->facing == FACE_LEFT ? 3 : 0) + f;
+    SDL_Rect src = { col * 14, 0, 14, 20 };
+    SDL_Rect dst = { cam_px(cam, dp->x), cam_py(cam, dp->y), (int)(28 * cam->zoom), (int)(40 * cam->zoom) };
+    SDL_RenderCopy(ren, s_oasis.swim, &src, &dst);
+    return true;
+}
+
+void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y) {
+    oasis_load(ren);
+    if (!s_oasis.art) return;
+    int full = (int)ceilf(oxygen * 8 - 0.001f);
+    bool flash = oxygen < 0.25f && (SDL_GetTicks() / 250) % 2;
+    const short* q = OASIS_PIECE[OP_HUD];
+    for (int i = 0; i < 8; i++) {
+        int frame = i < full ? 0 : 2;                         // a bubble, or where one was
+        if (i < full && i == full - 1 && oxygen * 8 - i < 0.5f) frame = 1;   // going: popping
+        if (flash && i >= full - 2 && i < full) continue;
+        SDL_Rect src = { q[0] + frame * 8, q[1], 8, 8 }, dst = { x + i * 18, y, 16, 16 };
+        SDL_RenderCopy(ren, s_oasis.art, &src, &dst);
+    }
+}
+
+// Stonehenge's walls nearer than the player, drawn over them (user): over the
+// player's sprite, every pixel of the picture whose ground depth is nearer
+// than the player's feet. On one pixel the nearer of two points is the one
+// with the smaller depth (the view's ray runs (x + t, d - t, z + t)), so a
+// wall's side beside the player never covers them.
+static void draw_barrow_front(const DungeonMap* d, const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren) {
+    if (s_barrow.px.empty()) return;
+    int tsz = (int)(DMAP_TILE * cam->zoom); if (tsz < 1) tsz = 1;
+    int ax0 = (int)floorf(dp->x * 16 / DMAP_TILE), ay0 = (int)floorf(dp->y * 16 / DMAP_TILE);
+    int fy = (int)floorf((dp->y + HB_Y2) * 16 / DMAP_TILE) - 1;               // the feet's last row
+    int dp_d = d->barrow_oy - 1 - fy;
+    int bx = cam_px(cam, (float)(d->barrow_x0 * DMAP_TILE / 16)), by = cam_py(cam, (float)(d->barrow_y0 * DMAP_TILE / 16));
+    int ps = tsz / 16 > 0 ? tsz / 16 : 1;
+    std::vector<std::pair<uint32_t, SDL_Rect>> todo;
+    for (int y = ay0 - d->barrow_y0; y < ay0 - d->barrow_y0 + 21; y++)
+        for (int x = ax0 - d->barrow_x0; x < ax0 - d->barrow_x0 + 15; x++) {
+            if (x < 0 || y < 0 || x >= s_barrow.w || y >= s_barrow.h) continue;
+            int k = y * s_barrow.w + x;
+            if (s_barrow.dep[k] < 0 || s_barrow.dep[k] >= dp_d) continue;
+            todo.push_back({ s_barrow.px[k], { bx + x * tsz / 16, by + y * tsz / 16, ps, ps } });
+        }
+    std::sort(todo.begin(), todo.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::vector<SDL_Rect> rects;
+    for (size_t i = 0; i < todo.size(); i++) {
+        rects.push_back(todo[i].second);
+        if (i + 1 == todo.size() || todo[i + 1].first != todo[i].first) {
+            uint32_t c = todo[i].first;
+            fc_draw_color(ren, c & 255, (c >> 8) & 255, (c >> 16) & 255, 255);
+            SDL_RenderFillRects(ren, rects.data(), (int)rects.size());
+            rects.clear();
+        }
+    }
+}
+
 void dungeon_draw_front(const DungeonMap* dmap, const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren) {
+    if (dmap->type == DUNGEON_ENT_STONEHENGE) { draw_barrow_front(dmap, dp, cam, ren); return; }
     if (!gyw_walkways(dmap) || !s_gyw.tex) return;
     SDL_Texture* tex = tilemap_get_town_tex();
     if (!tex) return;
@@ -4701,10 +5186,13 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             return;
         }
     }
+    if (dmap->type == DUNGEON_ENT_OASIS) {
+        draw_oasis(dmap, cam, ren, tx0, ty0, tx1, ty1, tsz);
+        return;
+    }
     if (dmap->type == DUNGEON_ENT_STONEHENGE) {
         if (SDL_Texture* tex = tilemap_get_town_tex()) {
-            draw_barrow(dmap, cam, ren, tex, show_all, tx0, ty0, tx1, ty1, tsz);
-            draw_ways_out(dmap, cam, ren, show_all, tx0, ty0, tx1, ty1, tsz);
+            draw_barrow(dmap, cam, ren, tex, show_all, tx0, ty0, tx1, ty1, tsz);   // its ladders are in the picture
             return;
         }
     }

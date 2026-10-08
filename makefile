@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus oreprof dngportals shot coastprobe sheetcensus cliffprobe
+.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe
 
 all: $(TARGET)
 
@@ -123,6 +123,20 @@ dngcensus: dngcensus$(EXE)
 
 dngcensus$(EXE): tools/dngcensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Spawn census: dungeon difficulty quantiles (src/dungeon.cpp TIER_CUTS) and
+# which enemies the spawn picker chooses where. Same repo-root rule as dngcensus.
+spawncensus: spawncensus$(EXE)
+
+spawncensus$(EXE): tools/spawncensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/spawncensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Battle census: one fight played headless by a dodge bot -- hits, bullet
+# peak against the cap, point-blank spawns (tools/battlecensus.cpp). Repo root.
+battlecensus: battlecensus$(EXE)
+
+battlecensus$(EXE): tools/battlecensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/battlecensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 # Cave difficulty census: which material band each cave system lands in, and
 # the quantile cut points that give the shares in include/dungeon_kinds.h.
@@ -199,7 +213,7 @@ sheetcensus$(EXE): tools/sheetcensus.cpp $(SHEET_TRACE_OBJ)
 	$(HEADLESS_CXX) -DSHEET_TRACE -include include/sheet_trace.h tools/sheetcensus.cpp $(SHEET_TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) spawncensus$(EXE) battlecensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
 	rm -rf src/sheettrace
 
 endif

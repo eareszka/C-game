@@ -11,6 +11,7 @@
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 #include "dungeon.h"
 #include "tilemap.h"
 #include "camera.h"
@@ -119,6 +120,9 @@ int main(int argc, char** argv) {
         dungeon_player_init(&dp, &pl, &g_dmap, 0);
         static bool been[DMAP_H][DMAP_W];
         int tiles = 0, bad = 0, slid = 0, frames = 40000;
+        float fastest = 0, win = 0;
+        int breaths = 0;                                 // the oasis: frames at a surface, breathing                      // the fastest half second's average step
+        std::vector<float> steps;
         const SDL_Scancode K[4] = { SDL_SCANCODE_UP, SDL_SCANCODE_DOWN, SDL_SCANCODE_LEFT, SDL_SCANCODE_RIGHT };
         unsigned r = seed;
         int keys = 0;
@@ -134,12 +138,46 @@ int main(int argc, char** argv) {
             float x0 = dp.x, y0 = dp.y;
             dungeon_player_update(&dp, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
             if (SETS[keys][1] < 0 && dp.x != x0 && dp.y != y0) slid++;
-            if (!can_occupy(&g_dmap, dp.x, dp.y, dungeon_solid_at)) bad++;
+            float moved = sqrtf((dp.x - x0) * (dp.x - x0) + (dp.y - y0) * (dp.y - y0));
+            steps.push_back(moved); win += moved;
+            if (steps.size() > 30) win -= steps[steps.size() - 31];
+            if (steps.size() >= 30 && win / 30 > fastest) fastest = win / 30;
+            if (!dungeon_player_fits(&g_dmap, &dp)) bad++;
+            if (g_dmap.type == DUNGEON_ENT_OASIS && dungeon_breathing(&g_dmap, &dp)) breaths++;
             int tx = (int)((dp.x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE), ty = (int)((dp.y + HB_Y2) / DMAP_TILE);
             if (tx >= 0 && ty >= 0 && tx < DMAP_W && ty < DMAP_H && !been[ty][tx]) { been[ty][tx] = true; tiles++; }
         }
         printf("walk: %d frames, %d tiles stood on, %d frames where it may not stand, %d straight pushes slid\n",
                frames, tiles, bad, slid);
+        if (g_dmap.type == DUNGEON_ENT_OASIS) printf("walk: %d frames breathing at a surface\n", breaths);
+        printf("walk: fastest half second %.2f px a frame (walking: %.2f)\n", fastest, PLAYER_WALK_SPEED / 60.0f);
+    }
+
+    // DNGSHOT_COLCHECK (stonehenge): the feet's collision against the drawn
+    // base of every block -- its ground footprint, the side's foot column
+    // included -- pixel for pixel over the whole maze.
+    if (getenv("DNGSHOT_COLCHECK")) {
+        int W = g_dmap.barrow_w + 16, H = g_dmap.barrow_h + 16, X0 = g_dmap.barrow_x0, Y0 = g_dmap.barrow_y0;
+        std::vector<uint8_t> base(W * H, 0);
+        for (int i = 0; i < g_dmap.num_barrow_blocks; i++) {
+            int x0 = g_dmap.barrow_blocks[i].x, bd = g_dmap.barrow_blocks[i].d;
+            for (int dd = bd; dd < bd + 16; dd++)
+                for (int X = x0; X <= x0 + 32; X++) {      // the top's row, and the side's foot past it
+                    int x = g_dmap.barrow_ox + X + dd - X0, y = g_dmap.barrow_oy - 1 - dd - Y0;
+                    if (x >= 0 && y >= 0 && x < W && y < H) base[y * W + x] = 1;
+                }
+        }
+        int solid_off = 0, open_on = 0, n = 0;
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++) {
+                int d = g_dmap.barrow_oy - 1 - (Y0 + y), gx = X0 + x - g_dmap.barrow_ox - d;
+                if (d < 0 || gx < 0 || gx > g_dmap.barrow_w) continue;   // the maze's ground only
+                bool s = dungeon_solid_at(&g_dmap, (X0 + x) * 2.0f + 1, (Y0 + y) * 2.0f + 1);
+                n++;
+                if (s && !base[y * W + x]) solid_off++;
+                if (!s && base[y * W + x]) open_on++;
+            }
+        printf("colcheck: %d ground pixels, %d solid off a base, %d open on a base\n", n, solid_off, open_on);
     }
 
     if (getenv("DNGSHOT_STATS")) {
@@ -182,11 +220,22 @@ int main(int argc, char** argv) {
                g_dmap.num_spawners, g_dmap.num_loot,
                (!exit_ok || reached != floor_n) ? "   <-- STRANDED FLOOR" : "");
         printf("entry %d,%d  exit %d,%d\n", g_dmap.entry_x, g_dmap.entry_y, g_dmap.exit_x, g_dmap.exit_y);
+        printf("bbox %d %d %d %d\n", lox, loy, hix, hiy);   // for framing a whole layout
     }
 
     fc_draw_color(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear in main.cpp
     SDL_RenderClear(ren);
     dungeon_draw(&g_dmap, &dp, &cam, ren, show_all);
+    // DNGSHOT_PLAYER=x,y (dungeon pixels): a stand-in for the player's sprite,
+    // then what the game draws over it (dungeon_draw_front)
+    if (const char* pp = getenv("DNGSHOT_PLAYER")) {
+        DungeonPlayer stand{};
+        sscanf(pp, "%f,%f", &stand.x, &stand.y);
+        SDL_Rect r = { cam_px(&cam, stand.x), cam_py(&cam, stand.y), 28, 40 };
+        fc_draw_color(ren, 252, 116, 180, 255);
+        SDL_RenderFillRect(ren, &r);
+        dungeon_draw_front(&g_dmap, &stand, &cam, ren);
+    }
     if (getenv("DNGSHOT_GRID")) dungeon_draw_debug_grid(&g_dmap, &cam, ren);
     SDL_RenderPresent(ren);
 

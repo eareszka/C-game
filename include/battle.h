@@ -66,7 +66,7 @@ static const int ENEMY_R  = 24;
 static const float PLAYER_R = 3.0f;
 
 #define MAX_PLAYER_BULLETS 128   // a Touhou-rate stream of three, piercing, stays well under
-#define MAX_ENEMY_BULLETS  512   // Grand'Goule's phase 2 keeps ~270 in the air
+#define MAX_ENEMY_BULLETS  768   // Grand'Goule's phase 2 keeps ~270 in the air; Lagopus's ring + its row rings ~420
 
 // ── Bullet ────────────────────────────────────────────────────────────────────
 
@@ -90,6 +90,18 @@ struct Bullet {
     float accel;          // a boomerang's px/s^2 along its first heading
     float ux, uy;         // that heading
     float min_speed;      // slows to this and keeps going, instead of turning back
+    float max_speed;      // a boomerang's top speed coming back (0 = none)
+    float half_len;       // a log's half length (0 = a round bullet)
+    float ang, spin;      // ... the way it lies, and how fast it turns
+    float max_tilt;       // ... rocking: the turn reverses past +-this (0 = turns freely)
+    float shed_every, shed_t, shed_spread, shed_speed;   // shedding small shots (BulletSpawn)
+    int   shed_n;
+    int   shed_left;      // sheds still to come (-1 = no limit)
+    bool  shed_dies;      // gone after its last shed
+    float shed_spin;      // what it sheds orbits, rad/s
+    float ocx, ocy, orad, oang, ovr, ow;   // orbiting: centre, radius, angle, speed out, turn rate (ow 0 = straight)
+    float zig, zig_every, zig_t; int zig_s; // zigzagging: swing, period, timer, which side it's on
+    bool  flash_in;       // flashes white for its first moment
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
     int   weapon;         // WeaponType
@@ -126,6 +138,15 @@ struct Pickup {
 };
 
 // ── Battle scene ──────────────────────────────────────────────────────────────
+
+// Being hurt, as a fight shows it: the screen shakes side to side on the 2px
+// art grid, dying away, and flashes white then red in hard steps. t is the
+// seconds since the hurt. Shared by the fights and the oasis's drowning.
+// hurt_shake_begin moves the viewport (keeping the old in *saved) and
+// hurt_shake_end puts it back; hurt_flash covers w x h from the top left.
+void hurt_shake_begin(SDL_Renderer* ren, float t, SDL_Rect* saved);
+void hurt_shake_end(SDL_Renderer* ren, const SDL_Rect* saved);
+void hurt_flash(SDL_Renderer* ren, float t, int w, int h);
 
 class BattleScene {
 public:
@@ -201,6 +222,7 @@ private:
     mutable bool         _sheet_tried = false;
     mutable SDL_Texture* _flap        = nullptr;   // wing-flap sheet, if the enemy has one
     mutable SDL_Texture* _alt         = nullptr;   // alternate idle sheet, if the enemy has one
+    mutable SDL_Texture* _log         = nullptr;   // its log bullet sprite, if it throws logs
     // The same sheets as solid white silhouettes, for the hit flash.
     mutable SDL_Texture* _sheet_white = nullptr;
     mutable SDL_Texture* _flap_white  = nullptr;

@@ -75,7 +75,10 @@ struct DungeonDecal {
 #define DMAP_MAX_DECALS   128
 #define DMAP_MAX_BARROW_BLOCKS 640
 #define DMAP_MAX_PYR_ROOMS 16
+#define DMAP_MAX_COL_SHAPES 320
 #define DMAP_MAX_GYW_RECTS 160
+#define OASIS_MAX_PX 4800          // 15 screens of 20 tiles, art pixels
+#define OASIS_PX_H   240           // the reference's height: 15 tiles
 #define DMAP_MAX_GYW_SEGS  96
 
 struct DungeonMap {
@@ -106,6 +109,14 @@ struct DungeonMap {
     int  barrow_ox, barrow_oy;
     int  barrow_x0, barrow_y0, barrow_w, barrow_h;
     uint32_t barrow_seed;                // its grass and carvings, laid the same every visit
+    // Its two ways out: a ladder in the middle of a corridor's flat back wall,
+    // the corridor's middle (ground x) and that wall's front (ground d).
+    int  barrow_way_x[2], barrow_way_d[2];
+    // What the player's feet collide with, in art pixels: boxes and triangles
+    // only (stonehenge: each wall cell's ground footprint, a parallelogram
+    // under the oblique view, cut into a box and two triangles). Inclusive.
+    struct { bool box; float x[3], y[3]; } col_shapes[DMAP_MAX_COL_SHAPES];
+    int  num_col_shapes;
     // The graveyard's walkways (carve_graveyard_walkways): rectangles in the
     // world under the oblique view (u across, v back, art pixels), drawn at
     // art pixel (gyw_ox + u + v, gyw_oy - v); the path's segments with the
@@ -121,6 +132,21 @@ struct DungeonMap {
     int  gyw_way_u[2], gyw_way_v[2];     // 0 the way in, 1 the far end
     int  gyw_x0, gyw_y0, gyw_w, gyw_h;
     uint32_t gyw_seed;
+    // The oasis (carve_oasis): a flooded cave seen from the side, a bit an art
+    // pixel of rock; its air (pockets in the ceiling's hollows, and the two
+    // shafts up to the spring, entries 0 and 1): columns x0..x1 above the
+    // water line; its sections (0 tunnel, 1 cave, 2 cavern, 3 the
+    // leviathan's pass); its weed (x, top); all in level pixels, the level
+    // drawn at art pixel (oasis_x0, oasis_y0).
+    uint8_t oasis_solid[OASIS_PX_H][OASIS_MAX_PX / 8];
+    int  oasis_w, oasis_x0, oasis_y0;
+    struct { int16_t x0, x1, line; } oasis_air[24];
+    int  num_oasis_air;
+    struct { uint8_t kind; int16_t x0, x1; } oasis_sec[40];
+    int  num_oasis_sec;
+    struct { int16_t x, y; } oasis_weed[320];
+    int  num_oasis_weed;
+    uint32_t oasis_seed;
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
     uint8_t visible[DMAP_H][DMAP_W];   // 1=currently in FOV (wall-blocked), reset each frame
     // Portal 0 is the entry and keeps the DNG_ENTRY tile; every other portal
@@ -159,6 +185,8 @@ struct DungeonPlayer {
     float speed;
     int   at_exit;    // 1 if player centre is over DNG_EXIT tile
     int   at_entry;   // 1 if player centre is over DNG_ENTRY tile (exit back to overworld)
+    float slide = 0;  // sliding along a 45-degree edge: how far owed (see dungeon_player_update)
+    float vx = 0, vy = 0;   // swimming (the oasis): the drift kept from frame to frame
 
     // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
     // the overworld (Overworld, include/overworld.h).
@@ -178,6 +206,14 @@ int dungeon_treasure_item(DungeonEntranceType type);
 // censuses the SHIPPED thresholds instead of its own copy of them -- a second
 // copy is exactly how a calibration silently goes stale.
 Material material_for_difficulty(float difficulty);
+
+// The enemy a spawner in a dungeon of this type and difficulty holds. Picked
+// by TIER from difficulty -- the far-out, high-up dungeons get the hard
+// tiers wherever they are -- with the dungeon's region only as flavour (its
+// own enemies weigh more). Never a boss; elites only in the wastelands and
+// the hard-to-reach dungeons. See src/dungeon.cpp; tools/spawncensus.cpp
+// measures what it does across worlds.
+int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng);
 // The lowest difficulty that still yields this material: the bottom edge of
 // its band. material_for_difficulty(material_min_difficulty(m)) == m exactly,
 // because the lookup tests strictly below each band's top. The guarantee pass
@@ -252,6 +288,23 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, const Camera* cam,
                            bool noclip = false, HarvestResult* out_harvest = nullptr);
+// The oasis: whether the swimmer's head is in air (a pocket under the
+// ceiling, or a shaft) -- always true anywhere else, where there is no water.
+bool dungeon_breathing(const DungeonMap* dmap, const DungeonPlayer* dp);
+// Whether the player fits where they stand: their feet clear of walls, or in
+// the oasis their whole swimming body clear of rock and below the surface.
+bool dungeon_player_fits(const DungeonMap* dmap, const DungeonPlayer* dp);
+// A side-view dungeon (the oasis) holds its camera to the level: zoom 1, the
+// level's top at the screen's, following across only, never past either end.
+// Nothing for any other kind.
+void dungeon_frame_camera(const DungeonMap* dmap, Camera* cam);
+// The swimmer, drawn in place of the walking player in the oasis; false
+// anywhere else (the caller draws the player as usual).
+bool dungeon_draw_swimmer(const DungeonMap* dmap, const DungeonPlayer* dp, const Player* player,
+                          const Camera* cam, SDL_Renderer* ren);
+// The oxygen row in the HUD: eight bubbles, full to empty, the last two
+// flashing when it runs low.
+void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y);
 // Whether a point (dungeon pixels) is solid to the player's feet -- the
 // collision the game moves them by. Exposed for the tools.
 bool dungeon_solid_at(const void* dmap, float px, float py);
