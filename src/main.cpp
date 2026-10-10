@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 57, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 57 Dingbat
+        { 88, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 88 Amixsak
     };
     const int    TEST_N             = (int)(sizeof(test_enemies) / sizeof(test_enemies[0]));
     bool         test_armed         = true;
@@ -346,6 +346,8 @@ int main(int argc, char *argv[])
         "NANABOLELE", "LEUCROCOTTA", "COROCOTTA", "AMIXSAK", "CUERO",
         "CHIPEKWE", "KURREA", "SIEHNAM", "CHIPIQUE", "TROCHUS",
         "WITKES", "BREGDI", "RO", "BOIUNA", "FAD FELEN",
+        // The final boss, 100
+        "FLESH PLANET",
     };
     static_assert(sizeof(ENEMY_NAMES) / sizeof(ENEMY_NAMES[0]) == ENEMY_COUNT, "a name per enemy in the roster");
 
@@ -373,10 +375,6 @@ int main(int argc, char *argv[])
     int num_chasers = 0;
 
     std::unordered_map<uint32_t, std::vector<uint8_t>> dungeon_explored_cache;
-    // Dungeons whose one treasure is taken, by seed (the same key as the
-    // explored cache): a dungeon is laid out again each visit, and must not
-    // put it back.
-    std::unordered_map<uint32_t, bool> treasure_taken;
     char pickup_buf[48] = "";
     uint32_t current_dng_seed = 0;
 
@@ -666,11 +664,12 @@ int main(int argc, char *argv[])
             // walkable tile to the middle of it, so the crossing can be tried
             // in seconds. The seam is the far edge of the wrap axis.
             // Row 9: ten of every material, and every book and special part,
-            // to try every recipe. Never the raft: making it is the opening.
+            // to try every recipe. Never the raft (making it is the opening)
+            // nor the sleeping bag (its materials are here to make one).
             if (dbg_sel == 9 && dbg_confirm)
                 for (int it = 0; it < ITEM_COUNT; it++) {
                     if (item_is_material((Item)it))      item_slot(&player, (Item)it) += 10;
-                    else if (it != ITEM_RAFT && item_count(&player, (Item)it) == 0)
+                    else if (it != ITEM_RAFT && it != ITEM_SLEEPING_BAG && item_count(&player, (Item)it) == 0)
                         item_slot(&player, (Item)it) = 1;
                 }
 
@@ -710,13 +709,18 @@ int main(int argc, char *argv[])
         items_primed = true;
 
         // ── The TAB menu (src/game_menu.cpp) ──────────────────────────────────
-        // Opens anywhere but a battle (which has its own TAB panel) and the
-        // title. Handled before anything else reads a key, so while it is open
+        // Opens anywhere but the title; in a battle it pauses the fight. Handled before anything else reads a key, so while it is open
         // the world sees none: game_in below is blank, and each raw key that
         // reaches into the world (zoom, map, leaving a room or dungeon, the
         // battle list) checks menu.open itself.
         {
-            bool menu_ok  = state != STATE_BATTLE && state != STATE_TITLE;
+            bool menu_ok  = state != STATE_TITLE;
+            // Being chased -- a dungeon enemy has seen the player and is
+            // coming, or a fight -- rules out the sleeping bag.
+            menu.chased = state == STATE_BATTLE;
+            if (state == STATE_DUNGEON)
+                for (int ci = 0; ci < num_chasers; ci++)
+                    if (chasers[ci].active && chasers[ci].chasing) menu.chased = true;
             bool was_open = menu.open;
             if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open && menu_ok) game_menu_toggle(&menu);
             else if (menu.open && menu_ok) game_menu_update(&menu, &player, &in, dt);
@@ -726,6 +730,7 @@ int main(int argc, char *argv[])
                 input_consume(&in, SDL_SCANCODE_RETURN);
                 input_consume(&in, SDL_SCANCODE_Z);
                 input_consume(&in, SDL_SCANCODE_SPACE);
+                if (state == STATE_BATTLE && battle_scene) battle_scene->sync_weapon();
             }
         }
 
@@ -733,15 +738,28 @@ int main(int argc, char *argv[])
         if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && !menu.open && state != STATE_BATTLE)
             battle_list_open = !battle_list_open;
 
-        // The list, filtered by what's typed: letters match anywhere in the
-        // name, a number matches the id (its digits from the start).
+        // The list runs easiest to hardest (the user): by tier, and within a
+        // tier by id -- the same order the EXP climbs in (enemy_defeat_exp).
+        // Its number is that rank, not the id. Filtered by what's typed:
+        // letters match anywhere in the name, a number matches the rank (its
+        // digits from the start).
+        static int battle_order[ENEMY_COUNT], battle_rank[ENEMY_COUNT];
+        static bool battle_ordered = false;
+        if (!battle_ordered) {
+            battle_ordered = true;
+            int n = 0;
+            for (int t = T_UNSET; t <= T_BOSS3; t++)
+                for (int e = 0; e < ENEMY_COUNT; e++)
+                    if (enemy_tier(e) == t) { battle_rank[e] = n; battle_order[n++] = e; }
+        }
         int battle_hits[ENEMY_COUNT], battle_n = 0;
-        for (int e = 0; e < ENEMY_COUNT; e++) {
+        for (int r = 0; r < ENEMY_COUNT; r++) {
+            int e = battle_order[r];
             char id[8];
-            SDL_snprintf(id, sizeof(id), "%02d", e);
+            SDL_snprintf(id, sizeof(id), "%02d", r);
             bool digits = battle_query[0] >= '0' && battle_query[0] <= '9';
             bool hit = digits ? (SDL_strncmp(id, battle_query, SDL_strlen(battle_query)) == 0 ||
-                                 SDL_atoi(battle_query) == e)
+                                 SDL_atoi(battle_query) == r)
                               : SDL_strstr(ENEMY_NAMES[e], battle_query) != nullptr;
             if (hit) battle_hits[battle_n++] = e;
         }
@@ -925,17 +943,14 @@ int main(int argc, char *argv[])
                     if (ci < 0 || ci >= DUNGEON_ENT_COUNT) ci = 0;
                     const char* name = dungeon_names[ci];
 
-                    draw_nes_panel(plat.renderer, 0, 448, 640, 32);
+                    SDL_Rect box = draw_textbox(plat.renderer, name, 255, 255, 255, false, 6);
 
-                    int nx = (640 - text_width(name, 2)) / 2;
-                    draw_text(plat.renderer, name, nx, 456, 2, 255, 255, 255);
-
-                    // difficulty bar inside inner border
+                    // difficulty bar under the name
                     fc_draw_color(plat.renderer, 40, 40, 40, 255);
-                    SDL_Rect diff_track = {NES_PAD + 2, 472, 640 - (NES_PAD+2)*2, 4};
+                    SDL_Rect diff_track = {box.x + 12, box.y + box.h - 12, box.w - 24, 4};
                     SDL_RenderFillRect(plat.renderer, &diff_track);
                     fc_draw_color(plat.renderer, 255, 255, 255, 255);
-                    SDL_Rect diff_fill = {NES_PAD + 2, 472, (int)((640 - (NES_PAD+2)*2) * ow.dungeon_difficulty), 4};
+                    SDL_Rect diff_fill = {box.x + 12, box.y + box.h - 12, (int)((box.w - 24) * ow.dungeon_difficulty), 4};
                     SDL_RenderFillRect(plat.renderer, &diff_fill);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
@@ -980,9 +995,11 @@ int main(int argc, char *argv[])
 
                         dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
                         current_dng_seed = w.seed;
-                        if (treasure_taken.count(current_dng_seed))
-                            for (int li = 0; li < dmap.num_loot; li++)
-                                if (dmap.loot[li].item >= 0) dmap.loot[li].collected = true;
+                        // A treasure is found once: every dungeon of its kind
+                        // holds it until the player has picked one up anywhere.
+                        for (int li = 0; li < dmap.num_loot; li++)
+                            if (dmap.loot[li].item >= 0 && item_found(&player, (Item)dmap.loot[li].item))
+                                dmap.loot[li].collected = true;
                         {
                             auto exp_it = dungeon_explored_cache.find(current_dng_seed);
                             if (exp_it != dungeon_explored_cache.end())
@@ -1030,10 +1047,8 @@ int main(int argc, char *argv[])
                 }
                 // Building door — prompt and enter the interior.
                 else if (ow.at_interior_door) {
-                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl = "ENTER";
-                    draw_text(plat.renderer, lbl,
-                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -1066,7 +1081,7 @@ int main(int argc, char *argv[])
 
             case STATE_BATTLE:
                 if (battle_scene) {
-                    battle_scene->update(game_in, dt);
+                    if (!menu.open) battle_scene->update(game_in, dt);   // the TAB menu pauses the fight
                     battle_scene->draw(plat.renderer, player_sprite);
                     if (battle_scene->is_done()) {
                         {
@@ -1103,7 +1118,6 @@ int main(int argc, char *argv[])
                     dungeon_player_update(&dplayer, &player, game_in, dt, &dmap, &cam, dbg_noclip, &dng_harvest);
                     floattext_spawn_from_harvest(&cur_float, &dng_harvest);
                     if (dplayer.picked_item >= 0) {
-                        treasure_taken[current_dng_seed] = true;
                         SDL_snprintf(pickup_buf, sizeof(pickup_buf), "GOT %s", item_name((Item)dplayer.picked_item));
                         pickup_note   = pickup_buf;
                         pickup_note_t = 2.5f;
@@ -1315,7 +1329,7 @@ int main(int argc, char *argv[])
 
                 SDL_Rect drown_vp;
                 hurt_shake_begin(plat.renderer, drown_t, &drown_vp);     // drowning: hurt as a fight shows it
-                dungeon_draw(&dmap, &dplayer, &cam, plat.renderer, dbg_show_all);
+                dungeon_draw(&dmap, &dplayer, &cam, plat.renderer);
                 if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
                 if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer))
                     player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
@@ -1343,12 +1357,21 @@ int main(int argc, char *argv[])
 
                 battle_veil_draw(&cam);
 
+                // The catacombs' holes and ladders: where it leads, taken on the key.
+                if (const char* lbl = dungeon_link_name(&dmap, &dplayer)) {
+                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
+                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                        dungeon_take_link(&dmap, &dplayer);
+                        camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
+                    }
+                }
+
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
-                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl = "EXIT";
-                    draw_text(plat.renderer, lbl,
-                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -1380,10 +1403,8 @@ int main(int argc, char *argv[])
 
                 // DNG_EXIT tile — exit to the connected overworld entrance (or back if none).
                 if (dplayer.at_exit) {
-                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl2 = "ENTER";
-                    draw_text(plat.renderer, lbl2,
-                              (640 - text_width(lbl2, 2)) / 2, 461, 2, 255, 255, 255);
+                    draw_textbox(plat.renderer, lbl2, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -1512,10 +1533,8 @@ int main(int argc, char *argv[])
                 // Doormat — exit back to the overworld; ow.x/ow.y were never
                 // touched, so the player reappears where they entered.
                 if (iplayer.at_exit) {
-                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl = "EXIT";
-                    draw_text(plat.renderer, lbl,
-                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
 
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
@@ -1530,10 +1549,8 @@ int main(int argc, char *argv[])
                 float fcy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
                 float bdx = fcx - (btx + 0.5f) * IMAP_TILE, bdy = fcy - (bty + 0.5f) * IMAP_TILE;
                 if (book_here && !iplayer.at_exit && bdx * bdx + bdy * bdy < 40.0f * 40.0f) {
-                    draw_nes_panel(plat.renderer, 0, 457, 640, 23);
                     const char* lbl = "TAKE BOOK";
-                    draw_text(plat.renderer, lbl,
-                              (640 - text_width(lbl, 2)) / 2, 461, 2, 255, 255, 255);
+                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
@@ -1552,12 +1569,10 @@ int main(int argc, char *argv[])
             }
         }
 
-        // The answer to a pickup, at the foot of the screen, a moment.
+        // The answer to a pickup, in the textbox, a moment.
         if (pickup_note_t > 0.0f) {
             pickup_note_t -= dt;
-            draw_nes_panel(plat.renderer, 0, 457, 640, 23);
-            draw_text(plat.renderer, pickup_note,
-                      (640 - text_width(pickup_note, 2)) / 2, 461, 2, 255, 255, 80);
+            draw_textbox(plat.renderer, pickup_note, 255, 255, 80, state == STATE_BATTLE && battle_scene && battle_scene->textbox_low());
         }
 
         // A scene change consumes the key that caused it. The prompts confirm on
@@ -1635,14 +1650,10 @@ int main(int argc, char *argv[])
             if (swap_t < WEAPON_BOX_T) {
                 const int WX = 245, WY = 2, WW = 150, WH = 40;
                 const Weapon& eq = equipped_weapon(&player);
-                draw_nes_panel(plat.renderer, WX, WY, WW, WH);
-                if (swap_t < 0.3f && (int)(swap_t * 20.0f) % 2 == 0) {
-                    fc_draw_color(plat.renderer, 255, 255, 80, 255);
-                    for (int t = 0; t < 4; t++) {
-                        SDL_Rect r = { WX + t, WY + t, WW - 2 * t, WH - 2 * t };
-                        SDL_RenderDrawRect(plat.renderer, &r);
-                    }
-                }
+                if (swap_t < 0.3f && (int)(swap_t * 20.0f) % 2 == 0)
+                    draw_nes_panel(plat.renderer, WX, WY, WW, WH, 255, 255, 80);
+                else
+                    draw_nes_panel(plat.renderer, WX, WY, WW, WH);
                 game_menu_draw_weapon(&menu, plat.renderer, eq.type, eq.material, WX + 6, WY + 4, 32);
                 draw_text(plat.renderer, weapon_name(eq.type), WX + 44, WY + 10, 1, 252, 252, 252);
                 draw_text(plat.renderer, game_menu_ore_name(eq.material), WX + 44, WY + 22, 1, 120, 120, 120);
@@ -1703,34 +1714,40 @@ int main(int argc, char *argv[])
 
         // ── Crafting menu overlay ─────────────────────────────────────────────
         // ── The TAB menu (src/game_menu.cpp) ─────────────────────────────────
-        if (state != STATE_BATTLE) game_menu_draw(&menu, &player, plat.renderer);
+        game_menu_draw(&menu, &player, plat.renderer);
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
-            // Two columns, world and player, each under its heading. The rows
-            // are in the small font (8px a character): the longest, the seam
-            // row, is 32 characters, 256px, inside a 270px column.
-            const int MX = 50, MY = 110, MW = 540, MH = 230;
-            const int LH = 20;  // line height
-            const int COL_W = 270;
-
-            draw_nes_panel(plat.renderer, MX, MY, MW, MH);
-
-            draw_text(plat.renderer, "DEBUG MENU", MX + NES_PAD + 2, MY + NES_PAD + 4, 2, 255, 255, 255);
-
-            // A column's heading, then its rows; a row goes where DBG_ORDER puts it.
-            draw_text(plat.renderer, "WORLD",  MX + 8,         MY + 36, 2, 120, 120, 120);
-            draw_text(plat.renderer, "PLAYER", MX + 8 + COL_W, MY + 36, 2, 120, 120, 120);
+            // The TAB menu's windows: the two groups, WORLD and PLAYER, in the
+            // command window (A/D switches), the active group's rows in the
+            // list, small font, and the keys in the preview box.
+            int group = dbg_pos(dbg_sel) >= DBG_PLAYER_AT;
+            draw_nes_panel(plat.renderer, CMD_X, CMD_Y, CMD_W, CMD_H);
+            draw_nes_panel(plat.renderer, PRE_X, PRE_Y, PRE_W, PRE_H);
+            draw_nes_panel(plat.renderer, LST_X, LST_Y, LST_W, LST_H);
+            static const char* GROUPS[2] = { "WORLD", "PLAYER" };
+            for (int i = 0; i < 2; i++) {
+                int y = CMD_Y + 12 + i * 24;
+                if (i == group) draw_text(plat.renderer, ">", CMD_X + 10, y, 2, 255, 255, 80);
+                if (i == group) draw_text(plat.renderer, GROUPS[i], CMD_X + 28, y, 2, 255, 255, 80);
+                else            draw_text(plat.renderer, GROUPS[i], CMD_X + 28, y, 2, 252, 252, 252);
+            }
+            draw_text(plat.renderer, "DEBUG", CMD_X + 28, CMD_Y + 12 + 2 * 24, 2, 120, 120, 120);
+            static const char* KEYS[4] = { "WASD: MOVE", "Q/E: CHANGE", "Z: SELECT", "F2: CLOSE" };
+            for (int i = 0; i < 4; i++)
+                draw_text(plat.renderer, KEYS[i], PRE_X + 14, PRE_Y + 16 + i * 18, 1, 180, 180, 180);
+            draw_text(plat.renderer, GROUPS[group], LST_X + 12, LST_Y + 12, 2, 120, 120, 120);
             auto draw_row = [&](int row, const char* label, bool selected) {
                 int pos = dbg_pos(row), right = pos >= DBG_PLAYER_AT;
-                int rx  = MX + right * COL_W;
-                int ry  = MY + 36 + LH + 6 + (pos - right * DBG_PLAYER_AT) * LH;
+                if (right != group) return;
+                int rx  = LST_X;
+                int ry  = LST_Y + 44 + (pos - right * DBG_PLAYER_AT) * 24;
                 Uint8 r = selected ? 255 : 180;
                 Uint8 g = selected ? 255 : 180;
                 Uint8 b = selected ? 80  : 180;
                 if (selected)
                     draw_text(plat.renderer, ">", rx + 10, ry, 1, r, g, b);
-                draw_text(plat.renderer, label, rx + 20, ry, 1, r, g, b);
+                draw_text(plat.renderer, label, rx + 22, ry, 1, r, g, b);
             };
 
             // Row 0: warp target selector
@@ -1811,26 +1828,26 @@ int main(int argc, char *argv[])
             draw_row(9, "GIVE ALL", dbg_sel == 9);
             draw_row(10, "MAX OUT WEAPONS", dbg_sel == 10);
 
-            draw_text(plat.renderer, "WASD:MOVE  Q/E:CHANGE  Z:SELECT  F2:CLOSE",
-                      MX + 6, MY + MH - 16, 1, 180, 180, 180);
         }
 
         // ── Battle test list overlay ──────────────────────────────────────────
         if (battle_list_open) {
-            static const int VIEW = 10;
-            const int PW = 360, PH = 46 + VIEW * 18 + 18;
-            const int PX = (640 - PW) / 2, PY = (480 - PH) / 2;
-
-            draw_nes_panel(plat.renderer, PX, PY, PW, PH);
-            draw_text(plat.renderer, "BATTLE TEST",
-                      PX + (PW - text_width("BATTLE TEST", 2)) / 2,
-                      PY + NES_PAD + 4, 2, 255, 255, 255);
+            // The TAB menu's windows: title and search in the command window,
+            // the list beside it, the keys in the preview box.
+            const int ROW = 20, VIEW = (LST_H - 24) / ROW;
+            draw_nes_panel(plat.renderer, CMD_X, CMD_Y, CMD_W, CMD_H);
+            draw_nes_panel(plat.renderer, PRE_X, PRE_Y, PRE_W, PRE_H);
+            draw_nes_panel(plat.renderer, LST_X, LST_Y, LST_W, LST_H);
+            draw_text(plat.renderer, "BATTLE TEST", CMD_X + 14, CMD_Y + 14, 1, 252, 252, 252);
 
             // The search line, then the filtered list -- all ENEMY_COUNT of
             // them with nothing typed.
             char qline[40];
             SDL_snprintf(qline, sizeof(qline), "FIND:%s_", battle_query);
-            draw_text(plat.renderer, qline, PX + 8, PY + 32, 1, 255, 255, 80);
+            draw_text(plat.renderer, qline, CMD_X + 14, CMD_Y + 40, 1, 255, 255, 80);
+            static const char* KEYS[5] = { "TYPE: FIND", "UP/DN: SELECT", "ENTER: FIGHT", "ESC: CLEAR", "F3: CLOSE" };
+            for (int i = 0; i < 5; i++)
+                draw_text(plat.renderer, KEYS[i], PRE_X + 14, PRE_Y + 16 + i * 18, 1, 180, 180, 180);
 
             int top = battle_list_sel - VIEW / 2;
             if (top > battle_n - VIEW) top = battle_n - VIEW;
@@ -1841,18 +1858,17 @@ int main(int argc, char *argv[])
                 if (li >= battle_n) break;
                 int idx = battle_hits[li];
                 bool sel = (li == battle_list_sel);
-                int ry = PY + 46 + i * 18;
+                int ry = LST_Y + 12 + i * ROW;
                 Uint8 cr = sel ? 255 : 180, cg = sel ? 255 : 180, cb = sel ? 80 : 180;
-                if (sel) draw_text(plat.renderer, ">", PX + 8, ry, 2, cr, cg, cb);
+                if (sel) draw_text(plat.renderer, ">", LST_X + 10, ry, 2, cr, cg, cb);
                 char label[40];
-                SDL_snprintf(label, sizeof(label), "%02d  %s", idx, ENEMY_NAMES[idx]);
-                draw_text(plat.renderer, label, PX + 24, ry, 2, cr, cg, cb);
+                SDL_snprintf(label, sizeof(label), "%02d  %s", battle_rank[idx], ENEMY_NAMES[idx]);
+                // The longest names only fit in the small font.
+                int sc = text_width(label, 2) <= LST_W - 40 ? 2 : 1;
+                draw_text(plat.renderer, label, LST_X + 28, ry + (2 - sc) * 4, sc, cr, cg, cb);
             }
             if (battle_n == 0)
-                draw_text(plat.renderer, "NO MATCH", PX + 24, PY + 46, 2, 180, 180, 180);
-
-            draw_text(plat.renderer, "TYPE:FIND  UP/DN:SELECT  ENTER:FIGHT  ESC:CLEAR  F3:CLOSE",
-                      PX + 6, PY + PH - 14, 1, 180, 180, 180);
+                draw_text(plat.renderer, "NO MATCH", LST_X + 28, LST_Y + 12, 2, 180, 180, 180);
         }
 
         if (dbg_readout) {

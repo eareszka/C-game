@@ -5,13 +5,14 @@
 //   dngshot.exe <seed> <out.png> [tile_x tile_y] [tiles_w tiles_h]
 //
 // Env: DNGSHOT_TYPE=<0..8> archetype (default cave), DNGSHOT_ORE=<0..6> cave
-//      material, DNGSHOT_MAYA a pyramid's step-pyramid interior, DNGSHOT_DIM simulate FOV memory-dimming, DNGSHOT_DUMP ASCII
+//      material, DNGSHOT_MAYA a pyramid's step-pyramid interior, DNGSHOT_DUMP ASCII
 //      floor/wall grid to stdout, DNGSHOT_GRID debug source-cell overlay.
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
+#include <algorithm>
 #include "dungeon.h"
 #include "tilemap.h"
 #include "camera.h"
@@ -78,20 +79,6 @@ int main(int argc, char** argv) {
         if (mi >= 0 && mi < MAT_COUNT) g_dmap.ore = (Material)mi;
     }
 
-    bool force_dim = getenv("DNGSHOT_DIM") != nullptr;
-    bool show_all = true;
-    if (force_dim) {
-        show_all = false;
-        int radius = 6;
-        int cx = want_x + tw/2, cy = want_y + th/2;
-        for (int y = 0; y < DMAP_H; y++) for (int x = 0; x < DMAP_W; x++) {
-            if (x < want_x-2 || x > want_x+tw+2 || y < want_y-2 || y > want_y+th+2) continue;
-            g_dmap.explored[y][x] = true;
-            int dx = x-cx, dy = y-cy;
-            g_dmap.visible[y][x] = (dx*dx+dy*dy) <= radius*radius;
-        }
-    }
-
     if (getenv("DNGSHOT_DUMP")) {
         for (int y = want_y; y < want_y + th; y++) {
             for (int x = want_x; x < want_x + tw; x++) {
@@ -153,6 +140,42 @@ int main(int argc, char** argv) {
         printf("walk: fastest half second %.2f px a frame (walking: %.2f)\n", fastest, PLAYER_WALK_SPEED / 60.0f);
     }
 
+    // DNGSHOT_LADDERS (the giant tree): every ladder -- the feet at its foot on
+    // the floor in front, up held for ten seconds -- must bring them onto the
+    // floor above it.
+    if (getenv("DNGSHOT_LADDERS")) {
+        int ok = 0, bad = 0;
+        for (int i = 0; i < g_dmap.num_tree_ladders; i++) {
+            const auto& l = g_dmap.tree_ladders[i];
+            static Input in;
+            input_init(&in);
+            Player pl{};
+            DungeonPlayer dp{};
+            dungeon_player_init(&dp, &pl, &g_dmap, 0);
+            dp.x = (g_dmap.tree_ox + l.x0 + 8) * 2.0f - (HB_X1 + HB_X2) * 0.5f;
+            dp.y = (g_dmap.tree_oy + l.y1 + 4) * 2.0f - HB_Y2;
+            if (!dungeon_player_fits(&g_dmap, &dp)) { printf("ladder %d: its foot is not ground\n", i); bad++; continue; }
+            for (int f = 0; f < 600; f++) {
+                in.keys[SDL_SCANCODE_UP] = f == 0 ? KEY_PRESSED : KEY_HELD;
+                dungeon_player_update(&dp, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
+            }
+            float feet = (dp.y + HB_Y2) / 2.0f - g_dmap.tree_oy;          // art pixels
+            if (feet < l.y0) ok++;
+            else { printf("ladder %d: stuck at %.0f, ladder %d..%d\n", i, feet, l.y0, l.y1); bad++; }
+        }
+        // and each a block clear of the door (user): the gap across, for a
+        // ladder level with it (the door: 2 tiles from the way in's, 2 up)
+        int near = 0, dx0 = g_dmap.entry_x * 16, dy0 = g_dmap.entry_y * 16;
+        for (int i = 0; i < g_dmap.num_tree_ladders; i++) {
+            const auto& l = g_dmap.tree_ladders[i];
+            int lx = g_dmap.tree_ox + l.x0, ly0 = g_dmap.tree_oy + l.y0, ly1 = g_dmap.tree_oy + l.y1;
+            if (ly1 < dy0 - 32 || ly0 > dy0 + 16) continue;
+            int gap = std::max(dx0 - (lx + 16), lx - (dx0 + 32));
+            if (gap < 16) { printf("ladder %d: %d px from the door\n", i, gap); near++; }
+        }
+        printf("ladders: %d climbed, %d failed, %d within a block of the door\n", ok, bad, near);
+    }
+
     // DNGSHOT_COLCHECK (stonehenge): the feet's collision against the drawn
     // base of every block -- its ground footprint, the side's foot column
     // included -- pixel for pixel over the whole maze.
@@ -180,6 +203,56 @@ int main(int argc, char** argv) {
         printf("colcheck: %d ground pixels, %d solid off a base, %d open on a base\n", n, solid_off, open_on);
     }
 
+    // The catacombs' links, by the game's own movement: the feet on each hole
+    // in the hall must drop to its section's ladder, on ground; up held there
+    // must climb back into the hall, on ground. Each landing seeds the flood.
+    std::vector<std::pair<int, int>> landings;
+    if (g_dmap.type == DUNGEON_ENT_CATACOMBS) {
+        int ok = 0, bad = 0;
+        auto area_of = [&](const DungeonPlayer& p) {
+            float ax = (p.x + (HB_X1 + HB_X2) * 0.5f) / 2, ay = (p.y + (HB_Y1 + HB_Y2) * 0.5f) / 2;
+            for (int a = 0; a < g_dmap.num_cat_areas; a++) {
+                const auto& A = g_dmap.cat_areas[a];
+                if (ax >= A.x0 && ax < A.x1 && ay >= A.y0 && ay < A.y1) return a;
+            }
+            return -1;
+        };
+        auto tile_of = [&](const DungeonPlayer& p) {
+            return std::make_pair((int)((p.x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE), (int)((p.y + (HB_Y1 + HB_Y2) * 0.5f) / DMAP_TILE));
+        };
+        for (int h = 0; h < g_dmap.num_cat_holes; h++) {
+            const auto& H = g_dmap.cat_holes[h];
+            static Input in;
+            input_init(&in);
+            Player pl{};
+            DungeonPlayer p{};
+            dungeon_player_init(&p, &pl, &g_dmap, 0);
+            const auto& A = g_dmap.cat_areas[0];
+            p.x = (A.ox + H.u - H.v) * 2.0f - (HB_X1 + HB_X2) * 0.5f;
+            p.y = (A.oy + (H.u + H.v) / 2.0f) * 2.0f - (HB_Y1 + HB_Y2) * 0.5f;
+            dungeon_player_update(&p, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
+            const char* down = dungeon_link_name(&g_dmap, &p);
+            if (area_of(p) != 0 || !down) { printf("hole %d: standing on it offers nothing\n", h); bad++; continue; }
+            dungeon_take_link(&g_dmap, &p);
+            if (area_of(p) != H.to || !dungeon_player_fits(&g_dmap, &p)) { printf("hole %d: dropped to area %d, %s\n", h, area_of(p), dungeon_player_fits(&g_dmap, &p) ? "on ground" : "NOT ON GROUND"); bad++; continue; }
+            landings.push_back(tile_of(p));
+            const char* up = nullptr;
+            for (int f = 0; f < 240 && !up; f++) {
+                in.keys[SDL_SCANCODE_UP] = f == 0 ? KEY_PRESSED : KEY_HELD;
+                dungeon_player_update(&p, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
+                up = dungeon_link_name(&g_dmap, &p);
+            }
+            if (up) dungeon_take_link(&g_dmap, &p);
+            printf("hole %d: \"%s\" down, \"%s\" up\n", h, down, up ? up : "(none)");
+            if (area_of(p) != 0 || !dungeon_player_fits(&g_dmap, &p)) { printf("hole %d: the ladder up left it in area %d, %s\n", h, area_of(p), dungeon_player_fits(&g_dmap, &p) ? "on ground" : "NOT ON GROUND"); bad++; continue; }
+            ok++;
+        }
+        for (int a = 0; a < g_dmap.num_cat_areas; a++)
+            printf("area %d tiles %d %d %d %d\n", a, g_dmap.cat_areas[a].x0 / 16, g_dmap.cat_areas[a].y0 / 16,
+                   (g_dmap.cat_areas[a].x1 - g_dmap.cat_areas[a].x0) / 16 + 1, (g_dmap.cat_areas[a].y1 - g_dmap.cat_areas[a].y0) / 16 + 1);
+        printf("links: %d holes down and back up, %d failed\n", ok, bad);
+    }
+
     if (getenv("DNGSHOT_STATS")) {
         static bool seen[DMAP_H][DMAP_W];
         static int qx[DMAP_H * DMAP_W], qy[DMAP_H * DMAP_W];
@@ -197,6 +270,8 @@ int main(int argc, char** argv) {
             }
         qx[tail] = g_dmap.entry_x; qy[tail] = g_dmap.entry_y; tail++;
         seen[g_dmap.entry_y][g_dmap.entry_x] = true;
+        for (auto& l : landings)
+            if (!seen[l.second][l.first]) { seen[l.second][l.first] = true; qx[tail] = l.first; qy[tail] = l.second; tail++; }
         int reached = 0;
         while (head < tail) {
             int x = qx[head], y = qy[head]; head++; reached++;
@@ -221,16 +296,41 @@ int main(int argc, char** argv) {
                (!exit_ok || reached != floor_n) ? "   <-- STRANDED FLOOR" : "");
         printf("entry %d,%d  exit %d,%d\n", g_dmap.entry_x, g_dmap.entry_y, g_dmap.exit_x, g_dmap.exit_y);
         printf("bbox %d %d %d %d\n", lox, loy, hix, hiy);   // for framing a whole layout
+        for (int li = 0; li < g_dmap.num_loot; li++)          // the treasure, to frame a shot on it
+            if (g_dmap.loot[li].item >= 0) printf("treasure %d,%d item %d\n", g_dmap.loot[li].tx, g_dmap.loot[li].ty, g_dmap.loot[li].item);
     }
 
     fc_draw_color(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear in main.cpp
     SDL_RenderClear(ren);
-    dungeon_draw(&g_dmap, &dp, &cam, ren, show_all);
+    dp.x = want_x * DMAP_TILE + W / 2.0f; dp.y = want_y * DMAP_TILE + H / 2.0f;   // the catacombs draw the area here
+    dungeon_draw(&g_dmap, &dp, &cam, ren);
     // DNGSHOT_PLAYER=x,y (dungeon pixels): a stand-in for the player's sprite,
     // then what the game draws over it (dungeon_draw_front)
-    if (const char* pp = getenv("DNGSHOT_PLAYER")) {
-        DungeonPlayer stand{};
-        sscanf(pp, "%f,%f", &stand.x, &stand.y);
+    // DNGSHOT_PUSH=dx,dy,frames: instead, from the way in, the arrows held
+    // (-1/0/1 each) for that many frames by the game's movement
+    const char* pp = getenv("DNGSHOT_PLAYER");
+    DungeonPlayer stand{};
+    if (const char* pu = getenv("DNGSHOT_PUSH")) {
+        int kx = 0, ky = 0, n = 0;
+        sscanf(pu, "%d,%d,%d", &kx, &ky, &n);
+        static Input in;
+        input_init(&in);
+        Player pl{};
+        dungeon_player_init(&stand, &pl, &g_dmap, 0);
+        for (int f = 0; f < n; f++) {
+            if (kx) in.keys[kx < 0 ? SDL_SCANCODE_LEFT : SDL_SCANCODE_RIGHT] = f ? KEY_HELD : KEY_PRESSED;
+            if (ky) in.keys[ky < 0 ? SDL_SCANCODE_UP : SDL_SCANCODE_DOWN] = f ? KEY_HELD : KEY_PRESSED;
+            dungeon_player_update(&stand, &pl, &in, 1.0f / 60.0f, &g_dmap, &cam);
+        }
+        printf("pushed to %.0f,%.0f\n", stand.x, stand.y);
+        if (getenv("DNGSHOT_PROBE"))
+            for (int dy = -8; dy <= 120; dy += 4)
+                printf("  dy %3d occupy %d  solid at feet corners %d%d%d%d\n", dy, can_occupy(&g_dmap, stand.x, stand.y + dy, dungeon_solid_at),
+                       dungeon_solid_at(&g_dmap, stand.x + HB_X1, stand.y + dy + HB_Y1), dungeon_solid_at(&g_dmap, stand.x + HB_X2, stand.y + dy + HB_Y1),
+                       dungeon_solid_at(&g_dmap, stand.x + HB_X1, stand.y + dy + HB_Y2), dungeon_solid_at(&g_dmap, stand.x + HB_X2, stand.y + dy + HB_Y2));
+    }
+    if (pp || getenv("DNGSHOT_PUSH")) {
+        if (pp) sscanf(pp, "%f,%f", &stand.x, &stand.y);
         SDL_Rect r = { cam_px(&cam, stand.x), cam_py(&cam, stand.y), 28, 40 };
         fc_draw_color(ren, 252, 116, 180, 255);
         SDL_RenderFillRect(ren, &r);

@@ -175,6 +175,31 @@ int main() {
         printf("\n");
     }
 
+    // The sleeping bag: hide, feathers and white fur, five uses, full HP each,
+    // one bag at a time, worn out after the last.
+    {
+        Player q = {};
+        q.stats.max_hp = 60; q.stats.hp = 10;
+        const Craft& bag = craft_for(ITEM_SLEEPING_BAG);
+        assert(!craft_ready(&q, bag));
+        item_slot(&q, ITEM_HIDE) = 4; item_slot(&q, ITEM_FEATHER) = 6; item_slot(&q, ITEM_WHITE_FUR) = 3;
+        assert(item_is_material(ITEM_FEATHER) && item_is_material(ITEM_WHITE_FUR));
+        assert(!item_is_material(ITEM_SLEEPING_BAG));
+        assert(craft_ready(&q, bag) && craft_make(&q, bag));
+        assert(item_count(&q, ITEM_SLEEPING_BAG) == SLEEPING_BAG_USES);
+        assert(item_count(&q, ITEM_HIDE) == 0 && item_count(&q, ITEM_WHITE_FUR) == 0);
+        item_slot(&q, ITEM_HIDE) = 4; item_slot(&q, ITEM_FEATHER) = 6; item_slot(&q, ITEM_WHITE_FUR) = 3;
+        assert(craft_at_max(&q, bag) && !craft_make(&q, bag));   // one at a time
+        for (int i = 0; i < SLEEPING_BAG_USES; i++) {
+            q.stats.hp = 1;
+            assert(craft_sleep(&q) && q.stats.hp == q.stats.max_hp);
+        }
+        assert(item_count(&q, ITEM_SLEEPING_BAG) == 0);
+        q.stats.hp = 1;
+        assert(!craft_sleep(&q));                                  // worn out
+        assert(part_item(PART_FEATHER) == ITEM_FEATHER && part_item(PART_FUR) == ITEM_WHITE_FUR);
+    }
+
     puts("craftcheck: ok");
     return 0;
 }

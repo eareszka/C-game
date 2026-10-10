@@ -13,6 +13,12 @@
 // its cost, so the player only ever picks a weapon and then a plain action.
 // The rules (costs, forging, upgrades) are src/crafting.cpp's; this file is
 // only the windows and the keys.
+// The three windows (logical 640x480): command, preview under it, list
+// beside them. The debug menus (F2, F3) use the same places.
+static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 150, CMD_H = 92;
+static const int PRE_X = 20,  PRE_Y = 136, PRE_W = 150, PRE_H = 196;
+static const int LST_X = 184, LST_Y = 36,  LST_W = 436, LST_H = 380;
+
 enum MenuFocus { FOCUS_COMMANDS, FOCUS_LIST, FOCUS_ACTIONS };
 
 struct GameMenu {
@@ -23,6 +29,9 @@ struct GameMenu {
     int       act   = 0;        // action row, on WEAPONS
     float     note_t = 0.0f;    // seconds left of the last action's message
     const char* note = nullptr;
+    // Set by the game each frame: something is chasing the player, so the
+    // sleeping bag can't be used.
+    bool      chased = false;
 
     // Icon sheets, loaded on the first draw (they need the renderer).
     SDL_Texture* items   = nullptr;   // assets/items.png, one 16px cell per Item

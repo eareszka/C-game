@@ -108,13 +108,86 @@ int text_width(const char* text, int scale) {
     return (int)strlen(text) * 8 * scale;
 }
 
-void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h) {
-    fc_draw_color(ren, 255, 255, 255, 255);
-    SDL_Rect outer = {x, y, w, h};
-    SDL_RenderFillRect(ren, &outer);
+// A rect with its corners stepped in by two 2px stairs, the reference's
+// round corner at the game's 2x pixel.
+static void fill_rounded(SDL_Renderer* ren, int x, int y, int w, int h) {
+    SDL_Rect band[5] = {
+        { x + 4, y,         w - 8, 2     },
+        { x + 2, y + 2,     w - 4, 2     },
+        { x,     y + 4,     w,     h - 8 },
+        { x + 2, y + h - 4, w - 4, 2     },
+        { x + 4, y + h - 2, w - 8, 2     },
+    };
+    SDL_RenderFillRects(ren, band, 5);
+}
+
+void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b) {
+    fc_draw_color(ren, 0, 0, 0, 255);
+    fill_rounded(ren, x - 2, y - 2, w + 4, h + 4);     // the black edge
+    fc_draw_color(ren, r, g, b, 255);
+    fill_rounded(ren, x, y, w, h);
     fc_draw_color(ren, 0, 0, 0, 255);
     SDL_Rect inner = {x + 4, y + 4, w - 8, h - 8};
     SDL_RenderFillRect(ren, &inner);
+    // The frame rounds on the inside too: two stairs into each inner corner.
+    fc_draw_color(ren, r, g, b, 255);
+    int L = x + 4, R = x + w - 4, T = y + 4, B = y + h - 4;
+    SDL_Rect fill[8] = {
+        { L,     T,     4, 2 }, { L,     T + 2, 2, 2 },
+        { R - 4, T,     4, 2 }, { R - 2, T + 2, 2, 2 },
+        { L,     B - 2, 4, 2 }, { L,     B - 4, 2, 2 },
+        { R - 4, B - 2, 4, 2 }, { R - 2, B - 4, 2, 2 },
+    };
+    SDL_RenderFillRects(ren, fill, 8);
+}
+
+SDL_Rect draw_textbox(SDL_Renderer* ren, const char* text, Uint8 r, Uint8 g, Uint8 b,
+                      bool low, int extra_h) {
+    const int TOP  = 48;    // under the HUD bar and the weapon box
+    const int COLS = 10;    // as wide as "STONEHENGE"
+    const int LINE = 12, PAD = 12, MAX_LINES = 16;   // small font: 8px a character
+
+    // Wrapped at words into lines of COLS; a word longer than that is cut.
+    char lines[MAX_LINES][COLS + 1];
+    int  n = 0;
+    for (const char* s = text; *s && n < MAX_LINES; ) {
+        while (*s == ' ') s++;
+        int len = (int)strlen(s);
+        if (len > COLS) {
+            len = COLS;
+            while (len > 0 && s[len] != ' ') len--;
+            if (len == 0) len = COLS;
+        }
+        if (len == 0) break;
+        memcpy(lines[n], s, len);
+        lines[n++][len] = 0;
+        s += len;
+    }
+
+    // One line high; two for anything longer, and past two it turns its
+    // pages itself, a blinking arrow in the corner saying there is more.
+    // ponytail: pages turn on the global clock (the prompts own the confirm
+    // key), so a long text can open mid-way; give it a start time if any
+    // text ever runs past two lines.
+    int shown = n > 1 ? 2 : 1, pages = (n + 1) / 2;
+    int page  = pages > 1 ? (int)(SDL_GetTicks() / 1800) % pages : 0;
+    int w = COLS * 8 + PAD * 2, h = 24 + (shown - 1) * LINE + extra_h;
+    SDL_Rect box = { (640 - w) / 2, low ? 480 - TOP - h : TOP, w, h };
+    draw_nes_panel(ren, box.x, box.y, box.w, box.h);
+    for (int i = 0; i < shown && page * 2 + i < n; i++) {
+        const char* ln = lines[page * 2 + i];
+        // One line sits centred; wrapped text reads from the left.
+        int tx = n == 1 ? box.x + (w - text_width(ln, 1)) / 2 : box.x + PAD;
+        draw_text(ren, ln, tx, box.y + 8 + i * LINE, 1, r, g, b);
+    }
+    if (pages > 1 && (SDL_GetTicks() / 300) % 2 == 0) {
+        fc_draw_color(ren, 255, 255, 255, 255);
+        for (int k = 0; k < 2; k++) {
+            SDL_Rect row = { box.x + w - 11 + k * 2, box.y + h - extra_h - 10 + k * 2, 6 - k * 4, 2 };
+            SDL_RenderFillRect(ren, &row);
+        }
+    }
+    return box;
 }
 
 void draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,

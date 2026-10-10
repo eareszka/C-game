@@ -241,7 +241,6 @@ static_assert(TILE_CACHE_SIZE == TILE_TOWN0_BASE,
 static SDL_Texture* s_tile_tex[TILE_CACHE_SIZE] = {};
 static SDL_Texture* s_town0_tex          = nullptr;
 // The cave art darkened by dither for what lies outside the player's view.
-static SDL_Texture* s_town_dim_tex       = nullptr;
 // Biome edge fringes — see "Biome edge" below. Indexed by an eight-bit map of
 // which surrounding tiles hold the other biome, so the mask depends on the
 // whole neighbourhood rather than on one side at a time. That is what lets a
@@ -5603,6 +5602,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             if (dungeon_is_starter(e)) return false;   // by name, not only by distance
             if (near_start(e)) return false;
             if (system_mouths[idx] >= 2) return false;
+            if (e->type == DUNGEON_ENT_LARGE_TREE) return false;   // its hollow is its only way out (user)
+            if (e->type == DUNGEON_ENT_CATACOMBS) return false;    // its church door likewise (user)
             return true;
         };
 
@@ -6035,43 +6036,6 @@ static void build_edge_textures(SDL_Renderer* renderer, SDL_Surface* sheet);
 // draws, so those pixels have to be kept somewhere the main thread can see.
 static void cliff_build_solid(SDL_Surface* sheet);
 
-// The cave art as it looks outside the player's view: dimmed, and on the
-// palette. It used to be a colour multiply to 30%, which is a colour for every
-// colour the art has and none of them FC World's. Now 11 of every 16 pixels go
-// black by fc_bayer() rank and the rest keep their own colour, so the dim is
-// as dark as it was and every pixel of it is still one of the 64. Only the
-// rows the dungeons draw from are copied -- the cave art in the first eight
-// (tools/gen_cave_tiles.py BLOCK_ROWS), the ladders and doorways out on rows
-// 14-15, the pyramids' blocks on rows 44-63 (tools/gen_dungeon_wall_tiles.py) --
-// so the copy runs to the last of them; coordinates match the sheet's.
-static const int DIM_ROWS = 64;
-static SDL_Texture* build_dim_texture(SDL_Renderer* renderer, SDL_Surface* sheet) {
-    SDL_Surface* s = SDL_ConvertSurfaceFormat(sheet, SDL_PIXELFORMAT_RGBA32, 0);
-    if (!s) return nullptr;
-    int h = DIM_ROWS * 16 < s->h ? DIM_ROWS * 16 : s->h;
-    SDL_Surface* d = SDL_CreateRGBSurfaceWithFormat(0, s->w, h, 32, SDL_PIXELFORMAT_RGBA32);
-    SDL_Texture* tex = nullptr;
-    if (d) {
-        for (int y = 0; y < h; y++) {
-            const unsigned char* sp = (const unsigned char*)s->pixels + (size_t)y * s->pitch;
-            unsigned char* dp = (unsigned char*)d->pixels + (size_t)y * d->pitch;
-            for (int x = 0; x < s->w; x++) {
-                const unsigned char* p = sp + x * 4;
-                unsigned char* q = dp + x * 4;
-                bool key = p[0] == 255 && p[1] == 0 && p[2] == 0;
-                bool dark = !key && fc_bayer(x, y) >= 5;
-                q[0] = dark ? 0 : p[0]; q[1] = dark ? 0 : p[1]; q[2] = dark ? 0 : p[2];
-                q[3] = key ? 0 : 255;
-            }
-        }
-        tex = SDL_CreateTextureFromSurface(renderer, d);
-        if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
-        SDL_FreeSurface(d);
-    }
-    SDL_FreeSurface(s);
-    return tex;
-}
-
 void tilemap_init_tile_cache(SDL_Renderer* renderer) {
     for (int i = 0; i < TILE_CACHE_SIZE && i < NUM_TILE_STYLES; i++) {
         SDL_Surface* surf = make_tile_surf(&tile_styles[i]);
@@ -6091,13 +6055,11 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer) {
         // their colour from tile_styles either way.
         build_edge_textures(renderer, surf);
         cliff_build_solid(surf);
-        if (surf) s_town_dim_tex = build_dim_texture(renderer, surf);
         if (surf) SDL_FreeSurface(surf);
     }
 }
 
 SDL_Texture* tilemap_get_town_tex(void) { return s_town0_tex; }
-SDL_Texture* tilemap_get_town_dim_tex(void) { return s_town_dim_tex; }
 
 void tilemap_free_tile_cache(void) {
     for (int i = 0; i < TILE_CACHE_SIZE; i++) {
@@ -6114,7 +6076,6 @@ void tilemap_free_tile_cache(void) {
         }
     }
     if (s_town0_tex)          { SDL_DestroyTexture(s_town0_tex);          s_town0_tex          = nullptr; }
-    if (s_town_dim_tex)       { SDL_DestroyTexture(s_town_dim_tex);       s_town_dim_tex       = nullptr; }
 }
 
 // Helper: copy a cached tile texture to the screen, falling back to immediate draw.

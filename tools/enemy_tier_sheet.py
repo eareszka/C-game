@@ -15,14 +15,16 @@ ORDER = [('STARTER', 'Starter', (200, 200, 200)), ('LOW', 'Low', (78, 220, 74)),
          ('MEDIUM', 'Medium', (132, 167, 233)), ('UPPER', 'Upper', (92, 148, 252)),
          ('HARD', 'Hard', (240, 188, 60)), ('SEVERE', 'Severe', (252, 152, 56)),
          ('ELITE', 'Elite', (236, 132, 118)), ('BOSS1', 'Boss tier 1', (183, 0, 0)),
-         ('BOSS2', 'Boss tier 2', (124, 10, 27)), ('UNSET', 'Unset', (90, 90, 100))]
+         ('BOSS2', 'Boss tier 2', (124, 10, 27)),
+         ('BOSS3', 'Boss tier 3', (80, 0, 40)), ('UNSET', 'Unset', (90, 90, 100))]
 
 def table(path, start):
     s = open(os.path.join(ROOT, path), encoding='utf-8').read()
     i = s.index(start)
     return s[i:s.index('};', i)]
 
-def main(out):
+def main(out, done=()):
+    # done: ids whose bullet patterns are finished -- drawn with a green PATTERNS mark
     sheets = [(m.group(1), int(m.group(2) or 3), m.group(3) == 'true') for m in re.finditer(
         # a row is { "path", {loop}, frames, rows, ... } -- or { nullptr } for an
         # enemy with no sprite yet, which still takes its slot
@@ -71,8 +73,12 @@ def main(out):
             sp = fr.resize((nw, nh), Image.NEAREST)
             img.paste(sp, (x0 + (CELL - nw) // 2, y + (CELL - nh) // 2), sp)
             d.text((x0 + 2, y + CELL + 5), '%02d %s' % (i, nm), fill=(235, 235, 235), font=font)
+            if i in done:                          # patterns finished: a green tag in the corner
+                d.rectangle([x0 + CELL - 30, y + CELL - 14, x0 + CELL, y + CELL], fill=(40, 160, 70))
+                d.text((x0 + CELL - 27, y + CELL - 13), 'DONE', fill=(255, 255, 255), font=small)
         y += CELL + LAB + 14
     img.save(out)
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    # optional 2nd arg: comma-separated ids with finished bullet patterns
+    main(sys.argv[1], {int(v) for v in sys.argv[2].split(',')} if len(sys.argv) > 2 else set())

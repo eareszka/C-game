@@ -15,7 +15,6 @@
 #define DMAP_TILE           32
 // Visible tile radius around the player. Scaled with the sprite: 12 suited the
 // old 46-pixel one, and 8 keeps the same reach in body lengths for the 30.
-#define DUNGEON_FOV_RADIUS  8
 // Array capacity, not the amount any one dungeon gets. Catacombs covers several
 // times the floor area of anything else and would read as empty on the old cap,
 // so the arrays grew for its sake -- but raising what every archetype PLACES
@@ -69,7 +68,6 @@ struct DungeonPortal {
 struct DungeonDecal {
     int16_t sx, sy, w, h;     // on the sheet
     int     x, y;             // in the dungeon, art pixels
-    int16_t ax, ay;           // anchor tile
     bool    flip;
 };
 #define DMAP_MAX_DECALS   128
@@ -79,7 +77,15 @@ struct DungeonDecal {
 #define DMAP_MAX_GYW_RECTS 160
 #define OASIS_MAX_PX 4800          // 15 screens of 20 tiles, art pixels
 #define OASIS_PX_H   240           // the reference's height: 15 tiles
+#define TREE_MAX_TIERS   13        // the giant tree: up to 13 tiers,
+#define TREE_MAX_W       4096      // its picture up to 4096 art pixels wide,
+#define TREE_MAX_LADDERS 128
+#define TREE_MAX_FLOORS  256
+#define DMAP_MAX_REGIONS 8192      // fog regions: rooms, corridors, floors
 #define DMAP_MAX_GYW_SEGS  96
+#define CAT_MAX_AREAS      6       // the catacombs: the hall and up to five sections
+#define CAT_MAX_RECTS      512
+#define CAT_MAX_CUTS       16
 
 struct DungeonMap {
     uint8_t tiles[DMAP_H][DMAP_W];
@@ -147,8 +153,50 @@ struct DungeonMap {
     struct { int16_t x, y; } oasis_weed[320];
     int  num_oasis_weed;
     uint32_t oasis_seed;
+    // The giant tree (carve_tree_terraces): a triangle of terraces, every
+    // tier one level of the mass, each wall rising one level to the next
+    // tier's floor. For each level t (tree_n = the ground in front) its floor's
+    // back edge per picture column; a floor shows between it and the wall
+    // rising from the level in front. Ladders up the walls between; the
+    // picture drawn at art pixel (tree_ox, tree_oy).
+    int  tree_n, tree_e, tree_w, tree_h, tree_ox, tree_oy;   // tiers, the way in's tier, picture size
+    int16_t tree_b[TREE_MAX_TIERS + 1][TREE_MAX_W];
+    struct { int16_t x0, y0, y1, floor; uint8_t root; } tree_ladders[TREE_MAX_LADDERS];   // floor: the one at its foot
+    struct { int16_t t, x0, x1; } tree_floors[TREE_MAX_FLOORS];    // each floor: its tier, its columns
+    int  num_tree_floors;
+    int  num_tree_ladders;
+    uint32_t tree_seed;
+    // The catacombs (carve_catacombs), in isometric: area 0 the hall, a
+    // zig-zag of stone runs; the rest the sections below, walkways walled in
+    // bone. Each area its own world (u, v art pixels, z up), a world pixel
+    // drawn at art pixel (ox + u - v, oy + (u + v) / 2), the areas packed apart
+    // on the map, each in its box x0..x1, y0..y1 with its rectangles r0..r1.
+    // Its floor: the rectangles (u1, v1 exclusive), less what each cut takes --
+    // a wall the view sees face on across a back corner (u0, v0), K in, and all
+    // behind it: the hall's windows and doors (tx, ty: a door's portal tile),
+    // a section's ladder up. Each hole in the hall's floor leads down to its
+    // section's ladder.
+    struct { int16_t ox, oy, x0, y0, x1, y1, r0, r1; } cat_areas[CAT_MAX_AREAS];
+    int  num_cat_areas;
+    struct { int16_t u0, v0, u1, v1; } cat_rects[CAT_MAX_RECTS];
+    int  num_cat_rects;
+    struct { uint8_t area, kind; int16_t u0, v0, k, tx, ty; } cat_cuts[CAT_MAX_CUTS];
+    int  num_cat_cuts;
+    struct { int16_t u, v; uint8_t to, ladder; } cat_holes[CAT_MAX_AREAS];   // to: its section; ladder: that section's cut
+    int  num_cat_holes;
+    uint32_t cat_seed;
     uint8_t explored[DMAP_H][DMAP_W];  // 0=never seen, 1=seen at least once
-    uint8_t visible[DMAP_H][DMAP_W];   // 1=currently in FOV (wall-blocked), reset each frame
+    uint8_t visible[DMAP_H][DMAP_W];   // 1=lit now: a tile of a region in sight
+    // The fog goes by region (dungeon_update_sight): a room, a stretch of
+    // corridor, a giant tree's floor -- each seen whole, never a tile at a
+    // time. Every tile of the region's floor and the walls it faces carries its
+    // number (0: none, never shown); per region its tiles' bounds and one of
+    // its tiles, and the regions lit now.
+    uint16_t region[DMAP_H][DMAP_W];
+    struct { int16_t x0, y0, x1, y1, rx, ry; } regions[DMAP_MAX_REGIONS + 1];
+    int  num_regions;
+    uint16_t lit[64];
+    int  num_lit;
     // Portal 0 is the entry and keeps the DNG_ENTRY tile; every other portal
     // keeps DNG_EXIT. Holding to that means no new tile id, no new palette
     // entry, and none of the five render switches have to learn anything.
@@ -187,19 +235,22 @@ struct DungeonPlayer {
     int   at_entry;   // 1 if player centre is over DNG_ENTRY tile (exit back to overworld)
     float slide = 0;  // sliding along a 45-degree edge: how far owed (see dungeon_player_update)
     float vx = 0, vy = 0;   // swimming (the oasis): the drift kept from frame to frame
+    int   at_link = -1;     // the catacombs: the hole or ladder stood at (dungeon_link_name), -1 none
 
     // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
     // the overworld (Overworld, include/overworld.h).
     WeaponSwingState swing;
 
     // The treasure picked up this frame, an Item; -1 for none. The caller
-    // says so, and remembers this dungeon's treasure as taken.
+    // says so.
     int picked_item = -1;
 };
 
 // The special part a dungeon of this kind keeps as its one treasure (an Item,
 // crafting.h): the halberd's in ruins, the katana's at stonehenge, the
-// scythe's in catacombs. -1 for a kind with none.
+// scythe's in catacombs. -1 for a kind with none. Every dungeon of the kind
+// holds it until the player has found one (Player::items_found); the caller
+// marks it collected on the way in after that.
 int dungeon_treasure_item(DungeonEntranceType type);
 
 // Which material a cave of this difficulty holds. Exposed so tools/oreprof.cpp
@@ -288,11 +339,17 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, const Camera* cam,
                            bool noclip = false, HarvestResult* out_harvest = nullptr);
+// The catacombs: the name of where the hole or ladder the player stands at
+// leads ("MAIN NAVE", "CATACOMBS II"), null if none; and taking it.
+const char* dungeon_link_name(const DungeonMap* dmap, const DungeonPlayer* dp);
+void dungeon_take_link(const DungeonMap* dmap, DungeonPlayer* dp);
 // The oasis: whether the swimmer's head is in air (a pocket under the
 // ceiling, or a shaft) -- always true anywhere else, where there is no water.
 bool dungeon_breathing(const DungeonMap* dmap, const DungeonPlayer* dp);
 // Whether the player fits where they stand: their feet clear of walls, or in
 // the oasis their whole swimming body clear of rock and below the surface.
+// The fog: light the regions in reach of tile (ptx, pty) and remember them.
+void dungeon_update_sight(DungeonMap* dmap, int ptx, int pty);
 bool dungeon_player_fits(const DungeonMap* dmap, const DungeonPlayer* dp);
 // A side-view dungeon (the oasis) holds its camera to the level: zoom 1, the
 // level's top at the screen's, following across only, never past either end.
@@ -308,8 +365,10 @@ void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y);
 // Whether a point (dungeon pixels) is solid to the player's feet -- the
 // collision the game moves them by. Exposed for the tools.
 bool dungeon_solid_at(const void* dmap, float px, float py);
+// Everything in view, all of it lit: a dungeon hides nothing (user); only the
+// minimap fills in as it is explored.
 void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
-                  const Camera* cam, SDL_Renderer* ren, bool show_all = false);
+                  const Camera* cam, SDL_Renderer* ren);
 // What stands in front of the player, drawn after them: a graveyard's way-out
 // wall when they are behind it. Nothing for any other kind.
 void dungeon_draw_front(const DungeonMap* dmap, const DungeonPlayer* dplayer,

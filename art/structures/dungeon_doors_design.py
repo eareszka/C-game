@@ -5,14 +5,15 @@ from art/structures/entrances/*_design.py, a dungeon tile 16 art pixels):
 
     ruins     3x3 tiles  the gate: two columns, a beam, a 22-wide opening
     pyramid   2x2        pillars under a lintel, a 14x19 opening
-    tree      2x2        the hollow in the trunk, bark round it
+    tree      2x2        the hollow in the trunk, the overworld's own (dark within)
     grave     1x2        the mausoleum's 14x19 doorway, steps up to the light
     church    1x3        the church's arched door, 16x33
 
     python art/structures/dungeon_doors_design.py <design.json>
     python tools/draw_views.py <design.json> art/structures/dungeon_doors
 
-Four tones a cell: black, two of the doorway's stone, and the daylight.
+Four tones a cell: black, two of the doorway's stone, and the daylight (the
+tree's hollow: black and three of bark, dark within as outside).
 """
 import json, sys
 
@@ -20,7 +21,7 @@ W_ = 48                           # every view's slot in the export
 PAL = {'K': '000000', 'W': 'dcf0ff',
        'g': '9797aa', 'h': 'c6ccda',                 # the ruins' and the graveyards' stone: base, lit
        'a': 'f4ce80', 'b': 'b29e5c',                 # the pyramid's sandstone: lit, shade
-       't': '8d6b4f', 'u': '463422'}                 # the tree's bark: base, shade
+       't': '8d6b4f', 'u': '463422', 'l': 'b2966a'}  # the tree's bark: base, shade, lit
 
 
 def blank(w, h):
@@ -87,31 +88,18 @@ def pyramid():
 
 
 def tree():
-    import math
-    g = blank(32, 32)
-    cx, top, bot = 16, 8, 31
-    def half(y):                                      # the hollow's half width: an arch, wider at the ground
-        if y < top + 6:
-            return round(7 * math.sqrt((y - top + 1) / 6))
-        return 7 + (y - top - 6) // 8
-    inside = {(x, y) for y in range(top, bot + 1) for x in range(cx - half(y), cx + half(y))}
-    for y in range(top - 4, bot + 1):
-        for x in range(32):
-            if (x, y) in inside:
-                g[y][x] = 'W'
-                continue
-            d = min((abs(x - a) + abs(y - b) for a, b in inside), default=99)
-            if d == 1:
-                g[y][x] = 'K'                         # a dark line round the opening
-            elif d <= 3:
-                g[y][x] = 't' if (x < cx or y < top + 2) else 'u'   # the bark lip: lit left and top, shade right
-            elif d == 4:
-                g[y][x] = 'K'
-    for y in range(top + 10, bot + 1, 5):             # roots across the threshold
-        for x in range(cx - half(y), cx + half(y)):
-            if y == bot:
-                g[y][x] = 'u' if x % 3 else 'K'
-    return g
+    """The giant tree's hollow, exactly as the overworld draws it in the
+    trunk's foot (large_tree_design.hollow), seen from inside: its lip of bark,
+    the dark within, the inner right wall catching a little light."""
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'entrances'))
+    from large_tree_design import hollow
+    from entrance_shapes import Grid
+    g = Grid(32, 32)
+    g.g = [['x'] * 32 for _ in range(32)]             # all trunk, so the whole lip is drawn
+    hollow(g, cx=16, bot=31)
+    swap = {'x': '.', 'K': 'K', 'D': 'u', 'M': 't', 'L': 'l'}
+    return [[swap[c] for c in r] for r in g.g]
 
 
 def grave():

@@ -350,6 +350,11 @@ int main(int argc, char** argv) {
                     }
                 }
 
+                // The giant tree and the catacombs link to nothing (user): their
+                // one door is the only way in or out.
+                if (e->partner_idx >= 0 && (e->type == DUNGEON_ENT_LARGE_TREE || e->type == DUNGEON_ENT_CATACOMBS))
+                    fail((int)e->type, wf, wseed, 0.0f, "unlinkable dungeon has a partner", e->x, e->y);
+
                 // Rule 7, asked once per pair -- from the lower of the two.
                 if (e->partner_idx > i) {
                     pairs++;

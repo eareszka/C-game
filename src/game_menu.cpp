@@ -15,9 +15,7 @@ enum { CMD_ITEMS, CMD_MAKE, CMD_CLOSE, CMD_COUNT };
 static const char* CMD_NAMES[CMD_COUNT] = { "ITEMS", "MAKE", "CLOSE" };
 
 // ── Layout (logical 640x480) ─────────────────────────────────────────────────
-static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 150, CMD_H = 92;
-static const int PRE_X = 20,  PRE_Y = 136, PRE_W = 150, PRE_H = 196;
-static const int LST_X = 184, LST_Y = 36,  LST_W = 436, LST_H = 380;
+// The three windows' rects are in game_menu.h, shared with the debug menus.
 static const int COL_W = 212, ROW_H = 40,  ROWS_SHOWN = 4;
 static const int PANEL_Y = LST_Y + 12 + ROWS_SHOWN * ROW_H + 6;   // the divider under the list
 static const int ACT_H   = 34;
@@ -61,7 +59,7 @@ static int entry_count(const GameMenu* m, const Player* p) {
 // always the same list. MAKE: make it (a weapon in the best ore it can have)
 // and, for a weapon owned, its two upgrades. ITEMS: take a weapon in hand.
 // A line that cannot be done is still listed, greyed, with why.
-enum ActKind { ACT_MAKE, ACT_EQUIP, ACT_FASTER, ACT_SHOTS };
+enum ActKind { ACT_MAKE, ACT_EQUIP, ACT_FASTER, ACT_SHOTS, ACT_SLEEP };
 struct Action {
     ActKind     kind;
     char        label[24];
@@ -108,7 +106,13 @@ static int make_actions(const Player* p, const Craft& c, Action out[3]) {
     return n;
 }
 
-static int item_actions(const Player* p, const Entry& e, Action out[1]) {
+static int item_actions(const GameMenu* m, const Player* p, const Entry& e, Action out[1]) {
+    if (!e.weapon && e.id == ITEM_SLEEPING_BAG) {
+        bool full = p->stats.hp >= p->stats.max_hp;
+        out[0] = { ACT_SLEEP, "SLEEP", !m->chased && !full,
+                   m->chased ? "NOT WHILE CHASED" : "HP ALREADY FULL", -1 };
+        return 1;
+    }
     if (!e.weapon || p->equipped == e.id) return 0;
     out[0] = { ACT_EQUIP, "EQUIP", true, "", -1 };
     return 1;
@@ -119,7 +123,7 @@ static int entry_actions(const GameMenu* m, const Player* p, int sel, Action out
     if (m->cmd == CMD_MAKE) return make_actions(p, craft_at(sel), out);
     Entry es[MAX_ENTRIES];
     items_list(p, es);
-    return item_actions(p, es[sel], out);
+    return item_actions(m, p, es[sel], out);
 }
 
 static void say(GameMenu* m, const char* note) { m->note = note; m->note_t = 1.5f; }
@@ -183,7 +187,7 @@ void game_menu_update(GameMenu* m, Player* p, const Input* in, float dt) {
             if (m->cmd == CMD_ITEMS) {
                 Entry es[MAX_ENTRIES];
                 items_list(p, es);
-                done = craft_equip(p, (WeaponType)es[m->sel].id);
+                done = a.kind == ACT_SLEEP ? craft_sleep(p) : craft_equip(p, (WeaponType)es[m->sel].id);
             } else {
                 const Craft& c = craft_at(m->sel);
                 done = a.kind == ACT_MAKE   ? craft_make(p, c)
@@ -191,8 +195,8 @@ void game_menu_update(GameMenu* m, Player* p, const Input* in, float dt) {
                      :                        craft_echo(p, c.weapon);
             }
         }
-        static const char* DONE[] = { "MADE!", "EQUIPPED", "FASTER!", "MORE SHOTS!" };
-        say(m, done ? DONE[a.kind] : a.why);
+        static const char* DONE[] = { "MADE!", "EQUIPPED", "FASTER!", "MORE SHOTS!", "RESTED! HP FULL" };
+        say(m, done ? (a.kind == ACT_SLEEP && p->sleeping_bag == 0 ? "RESTED! THE BAG WORE OUT" : DONE[a.kind]) : a.why);
         // The list may have changed shape (EQUIP gone once in hand).
         int now = entry_actions(m, p, m->sel, acts);
         if (now == 0) m->focus = FOCUS_LIST;
@@ -376,9 +380,12 @@ void game_menu_draw(GameMenu* m, const Player* p, SDL_Renderer* ren) {
                 SDL_snprintf(name, sizeof(name), "%s", it == ITEM_GRAVESTONE    ? "GRAVE"
                                                      : it == ITEM_REALITY_SHARD ? "SHARD"
                                                      : it == ITEM_OLD_SPEARHEAD ? "SPEARHEAD"
-                                                     : it == ITEM_REAPERS_EDGE  ? "REAPER EDGE" : item_name(it));
-                // How many, for a material; a book or a part is just had.
-                if (item_is_material(it)) {
+                                                     : it == ITEM_REAPERS_EDGE  ? "REAPER EDGE"
+                                                     : it == ITEM_WHITE_FUR     ? "FUR"
+                                                     : it == ITEM_SLEEPING_BAG  ? "SLEEP BAG" : item_name(it));
+                // How many, for a material, or the uses left in the bag; a
+                // book or a part is just had.
+                if (item_is_material(it) || it == ITEM_SLEEPING_BAG) {
                     char cnt[8];
                     SDL_snprintf(cnt, sizeof(cnt), "%d", item_count(p, it));
                     text(ren, cnt, cx + COL_W - 8 - text_width(cnt, 2), ry + 8, 2, WHITE);
@@ -406,6 +413,10 @@ void game_menu_draw(GameMenu* m, const Player* p, SDL_Renderer* ren) {
             WeaponType w = (WeaponType)items[sel].id;
             SDL_snprintf(line, sizeof(line), "%s %s%s", ore_short(p->arsenal[w].material),
                          weapon_name(w), p->equipped == w ? "  IN HAND" : "");
+            text(ren, line, LST_X + 16, ty, 2, WHITE);
+        } else if (sel >= 0 && m->cmd == CMD_ITEMS && items[sel].id == ITEM_SLEEPING_BAG) {
+            // The bag: its uses left, and SLEEP under it like a weapon's EQUIP.
+            SDL_snprintf(line, sizeof(line), "SLEEPING BAG  %d/%d LEFT", p->sleeping_bag, (int)SLEEPING_BAG_USES);
             text(ren, line, LST_X + 16, ty, 2, WHITE);
         } else if (sel >= 0 && m->cmd == CMD_ITEMS) {
             Item it = (Item)items[sel].id;

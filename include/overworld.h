@@ -33,6 +33,7 @@ typedef struct Overworld {
     // new push off. The player stands still on it.
     bool  sailing;
     float sail_dx, sail_dy;   // unit course
+    float sail_t;             // seconds since this push off
 
 } Overworld;
 

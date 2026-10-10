@@ -20,12 +20,16 @@ for a part that moves on its own, like a tail or a tongue),
 and the hand-drawn views: R, DR, UR full width; D and U as left halves (Dh, Uh,
 mirrored) or full (D, U). Left-facing views are mirrors of the right ones.
 
-Writes OUTDIR/NN_name.aseprite + .png (8 directions in order D DR R UR U UL L DL
-x their idle frames, 3 unless "frames" draws more) and, if asked, an 8x preview with the player beside it for scale
-plus an idle-loop .gif next to it.
+Writes OUTDIR/NN_name.png (8 directions in order D DR R UR U UL L DL
+x their idle frames, 3 unless "frames" draws more) and NN_name.aseprite holding
+only the frames that are drawn (enemy_sheet.py: a tag per direction, no
+copies or mirrors), and, if asked, an 8x preview with the player beside it for scale
+plus an idle-loop .gif next to it. A sheet drawn over by hand in Aseprite since
+its last build is not overwritten unless --force is given.
 """
 import sys, os, subprocess
 from PIL import Image
+import enemy_sheet
 
 ASEPRITE = r"C:\Program Files\Aseprite\Aseprite.exe"
 ORDER = ['D', 'DR', 'R', 'UR', 'U', 'UL', 'L', 'DL']
@@ -201,10 +205,17 @@ def to_rows(png, w, h, n):
     out.save(png)
 
 if __name__ == '__main__':
-    txt, outdir = sys.argv[1], sys.argv[2]
+    force = '--force' in sys.argv
+    args = [a for a in sys.argv[1:] if a != '--force']
+    txt, outdir = args[0], args[1]
+    png = os.path.join(outdir, os.path.splitext(os.path.basename(txt))[0] + '.png')
+    if enemy_sheet.hand_edited(png) and not force:
+        sys.exit(f'{png} was drawn over by hand since its last build -- not overwriting it (--force to)')
     name, w, h, kind, n = build(txt, outdir)
-    png = os.path.join(outdir, name + '.png')
-    if len(sys.argv) > 3:
-        preview(png, w, h, sys.argv[3], 'assets/player_small.png', kind, n)
-    if 'ROWS' in load(txt): to_rows(png, w, h, n)   # #ROWS: the game reads it one row per direction
+    if len(args) > 2:
+        preview(png, w, h, args[2], 'assets/player_small.png', kind, n)
+    rows = 'ROWS' in load(txt)
+    if rows: to_rows(png, w, h, n)   # #ROWS: the game reads it one row per direction
+    enemy_sheet.pack(Image.open(png).convert('RGBA'), os.path.splitext(png)[0] + '.aseprite', n, rows)   # the .aseprite: drawn frames only
+    enemy_sheet.built(png)
     print(name, w, h)

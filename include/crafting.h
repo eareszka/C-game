@@ -14,8 +14,10 @@ enum Item {
     ITEM_HIDE, ITEM_BONE, ITEM_ESSENCE,
     ITEM_BRONZE, ITEM_EMERALD, ITEM_VEYRITE, ITEM_DRAVIUM, ITEM_KHARVITE, ITEM_REALITY_SHARD,
     ITEM_VINE, ITEM_RAFT_BOOK, ITEM_RAFT,
-    ITEM_OLD_SPEARHEAD, ITEM_MOON_STEEL, ITEM_REAPERS_EDGE,   // found, one per dungeon of a kind
+    ITEM_OLD_SPEARHEAD, ITEM_MOON_STEEL, ITEM_REAPERS_EDGE,   // found once: every dungeon of its kind holds it until one is taken
     ITEM_AXE_BOOK, ITEM_KATANA_BOOK, ITEM_SCYTHE_BOOK,          // teach a weapon, kept
+    ITEM_FEATHER, ITEM_WHITE_FUR,                               // dropped: Qique; the bears
+    ITEM_SLEEPING_BAG,                                          // its count is the uses left
     ITEM_COUNT   // keep last -- number of items, not an item
 };
 
@@ -35,7 +37,7 @@ bool        item_found(const Player* p, Item it);
 // A material -- something gathered, mined or dropped, of which there is
 // always more -- rather than a thing made, found once or learned (the raft,
 // the special parts, the books).
-inline bool item_is_material(Item it) { return it <= ITEM_VINE; }
+inline bool item_is_material(Item it) { return it <= ITEM_VINE || it == ITEM_FEATHER || it == ITEM_WHITE_FUR; }
 // Where a thing that is not a material comes from, for the menu to say: "FOUND
 // IN CATACOMBS", "SOLD IN A TOWN BOOK SHOP". Null for a material.
 const char* item_source(Item it);
@@ -87,6 +89,12 @@ bool   craft_make(Player* p, const Craft& c);
 // What an item is good for, by name: the crafts it goes into and any upgrade
 // it pays for. Returns how many were written to out.
 int item_uses(Item it, const char* out[], int max);
+
+// The sleeping bag: made with SLEEPING_BAG_USES uses in it; each sleep
+// restores all HP and spends one, and the last one wears it out. Not while
+// being chased. False (nothing spent) if there is no bag or HP is full.
+enum { SLEEPING_BAG_USES = 5 };
+bool craft_sleep(Player* p);
 
 // ── Weapon upgrades, and taking a weapon in hand ─────────────────────────────
 Recipe oil_recipe(const Weapon& w);           // its next oil level

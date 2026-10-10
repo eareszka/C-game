@@ -24,6 +24,7 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->interior_door_idx   = -1;
     ow->swing               = WeaponSwingState();
     ow->sailing             = false;
+    ow->sail_t              = 0.0f;
 
     // Every shape has its slot; the player starts owning a stone knife.
     for (int w = 0; w < WEAPON_COUNT; w++) {
@@ -94,9 +95,13 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     if (ow->sailing) {
         // Afloat and under way: straight on along the course, no sliding
         // round what is in the way. It ends at land, or against something.
+        // A long crossing picks up speed, for convenience: from the push off
+        // it builds evenly to twice RAFT_SPEED at RAFT_RAMP_T, and holds.
         OWCollCtx ctx = { map, resources, true };
-        float nx = ow->x + ow->sail_dx * RAFT_SPEED * dt;
-        float ny = ow->y + ow->sail_dy * RAFT_SPEED * dt;
+        ow->sail_t += dt;
+        float speed = RAFT_SPEED * (1.0f + fminf(ow->sail_t / RAFT_RAMP_T, 1.0f));
+        float nx = ow->x + ow->sail_dx * speed * dt;
+        float ny = ow->y + ow->sail_dy * speed * dt;
         if (noclip || can_occupy(&ctx, nx, ny, ow_solid)) {
             ow->x = wrap_px(nx);
             ow->y = wrap_py(ny);
@@ -132,6 +137,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
             ow->sailing = true;
             ow->sail_dx = dx / len;
             ow->sail_dy = dy / len;
+            ow->sail_t  = 0.0f;
             player->is_moving = 0;
         }
     }

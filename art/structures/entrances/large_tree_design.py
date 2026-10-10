@@ -73,13 +73,15 @@ def trunk(g):
         taper(g, CX + (x1 - CX) * .4, B - 3, x1, B, 8, 3)
 
 
-def hollow(g):
+def hollow(g, cx=CX, bot=B):
     """The way in: a hollow in the trunk's foot, open to the ground. A tall
     arch, a little wider where it meets the ground and not quite regular, as
     rot leaves it; a raised lip of bark round it, lit along its top and left
     and in shade on its right, parted from the trunk by a dark line; inside,
-    dark, but for the hollow's inner right wall catching a little light."""
-    TOP, CY = 74, 86
+    dark, but for the hollow's inner right wall catching a little light.
+    cx, bot: its middle and the ground row -- dungeon_doors_design.py draws
+    the same hollow as the tree's way out, seen from inside."""
+    TOP, CY = bot - 21, bot - 9
     def half(y):
         if y < TOP:
             return -1
@@ -87,22 +89,22 @@ def hollow(g):
             return round(6 * math.sqrt((y - TOP + 1) / 7))
         return 6 + (y - TOP - 7) // 7
     opening = set()
-    for y in range(TOP, B + 1):
+    for y in range(TOP, bot + 1):
         hw = half(y)
-        mid = CX + (1 if y < TOP + 4 else 0)                  # rot leans the top a touch
+        mid = cx + (1 if y < TOP + 4 else 0)                  # rot leans the top a touch
         for x in range(mid - hw, mid + hw):
             opening.add((x, y))
     # the lip: two pixels of bark round the opening, then a dark line
     near = lambda p, n: any((p[0] + dx, p[1] + dy) in opening
                             for dx in range(-n, n + 1) for dy in range(-n, n + 1)
                             if abs(dx) + abs(dy) <= n)
-    for y in range(TOP - 4, B + 1):
-        for x in range(CX - 12, CX + 12):
+    for y in range(TOP - 4, bot + 1):
+        for x in range(cx - 12, cx + 12):
             p = (x, y)
             if p in opening or not near(p, 3) or g.get(x, y) == '.':
                 continue
             if near(p, 2):
-                v = ((x + .5 - CX) * .6 + (y + .5 - CY) * .8) / max(1, math.hypot(x + .5 - CX, y + .5 - CY))
+                v = ((x + .5 - cx) * .6 + (y + .5 - CY) * .8) / max(1, math.hypot(x + .5 - cx, y + .5 - CY))
                 g.put(x, y, 'L' if v < -.2 else 'D' if v > .35 else 'M')
             else:
                 g.put(x, y, 'K')

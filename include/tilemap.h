@@ -380,9 +380,6 @@ void tilemap_init_tile_cache(SDL_Renderer* renderer);
 void tilemap_free_tile_cache(void);
 // Returns the town/overworld tileset texture (16px-per-tile atlas). Valid after tilemap_init_tile_cache.
 SDL_Texture* tilemap_get_town_tex(void);
-// The cave art (the sheet's first rows, same coordinates) dithered dark, for
-// what lies outside the player's view in a cave. See build_dim_texture().
-SDL_Texture* tilemap_get_town_dim_tex(void);
 
 // Hit a tree or rock tile near (px, py) within `range` pixels.
 // Tall trees (two stacked TILE_TREE) share an HP pool and require more hits.

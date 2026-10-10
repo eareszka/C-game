@@ -66,7 +66,7 @@ static const int ENEMY_R  = 24;
 static const float PLAYER_R = 3.0f;
 
 #define MAX_PLAYER_BULLETS 128   // a Touhou-rate stream of three, piercing, stays well under
-#define MAX_ENEMY_BULLETS  768   // Grand'Goule's phase 2 keeps ~270 in the air; Lagopus's ring + its row rings ~420
+#define MAX_ENEMY_BULLETS  1024  // Grand'Goule's phase 2 keeps ~270 in the air; Lagopus ~670; Dingbat's ring maze ~650
 
 // ── Bullet ────────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,18 @@ struct Bullet {
     bool  shed_dies;      // gone after its last shed
     float shed_spin;      // what it sheds orbits, rad/s
     float ocx, ocy, orad, oang, ovr, ow;   // orbiting: centre, radius, angle, speed out, turn rate (ow 0 = straight)
+    float ocvx, ocvy;                      // ...and the centre's drift
+    float octurn, octurn_t;                // ...turning at this, rad/s (an arch), for this long (<= 0: always)
+    float pa, pb, ptilt, pw, pphi, pcx, pcy; // ...or the centre travelling an ellipse (pa > 0)
+    bool  pface; float obase;               // ...the shape facing along it (obase: its angle in the shape)
+    float pfor;                             // ...for this long, then straight on (<= 0: always)
+    float pround;                           // ...1 an ellipse, below 1 squarer
+    bool  peven;                            // ...pw is px/s along it, not rad/s
+    bool  paim; int paim_slot;              // ...then straight at the player (or the enemy's aim slot)
+    float osq;                             // ...and the circle squashed to this share of its height (0 = round)
     float zig, zig_every, zig_t; int zig_s; // zigzagging: swing, period, timer, which side it's on
+    float wave, wave_w, wave_t;             // waving: swing, rate, age
+    float life;                             // seconds it lasts (0 = until it leaves)
     bool  flash_in;       // flashes white for its first moment
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
@@ -127,6 +138,8 @@ struct BattlePlayer {
     float iframes;
     float fire_timer;
     ProjectileProfile weapon;
+    bool  focus;   // ctrl held: slow and precise, the sprite drawn see-through
+    float dim;     // 0 lit .. 2 darkest: steps down while focused, back up on release
 };
 
 // One cancelled bullet flying to the player after the kill, as the item it
@@ -165,6 +178,7 @@ public:
     float hud_max_hp()  const { return _bp.max_hp; }
     float hud_stamina() const;   // 0..1, the weapon's cooldown refilling
     float hud_swap_t()   const { return _swap_t; }    // seconds since the weapon was swapped
+    void  sync_weapon();                               // after the TAB menu: fire as the equipped weapon
     // EXP earned this fight so far, not yet paid: the top bar adds it to the
     // player's so the score climbs live. Paid (and any level-up applied) only
     // on the win, so afterwards this is 0.
@@ -173,6 +187,9 @@ public:
     int   hud_hit_bars() const { return _hit_bars; }  // how many bars that hit took
     const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY ? nullptr : _enemy; }
     float player_y() const { return _bp.y; }
+    // A textbox goes near the top, where it covers least of the dodging --
+    // unless the player is up there, when it mirrors to the bottom.
+    bool  textbox_low() const { return _bp.y < ARENA_H * 0.5f; }
     ~BattleScene();
 
     void update(const Input* in, float dt);
@@ -188,7 +205,6 @@ private:
     Enemy*       _enemy;
     Player*      _player_ref;
     WeaponType   _weapon_type;
-    bool         _tab_open;
     Bullet       _player_bullets[MAX_PLAYER_BULLETS];
     Bullet       _enemy_bullets[MAX_ENEMY_BULLETS];
     Pickup       _pickups[MAX_ENEMY_BULLETS];
@@ -202,6 +218,7 @@ private:
     bool         _done     = false;
     float        _hit_t    = 99.0f;  // seconds since the player was last hit
     float        _swap_t   = 99.0f;  // seconds since the weapon was swapped
+    float        _anim_ms    = 0.0f;   // the enemy's idle-animation clock, run at Enemy::anim_speed
     int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
     int          _hit_bars = 0;      // bars that hit took
@@ -223,6 +240,7 @@ private:
     mutable SDL_Texture* _flap        = nullptr;   // wing-flap sheet, if the enemy has one
     mutable SDL_Texture* _alt         = nullptr;   // alternate idle sheet, if the enemy has one
     mutable SDL_Texture* _log         = nullptr;   // its log bullet sprite, if it throws logs
+    mutable SDL_Texture* _marks       = nullptr;   // its ground-mark sprites (footprints), if it leaves any
     // The same sheets as solid white silhouettes, for the hit flash.
     mutable SDL_Texture* _sheet_white = nullptr;
     mutable SDL_Texture* _flap_white  = nullptr;

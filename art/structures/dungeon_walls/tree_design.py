@@ -6,6 +6,7 @@ with roots, packed dirt underfoot.
 
     python art/structures/dungeon_walls/tree_design.py <design.json>
     python tools/draw_views.py <design.json> art/structures/dungeon_walls/tree
+    cp art/structures/dungeon_walls/tree.png assets/tree_interior.png   # what the game bakes from (tree_bake)
 
 Every swatch tiles; the layout samples walls by (x, rows above the floor the
 wall stands on), so courses follow a floor's edge and lean on its diagonals.

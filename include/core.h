@@ -15,14 +15,23 @@ void draw_text(SDL_Renderer* ren, const char* text, int x, int y, int scale,
 // Returns the pixel width of the string at the given scale.
 int text_width(const char* text, int scale);
 
-// NES-style panel: black fill, outer white border, 1px gap, inner white border.
-// Content area starts at (x+4, y+4). Use NES_PAD (4) as inner margin constant.
-void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h);
+// A window as the menu reference draws them: black inside, a 4px frame with
+// stepped round corners (white unless coloured), and a 2px black edge round
+// the outside of the rect. Content area starts at (x+4, y+4); NES_PAD (4).
+void draw_nes_panel(SDL_Renderer* ren, int x, int y, int w, int h,
+                    Uint8 r = 255, Uint8 g = 255, Uint8 b = 255);
 
 // A meter: black, filled cur/max of the way in (r,g,b), white outline.
 void draw_bar(SDL_Renderer* ren, int x, int y, int w, int h,
               float cur, float max, Uint8 r, Uint8 g, Uint8 b);
 static const int NES_PAD = 4;
+
+// The textbox: one line of text (small font) in a window just big enough for it,
+// centred near the top of the screen -- or, with low, mirrored to the bottom
+// (a battle does that to keep it off the player). extra_h is room under the
+// text. Returns the window's rect.
+SDL_Rect draw_textbox(SDL_Renderer* ren, const char* text, Uint8 r, Uint8 g, Uint8 b,
+                      bool low = false, int extra_h = 0);
 
 // Half-period of the flashing player marker on both minimaps, in milliseconds.
 // Shared so the overworld and dungeon maps blink in step.

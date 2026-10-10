@@ -20,6 +20,9 @@ int& item_slot(Player* p, Item it) {
             return p->treasures[it - ITEM_OLD_SPEARHEAD];
         case ITEM_AXE_BOOK: case ITEM_KATANA_BOOK: case ITEM_SCYTHE_BOOK:
             return p->books[it - ITEM_AXE_BOOK];
+        case ITEM_FEATHER:       return p->parts[PART_FEATHER];
+        case ITEM_WHITE_FUR:     return p->parts[PART_FUR];
+        case ITEM_SLEEPING_BAG:  return p->sleeping_bag;
         default:              return ore_count(p, (Material)(MAT_BRONZE + (it - ITEM_BRONZE)));
     }
 }
@@ -34,6 +37,7 @@ const char* item_name(Item it) {
         "VINE", "RAFT BOOK", "RAFT",
         "OLD SPEARHEAD", "MOON STEEL", "REAPER'S EDGE",
         "AXE BOOK", "KATANA BOOK", "SCYTHE BOOK",
+        "FEATHER", "WHITE FUR", "SLEEPING BAG",
     };
     return (it >= 0 && it < ITEM_COUNT) ? NAMES[it] : "?";
 }
@@ -49,6 +53,7 @@ const char* item_source(Item it) {
         case ITEM_AXE_BOOK: case ITEM_KATANA_BOOK: case ITEM_SCYTHE_BOOK:
             return "SOLD IN A TOWN BOOK SHOP";
         case ITEM_RAFT:          return "MADE";
+        case ITEM_SLEEPING_BAG:  return "MADE";
         default:                 return nullptr;
     }
 }
@@ -70,6 +75,8 @@ Item part_item(int part) {
         case PART_BONE:    return ITEM_BONE;
         case PART_ESSENCE: return ITEM_ESSENCE;
         case PART_VINE:    return ITEM_VINE;
+        case PART_FEATHER: return ITEM_FEATHER;
+        case PART_FUR:     return ITEM_WHITE_FUR;
         default:           return ITEM_HIDE;
     }
 }
@@ -109,6 +116,9 @@ static const Craft CRAFTS[] = {
     { true,  WEAPON_KATANA,  NO,        1, { { ITEM_WOOD, 2 } },                    3, ITEM_KATANA_BOOK,   0, ITEM_MOON_STEEL },
     { true,  WEAPON_SCYTHE,  NO,        1, { { ITEM_WOOD, 2 } },                    3, ITEM_SCYTHE_BOOK,   0, ITEM_REAPERS_EDGE },
     { false, WEAPON_KNIFE,   ITEM_RAFT, 2, { { ITEM_WOOD, 10 }, { ITEM_VINE, 3 } }, 0, ITEM_RAFT_BOOK,     1, NO },
+    // The sleeping bag: hard to make on purpose -- a hide shell, Qique's
+    // feathers, and the white fur only the hard bears drop.
+    { false, WEAPON_KNIFE,   ITEM_SLEEPING_BAG, 3, { { ITEM_HIDE, 4 }, { ITEM_FEATHER, 6 }, { ITEM_WHITE_FUR, 3 } }, 0, NO, 1, NO },
 };
 #undef NO
 static const int CRAFT_COUNT = (int)(sizeof(CRAFTS) / sizeof(CRAFTS[0]));
@@ -159,7 +169,14 @@ bool craft_make(Player* p, const Craft& c) {
         return ore >= 0 && craft_forge(p, c.weapon, (Material)ore);
     }
     if (!craft_ready(p, c) || !pay(p, craft_recipe(p, c, -1))) return false;
-    item_slot(p, c.item) += 1;
+    item_slot(p, c.item) += c.item == ITEM_SLEEPING_BAG ? SLEEPING_BAG_USES : 1;
+    return true;
+}
+
+bool craft_sleep(Player* p) {
+    if (p->sleeping_bag <= 0 || p->stats.hp >= p->stats.max_hp) return false;
+    p->stats.hp = p->stats.max_hp;
+    p->sleeping_bag--;
     return true;
 }
 

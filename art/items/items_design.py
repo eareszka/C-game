@@ -19,7 +19,7 @@ PAL = {'K': '000000', 'S': '474751', 'B': '848694', 'L': 'bcbeca',
        's': '235436', 'b': '4fa667', 'l': 'a8f0bc', 'p': 'fcfcfc'}
 ORDER = ['wood', 'ore', 'gold', 'flower', 'gravestone', 'oilbloom',
          'hide', 'bone', 'essence', 'vine', 'raft_book', 'raft',
-         'spearhead', 'moon_steel', 'reapers_edge']
+         'spearhead', 'moon_steel', 'reapers_edge', 'feather', 'sleeping_bag']
 
 def cell(rows):
     """16 rows of 16, padded with transparent."""
@@ -251,6 +251,40 @@ VIEWS = {
                           '..KLSK',
                           '..KLK',
                           '...KK']),
+    # a feather dropped by a bird: a quill corner to corner, its vane wider
+    # on the lit side, barbs notched in along it
+    'feather': cell(['',
+                     '...........KKK',
+                     '.........KKLLBK',
+                     '........KLLLBSK',
+                     '.......KLLLBBSK',
+                     '......KLLLBBSK',
+                     '.....KLLKBBSSK',
+                     '....KLLLBBSSK',
+                     '....KLLBBSKK',
+                     '...KLLBBSSK',
+                     '...KLKBSSK',
+                     '..KLBBSKK',
+                     '..KBSKK',
+                     '.KLKK',
+                     'KLK',
+                     'KK']),
+    # the sleeping bag, rolled up: a leather roll tied with two bands of vine,
+    # the rolled end towards you on the right
+    'sleeping_bag': cell(['',
+                          '',
+                          '',
+                          '..KKKKKKKKKKK',
+                          '.KLLbLLLbLBBBK',
+                          '.KLLbLLLbBBSBBK',
+                          '.KBBbBBBBBSLSBBK',
+                          '.KBBsBBBBSLLLSBK',
+                          'KBBBsBBBBSLLLSBK',
+                          '.KBBsBBBBSLLLSBK',
+                          '.KBBsBBBBBSLSBBK',
+                          '.KSSsSSSsBBSBBK',
+                          '.KSSsSSSsSBBBK',
+                          '..KKKKKKKKKKK']),
 }
 
 if __name__ == '__main__':
