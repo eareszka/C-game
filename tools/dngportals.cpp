@@ -57,6 +57,8 @@
 #include <vector>
 #include "tilemap.h"
 #include "dungeon.h"
+#include "collision.h"
+#include "interior.h"
 
 static DungeonMap g_dmap;
 static uint8_t    g_seen[DMAP_H][DMAP_W];
@@ -174,6 +176,44 @@ static int audit(int type, Form form, unsigned seed, float angle) {
             fail(type, form, seed, angle, "way out not under a wall", p, (int)d->tiles[ty - 1][tx]);
         if (d->tiles[ty + 1][tx] == DNG_WALL)
             fail(type, form, seed, angle, "way out walled in to the south", p, 0);
+    }
+
+    // Rule 9: every way out can be taken. It is taken by walking into it
+    // (dungeon_way_at), which is a narrower thing than standing on its tile, so
+    // somewhere the feet can actually stand has to count -- or the player is in
+    // there for good.
+    for (int p = 0; p < d->num_portals; p++) {
+        int tx = d->portals[p].tx, ty = d->portals[p].ty;
+        uint8_t want = p ? DNG_EXIT : DNG_ENTRY;
+        bool taken = false;
+        for (int cy = (ty - 1) * DMAP_TILE; cy < (ty + 1) * DMAP_TILE && !taken; cy++)
+            for (int cx = tx * DMAP_TILE; cx < (tx + 1) * DMAP_TILE && !taken; cx++)
+                taken = dungeon_way_at(d, (float)cx, (float)cy) == want &&
+                        can_occupy(d, cx - (HB_X1 + HB_X2) * 0.5f, cy - (HB_Y1 + HB_Y2) * 0.5f,
+                                   dungeon_solid_at);
+        if (!taken)
+            fail(type, form, seed, angle, "way out cannot be walked into", p, 0);
+    }
+
+    // Rule 10: arriving, the player is stood before the way in -- on ground the
+    // feet fit, and clear of its hitbox, or the door just come through is one
+    // that cannot be gone back through without leaving it first.
+    if (d->type != DUNGEON_ENT_OASIS) {                    // comes up in the water instead
+        static Player pl;
+        DungeonPlayer dp = {};
+        dungeon_player_init(&dp, &pl, d, 0);
+        dungeon_stand_before_way(d, &dp);
+        float cx = dp.x + (HB_X1 + HB_X2) * 0.5f, cy = dp.y + (HB_Y1 + HB_Y2) * 0.5f;
+        if (!can_occupy(d, dp.x, dp.y, dungeon_solid_at))
+            fail(type, form, seed, angle, "arrives where the feet do not fit", (int)cx, (int)cy);
+        if (dungeon_way_at(d, cx, cy) >= 0)
+            fail(type, form, seed, angle, "arrives on the way out's hitbox", (int)cx, (int)cy);
+        int near = 1 << 30;
+        for (int n = 1; n <= 3; n++)
+            for (int k = -1; k <= 1; k++)
+                if (dungeon_way_at(d, cx + k * n, cy - n) >= 0 || dungeon_way_at(d, cx + k * n, cy) >= 0) near = n < near ? n : near;
+        if (near > 3)
+            fail(type, form, seed, angle, "arrives away from the way out", (int)cx, (int)cy);
     }
 
     return (int)g_fails.size() - before;
@@ -309,6 +349,7 @@ int main(int argc, char** argv) {
         printf("%-10s %9s %8s %6s %8s %10s   %s\n", "-----", "---------",
                "-------", "-----", "-------", "---------", "-------");
 
+        long ways_stood = 0, ways_doors = 0;
         for (int wi = 0; wi < nworld; wi++) {
             unsigned wseed = WORLD_SEED[wi];
             tilemap_build_overworld_phase1(&map, wseed);
@@ -396,6 +437,38 @@ int main(int argc, char** argv) {
                 w_audited++; sampled++;
             }
 
+            // Rule 9 outside: an entrance with ground to stand on, and every
+            // house door, can be walked into (tilemap_way_in, tilemap_door_at).
+            auto fits = [&](int px, int py) {
+                return can_occupy(&map, px - (HB_X1 + HB_X2) * 0.5f, py - (HB_Y1 + HB_Y2) * 0.5f,
+                                  tilemap_pixel_solid);
+            };
+            for (int i = 0; i < n; i++) {
+                const DungeonEntrance* e = &map.dungeon_entrances[i];
+                bool stood = false, taken = false;
+                for (int py = e->y * TILE_SIZE; py < (e->y + e->size + 1) * TILE_SIZE && !taken; py++)
+                    for (int px = e->x * TILE_SIZE; px < (e->x + e->size + 1) * TILE_SIZE && !taken; px++) {
+                        int t = map.tiles[py / TILE_SIZE][px / TILE_SIZE];
+                        if (!(t == TILE_DUNGEON || (t >= TILE_DUNGEON_CAVE && t <= TILE_DUNGEON_LARGE_TREE)) ||
+                            !fits(px, py)) continue;
+                        stood = true;
+                        taken = tilemap_way_in(&map, (float)px, (float)py);
+                    }
+                ways_stood += stood;
+                if (stood && !taken)
+                    fail((int)e->type, wf, wseed, 0.0f, "entrance cannot be walked into", e->x, e->y);
+            }
+            ways_doors += map.num_doors;
+            for (int i = 0; i < map.num_doors; i++) {
+                const InteriorDoor& d = map.doors[i];
+                bool taken = false;
+                for (int py = d.y * TILE_SIZE; py < (d.y + 2) * TILE_SIZE && !taken; py++)
+                    for (int px = d.x * TILE_SIZE; px < (d.x + d.w) * TILE_SIZE && !taken; px++)
+                        taken = tilemap_door_at(&map, (float)px, (float)py) == i && fits(px, py);
+                if (!taken)
+                    fail(0, wf, wseed, 0.0f, "house door cannot be walked into", d.x, d.y);
+            }
+
             printf("%-10u %9d %8ld %6ld %8d %10ld   %s\n", wseed, n, systems, pairs,
                    w_audited, w_ore,
                    (int)g_fails.size() == before ? "ok" : "FAIL");
@@ -408,8 +481,24 @@ int main(int argc, char** argv) {
         printf("pairs whose ends sit in different ore bands: %ld"
                " -- all resolve to the harder end now; this is what used to split\n",
                ore_boundary);
+        printf("ways in walked into: %ld entrances with ground to stand on, %ld house doors\n", ways_stood, ways_doors);
         printf("interiors built from real wirings and stair-audited: %ld\n", sampled);
     }
+
+    // The rooms, by the same rule 9: a way out is walked into, so every room
+    // needs somewhere the feet fit that counts as having done it.
+    int rooms_shut = 0;
+    static InteriorMap im;
+    for (int id = 0; interior_load(&im, id), im.id == id; id++) {
+        int spots = 0;
+        for (int cy = 0; cy < IMAP_H * IMAP_TILE; cy++)
+            for (int cx = 0; cx < IMAP_W * IMAP_TILE; cx++)
+                spots += interior_at_exit(&im, (float)cx, (float)cy) &&
+                         interior_feet_fit(&im, cx - (HB_X1 + HB_X2) * 0.5f, cy - (HB_Y1 + HB_Y2) * 0.5f);
+        printf("room %d: way out taken from %d pixels\n", id, spots);
+        rooms_shut += spots == 0;
+    }
+    if (rooms_shut) printf("ROOMS WITH NO WAY OUT: %d\n", rooms_shut);
 
     // Every distinct failure once, with a count: a broken invariant fires on
     // every seed and a thousand identical lines say nothing the first one did
@@ -434,5 +523,5 @@ int main(int argc, char** argv) {
         }
     }
 
-    return g_fails.empty() ? 0 : 1;
+    return g_fails.empty() && !rooms_shut ? 0 : 1;
 }

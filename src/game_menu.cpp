@@ -11,8 +11,8 @@
 static const char* ITEMS_SHEET   = "assets/items.png";
 static const int   ICON          = 16;
 
-enum { CMD_ITEMS, CMD_MAKE, CMD_CLOSE, CMD_COUNT };
-static const char* CMD_NAMES[CMD_COUNT] = { "ITEMS", "MAKE", "CLOSE" };
+enum { CMD_ITEMS, CMD_MAKE, CMD_SAVE, CMD_CLOSE, CMD_COUNT };
+static const char* CMD_NAMES[CMD_COUNT] = { "ITEMS", "MAKE", "SAVE", "CLOSE" };
 
 // ── Layout (logical 640x480) ─────────────────────────────────────────────────
 // The three windows' rects are in game_menu.h, shared with the debug menus.
@@ -129,6 +129,8 @@ static int entry_actions(const GameMenu* m, const Player* p, int sel, Action out
 static void say(GameMenu* m, const char* note) { m->note = note; m->note_t = 1.5f; }
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
+void game_menu_say(GameMenu* m, const char* note) { say(m, note); }
+
 void game_menu_toggle(GameMenu* m) {
     m->open = !m->open;
     m->focus = FOCUS_COMMANDS;
@@ -152,6 +154,12 @@ void game_menu_update(GameMenu* m, Player* p, const Input* in, float dt) {
         if (up)   m->cmd = (m->cmd + CMD_COUNT - 1) % CMD_COUNT;
         if (down) m->cmd = (m->cmd + 1) % CMD_COUNT;
         if (back || (ok && m->cmd == CMD_CLOSE)) { m->open = false; return; }
+        if (ok && m->cmd == CMD_SAVE) {
+            // The game writes the file and says how it went (game_menu_say).
+            if (m->save_block) say(m, m->save_block);
+            else               m->save_request = true;
+            return;
+        }
         if (ok) { m->focus = FOCUS_LIST; m->sel = 0; }
         return;
 
@@ -353,7 +361,9 @@ void game_menu_draw(GameMenu* m, const Player* p, SDL_Renderer* ren) {
         draw_nes_panel(ren, LST_X, LST_Y, LST_W, LST_H);
         int top = in_list ? (sel / 2) - (ROWS_SHOWN - 1) : 0;   // first row shown, keeping sel in view
         if (top < 0) top = 0;
-        if (n == 0) text(ren, "NOTHING YET", LST_X + 20, LST_Y + 20, 2, GREY);
+        if (m->cmd == CMD_SAVE)
+            text(ren, m->save_block ? m->save_block : "Z: SAVE THE GAME", LST_X + 20, LST_Y + 20, 2, m->save_block ? GREY : WHITE);
+        else if (n == 0) text(ren, "NOTHING YET", LST_X + 20, LST_Y + 20, 2, GREY);
         for (int e = top * 2; e < n && e < (top + ROWS_SHOWN) * 2; e++) {
             int cx = LST_X + 12 + (e % 2) * COL_W;
             int ry = LST_Y + 12 + (e / 2 - top) * ROW_H;

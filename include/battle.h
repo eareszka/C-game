@@ -101,11 +101,9 @@ struct Bullet {
     float shed_spin;      // what it sheds orbits, rad/s
     float ocx, ocy, orad, oang, ovr, ow;   // orbiting: centre, radius, angle, speed out, turn rate (ow 0 = straight)
     float ocvx, ocvy;                      // ...and the centre's drift
-    float octurn, octurn_t;                // ...turning at this, rad/s (an arch), for this long (<= 0: always)
     float pa, pb, ptilt, pw, pphi, pcx, pcy; // ...or the centre travelling an ellipse (pa > 0)
     bool  pface; float obase;               // ...the shape facing along it (obase: its angle in the shape)
     float pfor;                             // ...for this long, then straight on (<= 0: always)
-    float pround;                           // ...1 an ellipse, below 1 squarer
     bool  peven;                            // ...pw is px/s along it, not rad/s
     bool  paim; int paim_slot;              // ...then straight at the player (or the enemy's aim slot)
     float osq;                             // ...and the circle squashed to this share of its height (0 = round)
@@ -113,6 +111,8 @@ struct Bullet {
     float wave, wave_w, wave_t;             // waving: swing, rate, age
     float life;                             // seconds it lasts (0 = until it leaves)
     bool  flash_in;       // flashes white for its first moment
+    bool  fade_out;       // with a life: fades over its last moments, harmless
+    bool  behind;         // drawn behind the enemy
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
     int   weapon;         // WeaponType
@@ -120,6 +120,15 @@ struct Bullet {
     bool  pierces;
     bool  grazed;         // enemy shots: already counted as a graze (once each)
 };
+
+// A fade_out shot's last FADE_OUT_T seconds: how far through them it is
+// (0: not fading yet, or not that kind of shot). Fading, it can't hurt.
+static const float FADE_OUT_T = 0.6f;
+inline float bullet_fading(const Bullet& bl) {
+    if (!bl.fade_out || bl.life <= 0.0f || bl.age <= bl.life - FADE_OUT_T) return 0.0f;
+    float k = (bl.age - (bl.life - FADE_OUT_T)) / FADE_OUT_T;
+    return k < 1.0f ? k : 1.0f;
+}
 
 // ── Phase ─────────────────────────────────────────────────────────────────────
 
@@ -161,6 +170,10 @@ void hurt_shake_begin(SDL_Renderer* ren, float t, SDL_Rect* saved);
 void hurt_shake_end(SDL_Renderer* ren, const SDL_Rect* saved);
 void hurt_flash(SDL_Renderer* ren, float t, int w, int h);
 
+// The fade up from black and down to black, in seconds. Doors and stairs on
+// the map fade by the same clock (main.cpp).
+static const float BATTLE_FADE_T = 0.4f;
+
 class BattleScene {
 public:
     // chained: the next fight of a pack. No fade in -- the player glides from
@@ -177,6 +190,8 @@ public:
     float hud_hp()      const { return _bp.hp; }
     float hud_max_hp()  const { return _bp.max_hp; }
     float hud_stamina() const;   // 0..1, the weapon's cooldown refilling
+    // Test mode only: the keys that cheat (R: drop the enemy to its next stage).
+    static inline bool debug_keys = false;
     float hud_swap_t()   const { return _swap_t; }    // seconds since the weapon was swapped
     void  sync_weapon();                               // after the TAB menu: fire as the equipped weapon
     // EXP earned this fight so far, not yet paid: the top bar adds it to the
@@ -240,6 +255,7 @@ private:
     mutable SDL_Texture* _flap        = nullptr;   // wing-flap sheet, if the enemy has one
     mutable SDL_Texture* _alt         = nullptr;   // alternate idle sheet, if the enemy has one
     mutable SDL_Texture* _log         = nullptr;   // its log bullet sprite, if it throws logs
+    mutable SDL_Texture* _parts       = nullptr;   // its own pieces drawn over it (Enemy::parts), if it has any
     mutable SDL_Texture* _marks       = nullptr;   // its ground-mark sprites (footprints), if it leaves any
     // The same sheets as solid white silhouettes, for the hit flash.
     mutable SDL_Texture* _sheet_white = nullptr;
@@ -275,6 +291,14 @@ private:
     void _equip(WeaponType w);   // set up firing for w: profile, upgrades, shot hitbox
     void _cycle(int dir);        // next (+1) or previous (-1) owned weapon
     double _shot_angle(const Bullet& bl) const;   // degrees, as drawn
+    void   _draw_shots(SDL_Renderer* ren, bool behind) const;   // the enemy's shots: those behind it, or those over it
+    // A solid enemy (Enemy::solid): its idle sheet's opaque pixels, read once,
+    // and the walk that keeps the player off them.
+    mutable Uint8* _solid = nullptr;                // 1 where the sheet is opaque
+    mutable int    _solid_w = 0, _solid_h = 0;
+    mutable bool   _solid_tried = false;
+    bool   _blocked(float px, float py) const;      // would the player stand on the enemy there?
+    void   _walk(float nx, float ny);               // move the player there: kept in the arena, and off a solid enemy
     float  _shot_scale(const Bullet& bl) const;   // size against the sprite, as drawn
     float  _shot_edge_gap(const Bullet& bl) const; // centre to the edge it is heading for
     void _win();

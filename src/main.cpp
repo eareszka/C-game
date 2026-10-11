@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>   // strtoul, for the seed argument
+#include <string.h>
 #include <thread>
 #include <unordered_map>
 #include <vector>
@@ -22,6 +23,7 @@
 #include "floattext.h"
 #include "crafting.h"
 #include "game_menu.h"
+#include "save.h"
 
 
 // How many whole pixels of frame there are to a logical pixel: as many as the
@@ -45,8 +47,16 @@ static float nes_steps(float a, int levels) {
 
 int main(int argc, char *argv[])
 {
-    (void)argc;
-    (void)argv;
+    // Two modes. Play, for players: a title screen, saving, none of the test
+    // keys. Test (--debug): straight into the spawn house with the practice
+    // enemy, and F1/F2/F3, B, R in battle and click-to-warp on the map.
+    bool debug = false;
+    const char* seed_arg = nullptr;
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--debug") == 0) debug = true;
+        else                                 seed_arg = argv[i];
+    }
+    BattleScene::debug_keys = debug;
 
     // One logical screen, drawn at one pixel to the pixel and scaled to the
     // window exactly once, at present time.
@@ -114,15 +124,19 @@ int main(int argc, char *argv[])
 
     GameState state = STATE_OVERWORLD;
 
-    // Placeholder player stats — wire up to a real save/character system later
+    // The player a new game starts with.
     Player player = {0};
-    player.level             = 1;
-    player.stats.max_hp      = 60;  player.stats.hp      = 60;
-    player.stats.max_spd     = 10;  player.stats.spd     = 10;
-    player.stats.max_attack  = 18;  player.stats.attack  = 18;
-    player.stats.max_mag     = 12;  player.stats.mag     = 12;
-    player.stats.max_luck    = 30;  player.stats.luck    = 30;
-    player.stats.max_iq      = 8;   player.stats.iq      = 8;
+    auto fresh_player = [&]() {
+        player = Player{};
+        player.level             = 1;
+        player.stats.max_hp      = 60;  player.stats.hp      = 60;
+        player.stats.max_spd     = 10;  player.stats.spd     = 10;
+        player.stats.max_attack  = 18;  player.stats.attack  = 18;
+        player.stats.max_mag     = 12;  player.stats.mag     = 12;
+        player.stats.max_luck    = 30;  player.stats.luck    = 30;
+        player.stats.max_iq      = 8;   player.stats.iq      = 8;
+    };
+    fresh_player();
 
     BattleScene* battle_scene = nullptr;
     // The oasis's air: 1 full, 0 gone. It runs out over 16 s under water and
@@ -140,17 +154,40 @@ int main(int argc, char *argv[])
     int          flash_count        = 0;
     float        pre_battle_timer   = -1.0f;  // -1 = inactive
     float        post_battle_t      = 0.0f;   // back on the map: fade-in, chasers hold
+    // A door, stair or entrance taken: the screen fades to black as a battle
+    // does, the room changes while it is black, and it fades back up.
+    float        room_t             = -1.0f;  // seconds into that; -1 = inactive
+    bool         room_swap          = false;  // the one frame it has gone black: change rooms now
+    // Walking onto a door takes it, so the one you arrive on must not take you
+    // straight back: it is live only once the player has stood off every door.
+    bool         room_armed         = false;
+
+    // The stair sound. ponytail: one device playing one clip; a mixer when a
+    // second sound has to play over it.
+    SDL_AudioSpec     stairs_spec;
+    Uint8*            stairs_buf = nullptr;
+    Uint32            stairs_len = 0;
+    SDL_AudioDeviceID stairs_dev = 0;
+    if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0 &&
+        SDL_LoadWAV("assets/sound/40011_in.wav", &stairs_spec, &stairs_buf, &stairs_len)) {
+        stairs_dev = SDL_OpenAudioDevice(NULL, 0, &stairs_spec, NULL, 0);
+        SDL_PauseAudioDevice(stairs_dev, 0);
+    } else {
+        printf("No stair sound: %s\n", SDL_GetError());
+    }
     // Test enemies in the spawn house: the enemy being tuned (swap in each new
     // one as its patterns are done; more entries fight as a pack). Armed
     // again once the player steps off them.
+    // How near the middle of the player's frame comes to an actor to touch it.
+    const float  ACTOR_TOUCH        = 22.0f;
     struct TestEnemy { int id; float x, y; };
     // The practice dummies stand on the starting house's floor (interior 0,
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 88, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 88 Amixsak
+        { 27, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 27 Grootslang
     };
-    const int    TEST_N             = (int)(sizeof(test_enemies) / sizeof(test_enemies[0]));
+    const int    TEST_N             = debug ? (int)(sizeof(test_enemies) / sizeof(test_enemies[0])) : 0;   // none in play
     bool         test_armed         = true;
 
     // Floating +N resource text — one active at a time above the last hit node.
@@ -164,28 +201,48 @@ int main(int argc, char *argv[])
     // the clock and never recorded, so a world you noticed something wrong in
     // was gone the moment you closed the game and there was no way to get back
     // to it. Pass the number back in to regenerate that exact world.
-    unsigned int map_seed = (argc > 1) ? (unsigned int)strtoul(argv[1], nullptr, 10)
-                                       : (unsigned int)SDL_GetTicks();
+    // In play the world is the save's, when there is one, so CONTINUE has
+    // nothing to build; a seed on the command line is for testing.
+    unsigned int map_seed = (unsigned int)SDL_GetTicks();
+    Player saved_player = {0};
+    float  saved_x = 0.0f, saved_y = 0.0f;
+    bool   has_save = false;
+    // Where the player has been, for their map (play mode); saved.
+    static uint8_t explored[EXPLORE_H][EXPLORE_W] = {};
+    // The open map's zoom, as pixels a tile: the game's own three steps,
+    // 0.75x / 1x / 1.5x of 4 (128, 96 and 64 tiles across).
+    static const int MAP_PX[] = { 3, 4, 6 };
+    int map_zoom = 1;
+    if (debug) {
+        if (seed_arg) map_seed = (unsigned int)strtoul(seed_arg, nullptr, 10);
+    } else {
+        unsigned int s;
+        has_save = save_read(&s, &saved_x, &saved_y, &saved_player, explored);
+        if (has_save) map_seed = s;
+    }
     printf("World seed: %u   (re-run with: game.exe %u)\n", map_seed, map_seed);
     fflush(stdout);
     tilemap_build_overworld_phase1(map, map_seed);
 
     // Spawn directly in front of the spawn house's front door. Phase 1 only
     // stamps town 0, and the stamp scans top-to-bottom, so the first
-    // interior-0 door registered is the spawn house. Must be read before the
-    // phase-2 thread starts appending doors from the other towns.
-    float start_x = 47916.0f;
-    float start_y = 46528.0f;   // fallback if the door lookup fails
-    for (int i = 0; i < map->num_doors; i++) {
-        const InteriorDoor& d = map->doors[i];
-        if (d.interior_id != 0) continue;
-        // Feet centred under the door, one tile row below it; the -8 mirrors
-        // the door-detection bias in overworld_update.
-        start_x = (d.x + d.w * 0.5f) * TILE_SIZE - 8.0f - (HB_X1 + HB_X2) * 0.5f;
-        start_y = (d.y + 1) * TILE_SIZE + TILE_SIZE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
-        break;
-    }
-    overworld_init(&ow, &player, start_x, start_y);
+    // interior-0 door registered is the spawn house -- and stays the first
+    // while the phase-2 thread appends doors from the other towns.
+    auto place_at_start = [&]() {
+        float start_x = 47916.0f;
+        float start_y = 46528.0f;   // fallback if the door lookup fails
+        for (int i = 0; i < map->num_doors; i++) {
+            const InteriorDoor& d = map->doors[i];
+            if (d.interior_id != 0) continue;
+            // Feet centred under the door, one tile row below it; the -8 mirrors
+            // the door-detection bias in overworld_update.
+            start_x = (d.x + d.w * 0.5f) * TILE_SIZE - 8.0f - (HB_X1 + HB_X2) * 0.5f;
+            start_y = (d.y + 1) * TILE_SIZE + TILE_SIZE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+            break;
+        }
+        overworld_init(&ow, &player, start_x, start_y);
+    };
+    place_at_start();
 
     std::thread gen_thread(tilemap_build_overworld_phase2, map, map_seed);
 
@@ -203,6 +260,8 @@ int main(int argc, char *argv[])
     static const float zoom_levels[] = { 0.25f, 0.5f, 0.75f, 1.0f, 1.5f, 2.0f, 3.0f };
     static const int   zoom_count    = (int)(sizeof(zoom_levels) / sizeof(zoom_levels[0]));
     int zoom_idx = 3; // default: 1.0x
+    // The game itself has three steps, 0.75x to 1.5x; the rest are for testing.
+    const int zoom_min = debug ? 0 : 2, zoom_max = debug ? zoom_count - 1 : 4;
 
     Camera cam = {0};
     cam.screen_w = LOGICAL_W;
@@ -359,15 +418,19 @@ int main(int argc, char *argv[])
     InteriorMap    imap    = {};
     InteriorPlayer iplayer = {};
 
-    // Begin the game inside the spawn house, standing mid-room on the floor,
-    // by the bed. Exiting the doormat drops the player onto the overworld at
-    // start_x/start_y.
-    interior_load(&imap, 0);
-    interior_player_init(&iplayer, &player, &imap);
-    iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
-    iplayer.y = 10 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
-    player.facing = FACE_DOWN;  // toward the door
-    state = STATE_INTERIOR;
+    // A game begins inside the spawn house, standing mid-room on the floor,
+    // by the bed. Exiting the doormat drops the player onto the overworld in
+    // front of its door (place_at_start).
+    auto wake_at_home = [&]() {
+        interior_load(&imap, 0);
+        interior_player_init(&iplayer, &player, &imap);
+        iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
+        iplayer.y = 10 * IMAP_TILE + IMAP_TILE * 0.5f - (HB_Y1 + HB_Y2) * 0.5f;
+        player.facing = FACE_DOWN;  // toward the door
+        state = STATE_INTERIOR;
+    };
+    wake_at_home();
+    if (!debug) state = STATE_TITLE;
 
     struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; };
     static const int MAX_CHASERS = 32;
@@ -385,6 +448,33 @@ int main(int argc, char *argv[])
     int dng_exit_portal_x  = -1, dng_exit_portal_y  = -1;
 
     float esc_hold_time = 0.f;
+
+    // Throw the world away and grow another from seed: the debug menu's REGEN
+    // MAP, and a new game started over a save's world.
+    auto rebuild_world = [&](unsigned int seed) {
+        tilemap_cancel_gen();
+        gen_thread.join();
+        tilemap_reset_gen_cancel();
+        map_seed = seed;
+        printf("World seed: %u   (re-run with: game.exe --debug %u)\n", map_seed, map_seed);
+        fflush(stdout);
+        delete map;
+        map = new Tilemap();
+        tilemap_build_overworld_phase1(map, map_seed);
+        gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
+        resource_nodes_init(&resources);
+        for (bool& b : oilbloom_done) b = false;
+        dungeon_explored_cache.clear();
+        dbg_tour = -1;   // new world, new set of entrances to tour
+    };
+
+    // The title screen (play mode only).
+    enum { TITLE_NEW, TITLE_CONTINUE, TITLE_OPTIONS, TITLE_QUIT, TITLE_COUNT };
+    enum { TPAGE_MAIN, TPAGE_OPTIONS, TPAGE_ERASE };
+    int  title_sel     = has_save ? TITLE_CONTINUE : TITLE_NEW;
+    int  title_page    = TPAGE_MAIN;
+    bool title_erase   = false;   // ERASE SAVE? -- the cursor, on NO first
+    bool title_loading = false, title_loading_drawn = false;   // LOADING goes up a frame before the new world is built
 
     // Manual 60 fps frame cap — more consistent than SDL_RENDERER_PRESENTVSYNC on WSL2
     const Uint64 PERF_FREQ      = SDL_GetPerformanceFrequency();
@@ -487,6 +577,12 @@ int main(int argc, char *argv[])
         if (dt_d > 0.05) dt_d = 0.05; // cap at 50 ms — prevents big jumps on stalled frames
         float dt = (float)dt_d;
         if (post_battle_t > 0.0f) post_battle_t -= dt;
+        room_swap = false;
+        if (room_t >= 0.0f) {
+            room_swap = room_t < BATTLE_FADE_T && room_t + dt >= BATTLE_FADE_T;
+            room_t += dt;
+            if (room_t >= 2.0f * BATTLE_FADE_T) room_t = -1.0f;
+        }
         drown_t += dt;
         if (state == STATE_DUNGEON && dmap.type == DUNGEON_ENT_OASIS) {
             if (dungeon_breathing(&dmap, &dplayer)) oxygen = SDL_min(1.0f, oxygen + dt * 1.5f);
@@ -535,7 +631,7 @@ int main(int argc, char *argv[])
             SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
         }
 
-        if (input_pressed(&in, SDL_SCANCODE_F1))
+        if (debug && input_pressed(&in, SDL_SCANCODE_F1))
             dbg_readout = !dbg_readout;
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
@@ -545,7 +641,7 @@ int main(int argc, char *argv[])
         }
 
         // ── Debug menu toggle / navigation ───────────────────────────────────
-        if (input_pressed(&in, SDL_SCANCODE_F2)) {
+        if (debug && input_pressed(&in, SDL_SCANCODE_F2)) {
             dbg_open = !dbg_open;
             dbg_sel  = 0;
         }
@@ -632,19 +728,7 @@ int main(int argc, char *argv[])
 
             if (dbg_sel == 2 && dbg_confirm) {
                 // Regenerate the entire overworld with a new seed
-                tilemap_cancel_gen();
-                gen_thread.join();
-                tilemap_reset_gen_cancel();
-                map_seed = (unsigned int)SDL_GetTicks();
-                printf("World seed: %u   (re-run with: game.exe %u)\n", map_seed, map_seed);
-                fflush(stdout);
-                delete map;
-                map = new Tilemap();
-                tilemap_build_overworld_phase1(map, map_seed);
-                gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
-                resource_nodes_init(&resources);
-                for (bool& b : oilbloom_done) b = false;
-                dbg_tour = -1;   // new world, new set of entrances to tour
+                rebuild_world((unsigned int)SDL_GetTicks());
                 ow.x = (MAP_WIDTH  / 2.0f) * TILE_SIZE;
                 ow.y = (MAP_HEIGHT / 2.0f) * TILE_SIZE;
                 state    = STATE_OVERWORLD;
@@ -718,12 +802,22 @@ int main(int argc, char *argv[])
             // Being chased -- a dungeon enemy has seen the player and is
             // coming, or a fight -- rules out the sleeping bag.
             menu.chased = state == STATE_BATTLE;
+            menu.save_block = debug ? "NOT IN DEBUG" : state == STATE_BATTLE ? "NOT IN A FIGHT" : nullptr;
             if (state == STATE_DUNGEON)
                 for (int ci = 0; ci < num_chasers; ci++)
                     if (chasers[ci].active && chasers[ci].chasing) menu.chased = true;
             bool was_open = menu.open;
             if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open && menu_ok) game_menu_toggle(&menu);
             else if (menu.open && menu_ok) game_menu_update(&menu, &player, &in, dt);
+            // SAVE. The overworld spot is right wherever the player is: it
+            // does not move while they are in a house or a dungeon, so a save
+            // made inside loads outside that door, or at that dungeon's mouth.
+            if (menu.save_request) {
+                menu.save_request = false;
+                bool ok = save_write(map_seed, ow.x, ow.y, player, explored);
+                has_save = has_save || ok;
+                game_menu_say(&menu, ok ? "SAVED" : "COULD NOT SAVE");
+            }
             // The key that closed it (Z on CLOSE) is still held next frame;
             // without this it would swing at whatever stands in front.
             if (was_open && !menu.open) {
@@ -735,7 +829,7 @@ int main(int argc, char *argv[])
         }
 
         // ── Battle test list (F3) ─────────────────────────────────────────────
-        if (input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && !menu.open && state != STATE_BATTLE)
+        if (debug && input_pressed(&in, SDL_SCANCODE_F3) && !dbg_open && !menu.open && state != STATE_BATTLE)
             battle_list_open = !battle_list_open;
 
         // The list runs easiest to hardest (the user): by tier, and within a
@@ -801,11 +895,69 @@ int main(int argc, char *argv[])
 
         // Blank input fed to game logic while menu is open so the player stands still.
         Input in_blank = {0};
-        const Input* game_in = (dbg_open || menu.open || map_open || battle_list_open)
+        const Input* game_in = (dbg_open || menu.open || map_open || battle_list_open || room_t >= 0.0f)
                                 ? &in_blank : &in;
+        // Standing on a door, stair or entrance: called every frame the player
+        // is on one. Stepping onto it starts the fade, and this is true once
+        // the screen is black -- the caller changes rooms then. The player
+        // stands still meanwhile, so they are still on it.
+        bool on_room = false;
+        auto room_taken = [&](bool stairs) {
+            on_room = true;
+            if (room_t < 0.0f && room_armed) {
+                room_armed = false;
+                room_t = 0.0f;
+                if (stairs && stairs_dev) {
+                    SDL_ClearQueuedAudio(stairs_dev);
+                    SDL_QueueAudio(stairs_dev, stairs_buf, stairs_len);
+                }
+            }
+            return room_swap;
+        };
 
 
-        if (input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && !menu.open && state != STATE_BATTLE) {
+        // The debug grid's hitboxes. The ways in and out, green: every place
+        // the feet's centre takes one and the feet can stand, an art pixel at
+        // a time (nothing is finer). The player at (px, py), yellow: the feet box, which is what
+        // meets the ground and the ways, and the middle of the frame, which is
+        // what an actor is touched with.
+        auto draw_hitboxes = [&](const Camera* c, float px, float py, auto way) {
+            const float S = 2.0f;
+            SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(plat.renderer, 0, 255, 0, 150);
+            float xa = floorf(c->x / S) * S, xb = c->x + c->screen_w / c->zoom;
+            float ya = floorf(c->y / S) * S, yb = c->y + c->screen_h / c->zoom;
+            for (float y = ya; y < yb; y += S)
+                for (float x = xa; x < xb; x += S) {
+                    if (!way(x + 1, y + 1)) continue;
+                    float e = x + S;
+                    while (e < xb && way(e + 1, y + 1)) e += S;        // one rect a run
+                    SDL_Rect r = { cam_px(c, x), cam_py(c, y), cam_px(c, e) - cam_px(c, x),
+                                   cam_py(c, y + S) - cam_py(c, y) };
+                    SDL_RenderFillRect(plat.renderer, &r);
+                    x = e;
+                }
+            SDL_Rect feet = { cam_px(c, px + HB_X1), cam_py(c, py + HB_Y1),
+                              cam_px(c, px + HB_X2) - cam_px(c, px + HB_X1),
+                              cam_py(c, py + HB_Y2) - cam_py(c, py + HB_Y1) };
+            SDL_SetRenderDrawColor(plat.renderer, 255, 255, 0, 255);
+            SDL_RenderDrawRect(plat.renderer, &feet);
+            int mx = cam_px(c, px + player.width * 0.5f), my = cam_py(c, py + player.height * 0.5f);
+            SDL_RenderDrawLine(plat.renderer, mx - 3, my, mx + 3, my);
+            SDL_RenderDrawLine(plat.renderer, mx, my - 3, mx, my + 3);
+        };
+        // An actor's, magenta: the ring ACTOR_TOUCH round it that the middle of
+        // the player's frame has to come inside.
+        auto draw_actor_hitbox = [&](const Camera* c, float ax, float ay) {
+            SDL_SetRenderDrawColor(plat.renderer, 255, 0, 255, 255);
+            SDL_Point ring[33];
+            for (int i = 0; i <= 32; i++)
+                ring[i] = { cam_px(c, ax + ACTOR_TOUCH * cosf(i * 6.2831853f / 32)),
+                            cam_py(c, ay + ACTOR_TOUCH * sinf(i * 6.2831853f / 32)) };
+            SDL_RenderDrawLines(plat.renderer, ring, 33);
+        };
+
+        if (debug && input_pressed(&in, SDL_SCANCODE_B) && !dbg_open && !menu.open && state != STATE_BATTLE) {
             delete battle_scene;
             battle_scene = new BattleScene(&player, 0);
             state = STATE_BATTLE;
@@ -813,10 +965,10 @@ int main(int argc, char *argv[])
 
         // Mouse wheel steps through pixel-perfect zoom levels
         // scroll up (+y) = zoom in = higher index; scroll down = zoom out = lower index
-        if (in.mouse_wheel != 0 && state != STATE_BATTLE && !menu.open) {
+        if (in.mouse_wheel != 0 && state != STATE_BATTLE && !menu.open && !(map_open && !debug)) {
             zoom_idx += in.mouse_wheel;
-            if (zoom_idx < 0)           zoom_idx = 0;
-            if (zoom_idx >= zoom_count) zoom_idx = zoom_count - 1;
+            if (zoom_idx < zoom_min) zoom_idx = zoom_min;
+            if (zoom_idx > zoom_max) zoom_idx = zoom_max;
             cam.zoom = zoom_levels[zoom_idx];
         }
 
@@ -900,7 +1052,22 @@ int main(int argc, char *argv[])
                 resource_nodes_draw_over_player(&resources, &cam, plat.renderer, ow.x, ow.y,
                                                 (float)player.width, (float)player.height, ow.y + HB_Y2);
                 tilemap_draw_depth(map, &cam, plat.renderer);
-                if (dbg_grid) tilemap_draw_debug_grid(map, &cam, plat.renderer);
+                if (dbg_grid) {
+                    tilemap_draw_debug_grid(map, &cam, plat.renderer);
+                    draw_hitboxes(&cam, ow.x, ow.y,
+                        [&](float x, float y) { return overworld_entrance_at(map, x, y) &&
+                                                      can_occupy(map, x - (HB_X1 + HB_X2) * 0.5f, y - (HB_Y1 + HB_Y2) * 0.5f, tilemap_pixel_solid); });
+                    // A house door's is a box of its own, taken when the feet box touches it.
+                    SDL_SetRenderDrawColor(plat.renderer, 0, 255, 0, 150);
+                    for (int i = 0; i < map->num_doors; i++) {
+                        const InteriorDoor& d = map->doors[i];
+                        float x0 = d.x * (float)TILE_SIZE, y1 = (d.y + 1) * (float)TILE_SIZE;
+                        SDL_Rect r = { cam_screen_x(&cam, x0), cam_screen_y(&cam, y1 - DOOR_STEP),
+                                       cam_screen_x(&cam, x0 + d.w * TILE_SIZE) - cam_screen_x(&cam, x0),
+                                       cam_screen_y(&cam, y1) - cam_screen_y(&cam, y1 - DOOR_STEP) };
+                        SDL_RenderFillRect(plat.renderer, &r);
+                    }
+                }
 
                 // --- Weapon cooldown bar ---
                 {
@@ -926,36 +1093,9 @@ int main(int argc, char *argv[])
                 floattext_update_draw(&cur_float, dt, &cam, plat.renderer);
 
 
-                // Dungeon entry — show name prompt when standing on an entrance.
+                // Dungeon entry — walking onto an entrance goes in.
                 if (ow.at_dungeon_entrance) {
-                    static const char* dungeon_names[] = {
-                        "CAVE",
-                        "RUINS",
-                        "GRAVEYARD",
-                        "GRAVEYARD",
-                        "OASIS",
-                        "PYRAMID",
-                        "STONEHENGE",
-                        "LARGE TREE",
-                        "CATACOMBS",
-                    };
-                    int ci = (int)ow.dungeon_type;
-                    if (ci < 0 || ci >= DUNGEON_ENT_COUNT) ci = 0;
-                    const char* name = dungeon_names[ci];
-
-                    SDL_Rect box = draw_textbox(plat.renderer, name, 255, 255, 255, false, 6);
-
-                    // difficulty bar under the name
-                    fc_draw_color(plat.renderer, 40, 40, 40, 255);
-                    SDL_Rect diff_track = {box.x + 12, box.y + box.h - 12, box.w - 24, 4};
-                    SDL_RenderFillRect(plat.renderer, &diff_track);
-                    fc_draw_color(plat.renderer, 255, 255, 255, 255);
-                    SDL_Rect diff_fill = {box.x + 12, box.y + box.h - 12, (int)((box.w - 24) * ow.dungeon_difficulty), 4};
-                    SDL_RenderFillRect(plat.renderer, &diff_fill);
-
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                    if (room_taken(true)) {
                         int etx = wrap_x((int)((ow.x + player.width  * 0.5f) / TILE_SIZE));
                         int ety = wrap_y((int)((ow.y + player.height - 8.0f) / TILE_SIZE));
 
@@ -1031,6 +1171,7 @@ int main(int argc, char *argv[])
                             dplayer.y = (float)(dmap.portals[my_mouth].ty * DMAP_TILE
                                                 + DMAP_TILE / 2 - 24);
                         }
+                        dungeon_stand_before_way(&dmap, &dplayer);
                         num_chasers = 0;
                         for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
                             DungeonSpawner& sp = dmap.spawners[si];
@@ -1045,14 +1186,9 @@ int main(int argc, char *argv[])
                         dplayer.vx = dplayer.vy = 0.0f;
                     }
                 }
-                // Building door — prompt and enter the interior.
+                // Building door — walking into it enters the interior.
                 else if (ow.at_interior_door) {
-                    const char* lbl = "ENTER";
-                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
-
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                    if (room_taken(false)) {
                         const InteriorDoor& d = map->doors[ow.interior_door_idx];
                         interior_load(&imap, d.interior_id);
                         interior_player_init(&iplayer, &player, &imap);
@@ -1061,13 +1197,26 @@ int main(int argc, char *argv[])
                 }
 
 
+                explore_mark(explored, ow.x, ow.y);
                 if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open && !menu.open)
                     map_open = !map_open;
 
                 if (map_open) {
-                    minimap_draw(map, plat.renderer, 640, 480, ow.x, ow.y);
+                    // Test mode sees the whole world; a player sees the
+                    // country round them, as far as they have explored it.
+                    if (debug) minimap_draw(map, plat.renderer, 640, 480, ow.x, ow.y);
+                    else {
+                        // Locked on the player; the wheel, or up and down,
+                        // zooms it (the world gets neither while it is open).
+                        map_zoom += in.mouse_wheel
+                                  + (input_pressed(&in, SDL_SCANCODE_UP)   || input_pressed(&in, SDL_SCANCODE_W))
+                                  - (input_pressed(&in, SDL_SCANCODE_DOWN) || input_pressed(&in, SDL_SCANCODE_S));
+                        if (map_zoom < 0) map_zoom = 0;
+                        if (map_zoom > 2) map_zoom = 2;
+                        minimap_draw_local(map, plat.renderer, 640, 480, ow.x, ow.y, MAP_PX[map_zoom], explored);
+                    }
 
-                    if (in.mouse_left_pressed) {
+                    if (debug && in.mouse_left_pressed) {   // click to warp: testing only
                         float wx, wy;
                         if (minimap_click_to_world(640, 480, in.mouse_x, in.mouse_y, &wx, &wy)) {
                             ow.x = wx;
@@ -1132,14 +1281,14 @@ int main(int argc, char *argv[])
 
                 if (pre_battle_timer >= 0.0f) {
                     pre_battle_tick(dt, STATE_DUNGEON);
-                } else if (post_battle_t > 0.0f) {
-                    // Just back from a fight: everyone holds a beat, so the
+                } else if (post_battle_t > 0.0f || room_t >= 0.0f) {
+                    // Just back from a fight, or on the stairs: everyone holds a beat, so the
                     // next battle can't start before the player can move.
                 } else {
                     // Update chasers — activate when seen, move toward player, queue on contact.
                     // As fast as the player runs: outrunning them takes a lead.
                     const float CHASER_SPEED  = PLAYER_RUN_SPEED;
-                    const float TRIGGER_DIST2 = 22.0f * 22.0f;
+                    const float TRIGGER_DIST2 = ACTOR_TOUCH * ACTOR_TOUCH;
                     // Chasers are drawn 14px wide; keep their centres this far
                     // apart so a pack never stacks into a single square.
                     const float CHASER_SEP    = 16.0f;
@@ -1330,7 +1479,14 @@ int main(int argc, char *argv[])
                 SDL_Rect drown_vp;
                 hurt_shake_begin(plat.renderer, drown_t, &drown_vp);     // drowning: hurt as a fight shows it
                 dungeon_draw(&dmap, &dplayer, &cam, plat.renderer);
-                if (dbg_grid) dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
+                if (dbg_grid) {
+                    dungeon_draw_debug_grid(&dmap, &cam, plat.renderer);
+                    draw_hitboxes(&cam, dplayer.x, dplayer.y,
+                        [&](float x, float y) { return dungeon_way_at(&dmap, x, y) >= 0 &&
+                                                      can_occupy(&dmap, x - (HB_X1 + HB_X2) * 0.5f, y - (HB_Y1 + HB_Y2) * 0.5f, dungeon_solid_at); });
+                    for (int ci = 0; ci < num_chasers; ci++)
+                        if (chasers[ci].active) draw_actor_hitbox(&cam, chasers[ci].x, chasers[ci].y);
+                }
                 if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer))
                     player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
                 dungeon_draw_front(&dmap, &dplayer, &cam, plat.renderer);
@@ -1357,12 +1513,9 @@ int main(int argc, char *argv[])
 
                 battle_veil_draw(&cam);
 
-                // The catacombs' holes and ladders: where it leads, taken on the key.
-                if (const char* lbl = dungeon_link_name(&dmap, &dplayer)) {
-                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                // The catacombs' holes and ladders, taken by walking onto them.
+                if (dungeon_link_name(&dmap, &dplayer)) {
+                    if (room_taken(true)) {
                         dungeon_take_link(&dmap, &dplayer);
                         camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
                     }
@@ -1370,12 +1523,7 @@ int main(int argc, char *argv[])
 
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
-                    const char* lbl = "EXIT";
-                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
-
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                    if (room_taken(true)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                         // Leave by the portal you are standing on. A cave has one
@@ -1395,20 +1543,14 @@ int main(int argc, char *argv[])
                                     land_y = dmap.portals[pi].ow_y;
                                 }
                         }
-                        ow.x = (float)(land_x * TILE_SIZE);
-                        ow.y = (float)(land_y * TILE_SIZE);
+                        overworld_stand_before_entrance(&ow, &player, map, land_x, land_y);
                         state = STATE_OVERWORLD;
                     }
                 }
 
                 // DNG_EXIT tile — exit to the connected overworld entrance (or back if none).
                 if (dplayer.at_exit) {
-                    const char* lbl2 = "ENTER";
-                    draw_textbox(plat.renderer, lbl2, 255, 255, 255);
-
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                    if (room_taken(true)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                         // Leave by the portal you are standing on. A cave has one
@@ -1428,8 +1570,7 @@ int main(int argc, char *argv[])
                                     land_y = dmap.portals[pi].ow_y;
                                 }
                         }
-                        ow.x = (float)(land_x * TILE_SIZE);
-                        ow.y = (float)(land_y * TILE_SIZE);
+                        overworld_stand_before_entrance(&ow, &player, map, land_x, land_y);
                         state = STATE_OVERWORLD;
                     }
                 }
@@ -1441,7 +1582,7 @@ int main(int argc, char *argv[])
                 if (map_open) {
                     dungeon_minimap_draw(&dmap, &dplayer, plat.renderer, 640, 480, dbg_show_all);
 
-                    if (in.mouse_left_pressed) {
+                    if (debug && in.mouse_left_pressed) {   // click to warp: testing only
                         float wx, wy;
                         if (dungeon_minimap_click_to_world(&dmap, 640, 480, in.mouse_x, in.mouse_y,
                                                            dbg_show_all, &wx, &wy)) {
@@ -1452,7 +1593,8 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (!dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
+                // ESC out of a dungeon or a house from anywhere: a test shortcut.
+                if (debug && !dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
                     dungeon_explored_cache[current_dng_seed].assign(
                         &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
                     state = STATE_OVERWORLD;
@@ -1483,7 +1625,7 @@ int main(int argc, char *argv[])
                     };
                     int hit = -1;
                     for (int i = 0; i < TEST_N && imap.id == 0; i++)   // the starting house only
-                        if (d2(test_enemies[i]) < 22.0f * 22.0f) hit = i;
+                        if (d2(test_enemies[i]) < ACTOR_TOUCH * ACTOR_TOUCH) hit = i;
                     if (hit < 0) {
                         test_armed = true;
                     } else if (test_armed && post_battle_t <= 0.0f) {
@@ -1518,7 +1660,7 @@ int main(int argc, char *argv[])
                     game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT_BOOK,
                                         btx * IMAP_TILE, bty * IMAP_TILE, IMAP_TILE);
                 for (const TestEnemy& te : test_enemies) {
-                    if (pre_battle_timer >= 0.0f || imap.id != 0) break;   // the flashes draw them; the starting house only
+                    if (!debug || pre_battle_timer >= 0.0f || imap.id != 0) break;   // the flashes draw them; the starting house only
                     SDL_Rect cr = chaser_rect(&icam, te.x, te.y);
                     fc_draw_color(plat.renderer, 200, 30, 30, 255);
                     SDL_RenderFillRect(plat.renderer, &cr);
@@ -1528,17 +1670,18 @@ int main(int argc, char *argv[])
                 player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
                 interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
                                           (float)player.width, (float)player.height, iplayer.y + HB_Y2);
+                if (dbg_grid) {
+                    draw_hitboxes(&icam, iplayer.x, iplayer.y,
+                        [&](float x, float y) { return interior_at_exit(&imap, x, y); });   // the whole box, to the wall
+                    for (const TestEnemy& te : test_enemies)
+                        if (imap.id == 0) draw_actor_hitbox(&icam, te.x, te.y);   // the starting house only
+                }
                 battle_veil_draw(&icam);
 
-                // Doormat — exit back to the overworld; ow.x/ow.y were never
-                // touched, so the player reappears where they entered.
+                // The door — out to the overworld, before the house's door.
                 if (iplayer.at_exit) {
-                    const char* lbl = "EXIT";
-                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
-
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                    if (room_taken(false)) {
+                        overworld_stand_before_door(&ow, &player, map, imap.id);
                         state = STATE_OVERWORLD;
                     }
                 }
@@ -1563,7 +1706,7 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                if (!dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
+                if (debug && !dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE))
                     state = STATE_OVERWORLD;
                 break;
             }
@@ -1580,6 +1723,10 @@ int main(int argc, char *argv[])
         // this the key is still held on the next frame and the press that walked
         // you out of a dungeon or closed a battle also swings at whatever
         // resource happens to be standing next to the door.
+        // Any arrival (a door, a battle ending, a debug warp) starts unarmed.
+        if (state != state_before) room_armed = false;
+        else if (!on_room)         room_armed = true;
+
         if (state != state_before) {
             input_consume(&in, SDL_SCANCODE_RETURN);
             input_consume(&in, SDL_SCANCODE_Z);
@@ -1691,13 +1838,13 @@ int main(int argc, char *argv[])
                 SDL_Rect track = { SL_X, TRK_Y, SL_W, TRK_H };
                 SDL_RenderFillRect(plat.renderer, &track);
 
-                int hx = SL_X + zoom_idx * SL_W / (zoom_count - 1);
+                int hx = SL_X + (zoom_idx - zoom_min) * SL_W / (zoom_max - zoom_min);
                 fc_draw_color(plat.renderer, 255, 255, 255, 255);
                 SDL_Rect fill = { SL_X, TRK_Y, hx - SL_X, TRK_H };
                 SDL_RenderFillRect(plat.renderer, &fill);
 
-                for (int i = 0; i < zoom_count; i++) {
-                    int tx = SL_X + i * SL_W / (zoom_count - 1);
+                for (int i = zoom_min; i <= zoom_max; i++) {
+                    int tx = SL_X + (i - zoom_min) * SL_W / (zoom_max - zoom_min);
                     fc_draw_color(plat.renderer, 180, 180, 180, 255);
                     SDL_Rect tick = { tx - 1, TRK_Y - 2, 2, TRK_H + 4 };
                     SDL_RenderFillRect(plat.renderer, &tick);
@@ -1715,6 +1862,104 @@ int main(int argc, char *argv[])
         // ── Crafting menu overlay ─────────────────────────────────────────────
         // ── The TAB menu (src/game_menu.cpp) ─────────────────────────────────
         game_menu_draw(&menu, &player, plat.renderer);
+
+        // ── Title screen (play mode) ─────────────────────────────────────────
+        if (state == STATE_TITLE) {
+            SDL_Renderer* ren = plat.renderer;
+            fc_draw_color(ren, 0, 0, 0, 255);
+            SDL_Rect all = { 0, 0, 640, 480 };
+            SDL_RenderFillRect(ren, &all);
+            draw_text(ren, "FOUR CASTLE", (640 - text_width("FOUR CASTLE", 4)) / 2, 96, 4, 252, 252, 252);
+            draw_text(ren, "CHRONICLES",  (640 - text_width("CHRONICLES", 4)) / 2, 136, 4, 252, 252, 252);
+
+            bool up   = input_pressed(&in, SDL_SCANCODE_UP)   || input_pressed(&in, SDL_SCANCODE_W);
+            bool down = input_pressed(&in, SDL_SCANCODE_DOWN) || input_pressed(&in, SDL_SCANCODE_S);
+            bool ok   = input_pressed(&in, SDL_SCANCODE_Z) || input_pressed(&in, SDL_SCANCODE_RETURN) ||
+                        input_pressed(&in, SDL_SCANCODE_SPACE);
+            bool back = input_pressed(&in, SDL_SCANCODE_X);
+            bool fullscreen = (SDL_GetWindowFlags(plat.window) & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0;
+
+            // A new game: the player as they start, at home. Over a save's
+            // world it first grows a new one, a frame after LOADING is drawn.
+            auto begin_new = [&]() {
+                fresh_player();
+                memset(explored, 0, sizeof(explored));
+                place_at_start();
+                wake_at_home();
+                items_primed = false;
+                input_consume(&in, SDL_SCANCODE_RETURN);
+                input_consume(&in, SDL_SCANCODE_Z);
+                input_consume(&in, SDL_SCANCODE_SPACE);
+            };
+
+            const int BX = 220, BY = 220, BW = 200, BH = 120;
+            auto row = [&](int i, const char* label, bool on, bool grey) {
+                int y = BY + 12 + i * 24;
+                if (on) draw_text(ren, ">", BX + 10, y, 2, 255, 255, 80);
+                if (grey)    draw_text(ren, label, BX + 28, y, 2, 120, 120, 120);
+                else if (on) draw_text(ren, label, BX + 28, y, 2, 255, 255, 80);
+                else         draw_text(ren, label, BX + 28, y, 2, 252, 252, 252);
+            };
+
+            if (title_loading) {
+                draw_text(ren, "LOADING", (640 - text_width("LOADING", 2)) / 2, 260, 2, 252, 252, 252);
+                if (title_loading_drawn) {
+                    rebuild_world((unsigned int)SDL_GetTicks());
+                    title_loading = title_loading_drawn = false;
+                    begin_new();
+                } else {
+                    title_loading_drawn = true;
+                }
+            } else if (title_page == TPAGE_MAIN) {
+                static const char* NAMES[TITLE_COUNT] = { "NEW GAME", "CONTINUE", "OPTIONS", "QUIT" };
+                draw_nes_panel(ren, BX, BY, BW, BH);
+                for (int i = 0; i < TITLE_COUNT; i++)
+                    row(i, NAMES[i], title_sel == i, i == TITLE_CONTINUE && !has_save);
+                if (up)   title_sel = (title_sel + TITLE_COUNT - 1) % TITLE_COUNT;
+                if (down) title_sel = (title_sel + 1) % TITLE_COUNT;
+                if (ok && title_sel == TITLE_NEW) {
+                    if (has_save) { title_page = TPAGE_ERASE; title_erase = false; }
+                    else          begin_new();
+                } else if (ok && title_sel == TITLE_CONTINUE && has_save) {
+                    // The world is already the save's (built from its seed at
+                    // launch); the player and where they stood come back.
+                    player = saved_player;
+                    ow.x = saved_x;
+                    ow.y = saved_y;
+                    items_primed = false;
+                    state = STATE_OVERWORLD;
+                    input_consume(&in, SDL_SCANCODE_RETURN);
+                    input_consume(&in, SDL_SCANCODE_Z);
+                    input_consume(&in, SDL_SCANCODE_SPACE);
+                } else if (ok && title_sel == TITLE_OPTIONS) {
+                    title_page = TPAGE_OPTIONS;
+                } else if (ok && title_sel == TITLE_QUIT) {
+                    running = false;
+                }
+            } else if (title_page == TPAGE_OPTIONS) {
+                draw_nes_panel(ren, BX - 40, BY, BW + 80, 72);
+                char buf[32];
+                SDL_snprintf(buf, sizeof(buf), "FULLSCREEN: %s", fullscreen ? "ON" : "OFF");
+                draw_text(ren, ">", BX - 30, BY + 12, 2, 255, 255, 80);
+                draw_text(ren, buf, BX - 12, BY + 12, 2, 255, 255, 80);
+                draw_text(ren, "Z: CHANGE  X: BACK", BX - 12, BY + 44, 1, 120, 120, 120);
+                if (ok) SDL_SetWindowFullscreen(plat.window, fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+                if (back) title_page = TPAGE_MAIN;
+            } else {   // TPAGE_ERASE
+                // The save is only replaced by the new game's first SAVE.
+                draw_nes_panel(ren, BX - 40, BY, BW + 80, 96);
+                draw_text(ren, "START OVER?", BX - 12, BY + 12, 2, 252, 252, 252);
+                for (int i = 0; i < 2; i++) {
+                    bool on = title_erase == (i == 1);
+                    if (on) draw_text(ren, ">", BX - 30, BY + 40 + i * 24, 2, 255, 255, 80);
+                    if (on) draw_text(ren, i ? "YES" : "NO", BX - 12, BY + 40 + i * 24, 2, 255, 255, 80);
+                    else    draw_text(ren, i ? "YES" : "NO", BX - 12, BY + 40 + i * 24, 2, 252, 252, 252);
+                }
+                if (up || down) title_erase = !title_erase;
+                if (back || (ok && !title_erase)) title_page = TPAGE_MAIN;
+                else if (ok) { title_page = TPAGE_MAIN; title_loading = true; }
+            }
+        }
 
         // ── Debug menu overlay ───────────────────────────────────────────────
         if (dbg_open) {
@@ -1892,6 +2137,10 @@ int main(int argc, char *argv[])
             SDL_RenderFillRect(plat.renderer, &fill);
         }
 
+        // A door or stair: black over everything, down and back up.
+        if (room_t >= 0.0f)
+            veil(room_t < BATTLE_FADE_T ? room_t / BATTLE_FADE_T : 2.0f - room_t / BATTLE_FADE_T);
+
         // The one place the window scale is applied. RenderClear ignores the
         // viewport, so this paints the letterbox bars as well.
         if (frame_tex) {
@@ -1929,6 +2178,8 @@ int main(int argc, char *argv[])
     frame_tex = NULL;
 
     tilemap_free_tile_cache();
+    if (stairs_dev) SDL_CloseAudioDevice(stairs_dev);
+    SDL_FreeWAV(stairs_buf);
     IMG_Quit();
     platform_shutdown(&plat);
 

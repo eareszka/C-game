@@ -1,5 +1,6 @@
 @echo off
-REM Launch the game on Windows.
+REM Launch the game on Windows in TEST mode (debug keys, practice enemy).
+REM play.bat starts it as a player gets it: title screen and saving.
 REM game.exe is linked against the MSYS2 MinGW64 SDL2 DLLs, so those must be on
 REM PATH. Assets are loaded relative to the working directory, so cd here first.
 
@@ -24,4 +25,4 @@ if not exist "game.exe" (
 REM Call by explicit path: some environments set NoDefaultCurrentDirectoryInExePath,
 REM which stops cmd from resolving "game.exe" out of the current directory.
 set "PATH=%MINGW_BIN%;%PATH%"
-"%~dp0game.exe" %*
+"%~dp0game.exe" --debug %*

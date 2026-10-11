@@ -355,9 +355,17 @@ struct ArtCellDepth {
     uint16_t way[16];
 };
 // Whether feet at world pixel (px, py), on a dungeon entrance's tile, are in its
-// way in: anywhere on the tile for one with no drawn way, else only on it --
-// so a building is entered through its door, not from behind it.
+// way in: on its drawn way, so a building is entered through its door, not
+// from behind it; with none drawn, walked into its mouth or onto its hole
+// (collision.h).
 bool tilemap_way_in(const Tilemap* map, float px, float py);
+// A house door's hitbox: the whole door across, DOOR_STEP world pixels up from
+// its foot. The feet may walk onto it (it is not the house's solid ground), and
+// the door is taken when the feet box touches it.
+constexpr int DOOR_STEP = 12;
+// The house door (an index into map->doors) whose hitbox the feet box, centred
+// at world pixel (px, py), touches, or -1.
+int tilemap_door_at(const Tilemap* map, float px, float py);
 // How far across something struck at hit_at (SDL_GetPerformanceCounter) is
 // drawn as it shakes, at this zoom; 0 once the shake has run out.
 int tilemap_shake_px(Uint64 hit_at, float zoom);
@@ -406,6 +414,19 @@ int tilemap_thrust(Tilemap* map, float px, float py, float angle,
 int tilemap_strike_point(Tilemap* map, float x, float y,
                          Weapon weapon, HarvestResult* out);
 
+// Where the player has been, for their map: a flag per EXPLORE_CELL-tile
+// square of the world, set for the squares round them as they walk.
+enum { EXPLORE_CELL = 16,
+       EXPLORE_W = (MAP_WIDTH  + EXPLORE_CELL - 1) / EXPLORE_CELL,
+       EXPLORE_H = (MAP_HEIGHT + EXPLORE_CELL - 1) / EXPLORE_CELL };
+void explore_mark(uint8_t explored[EXPLORE_H][EXPLORE_W], float player_x, float player_y);
+// The player's map: always centred on them, only what is explored, drawn
+// at px screen pixels a tile (its zoom: fewer shows more country).
+void minimap_draw_local(const Tilemap* map, SDL_Renderer* renderer,
+                        int screen_w, int screen_h, float player_x, float player_y,
+                        int px,
+                        const uint8_t explored[EXPLORE_H][EXPLORE_W]);
+// The whole world at once (test mode).
 void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
                   int screen_w, int screen_h,
                   float player_x, float player_y);

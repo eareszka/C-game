@@ -73,6 +73,42 @@ bool can_occupy(const void* map, float x, float y, TileSolidFn tile_solid);
 bool move_feet(const void* map, float* x, float* y, float dx, float dy,
                TileSolidFn tile_solid);
 
+// A door, ladder or cave mouth is taken by walking into it, not by standing
+// near it: the feet's centre (cx, cy) inside its opening -- WAY_INSET in from
+// each side of its tile, clear of the frame -- and the feet pressed against
+// what it stands on, solid within WAY_REACH pixels of their (dx, dy) side.
+// WAY_REACH is more than a sprinting frame's step, which is how far short of
+// a wall a blocked move can leave the feet.
+constexpr float WAY_INSET = 6.0f, WAY_REACH = 6.0f;
+inline bool way_opening(float local) { return local >= WAY_INSET && local <= 32.0f - WAY_INSET; }
+inline bool feet_walked_into(const void* map, float cx, float cy, int dx, int dy,
+                             TileSolidFn tile_solid) {
+    // That side's middle and both its corners: a wall on the slant (a room's
+    // side walls) meets a corner first, and is never nearer the middle.
+    float h = (HB_X2 - HB_X1) * 0.5f, r = h + WAY_REACH;
+    for (int s = -1; s <= 1; s++)
+        if (tile_solid(map, cx + dx * r + dy * s * h, cy + dy * r + dx * s * h)) return true;
+    return false;
+}
+
+// Where to stand on arriving through a way: from (cx, cy) on it, the first
+// place straight out of it along (dx, dy) -- else down the screen, to either
+// side, up -- where the feet fit and no longer take it: before the door, a
+// pixel clear of it. taken and fits are asked of a feet centre. False, and
+// nothing moved, if there is none within a tile and a half.
+template <class Taken, class Fits>
+bool stand_clear(float* cx, float* cy, int dx, int dy, Taken taken, Fits fits) {
+    const int dirs[5][2] = { { dx, dy }, { 0, 1 }, { -1, 0 }, { 1, 0 }, { 0, -1 } };
+    for (const auto& d : dirs)
+        for (int n = 1; n <= 48; n++) {
+            float x = *cx + d[0] * n, y = *cy + d[1] * n;
+            if (!fits(x, y) || taken(x, y)) continue;
+            *cx = x; *cy = y;
+            return true;
+        }
+    return false;
+}
+
 // If the feet are somewhere they cannot be, put them on the nearest ground they
 // can. Returns whether anything moved.
 bool unwedge_feet(const void* map, float* x, float* y, TileSolidFn tile_solid);

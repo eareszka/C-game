@@ -53,13 +53,13 @@ float facing_angle(int facing) {
 
 void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, float dt,
                          float hx, float hy, ResourceNodeList* resources, Tilemap* tiles,
-                         const Camera* cam, bool attack_blocked, int cave_ore, HarvestResult* out)
+                         const Camera* cam, int cave_ore, HarvestResult* out)
 {
     if (ws->tool_cd > 0.0f) ws->tool_cd -= dt;
 
     Weapon weapon = equipped_weapon(player);
 
-    if (ws->tool_cd <= 0.0f && !attack_blocked
+    if (ws->tool_cd <= 0.0f
      && (input_down(in, SDL_SCANCODE_SPACE)
       || input_down(in, SDL_SCANCODE_Z)
       || input_down(in, SDL_SCANCODE_RETURN)))

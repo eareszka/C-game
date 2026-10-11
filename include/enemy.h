@@ -57,9 +57,6 @@ struct BulletSpawn {
     // a whole shape drifting as it spreads (a sun coming down). With
     // `homing`, that drift turns toward the player -- the whole shape homes.
     float orbit_vx       = 0.0f, orbit_vy = 0.0f;
-    // ...and that drift turns drift_turn rad/s (+ = clockwise on screen) for
-    // drift_turn_for s (0 = always): a whole shape flying in an arch.
-    float drift_turn     = 0.0f, drift_turn_for = 0.0f;
     // ...or that spot travels an ELLIPSE instead (path_a > 0): semi-axes
     // path_a, path_b, tilted path_tilt, about (path_cx, path_cy), from angle
     // path_phase at path_w rad/s -- shapes on orbits, an atom's.
@@ -67,7 +64,6 @@ struct BulletSpawn {
     float path_cx        = 0.0f, path_cy = 0.0f;
     bool  path_face      = false;   // ...and the shape turned to face along its orbit, not spinning
     float path_for       = 0.0f;    // ...for this long, then on straight the way it was going (0 = always)
-    float path_round     = 1.0f;    // ...1 an ellipse; below 1 squarer (0.5: a squircle hugging a box's walls and corners)
     bool  path_aim       = false;   // ...its orbit done, it turns for the player and flies straight on at them --
     int   path_aim_slot  = -1;      // ...at the spot Enemy::aim_slot gives for this slot (>= 0), so a row of them keep in line
     bool  path_even      = false;   // ...path_w then px/s along it, an even pace all round (not rad/s, slow at the tips)
@@ -75,9 +71,8 @@ struct BulletSpawn {
     // a circle): a ring seen from a little above, spinning (a tornado's).
     float orbit_squash   = 0.0f;
     // ...or, with orbit_about, it turns round (orbit_cx, orbit_cy) from where
-    // it is put down, moving out from there at its speed (0: a fixed radius,
-    // a shape laid down in place, spinning about its middle -- the
-    // Sazae-oni's great shell; the Corocotta's gears of teeth spread).
+    // it is put down, at a fixed radius -- a shape laid down in place,
+    // spinning about its middle (the Sazae-oni's great shell).
     bool  orbit_about    = false;
     float orbit_cx       = 0.0f, orbit_cy = 0.0f;
     // Zigzags: leaves zig radians to one side of its heading and swings to
@@ -94,6 +89,11 @@ struct BulletSpawn {
     // Flashes white as it appears (its first FLASH_IN s), to catch the eye --
     // and with a life, again in its last FLASH_OUT s, before it goes.
     bool  flash_in       = false;
+    // With a life, it FADES away over its last moments instead of vanishing
+    // -- dimming in hard steps, and harmless while it does (it is going).
+    bool  fade_out       = false;
+    // Drawn behind the enemy, not over it: weather at its back.
+    bool  behind         = false;
     // Leaves from (ox, oy) instead of from the enemy: rain from the top.
     bool  from           = false;
     float ox = 0.0f, oy  = 0.0f;
@@ -152,6 +152,19 @@ public:
     // How hard it draws the player toward it, px/s (0 = not at all): a
     // hurricane's suck.
     virtual float pull() const { return 0.0f; }
+    // A shove: the player thrown this way, px/s, while it lasts (a bite that
+    // flings them back down the arena). They are kept in the arena.
+    virtual void shove(float* vx, float* vy) const { *vx = 0.0f; *vy = 0.0f; }
+    // Pieces of it drawn over its sprite, each on its own -- a head that
+    // reaches out while the body idles. (x, y) the piece's middle; (sx, sy,
+    // w, h) its cell in the enemy's parts sheet (EnemySheet::parts); scale 1
+    // is the sheet's own 2x; with hurt_r, touching it within that costs a bar.
+    // Turned `angle` degrees about its middle; with `len`, its width is
+    // stretched to that many screen px instead (a neck from body to head).
+    // `flip` turns it upside down first (a neck pointing left, its shaded
+    // side kept underneath).
+    struct Part { float x, y; int sx, sy, w, h; float scale = 1.0f; float hurt_r = 0.0f; float angle = 0.0f; float len = 0.0f; bool flip = false; };
+    virtual int parts(Part /*out*/[], int /*max*/) const { return 0; }
     // Marks it leaves on the ground (footprints) -- drawn under everything,
     // seen however far away, harmless; `kind` picks the frame of the
     // enemy's marks sheet (EnemySheet::marks), `dir` 0-3 turns it in 90-degree
@@ -175,6 +188,10 @@ public:
     // Damage for touching its body (whole HP bars, like a bullet's); 0 for
     // an enemy that is harmless to touch.
     virtual float contact_damage() const { return 0.0f; }
+    // Solid: the player can't walk onto it -- its sprite's own outline (the
+    // idle sheet's opaque pixels) and its resting parts stop them, like a
+    // wall. No damage: something that big is simply in the way.
+    virtual bool  solid() const { return false; }
     // Where shots sharing an aim slot (BulletSpawn::path_aim_slot) head when
     // their orbits end: by default the player, wherever they are then.
     virtual void  aim_slot(int /*slot*/, float px, float py, float* tx, float* ty) { *tx = px; *ty = py; }

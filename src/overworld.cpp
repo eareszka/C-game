@@ -45,19 +45,63 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     player->is_moving  = 0;
 }
 
+bool overworld_entrance_at(const Tilemap* map, float feet_x, float feet_y)
+{
+    int tx = (int)floorf(feet_x / TILE_SIZE);
+    int ty = (int)floorf(feet_y / TILE_SIZE);
+    if (!in_world(&tx, &ty)) return false;
+    int tile = map->tiles[ty][tx];
+    return (tile == TILE_DUNGEON || (tile >= TILE_DUNGEON_CAVE && tile <= TILE_DUNGEON_LARGE_TREE)) &&
+           tilemap_way_in(map, feet_x, feet_y);
+}
+
+// Feet centred (cx, cy), on a way in: stood before it (collision.h), facing out.
+static void stand_before(Overworld* ow, Player* player, const Tilemap* map, float cx, float cy)
+{
+    stand_clear(&cx, &cy, 0, 1,
+        [&](float x, float y) { return overworld_entrance_at(map, x, y) || tilemap_door_at(map, x, y) >= 0; },
+        [&](float x, float y) { return can_occupy(map, x - (HB_X1 + HB_X2) * 0.5f, y - (HB_Y1 + HB_Y2) * 0.5f, tilemap_pixel_solid); });
+    ow->x = cx - (HB_X1 + HB_X2) * 0.5f;
+    ow->y = cy - (HB_Y1 + HB_Y2) * 0.5f;
+    player->facing = FACE_DOWN;
+    player->facing_locked = 0;
+}
+
+void overworld_stand_before_door(Overworld* ow, Player* player, const Tilemap* map, int interior_id)
+{
+    for (int i = 0; i < map->num_doors; i++) {
+        const InteriorDoor& d = map->doors[i];
+        if (d.interior_id != interior_id) continue;
+        stand_before(ow, player, map, (d.x + d.w * 0.5f) * TILE_SIZE, (d.y + 1) * (float)TILE_SIZE);
+        return;
+    }
+}
+
+void overworld_stand_before_entrance(Overworld* ow, Player* player, const Tilemap* map, int tx, int ty)
+{
+    // The entrance's stamp, and the middle and the foot of its way in: every
+    // place on it the feet take it from.
+    int x0 = tx, y0 = ty, n = 1;
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        if (tx >= e.x && tx <= e.x + e.size && ty >= e.y && ty <= e.y + e.size) { x0 = e.x; y0 = e.y; n = e.size + 1; break; }
+    }
+    float sum = 0, foot = 0;
+    int   cnt = 0;
+    for (int py = y0 * TILE_SIZE; py < (y0 + n) * TILE_SIZE; py++)
+        for (int px = x0 * TILE_SIZE; px < (x0 + n) * TILE_SIZE; px++) {
+            if (!overworld_entrance_at(map, (float)px, (float)py)) continue;
+            sum += px; cnt++;
+            if (py > foot) foot = (float)py;
+        }
+    if (cnt) stand_before(ow, player, map, sum / cnt, foot);
+    else     stand_before(ow, player, map, (x0 + n * 0.5f) * TILE_SIZE, (y0 + n * 0.5f) * TILE_SIZE);
+}
+
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       ResourceNodeList* resources, Tilemap* map, const Camera* cam,
                       bool noclip, HarvestResult* out_harvest)
 {
-    // Standing on a door or dungeon entrance, the interact key belongs to the
-    // ENTER prompt, so don't also swing at whatever is beside the doorway. The
-    // at_* flags were computed at the end of the previous call, which is what we
-    // want: they describe the tile the player is standing on right now, before
-    // this frame's movement. Graveyards are unaffected — a hidden entrance is
-    // not an entrance tile until a gravestone reveals it, so the tool still
-    // works for every hit that does the revealing.
-    bool at_prompt = ow->at_dungeon_entrance || ow->at_interior_door;
-
     float hx = ow->x + (HB_X1 + HB_X2) * 0.5f;
     float hy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
 
@@ -65,7 +109,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     HarvestResult* h = out_harvest ? out_harvest : &local;
 
     weapon_swing_update(&ow->swing, player, in, dt, hx, hy, resources, map,
-                       cam, at_prompt, -1, h);
+                       cam, -1, h);
 
     // Any destroyed gravestone may have been hiding a dungeon entrance.
     if (harvest_any_destroyed(h)) {
@@ -149,36 +193,22 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         int tx = (int)floorf(feet_x / TILE_SIZE);
         int ty = (int)floorf(feet_y / TILE_SIZE);
         ow->at_dungeon_entrance = 0;
-        if (in_world(&tx, &ty)) {
-            int tile = map->tiles[ty][tx];
-            if ((tile == TILE_DUNGEON || (tile >= TILE_DUNGEON_CAVE && tile <= TILE_DUNGEON_LARGE_TREE)) &&
-                tilemap_way_in(map, feet_x, feet_y)) {
-                ow->at_dungeon_entrance = 1;
-                for (int i = 0; i < map->num_dungeon_entrances; i++) {
-                    const DungeonEntrance& e = map->dungeon_entrances[i];
-                    if (tx >= e.x && tx < e.x + e.size + 1 &&
-                        ty >= e.y && ty < e.y + e.size + 1) {
-                        ow->dungeon_type       = e.type;
-                        ow->dungeon_difficulty = e.difficulty;
-                        break;
-                    }
+        if (overworld_entrance_at(map, feet_x, feet_y) && in_world(&tx, &ty)) {
+            ow->at_dungeon_entrance = 1;
+            for (int i = 0; i < map->num_dungeon_entrances; i++) {
+                const DungeonEntrance& e = map->dungeon_entrances[i];
+                if (tx >= e.x && tx < e.x + e.size + 1 &&
+                    ty >= e.y && ty < e.y + e.size + 1) {
+                    ow->dungeon_type       = e.type;
+                    ow->dungeon_difficulty = e.difficulty;
+                    break;
                 }
             }
         }
 
-        // Interior door detection — on the door tiles or the tile row below them.
-        // Biased 8px left: the feet hitbox sits right of the sprite centre, so
-        // an unshifted check makes doors detect too far to the right visually.
-        int door_tx = wrap_x((int)floorf((feet_x + 8.0f) / TILE_SIZE));
-        ow->at_interior_door = 0;
-        for (int i = 0; i < map->num_doors; i++) {
-            const InteriorDoor& d = map->doors[i];
-            if (door_tx >= d.x && door_tx < d.x + d.w && (ty == d.y || ty == d.y + 1)) {
-                ow->at_interior_door  = 1;
-                ow->interior_door_idx = i;
-                break;
-            }
-        }
+        int door = tilemap_door_at(map, feet_x, feet_y);
+        ow->at_interior_door = door >= 0;
+        if (door >= 0) ow->interior_door_idx = door;
     }
 
     player_animate(player, dt, anim_speed);

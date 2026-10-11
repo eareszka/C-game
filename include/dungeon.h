@@ -231,8 +231,8 @@ struct DungeonMap {
 struct DungeonPlayer {
     float x, y;
     float speed;
-    int   at_exit;    // 1 if player centre is over DNG_EXIT tile
-    int   at_entry;   // 1 if player centre is over DNG_ENTRY tile (exit back to overworld)
+    int   at_exit;    // 1 if the player has walked into a DNG_EXIT's way out (dungeon_way_at)
+    int   at_entry;   // 1 if into the DNG_ENTRY's (exit back to overworld)
     float slide = 0;  // sliding along a 45-degree edge: how far owed (see dungeon_player_update)
     float vx = 0, vy = 0;   // swimming (the oasis): the drift kept from frame to frame
     int   at_link = -1;     // the catacombs: the hole or ladder stood at (dungeon_link_name), -1 none
@@ -365,6 +365,13 @@ void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y);
 // Whether a point (dungeon pixels) is solid to the player's feet -- the
 // collision the game moves them by. Exposed for the tools.
 bool dungeon_solid_at(const void* dmap, float px, float py);
+// The way out that feet centred at (cx, cy) have walked into (collision.h):
+// DNG_ENTRY or DNG_EXIT, else -1. A way out's ladder or door stands on the
+// wall behind its tile, so it is taken in the opening, against that wall.
+int dungeon_way_at(const DungeonMap* dmap, float cx, float cy);
+// Arriving inside: the player, already put at a way out, stood before the
+// middle of it, a pixel clear of its hitbox (stand_clear, collision.h).
+void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp);
 // Everything in view, all of it lit: a dungeon hides nothing (user); only the
 // minimap fills in as it is explored.
 void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,

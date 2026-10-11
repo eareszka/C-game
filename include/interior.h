@@ -43,6 +43,9 @@ void interior_load(InteriorMap* im, int interior_id);
 bool interior_book_spot(int interior_id, int* tx, int* ty);
 // Whether the player, their sprite's top-left at (x, y), can stand there.
 bool interior_feet_fit(const InteriorMap* im, float x, float y);
+// Whether feet centred at (feet_x, feet_y) are in the way out's hitbox: the
+// floor before the door, along the wall it is in.
+bool interior_at_exit(const InteriorMap* im, float feet_x, float feet_y);
 void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap* im);
 void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
                             float dt, const InteriorMap* im);

@@ -249,6 +249,16 @@ static void gyw_way_tile(const DungeonMap* d, int w, int* tx, int* ty) {
     *tx = (d->gyw_ox + gyw_wall_u(d, w) + 32 + v) / 16;
 }
 
+// The barrow's (stonehenge's) way out w: the floor tile before its ladder --
+// the first tile row in front of its wall's foot, so the tile above it is
+// under the wall. The ladder itself stands where the picture has it, which is
+// on no tile's middle (barrow_way_x and _d).
+static void barrow_way_tile(const DungeonMap* d, int w, int* tx, int* ty) {
+    int yf = d->barrow_oy - d->barrow_way_d[w];            // the first floor row before the wall
+    *ty = (yf - 8 + 15) / 16;
+    *tx = (d->barrow_ox + d->barrow_way_x[w] + (d->barrow_oy - 1 - (*ty * 16 + 8))) / 16;
+}
+
 // Whether art pixel (ax, ay) is walkway a player may stand on: in one of the
 // rectangles once taken back into the world, and not under a way out's wall.
 // with_walls: only the walls that stand (a way out with a portal on it);
@@ -1825,9 +1835,7 @@ static void carve_stonehenge_layout(DungeonMap* dmap, uint32_t* rng) {
     auto place = [&](int w, int u, int v, int* px, int* py) {
         dmap->barrow_way_x[w] = xs[u] + BRW_BW / 2;
         dmap->barrow_way_d[w] = d0[v] + dsz[v];
-        int yf = OY - dmap->barrow_way_d[w];               // the first floor row before the wall
-        *py = (yf - 8 + 15) / 16;
-        *px = (OX + dmap->barrow_way_x[w] + (OY - 1 - (*py * 16 + 8))) / 16;
+        barrow_way_tile(dmap, w, px, py);
     };
     place(0, eu, ev, &dmap->entry_x, &dmap->entry_y);
     place(1, xu, xv, &dmap->exit_x, &dmap->exit_y);
@@ -4005,6 +4013,64 @@ static bool tile_solid(const void* map, float px, float py) {
 
 bool dungeon_solid_at(const void* dmap, float px, float py) { return tile_solid(dmap, px, py); }
 
+int dungeon_way_at(const DungeonMap* dmap, float cx, float cy) {
+    // The barrow's ladders stand where its picture has them, not on the tile
+    // grid: the hitbox is the box at the ladder's foot (user's sketch) -- wider
+    // than the ladder, from a little up the wall to half a tile out before it.
+    if (dmap->type == DUNGEON_ENT_STONEHENGE) {
+        const float S = DMAP_TILE / 16.0f;
+        for (int w = 0; w < 2; w++) {
+            float lx = (dmap->barrow_ox + dmap->barrow_way_x[w] + dmap->barrow_way_d[w]) * S;
+            float fy = (dmap->barrow_oy - dmap->barrow_way_d[w]) * S;
+            if (fabsf(cx - lx) > 18.0f || cy < fy - 10.0f || cy > fy + 16.0f) continue;
+            int ptx, pty;
+            barrow_way_tile(dmap, w, &ptx, &pty);
+            uint8_t t = dmap->tiles[pty][ptx];
+            if (t == DNG_ENTRY || t == DNG_EXIT) return t;
+        }
+        return -1;
+    }
+    int tx = (int)(cx / DMAP_TILE), ty = (int)(cy / DMAP_TILE);
+    if (tx < 0 || tx >= DMAP_W || !way_opening(cx - tx * DMAP_TILE)) return -1;
+    if (!feet_walked_into(dmap, cx, cy, 0, -1, tile_solid)) return -1;
+    // Its own tile, or the one behind: a wall drawn to the pixel has its foot
+    // anywhere between the two tiles' middles.
+    for (int y = ty; y <= ty + 1; y++) {
+        if (y < 0 || y >= DMAP_H) continue;
+        uint8_t t = dmap->tiles[y][tx];
+        if (t == DNG_ENTRY || t == DNG_EXIT) return t;
+    }
+    return -1;
+}
+
+void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp) {
+    if (dmap->type == DUNGEON_ENT_OASIS) return;           // comes up in the water, at the shaft
+    // The way out the player was put on: the nearest. Its middle, at the foot
+    // of the wall it is on.
+    float cx = dp->x + (HB_X1 + HB_X2) * 0.5f, cy = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
+    int best = -1;
+    float bd = 0;
+    for (int p = 0; p < dmap->num_portals; p++) {
+        float dx = (dmap->portals[p].tx + 0.5f) * DMAP_TILE - cx, dy = (dmap->portals[p].ty + 0.5f) * DMAP_TILE - cy;
+        if (best < 0 || dx * dx + dy * dy < bd) { best = p; bd = dx * dx + dy * dy; }
+    }
+    if (best < 0) return;
+    float wx = (dmap->portals[best].tx + 0.5f) * DMAP_TILE, wy = (float)(dmap->portals[best].ty * DMAP_TILE);
+    for (int w = 0; w < 2 && dmap->type == DUNGEON_ENT_STONEHENGE; w++) {   // the barrow's, where it is drawn
+        int ptx, pty;
+        barrow_way_tile(dmap, w, &ptx, &pty);
+        if (ptx != dmap->portals[best].tx || pty != dmap->portals[best].ty) continue;
+        wx = (dmap->barrow_ox + dmap->barrow_way_x[w] + dmap->barrow_way_d[w]) * (DMAP_TILE / 16.0f);
+        wy = (dmap->barrow_oy - dmap->barrow_way_d[w]) * (DMAP_TILE / 16.0f);
+    }
+    if (!stand_clear(&wx, &wy, 0, 1,
+            [&](float x, float y) { return dungeon_way_at(dmap, x, y) >= 0; },
+            [&](float x, float y) { return can_occupy(dmap, x - (HB_X1 + HB_X2) * 0.5f, y - (HB_Y1 + HB_Y2) * 0.5f, tile_solid); }))
+        return;
+    dp->x = wx - (HB_X1 + HB_X2) * 0.5f;
+    dp->y = wy - (HB_Y1 + HB_Y2) * 0.5f;
+}
+
 // How far a wall stands above its foot on the screen, in art pixels: how much
 // of the floor behind it it can hide. Walls drawn inside their own tiles (the
 // ruins', the pyramids', the caves') hide nothing.
@@ -4095,10 +4161,9 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
 
     // Same trigger/dispatch/advance machinery as overworld_update()
     // (src/overworld.cpp) -- tiles is null since a dungeon has no tile-based
-    // harvest system, only rock nodes, and attack_blocked is always false:
-    // dungeons have no door/entrance prompt competing for the same key.
+    // harvest system, only rock nodes.
     weapon_swing_update(&dp->swing, player, in, dt, hx, hy, &dmap->dungeon_rocks,
-                       nullptr, cam, false, (int)dmap->ore, h);
+                       nullptr, cam, (int)dmap->ore, h);
 
     // A destroyed rock node carves the wall tile it sat in open into floor --
     // the dungeon's equivalent of the gravestone-reveal tile write in
@@ -4202,19 +4267,14 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
 
     dp->at_link = dmap->type == DUNGEON_ENT_CATACOMBS ? cat_link_at(dmap, dp) : -1;
 
-    // detect which special tile (entry or exit) the player is standing on.
+    // which way out (entry or exit) the player has walked into.
     float cx = dp->x + (HB_X1 + HB_X2) * 0.5f;
     float cy = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
     int tx = (int)(cx / DMAP_TILE);
     int ty = (int)(cy / DMAP_TILE);
-    if (tx >= 0 && tx < DMAP_W && ty >= 0 && ty < DMAP_H) {
-        uint8_t t    = dmap->tiles[ty][tx];
-        dp->at_exit  = (t == DNG_EXIT)  ? 1 : 0;
-        dp->at_entry = (t == DNG_ENTRY) ? 1 : 0;
-    } else {
-        dp->at_exit  = 0;
-        dp->at_entry = 0;
-    }
+    int way = dungeon_way_at(dmap, cx, cy);
+    dp->at_exit  = way == DNG_EXIT;
+    dp->at_entry = way == DNG_ENTRY;
 
     // Loot pickup: auto-collect when standing on an unclaimed loot tile --
     // gold into the purse, a treasure into the inventory.
@@ -4943,7 +5003,8 @@ static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
     // wall, from its foot up the whole face to the grass
     for (int w = 0; w < 2; w++) {
         int bd = d->barrow_way_d[w], yf = OY - bd;
-        int ptx = (OX + d->barrow_way_x[w] + (OY - 1 - (((yf - 8 + 15) / 16) * 16 + 8))) / 16, pty = (yf - 8 + 15) / 16;
+        int ptx, pty;
+        barrow_way_tile(d, w, &ptx, &pty);
         bool stands = false;
         for (int p = 0; p < d->num_portals; p++) stands |= d->portals[p].tx == ptx && d->portals[p].ty == pty;
         if (!stands) continue;

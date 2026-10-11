@@ -15,8 +15,8 @@
 // only the windows and the keys.
 // The three windows (logical 640x480): command, preview under it, list
 // beside them. The debug menus (F2, F3) use the same places.
-static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 150, CMD_H = 92;
-static const int PRE_X = 20,  PRE_Y = 136, PRE_W = 150, PRE_H = 196;
+static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 150, CMD_H = 116;
+static const int PRE_X = 20,  PRE_Y = 160, PRE_W = 150, PRE_H = 196;
 static const int LST_X = 184, LST_Y = 36,  LST_W = 436, LST_H = 380;
 
 enum MenuFocus { FOCUS_COMMANDS, FOCUS_LIST, FOCUS_ACTIONS };
@@ -32,6 +32,10 @@ struct GameMenu {
     // Set by the game each frame: something is chasing the player, so the
     // sleeping bag can't be used.
     bool      chased = false;
+    // SAVE: why it can't be done here (set by the game each frame; null when
+    // it can), and the request the game answers by writing the file.
+    const char* save_block   = nullptr;
+    bool        save_request = false;
 
     // Icon sheets, loaded on the first draw (they need the renderer).
     SDL_Texture* items   = nullptr;   // assets/items.png, one 16px cell per Item
@@ -40,6 +44,8 @@ struct GameMenu {
 };
 
 void game_menu_toggle(GameMenu* m);
+// A line in the menu's message place for a moment ("SAVED").
+void game_menu_say(GameMenu* m, const char* note);
 // Keys, while open. Reads the raw input: the game itself gets a blank one.
 void game_menu_update(GameMenu* m, Player* p, const Input* in, float dt);
 void game_menu_draw(GameMenu* m, const Player* p, SDL_Renderer* ren);

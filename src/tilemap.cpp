@@ -3,6 +3,7 @@
 #include "dungeon_kinds.h"
 #include "dungeon.h"         // material_min_difficulty, for the guarantee pass
 #include "core.h"
+#include "collision.h"    // the walked-into rule, for the ways in
 #include <SDL2/SDL_image.h>
 #include "resource_node.h"
 #include "towns.h"
@@ -569,17 +570,37 @@ static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
     return n;
 }
 
+static inline bool is_cave_opening_cell(int id);
 bool tilemap_way_in(const Tilemap* map, float px, float py) {
     px = wrap_px(px);
     py = wrap_py(py);
     int tx = (int)floorf(px / TILE_SIZE), ty = (int)floorf(py / TILE_SIZE);
     if (!in_bounds(tx, ty)) return false;
     int ov = map->overlay[ty][tx];
-    if (entrance_art_role(ov) != ART_STAMP) return true;
+    if (entrance_art_role(ov) != ART_STAMP) {
+        // No drawn way: a cave mouth is walked into, as far in as its dark
+        // lets the feet go; a hole in the ground is stepped onto, its middle.
+        if (!way_opening(px - tx * TILE_SIZE)) return false;
+        return is_cave_opening_cell(ov) ? feet_walked_into(map, px, py, 0, -1, tilemap_pixel_solid)
+                                        : way_opening(py - ty * TILE_SIZE);
+    }
     const ArtCellDepth* d = tilemap_art_depth(ov);
     int ax = (int)((px - tx * TILE_SIZE) * 16.0f / TILE_SIZE);
     int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
     return d && ((d->way[ay & 15] >> (ax & 15)) & 1);
+}
+
+int tilemap_door_at(const Tilemap* map, float px, float py) {
+    px = wrap_px(px);
+    py = wrap_py(py);
+    int tx = (int)floorf(px / TILE_SIZE);
+    float top = py - (HB_Y2 - HB_Y1) * 0.5f;                  // the feet box's
+    for (int i = 0; i < map->num_doors; i++) {
+        const InteriorDoor& d = map->doors[i];
+        float foot = (d.y + 1) * (float)TILE_SIZE;
+        if (tx >= d.x && tx < d.x + d.w && top < foot && py >= foot - TILE_SIZE) return i;
+    }
+    return -1;
 }
 
 // Whether art pixel (ax, ay) of tile (x, y) is ground something stands on.
@@ -7574,23 +7595,6 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     }
 }
 
-void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
-                  int screen_w, int screen_h,
-                  float player_x, float player_y)
-{
-    // Pick a step size so the minimap fits within 80% of the screen
-    int max_dim = (screen_w < screen_h ? screen_w : screen_h) * 4 / 5;
-    int step = 1;
-    while (MAP_WIDTH / step > max_dim || MAP_HEIGHT / step > max_dim)
-        step++;
-    const int mw = (MAP_WIDTH  / step);
-    const int mh = (MAP_HEIGHT / step);
-    int ox = (screen_w - mw) / 2;
-    int oy = (screen_h - mh) / 2;
-
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-    draw_nes_panel(renderer, ox - 4, oy - 4, mw + 8, mh + 8);
-
     // Priority order for block sampling: higher = wins over lower tiles in block.
     // TREE and ROCK have priority 0 so they render as grass (not drawn separately).
     static const int tile_priority[] = {
@@ -7706,30 +7710,107 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
     };
     static const int NUM_MM_COLORS = (int)(sizeof(tile_colors) / sizeof(tile_colors[0]));
 
+// The map colour of the size x size block of tiles at (x, y): its
+// highest-priority tile's.
+static SDL_Color minimap_block_color(const Tilemap* map, int x, int y, int size) {
+    int best_id = TILE_GRASS;
+    int best_pri = -1;
+    int x1 = x + size < MAP_WIDTH  ? x + size : MAP_WIDTH;
+    int y1 = y + size < MAP_HEIGHT ? y + size : MAP_HEIGHT;
+    for (int by = y; by < y1; by++) {
+        for (int bx = x; bx < x1; bx++) {
+            int id = map->tiles[by][bx];
+            // A track is no longer written into the tile, so sample its
+            // layer too -- at the priority the table already gives it,
+            // which is the highest there is and deliberately so: three
+            // tiles wide sampled every few tiles would vanish more often
+            // than not at anything lower.
+            if (map->route[by][bx])
+                id = (map->route[by][bx] == ROUTE_ROAD) ? TILE_ROAD : TILE_WASTE_TRAIL;
+            if (id >= 0 && id < NUM_MM_COLORS && tile_priority[id] > best_pri) {
+                best_pri = tile_priority[id];
+                best_id  = id;
+            }
+        }
+    }
+    return tile_colors[best_id];
+}
+
+void explore_mark(uint8_t explored[EXPLORE_H][EXPLORE_W], float player_x, float player_y) {
+    int cx = (int)(player_x / TILE_SIZE) / EXPLORE_CELL, cy = (int)(player_y / TILE_SIZE) / EXPLORE_CELL;
+    for (int y = cy - 1; y <= cy + 1; y++)
+        for (int x = cx - 1; x <= cx + 1; x++)
+            if (x >= 0 && x < EXPLORE_W && y >= 0 && y < EXPLORE_H) explored[y][x] = 1;
+}
+
+// The player's map: a window of the world around them, a few pixels a tile,
+// showing only the country they have been through. They are always its
+// centre; px, the pixels a tile, is its zoom.
+// ponytail: the window stops at the world's edge (black beyond) rather than
+// wrapping across the seam; wrap the tile lookups if the seam is ever
+// somewhere a player lingers.
+void minimap_draw_local(const Tilemap* map, SDL_Renderer* renderer,
+                        int screen_w, int screen_h, float player_x, float player_y,
+                        int px,
+                        const uint8_t explored[EXPLORE_H][EXPLORE_W])
+{
+    const int PX = px, SPAN = 384 / px;   // pixels a tile, tiles across a 384px window
+    const int mw = SPAN * PX, mh = SPAN * PX;
+    int ox = (screen_w - mw) / 2, oy = (screen_h - mh) / 2;
+    int ptx = (int)(player_x / TILE_SIZE), pty = (int)(player_y / TILE_SIZE);
+    int tx0 = ptx - SPAN / 2, ty0 = pty - SPAN / 2;
+    auto seen = [&](int tx, int ty) {
+        return tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT &&
+               explored[ty / EXPLORE_CELL][tx / EXPLORE_CELL];
+    };
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    draw_nes_panel(renderer, ox - 4, oy - 4, mw + 8, mh + 8);
+    for (int y = 0; y < SPAN; y++) {
+        for (int x = 0; x < SPAN; x++) {
+            if (!seen(tx0 + x, ty0 + y)) continue;   // unexplored: the panel's black
+            SDL_Color c = minimap_block_color(map, tx0 + x, ty0 + y, 1);
+            fc_draw_color(renderer, c.r, c.g, c.b, 255);
+            SDL_Rect r = { ox + x * PX, oy + y * PX, PX, PX };
+            SDL_RenderFillRect(renderer, &r);
+        }
+    }
+    // What has been found: dungeon mouths in red, as on the whole-world map.
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance* e = &map->dungeon_entrances[i];
+        int x = e->x - tx0, y = e->y - ty0;
+        if (x < 1 || x >= SPAN - 1 || y < 1 || y >= SPAN - 1 || !seen(e->x, e->y)) continue;
+        fc_draw_color(renderer, 255, 0, 0, 255);
+        SDL_Rect d = { ox + x * PX - 2, oy + y * PX - 2, 7, 7 };
+        SDL_RenderFillRect(renderer, &d);
+    }
+    if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1) fc_draw_color(renderer, 0, 255, 255, 255);
+    else                                         fc_draw_color(renderer, 255, 255, 255, 255);
+    SDL_Rect dot = { ox + (SPAN / 2) * PX - 2, oy + (SPAN / 2) * PX - 2, 7, 7 };
+    SDL_RenderFillRect(renderer, &dot);
+}
+
+void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
+                  int screen_w, int screen_h,
+                  float player_x, float player_y)
+{
+    // Pick a step size so the minimap fits within 80% of the screen
+    int max_dim = (screen_w < screen_h ? screen_w : screen_h) * 4 / 5;
+    int step = 1;
+    while (MAP_WIDTH / step > max_dim || MAP_HEIGHT / step > max_dim)
+        step++;
+    const int mw = (MAP_WIDTH  / step);
+    const int mh = (MAP_HEIGHT / step);
+    int ox = (screen_w - mw) / 2;
+    int oy = (screen_h - mh) / 2;
+
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+    draw_nes_panel(renderer, ox - 4, oy - 4, mw + 8, mh + 8);
+
+
     for (int y = 0; y < MAP_HEIGHT; y += step) {
         for (int x = 0; x < MAP_WIDTH; x += step) {
-            // Scan the full step×step block, keep highest-priority tile
-            int best_id = TILE_GRASS;
-            int best_pri = -1;
-            int x1 = x + step < MAP_WIDTH  ? x + step : MAP_WIDTH;
-            int y1 = y + step < MAP_HEIGHT ? y + step : MAP_HEIGHT;
-            for (int by = y; by < y1; by++) {
-                for (int bx = x; bx < x1; bx++) {
-                    int id = map->tiles[by][bx];
-                    // A track is no longer written into the tile, so sample its
-                    // layer too — at the priority the table already gives it,
-                    // which is the highest there is and deliberately so: three
-                    // tiles wide sampled every few tiles would vanish more often
-                    // than not at anything lower.
-                    if (map->route[by][bx])
-                        id = (map->route[by][bx] == ROUTE_ROAD) ? TILE_ROAD : TILE_WASTE_TRAIL;
-                    if (id >= 0 && id < NUM_MM_COLORS && tile_priority[id] > best_pri) {
-                        best_pri = tile_priority[id];
-                        best_id  = id;
-                    }
-                }
-            }
-            SDL_Color c = tile_colors[best_id];
+            SDL_Color c = minimap_block_color(map, x, y, step);
             fc_draw_color(renderer, c.r, c.g, c.b, 255);
             SDL_Rect r = { ox + x / step, oy + y / step, 1, 1 };
             SDL_RenderFillRect(renderer, &r);
@@ -8229,7 +8310,17 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
         int ay = (int)((py - ty * TILE_SIZE) * 16.0f / TILE_SIZE);
         if (ax < 0) ax = 0; else if (ax > 15) ax = 15;
         if (ay < 0) ay = 0; else if (ay > 15) ay = 15;
-        if (art_pixel_solid(map, tx, ty, ax, ay)) return true;
+        if (art_pixel_solid(map, tx, ty, ax, ay)) {
+            // A house's door lets the feet a step into it, as a cave's mouth
+            // does: DOOR_STEP up from its foot, the whole door across. That
+            // step is the door's hitbox (tilemap_door_at).
+            bool step = false;
+            for (int i = 0; i < map->num_doors && !step && ay >= 16 - DOOR_STEP * 16 / TILE_SIZE; i++) {
+                const InteriorDoor& d = map->doors[i];
+                step = ty == d.y && tx >= d.x && tx < d.x + d.w;
+            }
+            if (!step) return true;
+        }
     }
 
     // The cliff is drawn along a contour through the middle of a cell too, and

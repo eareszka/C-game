@@ -129,11 +129,26 @@ bool interior_feet_fit(const InteriorMap* im, float x, float y)
     return can_occupy(im, x, y, interior_solid);
 }
 
+// The door in a drawn room's left wall, every room's alike (door() in
+// tools/interior_room.py: the frame's columns 34 to 43, at OX, OY = 32, 49), in
+// room pixels: the columns it stands over, and the foot of the wall it is in,
+// which runs up to the right along x + y = DOOR_WALL. Its hitbox is the floor
+// before it (user's sketch): as long as the door, DOOR_REACH out from the wall
+// straight across, so a slanted box as the wall is slanted.
+static const float DOOR_X0 = 2 * (32 + 34), DOOR_X1 = 2 * (32 + 44);
+static const float DOOR_WALL = 2 * (32 + 49 + 63 + 72), DOOR_REACH = 24;
+
 void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap* im)
 {
-    // Feet on the way out's floor, facing into the room.
-    ip->x = im->enter_x - (HB_X1 + HB_X2) * 0.5f;
-    ip->y = im->enter_y - (HB_Y1 + HB_Y2) * 0.5f;
+    // Feet before the middle of the door, a pixel clear of its hitbox, facing
+    // into the room; a placeholder room's, on its doormat.
+    float fx = (DOOR_X0 + DOOR_X1) * 0.5f, fy = DOOR_WALL - fx;
+    bool stood = im->prebuilt && stand_clear(&fx, &fy, 1, 0,
+        [&](float x, float y) { return interior_at_exit(im, x, y); },
+        [&](float x, float y) { return interior_feet_fit(im, x - (HB_X1 + HB_X2) * 0.5f, y - (HB_Y1 + HB_Y2) * 0.5f); });
+    if (!stood) { fx = im->enter_x; fy = im->enter_y; }
+    ip->x = fx - (HB_X1 + HB_X2) * 0.5f;
+    ip->y = fy - (HB_Y1 + HB_Y2) * 0.5f;
     ip->speed   = PLAYER_WALK_SPEED;
     ip->at_exit = 1;
 
@@ -164,14 +179,20 @@ void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
         if (ip->x == px && ip->y == py) player->is_moving = 0;
     }
 
-    float feet_x = ip->x + (HB_X1 + HB_X2) * 0.5f;
-    float feet_y = ip->y + (HB_Y1 + HB_Y2) * 0.5f;
-    int tx = (int)(feet_x / IMAP_TILE);
-    int ty = (int)(feet_y / IMAP_TILE);
-    ip->at_exit = (tx >= 0 && tx < IMAP_W && ty >= 0 && ty < IMAP_H &&
-                   im->tiles[ty][tx] == INT_EXIT);
+    ip->at_exit = interior_at_exit(im, ip->x + (HB_X1 + HB_X2) * 0.5f, ip->y + (HB_Y1 + HB_Y2) * 0.5f);
 
     player_animate(player, dt, anim_speed);
+}
+
+bool interior_at_exit(const InteriorMap* im, float feet_x, float feet_y)
+{
+    if (!im->prebuilt) {                                   // a placeholder room: its doormat
+        int tx = (int)(feet_x / IMAP_TILE), ty = (int)(feet_y / IMAP_TILE);
+        return tx >= 0 && tx < IMAP_W && ty >= 0 && ty < IMAP_H && im->tiles[ty][tx] == INT_EXIT;
+    }
+    float out  = feet_x + feet_y - DOOR_WALL;              // from the wall, straight across
+    float wall = feet_x - out;                             // the wall's column there
+    return out >= 0 && out <= DOOR_REACH && wall >= DOOR_X0 && wall <= DOOR_X1;
 }
 
 void interior_draw_over_player(const InteriorMap* im, SDL_Renderer* ren,

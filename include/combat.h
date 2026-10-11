@@ -62,9 +62,7 @@ float facing_angle(int facing);
 // Attack trigger, plus advancing an already-running swing/thrust/throw, for
 // one frame. hx,hy is the player's harvest-hitbox centre. tiles is the
 // overworld's tile-based harvest system; pass null wherever there is none
-// (every dungeon), and every tile_* strike is skipped. attack_blocked
-// suppresses only the *trigger* (e.g. standing at a door/entrance prompt) --
-// a swing or throw already in flight still advances regardless. cam is used
+// (every dungeon), and every tile_* strike is skipped. cam is used
 // only to retire a thrown object once it leaves view, and may be null.
 //
 // out must not be null: pass a scratch HarvestResult if the caller has no use
@@ -73,7 +71,7 @@ float facing_angle(int facing);
 // rock as ore of cave_ore (a Material) in a cave, or -1 outside one.
 void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, float dt,
                          float hx, float hy, ResourceNodeList* resources, Tilemap* tiles,
-                         const Camera* cam, bool attack_blocked, int cave_ore, HarvestResult* out);
+                         const Camera* cam, int cave_ore, HarvestResult* out);
 
 // Ticks freeze_t down by dt if a heavy swing is still rooting the player, and
 // reports whether movement should be suppressed this frame. Callers that read

@@ -48,7 +48,8 @@ struct Ghost { float x, y, vx, vy, r, delay, launch, off, hl, ang;
                float zig, zig_every, zig_t; int zig_s;
                float ease, ease_min;
                bool bounce;
-               float ocvx, ocvy, oease, omin; };   // orbit centre drift; outward-speed easing   // ricochets off the arena walls (folded, ignoring its bounce count)   // easing: speed falls at ease px/s^2 to ease_min   // zigzag: swings 2*zig every zig_every   // a boomerang's pull (accel without min_speed)   // ow != 0: spirals out from (ocx, ocy)
+               float ocvx, ocvy, oease, omin;
+               float wave = 0.0f, wave_w = 0.0f, wave_t = 0.0f; };   // a waving shot: swing, rate, how far through it is   // orbit centre drift; outward-speed easing   // ricochets off the arena walls (folded, ignoring its bounce count)   // easing: speed falls at ease px/s^2 to ease_min   // zigzag: swings 2*zig every zig_every   // a boomerang's pull (accel without min_speed)   // ow != 0: spirals out from (ocx, ocy)
 
 // Telegraph lines this frame, as the bot sees them: each one's whole line
 // (it grows to the arena edge), dangerous now or soon -- a laser that hurts.
@@ -106,6 +107,12 @@ static float clearance(const std::vector<Ghost>& gs, float px, float py, float m
             } else if (g.ease < 0.0f) {
                 float sp = hypotf(g.vx, g.vy) + 1e-6f, ds = eased_dist(sp, g.ease, g.ease_min, t);
                 bx = g.x + g.vx / sp * ds; by = g.y + g.vy / sp * ds;
+            } else if (g.wave != 0.0f && g.wave_w != 0.0f) {
+                // Waving (BulletSpawn::wave): along its mean course at its
+                // speed, and out to the side by the swing's integral.
+                float sp = hypotf(g.vx, g.vy), mean = atan2f(g.vy, g.vx) - g.wave * sinf(g.wave_w * g.wave_t);
+                float side = sp * g.wave / g.wave_w * (cosf(g.wave_w * g.wave_t) - cosf(g.wave_w * (g.wave_t + t)));
+                bx = g.x + cosf(mean) * sp * t - sinf(mean) * side; by = g.y + sinf(mean) * sp * t + cosf(mean) * side;
             } else { bx = g.x + g.vx * t + 0.5f * g.ax * t * t; by = g.y + g.vy * t + 0.5f * g.ay * t * t; }
             if (g.bounce) {   // fold back into the arena, as walls reflect it
                 auto fold = [](float v, float lo, float hi) {
@@ -243,13 +250,14 @@ int main(int argc, char** argv) {
         if (seek > 0.0f) { home_x = en->x; home_y = fminf(en->y + seek, ARENA_H - 30.0f); }
         // The bot's move.
         std::vector<Ghost> gs;
-        for (const Bullet& b : bs._enemy_bullets) if (b.active)
+        for (const Bullet& b : bs._enemy_bullets) if (b.active && bullet_fading(b) == 0.0f)   // (a fading shot can't hurt)
             gs.push_back({ b.x, b.y, b.vx, b.vy, b.radius, b.delay, b.launch_speed, b.launch_off, b.half_len, b.ang,
                            b.ocx, b.ocy, b.orad, b.oang, b.ovr, b.ow,
                            b.min_speed > 0.0f ? 0.0f : b.ux * b.accel, b.min_speed > 0.0f ? 0.0f : b.uy * b.accel,
                            b.zig, b.zig_every, b.zig_t, b.zig_s,
                            b.min_speed > 0.0f && b.ow == 0.0f ? b.accel : 0.0f, b.min_speed, b.bouncing,
-                           b.ocvx, b.ocvy, b.ow != 0.0f && b.min_speed > 0.0f ? b.accel : 0.0f, b.min_speed });
+                           b.ocvx, b.ocvy, b.ow != 0.0f && b.min_speed > 0.0f ? b.accel : 0.0f, b.min_speed,
+                           b.wave, b.wave_w, b.wave_t });
         // Keep off the body always (a lunge starts without notice to a bot),
         // moving on at the speed it has now.
         float er = bs._hit_r;
@@ -386,7 +394,11 @@ int main(int argc, char** argv) {
             bmx = d > 40.0f ? dx / d : 0.0f; bmy = d > 40.0f ? dy / d : 0.0f; bsp = chase_v;
         }
         if (hug > 0.0f) { bs._bp.x = en->x; bs._bp.y = en->y + hug; bsp = 0.0f; }
-        if (still) { bs._bp.x = still_x; bs._bp.y = still_y; bsp = 0.0f; }
+        if (still) {   // ...but thrown like anyone while a shove lasts (then back to the spot)
+            float svx, svy; en->shove(&svx, &svy);
+            if (svx == 0.0f && svy == 0.0f) { bs._bp.x = still_x; bs._bp.y = still_y; }
+            bsp = 0.0f;
+        }
         // Facing as the map keys set it (player_read_input): a new direction
         // is a new key press, which unlocks facing; unlocked, it follows the
         // movement. The battle locks it toward the enemy while it is visible.
@@ -396,8 +408,7 @@ int main(int argc, char** argv) {
             last_dir = dir;
             if (!player.facing_locked && bsp > 0.0f) player.facing = facing_from(bmx, bmy);
         }
-        bs._bp.x = fminf(fmaxf(bs._bp.x + bmx * bsp * DT, 16.0f), ARENA_W - 16.0f);
-        bs._bp.y = fminf(fmaxf(bs._bp.y + bmy * bsp * DT, ARENA_TOP + 16.0f), ARENA_H - 16.0f);
+        bs._walk(bs._bp.x + bmx * bsp * DT, bs._bp.y + bmy * bsp * DT);   // as the game moves them: in the arena, off a solid enemy
 
         // One frame of the fight, in update()'s order, without the player's
         // shots: the enemy bleeds evenly instead.

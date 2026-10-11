@@ -42,6 +42,13 @@ void overworld_init(Overworld* ow, Player* player, float x, float y);
 // one entry per node or tile, since a scythe sweep hits several at once.
 // cam is needed only to retire a thrown object once it leaves the view; it is
 // read, never modified, and may be null if nothing is in flight.
+// Arriving outside: stood before the middle of the house door that opens
+// interior_id, or of the way in of the entrance at tile (tx, ty), a pixel clear
+// of its hitbox and facing out (stand_clear, collision.h).
+void overworld_stand_before_door(Overworld* ow, Player* player, const Tilemap* map, int interior_id);
+void overworld_stand_before_entrance(Overworld* ow, Player* player, const Tilemap* map, int tx, int ty);
+// Whether feet centred at (feet_x, feet_y) are in a dungeon entrance's way in.
+bool overworld_entrance_at(const Tilemap* map, float feet_x, float feet_y);
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       ResourceNodeList* resources, Tilemap* map, const Camera* cam,
                       bool noclip = false, HarvestResult* out_harvest = nullptr);
