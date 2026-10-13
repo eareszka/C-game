@@ -16,6 +16,11 @@ it to tools/draw_views.py, which draws it through the pixel plugin.
 Tones: K line; B brick (also the side face), S its shade (also the door);
 M mortar (also the trim and the panes); R roof.
 
+The coastal town's houses (art/structures/coast/) are the same parts in white
+clapboard: House(cw, ch, clapboard_tone), B the paint and S the shadow under
+each board, M the paint of the shutters, the casing and the panes, and a
+chimney in its own red brick (tones=CHIMNEY).
+
 Every pixel says the ground row it stands over (Grid.footy) and each wing the
 ground it covers (Grid.foot), for the game's per-pixel collision and for
 what is drawn over the player.
@@ -28,7 +33,12 @@ DOOR_W, DOOR_H = 12, 22    # every house's door
 
 # 3x5 capitals for a sign
 FONT = {'B': ['##.', '#.#', '##.', '#.#', '##.'], 'O': ['.#.', '#.#', '#.#', '#.#', '.#.'],
-        'K': ['#.#', '#.#', '##.', '#.#', '#.#'], 'S': ['.##', '#..', '.#.', '..#', '##.']}
+        'K': ['#.#', '#.#', '##.', '#.#', '#.#'], 'S': ['.##', '#..', '.#.', '..#', '##.'],
+        'T': ['###', '.#.', '.#.', '.#.', '.#.'], 'R': ['##.', '#.#', '##.', '#.#', '#.#'],
+        'E': ['###', '#..', '##.', '#..', '###'], 'I': ['###', '.#.', '.#.', '.#.', '###'],
+        'N': ['###', '#.#', '#.#', '#.#', '#.#']}
+
+CHIMNEY = {'B': 'X', 'S': 'x', 'M': 'x'}    # a chimney's own brick on a house that is not brick
 
 
 def brick_tone(rx, ry):
@@ -45,10 +55,33 @@ def brick_tone(rx, ry):
     return 'B'
 
 
+def clapboard_tone(rx, ry):
+    """Boards laid in the brick's courses, four high: the board its base tone,
+    the shadow under it along its bottom row. No joints."""
+    return 'S' if ry % COURSE_H == COURSE_H - 1 else 'B'
+
+
+def triangle(put, a, b, c, tone):
+    """A filled triangle a, b, c, black along its edge."""
+    side = lambda p, q, r: (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    xs, ys = [p[0] for p in (a, b, c)], [p[1] for p in (a, b, c)]
+    pts = set()
+    for x in range(min(xs), max(xs) + 1):
+        for y in range(min(ys), max(ys) + 1):
+            v = [side(a, b, (x, y)), side(b, c, (x, y)), side(c, a, (x, y))]
+            if all(i >= 0 for i in v) or all(i <= 0 for i in v):
+                pts.add((x, y))
+    for x, y in pts:
+        edge = any((x + i, y + j) not in pts for i, j in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+        put(x, y, 'K' if edge else tone)
+
+
 class House:
     """A block cw x ch cells; the ground line its front stands on is the
-    bottom row. A point x across, d back and z up lands at (x + d, B - z - d)."""
-    def __init__(self, cw, ch):
+    bottom row. A point x across, d back and z up lands at (x + d, B - z - d).
+    tone(rx, ry) is what its walls are laid in."""
+    def __init__(self, cw, ch, tone=brick_tone):
+        self.tone = tone
         self.w, self.h = cw * 16, ch * 16
         self.B = self.h - 1
         self.c, self.f = {}, {}
@@ -100,7 +133,7 @@ class House:
         yt = B - d0 - wall + 1                               # the front wall
         for y in range(yt, B - d0 + 1):
             for x in range(x0, x1 + 1):
-                c = 'K' if x == x0 or y == B - d0 else brick_tone(x - x0, y - yt)
+                c = 'K' if x == x0 or y == B - d0 else self.tone(x - x0, y - yt)
                 self.put(x + d0, y, c, B - d0)
         if not rise:
             for d in range(d0, d1 + 1):                      # the flat roof's top
@@ -181,26 +214,28 @@ class House:
                     c = 'K'
                 self.put(x, y, c, B)
 
-    def chimney(self, x0, w, d, z_top, depth=4):
+    def chimney(self, x0, w, d, z_top, depth=4, tones=None):
         """A brick chimney, a box in the oblique view like the house: its
         front face d back, brick; its right side running back `depth` in the
         side face's tone; its top, a rim round a black flue. It stands from
         the ground up, so whatever of the house is nearer -- the roof in front
-        of its foot, the wall -- hides the rest (the depth test)."""
+        of its foot, the wall -- hides the rest (the depth test). tones: the
+        letters it takes for the wall's, where the house is not brick."""
         B = self.B
+        put = self.put if not tones else lambda x, y, c, f: self.put(x, y, tones.get(c, c), f)
         for z in range(z_top + 1):                           # the front
             for x in range(x0, x0 + w):
                 ry = z_top - z
                 c = 'K' if x == x0 or ry == 0 else brick_tone(x - x0, ry)
-                self.put(x + d, B - z - d, c, B - d)
+                put(x + d, B - z - d, c, B - d)
         for k in range(1, depth + 1):                        # the side, column by column back
             for z in range(z_top + 1):
                 c = 'K' if k == depth or z == z_top else 'B'
-                self.put(x0 + w - 1 + k + d, B - z - d - k, c, B - d - k)
+                put(x0 + w - 1 + k + d, B - z - d - k, c, B - d - k)
         for k in range(1, depth + 1):                        # the top
             for x in range(x0, x0 + w):
                 rim = k in (1, depth) or x in (x0, x0 + w - 1)
-                self.put(x + k + d, B - z_top - d - k, 'M' if rim and k != depth and x != x0 else 'K', B - d - k)
+                put(x + k + d, B - z_top - d - k, 'M' if rim and k != depth and x != x0 else 'K', B - d - k)
 
     def awning(self, x0, x1, z, d0, stripe='S', out=5):
         """A striped awning sloping out and down from the wall, its lower
@@ -219,8 +254,9 @@ class House:
                         c = None
                     self.put(x, y + dy, c, B - d)
 
-    def sign(self, x0, z0, text, d0=0):
-        """A black board with the words in trim, three by five letters."""
+    def sign(self, x0, z0, text, d0=0, ink='M'):
+        """A black board with the words in trim (or the tone `ink`), three by
+        five letters."""
         B = self.B
         w, h = 4 * len(text) + 3, 9
         y0 = B - d0 - z0 - h
@@ -231,7 +267,34 @@ class House:
             for gy, row in enumerate(FONT[ch]):
                 for gx, v in enumerate(row):
                     if v == '#':
-                        self.put(x0 + 2 + i * 4 + gx + d0, y0 + 2 + gy, 'M', B - d0)
+                        self.put(x0 + 2 + i * 4 + gx + d0, y0 + 2 + gy, ink, B - d0)
+
+    def belfry(self, x0, w, z_top, spire, d=2, depth=12, clock=False):
+        """A square tower through the roof, its front just behind the wall's:
+        the wall's own boards, its side a step darker, louvres near its top
+        (or a clock), and on it a four-sided spire `spire` high in the roof's
+        tone, its side turned away black."""
+        B = self.B
+        for z in range(z_top + 1):
+            for x in range(x0, x0 + w):
+                lx, lz = x - x0, z_top - z
+                c = 'K' if lx in (0, w - 1) or lz == 0 else self.tone(lx, lz)
+                if clock:
+                    r2 = (2 * lx - w + 1) ** 2 + (2 * lz - 25) ** 2      # a face 13 across, its centre 12 down
+                    if r2 <= 13 * 13:
+                        hand = (lx == w // 2 and 7 <= lz <= 12) or (lz == 12 and w // 2 <= lx <= w // 2 + 3)
+                        c = 'K' if r2 > 10 * 10 or hand else 'B'
+                elif 4 <= lx <= w - 5 and 6 <= lz <= 19:
+                    c = 'K' if lx in (4, w - 5) or lz in (6, 19) or lz % 3 == 0 else 'S'
+                self.put(x + d, B - z - d, c, B - d)
+        for k in range(1, depth + 1):
+            for z in range(z_top + 1):
+                self.put(x0 + w - 1 + k + d, B - z - d - k, 'K' if k == depth or z == z_top else 'S', B - d - k)
+        yb = B - z_top - d - 1
+        p0, p1, p2 = (x0 + d - 1, yb), (x0 + w + d, yb), (x0 + w + d + depth, yb - depth)
+        apex = (x0 + d + w // 2 + depth // 2, yb - depth // 2 - spire)
+        triangle(lambda x, y, c: self.put(x, y, c, B - d - depth), p1, p2, apex, 'K')
+        triangle(lambda x, y, c: self.put(x, y, c, B - d), p0, p1, apex, 'R')
 
     def finish(self, name, pal, door, merge=()):
         """The design for draw_views: the house, its layers, and its door --

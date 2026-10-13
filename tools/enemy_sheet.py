@@ -21,7 +21,7 @@ The game runs `export` itself when an .aseprite is newer than its PNG
 build_enemy.py's rebuild guard lives here too: built() records the PNG a
 build wrote, hand_edited() says it has changed since (drawn over by hand).
 """
-import sys, os, re, json, hashlib, subprocess, tempfile
+import sys, os, re, json, hashlib, shutil, subprocess, tempfile
 from PIL import Image, ImageOps
 
 ASEPRITE = r"C:\Program Files\Aseprite\Aseprite.exe"
@@ -115,6 +115,38 @@ def hand_edited(png):
     """True if this PNG was built, and has changed since (edited in Aseprite and exported)."""
     was = _load(os.path.dirname(png)).get(os.path.basename(png))
     return os.path.exists(png) and was is not None and _sha(png) != was
+
+CARDINAL = [('D', False), ('D', False), ('R', False), ('R', False), ('U', False), ('R', True), ('R', True), ('D', True)]   # D DR R UR U UL L DL: (view, mirrored)
+
+def cardinal(views):
+    """The one-row sheet of an enemy drawn from three sides, {'D' 'R' 'U': its frames}: the eight directions
+    take them the way an .aseprite with tags D R U exports -- a diagonal below it the front, one above it the
+    side, the left the side mirrored."""
+    n = len(views['D']); w, h = views['D'][0].size
+    sheet = Image.new('RGBA', (8 * n * w, h), (0, 0, 0, 0))
+    for d, (v, mirrored) in enumerate(CARDINAL):
+        for f, im in enumerate(views[v]): sheet.paste(ImageOps.mirror(im) if mirrored else im, ((d * n + f) * w, 0))
+    return sheet
+
+def install(sheet, png, frames, rows=False, ms=None, palette=None, backup=None):
+    """Put a finished sheet in the game: the old PNG and .aseprite copied to `backup`, the PNG written, its
+    .aseprite packed (frame time `ms`, palette a list of 'rrggbb'), checked to export back, the build recorded.
+    Refuses a sheet that was edited by hand since its last build. Returns the tags packed."""
+    png = str(png); ase = os.path.splitext(png)[0] + '.aseprite'
+    assert not hand_edited(png), f'{png} was edited by hand since it was built: read it back before installing over it'
+    if backup:
+        os.makedirs(backup, exist_ok=True)
+        for p in (png, ase):
+            if os.path.exists(p): shutil.copy2(p, backup)
+    sheet.save(png)
+    tags = pack(sheet, ase, frames, rows)
+    if ms or palette:
+        subprocess.run([ASEPRITE, '-b', '--script-param', 'source=' + ase.replace('\\', '/'), '--script-param', f'ms={ms or ""}',
+                        '--script-param', 'pal=' + ','.join(palette or ()), '--script', os.path.join(HERE, 'sheet_meta.lua')], check=True)
+    export(ase)
+    assert Image.open(png).convert('RGBA').tobytes() == sheet.tobytes(), f'{ase}: does not export back to its sheet'
+    built(png)
+    return tags
 
 # -- every sheet the battle loads ---------------------------------------------
 def battle_sheets():

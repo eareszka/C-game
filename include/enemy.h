@@ -123,6 +123,8 @@ public:
     // A Facing to draw it in -- the way it is running -- or -1 to face the
     // player as usual.
     virtual int   move_facing() const { return -1; }
+    // Mirror the selected cell horizontally about its centre.
+    virtual bool  mirror_sprite() const { return false; }
     // True to idle on the alternate idle sheet (EnemySheet::alt) instead --
     // the same animation in another pose, like Paoxiao with its eye shut.
     virtual bool  alt_pose() const { return false; }

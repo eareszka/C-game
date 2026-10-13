@@ -1,0 +1,12 @@
+type 2  floor 450 tiles  extent 93x26  reachable 450 (100.0%)  exit REACHED  spawners 1  loot 1 entry 35,25  exit 105,25 bbox 14 20 106 45 
+type 2  floor 537 tiles  extent 110x22  reachable 537 (100.0%)  exit REACHED  spawners 3  loot 1 entry 35,25  exit 138,10 bbox 30 9 139 30 
+type 2  floor 537 tiles  extent 72x36  reachable 537 (100.0%)  exit REACHED  spawners 3  loot 1 entry 35,25  exit 52,36 bbox 12 10 83 45 
+type 2  floor 519 tiles  extent 117x34  reachable 519 (100.0%)  exit REACHED  spawners 3  loot 2 entry 35,25  exit 136,11 bbox 21 11 137 44 
+type 2  floor 438 tiles  extent 65x25  reachable 438 (100.0%)  exit REACHED  spawners 1  loot 1 entry 35,25  exit 89,23 bbox 30 9 94 33 
+type 2  floor 478 tiles  extent 70x22  reachable 478 (100.0%)  exit REACHED  spawners 3  loot 1 entry 35,25  exit 98,15 bbox 30 9 99 30 
+type 3  floor 815 tiles  extent 80x53  reachable 815 (100.0%)  exit REACHED  spawners 6  loot 2 entry 43,33  exit 112,48 bbox 34 9 113 61 
+type 3  floor 839 tiles  extent 115x51  reachable 839 (100.0%)  exit REACHED  spawners 6  loot 1 entry 43,33  exit 137,23 bbox 24 9 138 59 
+type 3  floor 770 tiles  extent 86x50  reachable 770 (100.0%)  exit REACHED  spawners 5  loot 1 entry 43,33  exit 110,39 bbox 33 10 118 59 
+type 3  floor 555 tiles  extent 72x35  reachable 555 (100.0%)  exit REACHED  spawners 4  loot 1 entry 43,33  exit 95,45 bbox 25 25 96 59 
+type 3  floor 782 tiles  extent 154x31  reachable 782 (100.0%)  exit REACHED  spawners 5  loot 2 entry 43,33  exit 190,11 bbox 38 11 191 41 
+type 3  floor 763 tiles  extent 93x50  reachable 763 (100.0%)  exit REACHED  spawners 4  loot 1 entry 43,33  exit 97,41 bbox 22 11 114 60 

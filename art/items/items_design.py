@@ -8,7 +8,7 @@ One 16x16 drawing per kind of icon. The four capitals are the stone key tones
 (line, shade, base, lit), swapped by gen_items.py for the ramp each icon is
 coloured in -- the ore chunk once per ore, the way the battle shots are. The
 lowercase letters are a fixed green (the emerald ramp) for stems and leaves,
-left as they are, and p is the palette's white, for pages. Mother 1 style: black outline, flat base, a pixel of shade,
+left as they are, and p is the palette's white, for pages, a pillow, white fur. Mother 1 style: black outline, flat base, a pixel of shade,
 little light.
 """
 import json, sys
@@ -19,7 +19,7 @@ PAL = {'K': '000000', 'S': '474751', 'B': '848694', 'L': 'bcbeca',
        's': '235436', 'b': '4fa667', 'l': 'a8f0bc', 'p': 'fcfcfc'}
 ORDER = ['wood', 'ore', 'gold', 'flower', 'gravestone', 'oilbloom',
          'hide', 'bone', 'essence', 'vine', 'raft_book', 'raft',
-         'spearhead', 'moon_steel', 'reapers_edge', 'feather', 'sleeping_bag']
+         'spearhead', 'moon_steel', 'reapers_edge', 'feather', 'sleeping_bag', 'white_fur']
 
 def cell(rows):
     """16 rows of 16, padded with transparent."""
@@ -251,40 +251,61 @@ VIEWS = {
                           '..KLSK',
                           '..KLK',
                           '...KK']),
-    # a feather dropped by a bird: a quill corner to corner, its vane wider
-    # on the lit side, barbs notched in along it
-    'feather': cell(['',
-                     '...........KKK',
-                     '.........KKLLBK',
-                     '........KLLLBSK',
-                     '.......KLLLBBSK',
-                     '......KLLLBBSK',
-                     '.....KLLKBBSSK',
-                     '....KLLLBBSSK',
-                     '....KLLBBSKK',
-                     '...KLLBBSSK',
-                     '...KLKBSSK',
-                     '..KLBBSKK',
-                     '..KBSKK',
-                     '.KLKK',
-                     'KLK',
-                     'KK']),
-    # the sleeping bag, rolled up: a leather roll tied with two bands of vine,
-    # the rolled end towards you on the right
-    'sleeping_bag': cell(['',
-                          '',
-                          '',
-                          '..KKKKKKKKKKK',
-                          '.KLLbLLLbLBBBK',
-                          '.KLLbLLLbBBSBBK',
-                          '.KBBbBBBBBSLSBBK',
-                          '.KBBsBBBBSLLLSBK',
-                          'KBBBsBBBBSLLLSBK',
-                          '.KBBsBBBBSLLLSBK',
-                          '.KBBsBBBBBSLSBBK',
-                          '.KSSsSSSsBBSBBK',
-                          '.KSSsSSSsSBBBK',
-                          '..KKKKKKKKKKK']),
+    # a feather dropped by a bird, white itself (p): its shaft running corner
+    # to corner into a bare quill, the vane split into barbs either side, the
+    # ramp's light down its far edge
+    'feather': cell(['...........K',
+                     '..........KpK',
+                     '........KKpBpK',
+                     '.......KpppBpLK',
+                     '......KpppBppLK',
+                     '.....KppppBpKK',
+                     '....KppppBpppLK',
+                     '....KKKppBppLK',
+                     '...KppppBppLK',
+                     '...KppppBpKK',
+                     '....KppBpLK',
+                     '.....KpBLK',
+                     '....KBKKK',
+                     '...KBK',
+                     '..KBK',
+                     '...K']),
+    # the sleeping bag, laid out and seen from above: a white pillow at its
+    # head, the near corner folded back on its white fur lining, two seams
+    # across the leather
+    'sleeping_bag': cell(['....KKKKKKKK',
+                          '...KppppppppK',
+                          '...KppppppppK',
+                          '...KppppppppK',
+                          '..KLLLLKpppppK',
+                          '..KLBBBBKppppK',
+                          '..KLBBBBBKpppK',
+                          '..KLBBBBBBKppK',
+                          '..KLSSSSSSSSSK',
+                          '..KLBBBBBBBBSK',
+                          '..KLBBBBBBBBSK',
+                          '..KLSSSSSSSSSK',
+                          '..KLBBBBBBBBSK',
+                          '..KLBBBBBBBBSK',
+                          '...KSSSSSSSSK',
+                          '....KKKKKKKK']),
+    # a bear's white fur: a tuft of long locks hanging from where it is
+    # bunched, white itself (p) with the ramp's light as its shade
+    'white_fur': cell(['......KKKK',
+                       '.....KppppK',
+                       '....KppppppK',
+                       '...KppppppLpK',
+                       '...KpppKppLLK',
+                       '..KppppKpppLLK',
+                       '..KppKppKppLLK',
+                       '.KpppKppKpLLLBK',
+                       '.KppKpppKpLKLBK',
+                       '.KppKppKppLKBBK',
+                       'KpppKppKpLLKBBK',
+                       'KppKKppKpLKKBK',
+                       'KpK.KpKKpK.KBK',
+                       '.K..KpK.K...K',
+                       '.....K']),
 }
 
 if __name__ == '__main__':

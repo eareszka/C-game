@@ -23,7 +23,7 @@ typedef struct Overworld {
     int at_interior_door;
     int interior_door_idx;              // index into map->doors, valid when at_interior_door == 1
 
-    // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
+    // Weapon swing/throw state -- see combat.h. Shared machinery with
     // every dungeon (DungeonPlayer, include/dungeon.h).
     WeaponSwingState swing;
 
@@ -54,10 +54,12 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       bool noclip = false, HarvestResult* out_harvest = nullptr);
 
 // Draw the player sprite at any world position — used in all game states.
+// `frame` is the sheet frame to draw instead of the walk's: a swing frame
+// while a weapon is in use (WeaponSwingState::body_frame), -1 for the walk.
 void player_draw(const Player* player, float world_x, float world_y,
-                 const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite);
+                 const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite, int frame = -1);
 
-// Draw whatever the weapon is doing right now — a sweeping blade, a thrust, or
+// Draw whatever the weapon is doing right now — a sweeping blade, a stab, or
 // a thrown object in flight. Does nothing when idle.
 void overworld_draw_swing(const Overworld* ow, const Camera* cam, SDL_Renderer* ren);
 

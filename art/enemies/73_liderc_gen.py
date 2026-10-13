@@ -19,7 +19,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from enemy_shapes import drawn_frames, write, source_path
 
 VW, VH = 96, 64
-PAL = {'K': '000000', 'D': '1e1e24', 'd': '0c0a12', 'e': '5d1e1f', 'Y': 'fae488', 'O': 'fc9838',
+# 8 colours plus black, the bible's limit: the body's near-black shade (0c0a12) was merged into black
+# on 2026-10-12 (it could not be told from it), in 73_views.aseprite itself.
+PAL = {'K': '000000', 'D': '1e1e24', 'e': '5d1e1f', 'Y': 'fae488', 'O': 'fc9838',
        'R': 'b6433d', 'r': '7c0a1b', 'W': 'fcfcfc', 'B': 'c9a433'}
 
 def main():

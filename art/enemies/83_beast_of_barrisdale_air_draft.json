@@ -1,0 +1,99 @@
+{ "frames": {
+   "83_beast_of_barrisdale_air_draft 0.aseprite": {
+    "frame": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 1.aseprite": {
+    "frame": { "x": 100, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 2.aseprite": {
+    "frame": { "x": 200, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 3.aseprite": {
+    "frame": { "x": 300, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 4.aseprite": {
+    "frame": { "x": 400, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 5.aseprite": {
+    "frame": { "x": 500, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 6.aseprite": {
+    "frame": { "x": 600, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 7.aseprite": {
+    "frame": { "x": 700, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 8.aseprite": {
+    "frame": { "x": 800, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   },
+   "83_beast_of_barrisdale_air_draft 9.aseprite": {
+    "frame": { "x": 900, "y": 0, "w": 100, "h": 65 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 100, "h": 65 },
+    "sourceSize": { "w": 100, "h": 65 },
+    "duration": 130
+   }
+ },
+ "meta": {
+  "app": "https://www.aseprite.org/",
+  "version": "1.3.18.2-x64",
+  "image": "83_beast_of_barrisdale_air_draft.png",
+  "format": "RGBA8888",
+  "size": { "w": 1000, "h": 65 },
+  "scale": "1",
+  "frameTags": [
+   { "name": "D", "from": 0, "to": 9, "direction": "forward", "color": "#000000ff" }
+  ],
+  "layers": [
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

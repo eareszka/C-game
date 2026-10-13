@@ -23,8 +23,11 @@ def table(path, start):
     i = s.index(start)
     return s[i:s.index('};', i)]
 
-def main(out, done=()):
-    # done: ids whose bullet patterns are finished -- drawn with a green PATTERNS mark
+def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
+    # done: ids whose bullet patterns are finished -- drawn with a green DONE mark
+    # For charts built on this one (tools/enemy_redraw_sheet.py):
+    #   tags(i) -> [(corner, text, fill)]: 'tr' a large mark top right, 'bl' / 'br' a small one at the bottom
+    #   dim: ids drawn faded;  title: a line across the top;  row_note(ids) -> the text under a row's name
     sheets = [(m.group(1), int(m.group(2) or 3), m.group(3) == 'true') for m in re.finditer(
         # a row is { "path", {loop}, frames, rows, ... } -- or { nullptr } for an
         # enemy with no sprite yet, which still takes its slot
@@ -37,19 +40,27 @@ def main(out, done=()):
     COLS = max(sum(1 for t in tiers if t == k) for k, _, _ in ORDER)
     rows = [(n, c, [i for i, t in enumerate(tiers) if t == k]) for k, n, c in ORDER]
     rows = [r for r in rows if r[2]]
-    img = Image.new('RGB', (LEFT + COLS * (CELL + 6) + 8, len(rows) * (CELL + LAB + 14) + 8), (24, 24, 30))
+    HEAD = 24 if title else 0
+    img = Image.new('RGB', (LEFT + COLS * (CELL + 6) + 8, HEAD + len(rows) * (CELL + LAB + 14) + 8), (24, 24, 30))
     d = ImageDraw.Draw(img)
     try:
         font, big, small = (ImageFont.truetype('arial.ttf', 11), ImageFont.truetype('arialbd.ttf', 15),
                             ImageFont.truetype('arial.ttf', 10))
     except OSError:
         font = big = small = ImageFont.load_default()
-    y = 8
+    if title: d.text((10, 8), title, fill=(235, 235, 235), font=font)
+    def tag(x0, y, corner, text, fill):
+        f, h = (big, 20) if corner == 'tr' else (small, 14)
+        w = int(d.textlength(text, font=f)) + 8
+        x, yy = (x0 + CELL - w if corner in ('tr', 'br') else x0), (y if corner == 'tr' else y + CELL - h)
+        d.rectangle([x, yy, x + w, yy + h], fill=fill)
+        d.text((x + 4, yy + 1), text, fill=(0, 0, 0) if corner == 'tr' else (255, 255, 255), font=f)
+    y = 8 + HEAD
     for name, col, ids in rows:
         d.rectangle([8, y, LEFT - 12, y + CELL + LAB], fill=(36, 36, 44))
         d.rectangle([8, y, 13, y + CELL + LAB], fill=col)
         d.text((20, y + CELL // 2 - 4), name, fill=(240, 240, 240), font=big)
-        d.text((20, y + CELL // 2 + 16), '%d enemies' % len(ids), fill=(150, 150, 160), font=small)
+        d.text((20, y + CELL // 2 + 16), row_note(ids) if row_note else '%d enemies' % len(ids), fill=(150, 150, 160), font=small)
         for j, i in enumerate(ids):
             x0 = LEFT + j * (CELL + 6)
             nm = names[i] if len(names[i]) <= 15 else names[i][:14] + '.'
@@ -71,11 +82,11 @@ def main(out, done=()):
             s = int(s) if s >= 1 else s
             nw, nh = max(1, int(fr.width * s)), max(1, int(fr.height * s))
             sp = fr.resize((nw, nh), Image.NEAREST)
+            if i in dim: sp.putalpha(sp.getchannel('A').point(lambda a: a * 3 // 10))
             img.paste(sp, (x0 + (CELL - nw) // 2, y + (CELL - nh) // 2), sp)
             d.text((x0 + 2, y + CELL + 5), '%02d %s' % (i, nm), fill=(235, 235, 235), font=font)
-            if i in done:                          # patterns finished: a green tag in the corner
-                d.rectangle([x0 + CELL - 30, y + CELL - 14, x0 + CELL, y + CELL], fill=(40, 160, 70))
-                d.text((x0 + CELL - 27, y + CELL - 13), 'DONE', fill=(255, 255, 255), font=small)
+            if i in done: tag(x0, y, 'br', 'DONE', (40, 160, 70))   # patterns finished: a green tag in the corner
+            for corner, text, fill in (tags(i) if tags else ()): tag(x0, y, corner, text, fill)
         y += CELL + LAB + 14
     img.save(out)
 

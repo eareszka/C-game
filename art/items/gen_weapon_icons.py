@@ -10,6 +10,9 @@ ore's row is that drawing with the stone tones swapped for the ore's ramp
 shots, so a weapon's icon is the colour of the shots it fires. The sheet:
 
     row m (Material order), column w (WeaponType order)   16x16 each
+
+and after the seven icons in each row, the same weapons as held on the map,
+straight and then diagonal (HELD, HELD_DIAG in weapons_design.py).
 """
 import os, sys
 from PIL import Image

@@ -13,10 +13,11 @@ Writes
                           oasis.png, drawn through the plugin), as they are
     assets/player_swim.png  the swimmer (art/player/swim.png)
 
-The rock itself is not here: the game fills it with the overworld cliffs'
-texture (src/cliff_texture.inc), in the oasis's darker olive.
+The rock (OASIS_ROCK in oasis.inc) is the overworld cliffs' texture
+(src/cliff_texture.inc) put the interior bible's way: each stone one flat
+tone, no dither and nothing lit (rock()).
 """
-import os, shutil, sys
+import os, re, shutil, sys
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -32,6 +33,32 @@ PIECES = [                                 # name, view, x, y, w, h (pixels with
     ('eye0', 13, 0, 0, 16, 8), ('eye1', 14, 0, 0, 16, 8), ('eye2', 15, 0, 0, 16, 8),
     ('levi', 16, 0, 0, 128, 48), ('levi_near', 17, 0, 0, 256, 72), ('shaft', 20, 0, 0, 64, 208),
 ]
+
+
+def rock():
+    """The cliff texture's rows ('0' crack, '1' shade, '2' base, '3' lit) with
+    every stone -- a piece between cracks, the texture wrapping -- one tone:
+    its shade if over three in ten of it was dithered dark, else its base."""
+    rows = re.findall(r'"(\d+)"', open(os.path.join(ROOT, 'src', 'cliff_texture.inc')).read())
+    n = len(rows)
+    g, seen = [list(r) for r in rows], set()
+    for y0 in range(n):
+        for x0 in range(n):
+            if g[y0][x0] == '0' or (x0, y0) in seen:
+                continue
+            part, stack = [], [(x0, y0)]
+            seen.add((x0, y0))
+            while stack:
+                x, y = stack.pop()
+                part.append((x, y))
+                for q in (((x + 1) % n, y), ((x - 1) % n, y), (x, (y + 1) % n), (x, (y - 1) % n)):
+                    if g[q[1]][q[0]] != '0' and q not in seen:
+                        seen.add(q)
+                        stack.append(q)
+            tone = '1' if sum(rows[y][x] == '1' for x, y in part) > 0.3 * len(part) else '2'
+            for x, y in part:
+                g[y][x] = tone
+    return [''.join(r) for r in g]
 
 
 def main():
@@ -69,6 +96,12 @@ def main():
     out.append('// The water\'s dot lattice, (x %% 8, y %% 8) of the level\'s art pixels.')
     out.append('static const unsigned char OASIS_DOTS[%d][2] = { %s };' % (
         len(ob.DOTS), ', '.join('{%d, %d}' % d for d in sorted(ob.DOTS))))
+    tex = rock()
+    out.append('// The rock: the cliff texture, each stone one flat tone. A digit a pixel: 0 crack, 1 shade, 2 base.')
+    out.append('enum { OASIS_ROCK_N = %d };' % len(tex))
+    out.append('static const char OASIS_ROCK[OASIS_ROCK_N][OASIS_ROCK_N + 1] = {')
+    out.extend('    "%s",' % r for r in tex)
+    out.append('};')
     out.append('// The pieces in assets/oasis.png: x, y, w, h.')
     out.append('enum OasisPiece { %s, OASIS_PIECES };' % ', '.join('OP_' + n.upper() for n, *_ in PIECES))
     out.append('static const short OASIS_PIECE[OASIS_PIECES][4] = {')

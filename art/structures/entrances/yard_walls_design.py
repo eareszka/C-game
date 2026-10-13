@@ -23,10 +23,12 @@ it with the same yard drawn whole.
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from entrance_shapes import Scene, Grid, depth_layers
+from interior_style import MATERIALS
 
-PAL = {'K': '000000',
-       'D': '463422', 'M': '8d6b4f', 'L': 'b2966a',          # weathered wood (the oak's bark)
-       'd': '595965', 'm': '9797aa', 'l': 'c6ccda'}          # the ruins' stone
+# both from the materials every piece shares (art/direction/OVERWORLD_STYLE.md):
+# a top its lightest tone, a front the next, a side turned away the darkest
+PAL = dict(zip('LMD', MATERIALS['wood']['tones']), K='000000',
+           **dict(zip('lmd', MATERIALS['stone']['tones'])))
 STONE = {'D': 'd', 'M': 'm', 'L': 'l'}
 CELL, PIECES = 16, 16
 P = 2                      # the post: this far into its cell across, at the cell's d = 0

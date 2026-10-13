@@ -720,7 +720,21 @@ class Alber : public Enemy {
     int   dir   = 1;       // this breath sweeps clockwise (1) or back (-1)
     float lock  = 0.0f;    // aim at the player when the breath was drawn
     bool  embers = false;  // this cycle's ember spat
+    int   idle_f = 0;      // the flying frame shown
 
+    void at(float fx, float fy, float* ox, float* oy) const {   // art px (72x64, drawn 2x about its middle) -> screen
+        *ox = x + (fx - 36.0f) * 2.0f; *oy = y + (fy - 32.0f) * 2.0f;
+    }
+    // Its mouth as drawn, facing `f` (from behind: the top of its head, the
+    // mouth is past it), riding the wingbeat: the body sits RISE rows lower
+    // on each frame of it.
+    void mouth(int f, float* ox, float* oy) const {
+        static const float MX[8] = { 36, 36, 63, 63, 36, 9, 9, 36 },
+                           MY[8] = { 20.5f, 20.5f, 18.5f, 18.5f, 8, 18.5f, 18.5f, 20.5f };
+        static const float RISE[6] = { 3, 2, 1, 0, 1, 2 };
+        int d = face8(f);
+        at(MX[d], MY[d] + RISE[idle_f % 6], ox, oy);
+    }
     float breath_t() const { return ENRAGED ? 1.1f : 1.4f; }
     float rest_t()   const { return ENRAGED ? 0.7f : 1.0f; }
     bool  breathing() const { return fmodf(cyc, breath_t() + rest_t()) < breath_t(); }
@@ -728,6 +742,7 @@ public:
     Alber() : Enemy(320, 140, 780, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
     const char* name()          const override { return "ALBER"; }
     float       fire_interval() const override { return breathing() ? 0.07f : 0.1f; }
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }   // the frame its mouth is read on
     void update(float dt, float, float) override {
         cyc += dt;
         if (!ENRAGED) return;
@@ -736,7 +751,9 @@ public:
         y = 140.0f +  35.0f * sinf(t * 1.1f);
     }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
+        float mx, my;
+        mouth(facing_toward(px - x, py - y), &mx, &my);         // flame and embers leave its mouth
+        float a = aim_at(mx,my,px,py);
         int now = (int)(cyc / (breath_t() + rest_t()));
         if (now != n) { n = now; lock = a; dir = -dir; embers = false; }
         float k = fmodf(cyc, breath_t() + rest_t());
@@ -744,6 +761,7 @@ public:
             // From 0.8 one side of the locked aim to 0.8 the other.
             float sweep = lock + dir * 0.8f * (2.0f * k / breath_t() - 1.0f);
             out[0] = mk(sweep + (ernd() - 0.5f) * 0.12f, 170.0f + ernd() * 70.0f, 3.0f, 5.0f);
+            out[0].from = true; out[0].ox = mx; out[0].oy = my;
             return 1;
         }
         if (ENRAGED && !embers) {
@@ -751,6 +769,7 @@ public:
             // One ember, a little off the aim: it crosses the arena in
             // about three seconds, two or three rings on the way.
             out[0] = mksp(a + (ernd() < 0.5f ? -0.4f : 0.4f), 120.0f, 1.2f);
+            out[0].from = true; out[0].ox = mx; out[0].oy = my;
             return 1;
         }
         return 0;
@@ -1996,12 +2015,13 @@ public:
 // The asp of the medieval bestiaries (A Book of Creatures): a serpent that
 // "carries instantaneous death in its fangs" and, to resist the snake
 // charmer, presses one ear to the ground and "stops its ears with its tail".
-// UPPER tier, 600 HP, venom-red bullets. MEDIUM sheet (frame 1 the tail
-// plugging its ear, frame 2 its head up, forked tongue out). Coiled in
-// place, it never moves. Every shot leaves from the part of it that makes
-// it (the user): its forked tongue, its coils.
+// UPPER tier, 600 HP, venom-red bullets. MEDIUM sheet (ten idle frames: its
+// tail plugging its ear on 3-5, its forked tongue out on 8-9), drawn from
+// the front, the side and behind. Coiled in place, it never moves. Every
+// shot leaves from the part of it that makes it (the user): its forked
+// tongue, its coils.
 // Phase 1:
-//   Hiss  -- when its tongue flicks out (idle frame 2) a FORKED stream
+//   Hiss  -- when its tongue flicks out (idle frame 8) a FORKED stream
 //            pours from the tongue's tip at the player for HISS_T s: two
 //            snaking lines, swaying opposite ways -- a double helix -- each
 //            curve a serpent winding toward you.
@@ -2019,21 +2039,20 @@ class Asp : public Enemy {
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (42x35, drawn 2x about its middle) -> screen
         *ox = x + (fx - 21.0f) * 2.0f; *oy = y + (fy - 17.5f) * 2.0f;
     }
-    // Its tongue's tip on the hiss frame, by facing (from behind: the top
-    // of its head).
+    // Its tongue's tip on the hiss frame as drawn, by facing: the front view
+    // (a diagonal below it too, the lower left one mirrored), the side (and
+    // a diagonal above it; the left its mirror), and from behind the top of
+    // its head.
     void tongue(float px, float py, float* ox, float* oy) const {
-        int f = facing_toward(px - x, py - y);
-        float fx = f == FACE_DOWN ? 20.5f : f == FACE_DOWN_RIGHT ? 32.0f : f == FACE_RIGHT ? 37.0f
-                 : f == FACE_UP_RIGHT ? 28.0f : f == FACE_UP ? 21.0f : f == FACE_UP_LEFT ? 14.0f
-                 : f == FACE_LEFT ? 4.0f : 9.0f;
-        float fy = f == FACE_RIGHT || f == FACE_LEFT ? 10.0f
-                 : f == FACE_UP || f == FACE_UP_RIGHT || f == FACE_UP_LEFT ? 7.0f : 15.5f;
-        at(fx, fy, ox, oy);
+        static const float TX[8] = { 21.5f, 21.5f, 37.5f, 37.5f, 21.5f, 4.5f, 4.5f, 20.5f },
+                           TY[8] = { 14.5f, 14.5f, 9.5f, 9.5f, 4.5f, 9.5f, 9.5f, 14.5f };
+        int d = face8(facing_toward(px - x, py - y));
+        at(TX[d], TY[d], ox, oy);
     }
 public:
     Asp() : Enemy(320, 140, 600, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
     const char* name()          const override { return "ASP"; }
-    int         breath_frame()  const override { return 2; }       // tongue out
+    int         breath_frame()  const override { return 8; }       // tongue out
     float       fire_interval() const override { return 0.02f; }   // the hiss and fangs on their own clocks
     int         move_facing()   const override { return hiss_t >= 0.0f ? hiss_face : -1; }
     void update(float dt, float, float) override {
@@ -2176,19 +2195,23 @@ public:
 // The zoureg (de Plancy's Dictionnaire Infernal): a snake a foot long of the
 // Arabian desert that goes through rocks, trees, walls and bodies "like a
 // hot knife through butter". UPPER tier, 640 HP, molten-orange bullets.
-// MEDIUM sheet: a red-hot knife of a snake (frame 1 its head drawn back,
-// glowing hotter; frame 2 the thrust). Its shots leave from the part of it
+// MEDIUM sheets, redrawn 2026-10-12, four drawn directions (the user): a
+// red-hot knife of a snake. The idle (6 frames) while it rests and all of
+// phase 2; its `alt` (24_zoureg_windup: head drawn back, glowing hotter)
+// while it aims; its `flap` (24_zoureg_dash: uncoiled, thrown like a knife)
+// while it thrusts. Its shots leave from the part of it
 // that makes them (the user): the white-hot line it cuts.
-// The pattern: it coils and DRAWS BACK, glowing hotter (frame 1) -- the only
+// The pattern: it coils and DRAWS BACK, glowing hotter (the alt sheet) -- the only
 // warning (the user: no line, its sprite signals it), AIM_T s -- fixed on
-// where the player is, then THRUSTS (frame 2) straight there, right across
+// where the player is, then THRUSTS (the dash sheet) straight there, right across
 // to the far wall: it shoots down
 // the line to the wall, touching it hurts, the cut FORMING behind it as it
 // goes -- a white-hot laser (the user) -- and the moment it stops the cut
 // dissipates, spitting EMBERS to both sides, a step apart all along it. It
 // rests a beat where it stopped, and again.
-// Phase 2 (half HP) -- it glides back to the middle, rears its head up, and
-//   three LASERS form out of its three heads (the user), each time shooting
+// Phase 2 (half HP) -- it glides back to the middle and stays there, idle,
+//   with its one head (the user, 2026-10-12: the three heads are gone), and
+//   three LASERS form out of its blade's point, each time shooting
 //   out a different way, then sweeping round to ENCLOSE where
 //   the player is: two close in from either side like a pair of shears,
 //   stopping just short of each other -- the gap opens a little off where the
@@ -2199,7 +2222,8 @@ class Zoureg : public Enemy {
     enum State { REST, AIM, THRUST, HOME, SHEARS };
     static constexpr float AIM_T = 0.6f, THRUST_SPEED = 1100.0f, FADE_T = 0.35f, REST_T = 1.0f;
     static constexpr float EMBER_SPEED = 70.0f;
-    static constexpr float BELLY = (26.0f - 14.5f) * 2.0f;   // its coil's underside, art y 26 in the 29-tall frame: what it slides on
+    static constexpr float BELLY = (17.0f - 14.5f) * 2.0f;   // its underside as it dashes, art y 17 in the 29-tall frame: the cut runs along under it
+    static constexpr float DASH_LOOP = 0.28f;                // the dash sheet's four frames, 70 ms each
     State state = REST;
     float t = 0.0f;
     float sx = 0, sy = 0, ex = 0, ey = 0;   // the line: where it set off, where it stops
@@ -2212,26 +2236,19 @@ class Zoureg : public Enemy {
     static constexpr float S_GROW = 0.5f, S_CLOSE = 1.6f, S_FADE = 0.3f, S_REST = 0.4f;
     static constexpr float S_OPEN = 1.3f, S_GAP_PX = 40.0f;   // S_OPEN: how far the third beam circles   // the shears open this wide, and close to a gap this wide (centre to centre) at the player's distance -- thin (the user), the same wherever they stand
     static constexpr float S_SHIFT = 0.2f, SPIT_EVERY = 0.25f;  // the gap's shift off the player; spit from its head while the shears close
-    float spit_t = 0.0f, bob_t = 0.0f;
+    float spit_t = 0.0f;
     float shear_t = 0.0f, shear_aim = 0.0f;
     float shx[3] = {}, shy[3] = {}, shear_end[2] = {};   // this volley's heads, and the angles the two shear beams close to
     float shear_start[3] = {};                            // ...and the random ways they shoot out first (the user)
     void shear_origin(float* ox, float* oy) const { *ox = x; *oy = y - 12.0f; }   // its head, reared up (aiming)
-    // Its three heads' needle tips on the three-headed sheet (60x35, drawn 2x
-    // with its bottom on the idle frame's: art (c, r) -> (x + 2c - 60,
-    // y - 41 + 2r)) -- the front drawing in every facing (the user), so the
-    // same everywhere: [0] the screen-right head, [1] the screen-left, [2] the
-    // middle one.
-    // The tips bob with the sheet's frames, which it plays itself while the
-    // shears are out (three_frame), so each laser stays on its tip; art
-    // pixel centres (+0.5).
-    int three_frame() const { static const int LOOP[4] = { 0, 1, 0, 2 }; return LOOP[(int)(bob_t / 0.25f) & 3]; }
+    // Its blade's point, where all three lasers leave it now it has one head:
+    // on the idle sheet's front view (44x29, drawn 2x about its middle) art
+    // column 22.0, and the row the idle frame shown has it on -- the neck
+    // stretches a row and settles a row -- so the lasers stay on the point.
+    int idle_f = 0;
     void heads(float, float, float hx[3], float hy[3]) const {
-        static const float RY[3] = { 7, 6, 8 }, LY[3] = { 7, 8, 6 }, MY[3] = { 3, 2, 4 };   // [frame]: its L (screen right), its R, the middle
-        int f = three_frame();
-        hx[0] = x + 2.0f * 43.5f - 60.0f; hy[0] = y - 41.0f + 2.0f * (RY[f] + 0.5f);
-        hx[1] = x + 2.0f * 17.5f - 60.0f; hy[1] = y - 41.0f + 2.0f * (LY[f] + 0.5f);
-        hx[2] = x + 2.0f * 30.5f - 60.0f; hy[2] = y - 41.0f + 2.0f * (MY[f] + 0.5f);
+        static const float ROW[6] = { 2, 1, 1, 2, 3, 3 };   // [idle frame]: the point's row
+        for (int b = 0; b < 3; b++) { hx[b] = x; hy[b] = y + 2.0f * (ROW[idle_f % 6] + 0.5f - 14.5f); }
     }
 
     void aim(float px, float py) {
@@ -2250,9 +2267,15 @@ public:
     const char* name()          const override { return "ZOUREG"; }
     float       fire_interval() const override { return 0.02f; }   // the embers as the cut dissipates
     float       contact_damage() const override { return state == THRUST ? 5.0f : 0.0f; }
-    int   anim_frame()  const override { return state == AIM ? 1 : state == THRUST ? 2 : state == SHEARS ? three_frame() : -1; }
-    bool  alt_pose()    const override { return state == SHEARS; }   // three-headed (24_zoureg_three, from art), a laser from each head
-    int   move_facing() const override { return state == AIM || state == THRUST ? facing_toward(ex - sx, ey - sy) : -1; }
+    bool  alt_pose()    const override { return state == AIM; }      // drawn back, glowing hotter: the warning
+    float flap_phase()  const override { return state == THRUST ? fmodf(t / DASH_LOOP, 1.0f) : -1.0f; }   // the dash
+    int   move_facing() const override {
+        if (state == HOME || state == SHEARS) return FACE_DOWN;      // phase 2: from the front, where its point is measured
+        if (state != AIM && state != THRUST) return -1;
+        float dx = ex - sx, dy = ey - sy;                            // four drawn directions (the user): the nearer axis
+        return fabsf(dx) > fabsf(dy) ? (dx > 0.0f ? FACE_RIGHT : FACE_LEFT) : (dy > 0.0f ? FACE_DOWN : FACE_UP);
+    }
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }   // the frame its point is read on
     int telegraphs(TeleLine out[], int max) const override {
         int n = 0;
         if (state == SHEARS && max >= 3) {
@@ -2298,8 +2321,8 @@ public:
             else { x = HOME_X; y = HOME_Y; state = SHEARS; shear_t = S_GROW + S_CLOSE + S_FADE + S_REST; }
         }
         if (state == SHEARS) {
-            spit_t += dt; bob_t += dt;
-            heads(px, py, shx, shy);                             // the lasers ride the tips as they bob
+            spit_t += dt;
+            heads(px, py, shx, shy);                             // the lasers ride the point as it rises and settles
             if ((shear_t += dt) >= S_GROW + S_CLOSE + S_FADE + S_REST) {   // the next pair of shears, on where the player is now
                 float ox, oy;
                 shear_origin(&ox, &oy);
@@ -2529,19 +2552,22 @@ public:
 //   Tusks    -- off each tusk tip all the while, a stream sweeping slowly to
 //               and fro, curling in toward the middle as it flies -- the two
 //               mirror images, tusk-curved arcs crossing; in dashes of three.
-//   Diamonds -- as the trunk swings (idle frame 2) it SWEEPS out DIAMONDS
-//               from its cave (the user): diamond outlines of shots opening
-//               out of the trunk's tip one after another, the throw sweeping
-//               across the arena below -- left to right, then back the next
-//               time -- each turning slowly as it flies.
+//   Diamonds -- every other swing of the trunk (idle frame 2) it shoots a
+//               burst of DIAMONDS from its cave out of the trunk's tip (the
+//               user): diamond outlines of shots, one after another, each
+//               thrown wide of the player
+//               -- to one side, then the other -- and ARCHING round toward
+//               where the player is now (bending for GEM_BEND s, then
+//               straight on; committing close in, so a sidestep beats it),
+//               turning slowly as it flies.
 // Phase 2 (half HP) -- the rattle: its rattlesnake tail buzzes a three-armed
-//   spiral off its tip all the while, and the sweeps throw more diamonds.
+//   spiral off its tip all the while, and the trunk shoots more diamonds.
 class Grootslang : public Enemy {
     static constexpr float SPEED = 95.0f, TUSK_EVERY = 0.08f, SWEEP = 0.6f, SWEEP_PACE = 1.1f, CURL = 0.5f;
-    static constexpr float RATTLE_EVERY = 0.07f, RATTLE_TURN = 0.29f, GEM_R = 18.0f, GEM_EVERY = 0.13f, GEM_ARC = 1.3f;   // GEM_ARC: the sweep swings this far either side of straight down
+    static constexpr float RATTLE_EVERY = 0.07f, RATTLE_TURN = 0.29f, GEM_R = 18.0f, GEM_EVERY = 0.2f, GEM_WIDE = 0.95f, GEM_BEND = 1.1f;   // GEM_WIDE: how far off the player each is thrown (rad), before it arches in
     static constexpr int   GEM_N = 16;                         // a diamond: 4 corners, 3 shots along each side
     float t = 0.0f, tusk_t = 0.0f, rattle_t = 0.0f, rattle_a = 0.0f;
-    int   tusk_k = 0, gem_left = 0, gem_of = 0, sweeps = 0;
+    int   tusk_k = 0, gem_left = 0, swings = 0;
     // Where the drawn tips are on each idle frame (art/enemies/27_grootslang_design.py): it sinks as it breathes,
     // the trunk's end sways, the rattle shakes. Art px.
     static constexpr float SINK[5] = { 0, 1, 2, 1, 0 }, SWAY[5] = { 0, 2, 1, -1, -2 }, SHAKE[5] = { 0, 1, -1, 1, -1 };
@@ -2558,7 +2584,7 @@ public:
     float       fire_interval() const override { return 0.02f; }   // the tusks and the rattle on their own clocks
     int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { cur = frame; return 0; }
     void update(float dt, float, float) override { t += dt; tusk_t += dt; gem_t += dt; if (ENRAGED) rattle_t += dt; }
-    int fire(float, float, BulletSpawn out[], int max) override {
+    int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
         while (tusk_t >= TUSK_EVERY && n + 2 <= max) {
             // The tusks: a sweeping stream off each tip, curling in, mirrored.
@@ -2576,17 +2602,19 @@ public:
             }
         }
         if (gem_left > 0 && gem_t >= GEM_EVERY && n + GEM_N <= max) {
-            // The diamonds: one more out of the trunk's tip, the throw
-            // sweeping across below (back the other way each sweep).
+            // The diamonds: one more out of the trunk's tip, thrown wide of
+            // the player -- one side, then the other -- and arching in on
+            // where they are now.
             static float sx[GEM_N], sy[GEM_N];
             static bool built = false;
             if (!built) { built = true; gem_points(GEM_R, sx, sy); }
             gem_t = 0.0f;
-            float f = (gem_of - gem_left--) / (float)(gem_of - 1);   // 0 .. 1 along the sweep
-            if (sweeps & 1) f = 1.0f - f;
+            int side = (gem_left-- & 1) ? -1 : 1;
             float mx, my;
             at(49.0f + SWAY[cur], 47.5f + SINK[cur], &mx, &my);   // the trunk's tip
-            n += shape_shots(mx, my, PI / 2 + GEM_ARC * (1.0f - 2.0f * f), SPEED, (gem_left & 1) ? -1.0f : 1.0f, 0.45f, sx, sy, GEM_N, out + n);
+            int m = shape_shots(mx, my, aim_at(mx, my, px, py) + side * GEM_WIDE, SPEED, side * 1.0f, 0.45f, sx, sy, GEM_N, out + n);
+            for (int q = n; q < n + m; q++) { out[q].homing = true; out[q].homing_timer = GEM_BEND; }   // the whole diamond bends toward them (a formation homing)
+            n += m;
         }
         if (ENRAGED) {
             float rx, ry;
@@ -2605,10 +2633,12 @@ public:
         return n;
     }
     int breathe(float, float, BulletSpawn[], int) override {
-        // The trunk swings: a sweep of diamonds begins (fire() throws them).
-        gem_of = gem_left = ENRAGED ? 9 : 7;
+        // The trunk swings: every other swing it shoots a burst of diamonds
+        // (fire() throws them) -- a burst, then a swing's rest: an unbroken
+        // stream of them following the player ran the bot into a corner.
+        if (swings++ & 1) return 0;
+        gem_left = ENRAGED ? 6 : 5;
         gem_t = GEM_EVERY;
-        sweeps++;
         return 0;
     }
 };
@@ -2619,15 +2649,16 @@ public:
 // Creatures): small and weak beside a serpent but bold and skilled, it wins
 // by latching on just below the snake's head; by the Ortus Sanitatis a small
 // four-legged griffin with a long pointed beak and big rabbit's ears. UPPER
-// tier, 640 HP, gold bullets. MEDIUM sheet (frame 1 the ears flick and the
-// wings lift, frame 2 the beak jabs). It stands its ground. Every shot at one
-// pace, SPEED.
+// tier, 640 HP, gold bullets. MEDIUM sheet, redrawn 2026-10-12 as a crested,
+// sitting cat-griffin: 10 frames of 130 ms, the same 1.3 s loop as the old
+// 0 1 0 2 (frame 3, at 390 ms, the wind throws its crest furthest; frame 8, at
+// 1040 ms, it breathes out). It stands its ground. Every shot at one pace, SPEED.
 // Phase 1 -- the easier half (the user):
-//   Peck -- as it pecks (idle frame 2) rings of small shots burst from the
-//           centre of its body: three rings, packed tight, each turned on
-//           from the last and turning as they spread -- curling chains.
-//   Ears -- the ears flick (idle frame 1): a ring of 8 off each ear tip, the
-//           two rings half a step apart.
+//   Peck -- as it breathes out (idle frame PECK_FRAME) rings of small shots
+//           burst from the centre of its body: three rings, packed tight, each
+//           turned on from the last and turning as they spread -- curling chains.
+//   Ears -- the crest is blown out (idle frame CREST_FRAME): a ring of 8 off the
+//           top of each outer plume, the two rings half a step apart.
 // Phase 2 (half HP) -- the full pattern: five rings a peck, every other peck
 //   curling the other way; ear rings of 12.
 class Opimachus : public Enemy {
@@ -2638,6 +2669,8 @@ class Opimachus : public Enemy {
     static constexpr float PECK_GAP = 0.16f;   // between rings: ~16 px apart as they spread (the user: wider)
     int   rings_left = 0, pecks = 0;
     float ring_t = 0.0f, ring_turn = 0.0f, ring_spin = PECK_SPIN, rx_ = 0.0f, ry_ = 0.0f;
+    // The 10-frame sheet's frames that fall where the old loop's frames 1 and 2 began (400 and 1050 ms).
+    static constexpr int CREST_FRAME = 3, PECK_FRAME = 8;
 
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (50x39, drawn 2x about its middle) -> screen
         *ox = x + (fx - 25.0f) * 2.0f; *oy = y + (fy - 19.5f) * 2.0f;
@@ -2665,18 +2698,18 @@ public:
     }
     int on_idle_frame(int frame, float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
-        if (frame == 2) {
+        if (frame == PECK_FRAME) {
             // The peck: rings start bursting from the centre of its body (the user).
             rx_ = x; ry_ = y;
             rings_left = ENRAGED ? 5 : 3; ring_t = PECK_GAP;
             ring_turn = ernd() * TAU;
             ring_spin = (ENRAGED && (pecks & 1)) ? -PECK_SPIN : PECK_SPIN;
             pecks++;
-        } else if (frame == 1) {
-            // The ears flick: a ring off each ear tip, half a step apart
-            // (phase 1 a lighter ring).
+        } else if (frame == CREST_FRAME) {
+            // The crest blown out: a ring off the top of each outer plume, half a
+            // step apart (phase 1 a lighter ring). The tops as drawn on this frame.
             float ex[2], ey[2], turn = ernd() * TAU;
-            at(20.0f, 5.0f, &ex[0], &ey[0]); at(29.0f, 5.0f, &ex[1], &ey[1]);
+            at(22.0f, 4.5f, &ex[0], &ey[0]); at(36.0f, 4.5f, &ex[1], &ey[1]);
             for (int e = 0; e < 2; e++)
                 for (int k = 0, m = ENRAGED ? 12 : 8; k < m && n < max; k++) {
                     BulletSpawn b = mk(turn + (k + e * 0.5f) * (TAU / m), SPEED * 0.85f, 2.5f, 5.0f);
@@ -3234,16 +3267,17 @@ public:
 // chameleon on long kneeless legs "like bamboo stalks without nodes", with
 // twelve long, sharp, forked, sickle-like tongues that lick its prey's flesh
 // away; it lures people with a shrill "wa-o, wa-o". HARD tier, 820 HP,
-// tongue-red bullets. MEDIUM sheet (62x47: frame 1 the tongues fan out into
-// writhing sickles, frame 2 it calls "wa-o", mouth open). Always facing
-// front. Every shot leaves from the part of it that makes it (the user): its
+// tongue-red bullets. MEDIUM sheet (62x47, 10 idle frames: on frame 3 the
+// tongues are fanned widest, on frame 8 they flick again). Phase 1 it turns
+// to face the player; phase 2 it shows its front, so the beams' root keeps
+// still. Every shot leaves from the part of it that makes it (the user): its
 // mouth, its tongues. Every shot at one pace, SPEED.
 // Phase 1 -- high on its stilts at the top, staying put:
-//   Tongues -- as they fan out (idle frame 1), TWELVE forked SICKLES of shots
+//   Tongues -- as they fan out (idle frame 3), TWELVE forked SICKLES of shots
 //              lash out of its mouth every way round (one at the player),
 //              each curved and forked at the tip, writhing (turning) as they
 //              fly, every other one the other way.
-//   Wa-o    -- as it calls (idle frame 2), two shrill rings out of its mouth,
+//   Wa-o    -- as they flick (idle frame 8), two shrill rings out of its mouth,
 //              "wa" and then "o", half a step apart, quavering as they spread.
 // Phase 2 (half HP) -- it stalks to the middle of the arena and its tongues
 //   become LASERS (the user): six beams out of its mouth, forming harmless
@@ -3262,7 +3296,13 @@ class Ajaju : public Enemy {
     bool  centred = false;
     float beam_t = 0.0f, beam_a0 = 0.0f;
 
-    void mouth(float* ox, float* oy) const { *ox = x + (31.5f - 31.0f) * 2.0f; *oy = y + (16.0f - 23.5f) * 2.0f; }   // art px (62x47, drawn 2x about its middle)
+    // Its mouth as drawn, facing `f`: the middle of the mouth line from the
+    // front (and that spot on its head from behind), the tip of its snout
+    // from the side. Art px (62x47, drawn 2x about its middle).
+    void mouth(int f, float* ox, float* oy) const {
+        static const float MX[8] = { 31.5f, 31.5f, 52, 52, 31.5f, 10, 10, 30.5f };
+        *ox = x + (MX[face8(f)] - 31.0f) * 2.0f; *oy = y + (16.5f - 23.5f) * 2.0f;
+    }
     float beam_a(int k) const {
         float t = fmaxf(beam_t - FORM, 0.0f), open = SCISSOR * sinf(t * SCISSOR_PACE);   // the pairs scissoring
         return beam_a0 + SWING * sinf(t * SWING_PACE) + k * (TAU / BEAMS) + ((k & 1) ? open : -open);
@@ -3270,7 +3310,7 @@ class Ajaju : public Enemy {
 public:
     Ajaju() : Enemy(320, 150, 820, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
     const char* name()          const override { return "AJAJU"; }
-    int         move_facing()   const override { return FACE_DOWN; }
+    int         move_facing()   const override { return ENRAGED ? FACE_DOWN : -1; }   // phase 1 the player; phase 2 its front (it walks straight down, and the beams' root must not jump)
     float       fire_interval() const override { return 99.0f; }   // all on its idle frames
     int fire(float, float, BulletSpawn[], int) override { return 0; }
     void update(float dt, float px, float py) override {
@@ -3281,7 +3321,7 @@ public:
             if (d > st) { x += dx / d * st; y += dy / d * st; return; }
             x = MID_X; y = MID_Y; centred = true; beam_t = 0.0f;
             float mx, my;
-            mouth(&mx, &my);
+            mouth(FACE_DOWN, &mx, &my);
             beam_a0 = aim_at(mx, my, px, py) + PI / BEAMS;        // the player in the middle of a gap
             return;
         }
@@ -3291,7 +3331,7 @@ public:
         if (!centred || max < BEAMS + 1) return 0;
         // The tongue lasers: growing out harmless, then hot and sweeping.
         float mx, my;
-        mouth(&mx, &my);
+        mouth(FACE_DOWN, &mx, &my);
         float k = fminf(beam_t / FORM, 1.0f);
         k = 1.0f - (1.0f - k) * (1.0f - k);
         for (int b = 0; b < BEAMS; b++) {
@@ -3310,8 +3350,9 @@ public:
         if (ENRAGED && !centred) return 0;                        // on the move
         int n = 0;
         float mx, my;
-        mouth(&mx, &my);
-        if (frame == 1 && !ENRAGED) {
+        mouth(ENRAGED ? FACE_DOWN : facing_toward(px - x, py - y), &mx, &my);
+        if (frame == 3 && !ENRAGED) {
+            my -= 2.0f;                                           // its head a row up with its breath on this frame
             // The tongues: twelve forked sickles -- a curved run of six, then
             // the fork's two prongs -- lashing out every way, writhing.
             static float sx[TONGUE_N], sy[TONGUE_N];
@@ -3328,7 +3369,7 @@ public:
             float a = aim_at(mx, my, px, py);
             for (int k = 0; k < TONGUES && n + TONGUE_N <= max; k++)
                 n += shape_shots(mx, my, a + k * (TAU / TONGUES), SPEED, (k & 1) ? -WRITHE : WRITHE, 0.4f, sx, sy, TONGUE_N, out + n);
-        } else if (frame == 2) {
+        } else if (frame == 8) {
             // Wa-o: two quavering rings, half a step apart (among the
             // lasers, one).
             int rings = ENRAGED ? 1 : 2;
@@ -3728,6 +3769,7 @@ class Bjarndyrakongur : public Enemy {
 public:
     Bjarndyrakongur() : Enemy(320, 160, 595, {0.75f,1.5f,0.75f,1.5f,1.25f,1.0f,1.0f}) {}
     const char* name()          const override { return "BJARNDYRAKONGUR"; }
+    int         move_facing()   const override { return FACE_DOWN; }   // its sprite is the front only
     float       fire_interval() const override { return ENRAGED ? 2.0f : 3.0f; }
     int fire(float px, float py, BulletSpawn out[], int) override {
         float a = aim_at(x,y,px,py);
@@ -3877,25 +3919,25 @@ public:
 };
 
 // The Beast of Barrisdale (A Book of Creatures): a roaring, flying beast with
-// great wings and three legs, seen by stalkers in Knoydart in the Scottish
+// great wings, seen by stalkers in Knoydart in the Scottish
 // Highlands in the 1800s. HARD tier, 880 HP, ember-orange bullets (its small
-// burning eyes). BIG sheet (98x65, five idle frames, the wings beating slowly;
-// frame 2 it rears, wings thrown high, roaring); flap = 83_..._fly. Every
+// attacks). BIG sheet (100x65, ten 130ms frames: gentle wingbeats and breathing);
+// alt = 83_..._fly, tucked legs and stronger beats throughout phase two. Every
 // shot leaves from the part of it that makes it (the user): its wings, its
 // roaring mouth, its feet. Every shot at one pace, SPEED.
-// Phase 1 -- planted on its three legs at the top, facing front:
-//   Wingbeats -- each beat (idle frames 1 and 3) a gust off each wingtip: a
+// Phase 1 -- three planted feet at the top; the edited view always faces left:
+//   Wingbeats -- each beat (idle frames 2 and 6) a gust off each wingtip: a
 //                fan leaning out and down, curling back in -- mirrored.
-//   Stomp     -- as it settles its weight (idle frames 0 and 4) a small ring
+//   Stomp     -- as it settles its weight (idle frames 0 and 8) a small ring
 //                off each of its three feet.
-//   Roar      -- rearing (idle frame 2) it ROARS: three rings close behind
+//   Roar      -- idle frame 4, from its open mouth: three rings close behind
 //                one another, lined up -- thick spokes, lanes between.
 // Phase 2 (half HP) -- a harder Dingbat (the user): it takes to the air and
 //   goes by turns --
 //   Flying  -- FLY_T s along a great figure of eight, OPEN to the player's
 //              shots: its legs trail talon-drops (a three-pronged fan
 //              straight down) and it roars its spokes on taking off.
-//   Hanging -- HANG_T s still in the air (the idle sheet: wings beating, the
+//   Hanging -- HANG_T s still in the air (the airborne sheet: wings beating, the
 //              tell), BLOCKING: after CATCH_DELAY any shot within CATCH is
 //              caught and flung straight back at the player as two, and it
 //              keeps its wingbeats and roar.
@@ -3905,13 +3947,45 @@ class BeastOfBarrisdale : public Enemy {
     static constexpr float LOOP_W = 0.55f, LOOP_X = 230.0f, LOOP_Y = 80.0f, HOME_Y = 150.0f, FLY_Y = 200.0f;
     static constexpr float FLY_T = 2.4f, HANG_T = 2.0f, CATCH = 76.0f, CATCH_DELAY = 0.35f, RISE = 140.0f;
     static constexpr int   ROAR_N = 24, STOMP_N = 8;
+    struct PartFrame { float mouth[2]; float wings[2][2]; float feet[3][2]; };
+    // Exact pixel positions in the padded 100x65 cells, matching the shown frame.
+    static constexpr PartFrame ART[2][10] = {
+        { // grounded
+            {{26.0f,43.0f}, {{32.0f,16.0f}, {71.0f,6.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,43.0f}, {{32.0f,16.0f}, {71.0f,6.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,43.0f}, {{32.0f,15.0f}, {71.0f,5.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,43.0f}, {{33.0f,15.0f}, {70.0f,4.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,43.0f}, {{32.0f,15.0f}, {71.0f,5.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,44.0f}, {{32.0f,17.0f}, {71.0f,7.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,44.0f}, {{32.0f,18.0f}, {71.0f,8.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,44.0f}, {{31.0f,18.0f}, {72.0f,9.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,44.0f}, {{32.0f,18.0f}, {71.0f,8.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+            {{26.0f,43.0f}, {{32.0f,16.0f}, {71.0f,6.0f}}, {{12.0f,54.0f}, {41.0f,57.0f}, {78.0f,53.0f}}},
+        },
+        { // airborne
+            {{26.0f,43.0f}, {{32.0f,16.0f}, {71.0f,6.0f}}, {{17.0f,47.0f}, {36.0f,48.0f}, {57.0f,44.0f}}},
+            {{26.0f,43.0f}, {{33.0f,15.0f}, {70.0f,4.0f}}, {{17.0f,47.0f}, {36.0f,48.0f}, {57.0f,44.0f}}},
+            {{26.0f,42.0f}, {{33.0f,13.0f}, {70.0f,2.0f}}, {{17.0f,47.0f}, {36.0f,48.0f}, {57.0f,44.0f}}},
+            {{26.0f,42.0f}, {{33.0f,13.0f}, {70.0f,2.0f}}, {{17.0f,47.0f}, {36.0f,48.0f}, {57.0f,44.0f}}},
+            {{26.0f,42.0f}, {{33.0f,14.0f}, {70.0f,3.0f}}, {{17.0f,47.0f}, {36.0f,49.0f}, {57.0f,44.0f}}},
+            {{26.0f,43.0f}, {{32.0f,16.0f}, {71.0f,6.0f}}, {{17.0f,48.0f}, {36.0f,50.0f}, {57.0f,45.0f}}},
+            {{26.0f,43.0f}, {{31.0f,18.0f}, {72.0f,9.0f}}, {{17.0f,48.0f}, {36.0f,49.0f}, {57.0f,45.0f}}},
+            {{26.0f,44.0f}, {{29.0f,21.0f}, {73.0f,13.0f}}, {{17.0f,49.0f}, {36.0f,50.0f}, {57.0f,46.0f}}},
+            {{26.0f,44.0f}, {{29.0f,22.0f}, {74.0f,14.0f}}, {{17.0f,48.0f}, {36.0f,49.0f}, {57.0f,45.0f}}},
+            {{26.0f,44.0f}, {{30.0f,20.0f}, {72.0f,11.0f}}, {{17.0f,48.0f}, {36.0f,49.0f}, {57.0f,45.0f}}},
+        },
+    };
+    int draw_frame = 0;
+    float player_x = 320.0f;
+    const PartFrame& art() const { return ART[ENRAGED ? 1 : 0][draw_frame]; }
     float loop_t = 0.0f, talon_t = 0.0f, state_t = 0.0f;
     bool  aloft = false, flying = false, take_off = false;      // aloft: phase 2 started (risen to the loop)
     struct Back { float x, y; } back[32];
     int   nback = 0;
 
-    void at(float fx, float fy, float* ox, float* oy) const {   // art px (98x65, drawn 2x about its middle) -> screen
-        *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
+    void at(float fx, float fy, float* ox, float* oy) const {   // art px (100x65, drawn 2x about its middle) -> screen
+        *ox = x + (fx - 50.0f) * (mirror_sprite() ? -2.0f : 2.0f);
+        *oy = y + (fy - 32.5f) * 2.0f;
     }
     // The roar: three rings close behind one another, lined up -- spokes.
     int roar(float mx, float my, BulletSpawn out[], int max) const {
@@ -3931,15 +4005,13 @@ public:
     BeastOfBarrisdale() : Enemy(320, HOME_Y, 880, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "BEAST OF BARRISDALE"; }
     float       fire_interval() const override { return 0.02f; }   // the flight's drops and the catches as they come
-    float       flap_phase()    const override { return ENRAGED && (!aloft || flying) ? fmodf(state_t / 0.7f, 1.0f) : -1.0f; }   // a slow, heavy wingbeat
+    bool        alt_pose()      const override { return ENRAGED; }   // tucked flight sheet during ascent, flight AND hover
     float       catch_radius()  const override { return hanging() && state_t >= CATCH_DELAY ? CATCH : 0.0f; }
     void        catch_shot(float bx, float by) override { if (nback < 32) back[nback++] = { bx, by }; }
-    int         move_facing()   const override {
-        if (!ENRAGED || hanging()) return FACE_DOWN;
-        if (!aloft) return FACE_UP;                               // rising
-        return facing_toward(LOOP_X * cosf(loop_t * LOOP_W), LOOP_Y * 2.0f * cosf(loop_t * 2.0f * LOOP_W));
-    }
-    void update(float dt, float, float) override {
+    int         move_facing()   const override { return FACE_DOWN; }   // the one authored view already faces left
+    bool        mirror_sprite() const override { return ENRAGED && player_x > x; }
+    void update(float dt, float px, float) override {
+        player_x = px;
         if (!ENRAGED) return;
         state_t += dt;
         if (!aloft) {
@@ -3975,15 +4047,18 @@ public:
         if (!aloft || !flying) return n;
         if (take_off) {
             take_off = false;
-            if (hypotf(x - px, y - py) >= ROAR_CLEAR) n += roar(x, y - 10.0f, out + n, max - n);
+            float mx, my;
+            at(art().mouth[0], art().mouth[1], &mx, &my);
+            if (hypotf(mx - px, my - py) >= ROAR_CLEAR) n += roar(mx, my, out + n, max - n);
         }
         while (talon_t >= TALON_EVERY && n + 3 <= max) {
             // The talons: a three-pronged fan straight down off its legs.
             talon_t -= TALON_EVERY;
-            float lx = x, ly = y + 40.0f;
-            if (hypotf(lx - px, ly - py) < CLEAR) continue;
             for (int k = -1; k <= 1; k++) {
-                BulletSpawn b = mk(PI / 2 + k * 0.4f, SPEED, 2.5f, 5.0f);
+                float lx, ly;
+                at(art().feet[k + 1][0], art().feet[k + 1][1], &lx, &ly);
+                if (hypotf(lx - px, ly - py) < CLEAR) continue;
+                BulletSpawn b = mk(PI / 2 + (mirror_sprite() ? -k : k) * 0.4f, SPEED, 2.5f, 5.0f);
                 b.from = true; b.ox = lx; b.oy = ly;
                 out[n++] = b;
             }
@@ -3991,31 +4066,34 @@ public:
         return n;
     }
     int on_idle_frame(int frame, float px, float py, BulletSpawn out[], int max) override {
+        draw_frame = frame;   // both sheets use the same clock as these attacks
+        if (frame % 2 != 0) return 0;   // in-betweens: keep the original 5 attack beats
+        frame /= 2;
         if (ENRAGED && !hanging()) return 0;                      // flying: fire() has it
         int n = 0;
         if (frame == 1 || frame == 3) {
             // The wingbeat: a gust off each wingtip, leaning out and down,
             // curling back in.
-            float wy = frame == 1 ? 29.0f : 37.0f;
             for (int side = -1; side <= 1; side += 2) {
                 float wx, wyy;
-                at(side < 0 ? 21.0f : 68.0f, wy, &wx, &wyy);
+                const float* tip = art().wings[side < 0 ? 0 : 1];
+                at(tip[0], tip[1], &wx, &wyy);
                 if (hypotf(wx - px, wyy - py) < CLEAR) continue;      // hanging low over the player: not point-blank
                 for (int k = 0; k < 7 && n < max; k++) {
-                    float a = PI / 2 - side * (0.5f + k * 0.12f);  // out its own side, and down
+                    int shown_side = mirror_sprite() ? -side : side;
+                    float a = PI / 2 - shown_side * (0.5f + k * 0.12f);  // out its own side, and down
                     BulletSpawn b = mk(a, SPEED, 2.5f, 5.0f);
                     b.from = true; b.ox = wx; b.oy = wyy;
-                    b.orbit_w = side * 0.3f;                          // curling back in
+                    b.orbit_w = shown_side * 0.3f;                          // curling back in
                     out[n++] = b;
                 }
             }
         } else if ((frame == 0 || frame == 4) && !ENRAGED) {
             // The stomp: a small ring off each of its three feet (on the ground).
-            static const float FX[3] = { 40.0f, 58.0f, 49.0f }, FY[3] = { 63.0f, 63.0f, 59.0f };
             float turn = ernd() * TAU;
             for (int f = 0; f < 3; f++) {
                 float fx, fy;
-                at(FX[f], FY[f], &fx, &fy);
+                at(art().feet[f][0], art().feet[f][1], &fx, &fy);
                 for (int k = 0; k < STOMP_N && n < max; k++) {
                     BulletSpawn b = mk(turn + (k + f / 3.0f) * (TAU / STOMP_N), SPEED, 2.5f, 5.0f);
                     b.from = true; b.ox = fx; b.oy = fy;
@@ -4024,7 +4102,7 @@ public:
             }
         } else if (frame == 2 && hypotf(x - px, y - py) >= ROAR_CLEAR) {
             float mx, my;
-            at(54.0f, 35.0f, &mx, &my);                          // its mouth, reared up roaring
+            at(art().mouth[0], art().mouth[1], &mx, &my);        // the edited mouth, on the frame shown
             n += roar(mx, my, out, max);
         }
         return n;
@@ -4291,10 +4369,11 @@ private:
 // Ethiopia the size of a wild ass, with a stag's legs, a lion's neck, chest
 // and tail, a badger's head, and a mouth slit back to its ears holding one
 // solid ridge of bone; it mimics human voices to lure travellers. HARD tier,
-// 940 HP, bone-white bullets. BIG sheet (98x65, five idle frames; frame 2 the
-// head thrown up, the ear-to-ear mouth gaping -- calling). Every shot leaves
-// from the part of it that makes it (the user): its mouth. Every shot at one
-// pace, SPEED.
+// 940 HP, bone-white bullets. BIG sheet (98x65, five idle frames, 0.85 s --
+// CALL_EVERY; on frames 2-3 the ear-to-ear mouth gapes, and anim_frame shows
+// them as each call leaves) and a run sheet, its gallop, from the side only:
+// it runs off and back in sideways. Every shot leaves from the part of it
+// that makes it (the user): its mouth. Every shot at one pace, SPEED.
 // Phase 1 -- the lure: it stands at the top calling (kept easy, the user: no
 //   pull, no ricochets): every CALL_EVERY s a SOUND WAVE out of its mouth --
 //   two rings braided together, quavering opposite ways -- each call turned
@@ -4313,10 +4392,12 @@ class Leucrocotta : public Enemy {
     int   calls = 0, side = 1;                                   // side: the wall it comes back from (-1 left, 1 right)
     float back_y = 200.0f;                                       // the height it comes back at
 
-    // Its gaping mouth, by facing (from behind: its crown).
+    // Its gaping mouth as drawn on the frame a call leaves on, by facing: the
+    // middle of it from the front, its front end from the side (from behind:
+    // its crown).
     void mouth(int f, float* ox, float* oy) const {
-        static const float MX[8] = { 59.2f, 67.5f, 75.9f, 69.5f, 50.0f, 27.5f, 21.1f, 29.5f },
-                           MY[8] = { 21.8f, 21.3f, 20.6f, 20.8f, 10.0f, 20.8f, 20.6f, 21.3f };
+        static const float MX[8] = { 51.0f, 51.0f, 80.0f, 80.0f, 50.5f, 18.0f, 18.0f, 47.0f },
+                           MY[8] = { 21.0f, 21.0f, 18.5f, 18.5f, 8.0f, 18.5f, 18.5f, 21.0f };
         part_at(x, y, MX, MY, f, ox, oy);
     }
     bool run_to(float dt) {                                      // dashing for (tx, ty); true on arrival
@@ -4333,6 +4414,8 @@ public:
         if (state == LEAVING || state == ENTERING) return facing_toward(tx - x, ty - y);
         return -1;
     }
+    int   anim_frame() const override { return ((int)(call_t / 0.17f) + 2) % 5; }   // the idle follows the call's clock: mouth open (frame 2) as a call leaves
+    float flap_phase() const override { return state == LEAVING || state == ENTERING ? fmodf(state_t / 0.32f, 1.0f) : -1.0f; }   // the gallop, a stride 0.32 s
     void update(float dt, float px, float py) override {
         call_t += dt; state_t += dt;
         if (state == GONE) spray_t += dt;
@@ -4744,6 +4827,16 @@ public:
             out[i] = mk(a + (i - (shots - 1) * 0.5f) * 0.25f, 150.0f, 2.5f, 5.0f);
         return shots;
     }
+};
+
+// Fad Felen keeps the roster placeholder attacks until its pattern round.
+// Both approved sheets use one right-facing reference view. The standing
+// sheet has one transparent bottom row so its planted feet share the idle's baseline.
+class FadFelen : public Unfinished {
+public:
+    FadFelen() : Unfinished("FAD FELEN", 1000, T_ELITE) {}
+    int move_facing() const override { return FACE_DOWN; }
+    bool alt_pose() const override { return ENRAGED; }
 };
 
 // Small woodchuck-like fearsome critter of the White Mountains with velvety
@@ -5952,82 +6045,57 @@ public:
 // The rumptifusel (A Book of Creatures): big and vicious, flat and "very
 // flexible", in "a fine pelt not unlike mink"; it drapes itself over a stump
 // "looking for all the world like an abandoned expensive fur coat", and when
-// a "greedy tenderfoot" comes close it moves "with deceptive speed" and
-// engulfs them -- "tiny sucking pores" on its underside drain them off their
-// bones. MEDIUM tier, 560 HP, fur-brown bullets. BIG sheet.
+// a "greedy tenderfoot" comes close it engulfs them -- "tiny sucking pores"
+// on its underside drain them off their bones. MEDIUM tier, 560 HP, fur-brown
+// bullets. BIG sheet. It lies where it is and never moves (the user: no
+// chasing), and every shot forms at its STOMACH (the user) -- the purple
+// belly it bares when it rears.
 // It's meant to be a DENSE fight (the user), both phases.
-// Phase 1 -- lying there like a coat:
+// Phase 1:
 //   Pore sheet -- each time it rears its hood and bares its pocked belly
-//                 (idle frame 2) it throws a SHEET at the player: a hex
-//                 lattice of 24 small shots -- its pores -- flying as one like
-//                 a coat flung over you, the holes between them just wide
-//                 enough to slip through (the user: traversable). Phase 1
-//                 throws three at a time, fanned, with a spray of 10 from its
-//                 pores. (A fourth on the settle frame made it too hard -- the user.)
-//   The lure   -- come within LURE px of it and it bunches up (a beat), then
-//                 lunges at where you are "with deceptive speed" -- touching
-//                 it costs a bar -- and slides slowly back to where it lay.
+//                 (idle frame 2) it throws SHEETS at the player: each a
+//                 tight ball at its stomach that blooms (BLOOM_T s) into a
+//                 hex lattice of 24 small shots -- its pores -- flying as one
+//                 like a coat flung over you, the holes between them just
+//                 wide enough to slip through (the user: traversable).
+//                 Three at a time, fanned, with a spray of 10 from its
+//                 pores. (A fourth on the settle frame made it too hard --
+//                 the user.) It throws them however close the player
+//                 stands: held back at point-blank, the spot under its
+//                 belly was safe all phase (the bot stood there unhit);
+//                 the belly bared for two frames first is the warning.
 // Phase 2 (half HP): it throws FIVE sheets at a time, fanned across most of
-//   the screen; and its pores SUCK: every 2 s a ring of 20 flies out to a
-//   different reach each time -- anywhere from just past its body to the
-//   whole screen -- stops, and collapses back into it.
+//   the screen; and its pores SUCK: every 2 s a ring of 20 flies out of its
+//   stomach to a different reach each time -- anywhere from just past its
+//   body to the whole screen -- stops, and collapses back into it.
 class Rumptifusel : public Enemy {
-    enum State { LIE, BUNCH, LUNGE, CREEP };
-    static constexpr float LURE = 150.0f, BUNCH_T = 0.35f, LUNGE_SPEED = 420.0f, CREEP_SPEED = 70.0f;
-    static constexpr float HOME_X = 320.0f, HOME_Y = 130.0f;
-    State state = LIE;
-    float t = 0.0f, suck_t = 0.0f;
-    float tx = 0, ty = 0;
+    static constexpr float BLOOM_T = 0.8f;
+    float suck_t = 0.0f;
+
+    // Its stomach: the middle of the purple belly on the reared frame (art
+    // px 47.5, 53 of the 98x65 sheet, drawn 2x about its middle).
+    void belly(float* bx, float* by) const { *bx = x + (47.5f - 49.0f) * 2.0f; *by = y + (53.0f - 32.5f) * 2.0f; }
 
     // A coat of shots: a hex lattice (rows 4-5-6-5-4, 24 shots), 26 px
     // apart, drifting at 75 -- slow and open enough to thread at a crouch
     // (the tester: at 24 px and 110 the holes' channels needed walk speed to
-    // ride) -- centred 50 px out toward `a`, all flying along `a`.
+    // ride) -- a ball at its stomach blooming into the lattice, all flying
+    // along `a`.
     int sheet(float a, BulletSpawn out[]) const {
         static const int ROW[5] = { 4, 5, 6, 5, 4 };
-        float cx = x + cosf(a) * 50.0f, cy = y + sinf(a) * 50.0f;
-        float ux = cosf(a), uy = sinf(a), vx = -uy, vy = ux;      // along and across the throw
-        int n = 0;
+        float sx[24], sy[24], bx, by;                            // shape_shots: +x along the throw, +y across it
+        int m = 0;
         for (int r = 0; r < 5; r++)
-            for (int i = 0; i < ROW[r]; i++) {
-                float across = (i - (ROW[r] - 1) * 0.5f) * 26.0f, along = (r - 2) * 22.5f;
-                BulletSpawn b = mk(a, 75.0f, 2.5f, 5.0f);
-                b.from = true; b.ox = cx + ux * along + vx * across; b.oy = cy + uy * along + vy * across;
-                out[n++] = b;
-            }
-        return n;
+            for (int i = 0; i < ROW[r]; i++) { sx[m] = (r - 2) * 22.5f; sy[m++] = (i - (ROW[r] - 1) * 0.5f) * 26.0f; }
+        belly(&bx, &by);
+        return shape_shots(bx, by, a, 75.0f, 1e-4f, BLOOM_T, sx, sy, m, out);   // (1e-4: no turning, but still one formation)
     }
 public:
-    Rumptifusel() : Enemy(HOME_X, HOME_Y, 560, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
+    Rumptifusel() : Enemy(320, 130, 560, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()           const override { return "RUMPTIFUSEL"; }
     int         breath_frame()   const override { return 2; }     // hood reared, belly bared
     float       fire_interval()  const override { return 0.05f; } // the suck ring on its own clock
-    float       contact_damage() const override { return state == LUNGE ? 5.0f : 0.0f; }
-    int move_facing() const override { return state == LUNGE ? facing_toward(tx - x, ty - y) : -1; }
-    void update(float dt, float px, float py) override {
-        t += dt;
-        if (ENRAGED) suck_t += dt;
-        switch (state) {
-        case LIE:
-            if (hypotf(px - x, py - y) < LURE) { state = BUNCH; t = 0.0f; tx = px; ty = py; }
-            break;
-        case BUNCH:                                              // a beat, gathering itself
-            if (t >= BUNCH_T) { state = LUNGE; t = 0.0f; }
-            break;
-        case LUNGE: {
-            float dx = tx - x, dy = ty - y, d = hypotf(dx, dy), st = LUNGE_SPEED * dt;
-            if (d <= st) { x = tx; y = ty; state = CREEP; t = 0.0f; }
-            else { x += dx / d * st; y += dy / d * st; }
-            break;
-        }
-        case CREEP: {                                            // back to where it lay, slowly
-            float dx = HOME_X - x, dy = HOME_Y - y, d = hypotf(dx, dy), st = CREEP_SPEED * dt;
-            if (d <= st) { x = HOME_X; y = HOME_Y; state = LIE; t = 0.0f; }
-            else { x += dx / d * st; y += dy / d * st; }
-            break;
-        }
-        }
-    }
+    void update(float dt, float, float) override { if (ENRAGED) suck_t += dt; }
     int fire(float, float, BulletSpawn out[], int) override {
         if (suck_t < 2.0f) return 0;
         suck_t = 0.0f;
@@ -6037,21 +6105,28 @@ public:
         // exactly there, v^2 / 2R.
         float reach = 70.0f + ernd() * 390.0f;
         float turn = ernd() * TAU;
+        float bx, by;
+        belly(&bx, &by);
         for (int i = 0; i < 20; i++) {
             BulletSpawn b = mk(turn + i * (TAU / 20), 170.0f, 3.0f, 5.0f);
+            b.from = true; b.ox = bx; b.oy = by;
             b.accel = -(170.0f * 170.0f) / (2.0f * reach); b.max_speed = 170.0f;
             out[i] = b;
         }
         return 20;
     }
     int breathe(float px, float py, BulletSpawn out[], int) override {
-        if (state == LUNGE || state == BUNCH) return 0;
-        float a = aim_at(x,y,px,py);
+        float bx, by;
+        belly(&bx, &by);
+        float a = aim_at(bx, by, px, py);
         int n = 0;
         int fan = ENRAGED ? 2 : 1;                                   // five in phase 2, three in phase 1, fanned
         for (int k = -fan; k <= fan; k++) n += sheet(a + k * 0.5f, out + n);
-        for (int i = 0; i < 10; i++)                            // a spray from its pores
-            out[n++] = mk(a + (ernd() * 2.0f - 1.0f) * 0.8f, 140.0f + ernd() * 60.0f, 2.0f, 5.0f);
+        for (int i = 0; i < 10; i++) {                          // a spray from its pores
+            BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.8f, 140.0f + ernd() * 60.0f, 2.0f, 5.0f);
+            b.from = true; b.ox = bx; b.oy = by;
+            out[n++] = b;
+        }
         return n;
     }
 };
@@ -6138,21 +6213,21 @@ class Namungumi : public Enemy {
     static constexpr float FADE_T = 0.32f;       // ...and the beam dissipates over this long as they do
     static constexpr float STEP = 16.0f;         // px between a line's shots
     static constexpr float REACH = 760.0f;       // a beam's length each way: past the far corner
+    static constexpr float FLASH_T = 0.3f, WHITE_T = 0.2f;   // the warning (the user): before a beam leaves, its eye flashes this long, then holds pure white this long
+    static constexpr float HOME_X = 320.0f, WALK_SPEED = 14.0f, WALK_REACH = 16.0f;   // it shuffles sideways on its stepping frames (the user): px/s, and how far from where it stands
+    static constexpr int   WALK_FROM = 7;        // idle frames 7-11 are its steps (art/enemies/71_namungumi_design.py: STEP, SWAY)
     float beam_t = 0.0f, last_ang = 0.0f, quiet = 0.0f, last_hp = 520.0f;
     float px_ = 320.0f, py_ = 400.0f;
+    int   cur = 0;                               // the idle frame showing
+    float walk = 1.0f;                           // which way this loop's steps take it: the other way the next
     struct Beam { bool on = false, fired = false; float t = 0.0f, ox = 0.0f, oy = 0.0f, ang = 0.0f; int phase = 0; };
     Beam beams[2];
 
     float every() const { return ENRAGED ? 0.8f : 1.3f; }
     static bool dash(int k, int phase) { return (k + phase) % 8 < 4; }   // 4 on, 4 off: 64 px gaps
-    // Its eye, on the sprite as it faces the player (art: the glowing node
-    // sits ~48 px forward of its middle, ~74 side-on, 11 px down).
-    void eye(float& ex, float& ey) const {
-        int f = facing_toward(px_ - x, py_ - y);
-        float off = f == FACE_RIGHT ? 74.0f : f == FACE_LEFT ? -76.0f
-                  : (f == FACE_UP_LEFT || f == FACE_DOWN_LEFT) ? -50.0f : 48.0f;   // D and U use the 3/4-right art
-        ex = x + off; ey = y + 11.0f;
-    }
+    // Its eye, on the sprite: one front view, and the pupil is frame pixel
+    // (49, 42) on every frame -- 1 px right of its middle and 20 below.
+    void eye(float& ex, float& ey) const { ex = x + 1.0f; ey = y + 20.0f; }
     // How far the beam has shot out: fast, then slowing (ease-out).
     static float grown(const Beam& b) { float k = fminf(b.t / GROW_T, 1.0f); return 1.0f - (1.0f - k) * (1.0f - k); }
     static TeleLine line(const Beam& b, int dir) {
@@ -6168,8 +6243,23 @@ class Namungumi : public Enemy {
 public:
     Namungumi() : Enemy(320, 120, 520, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "NAMUNGUMI"; }
-    int         breath_frame()  const override { return 2; }       // its eye at its brightest
+    int         breath_frame()  const override { return 2; }       // its crest at its highest
     float       fire_interval() const override { return 0.05f; }   // the beams, when they're ready
+    int         move_facing()   const override { return FACE_DOWN; }   // one drawn view
+    // The flash sheet (its eye pure white): flashing, then held, before a
+    // beam leaves, and on while a beam is shooting out or charged.
+    bool alt_pose() const override {
+        float left = every() - beam_t;                              // s until the next beam leaves
+        if (left <= WHITE_T) return true;
+        if (left <= WHITE_T + FLASH_T) return fmodf(left, 0.1f) < 0.05f;
+        for (const Beam& b : beams) if (b.on && b.t < GROW_T + HOLD_T) return true;
+        return false;
+    }
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override {
+        if (frame == WALK_FROM && cur != frame) walk = -walk;       // each loop's steps go the other way
+        cur = frame;
+        return 0;
+    }
     int telegraphs(TeleLine out[], int) const override {
         int n = 0;
         for (const Beam& b : beams)
@@ -6178,8 +6268,9 @@ public:
     }
     void update(float dt, float px, float py) override {
         px_ = px; py_ = py;
+        if (cur >= WALK_FROM) x = fminf(fmaxf(x + walk * WALK_SPEED * dt, HOME_X - WALK_REACH), HOME_X + WALK_REACH);   // a shuffle, in step with its feet
         beam_t += dt;
-        for (Beam& b : beams) if (b.on) b.t += dt;
+        for (Beam& b : beams) if (b.on) { b.t += dt; eye(b.ox, b.oy); }   // a live beam stays on the eye as it shuffles (the user)
         // Its wounds heal: once it's gone REGEN_AFTER s without being hurt.
         if (hp < last_hp) quiet = 0.0f; else quiet += dt;
         if (ENRAGED && quiet >= REGEN_AFTER && hp > 0.0f) hp = fminf(hp + REGEN * dt, max_hp * 0.5f - 1.0f);   // never back into phase 1
@@ -6233,7 +6324,8 @@ public:
 // between Revin and Liege, rarely leaving the water, and "pulls in and
 // devours children who play too close" -- a bogey to keep them from the
 // river. Drawn as a swimming mini-Godzilla. MEDIUM tier, 540 HP, river-green
-// bullets. BIG sheet.
+// bullets. BIG sheet, drawn from the side only (the user): it swims left and
+// right, and breathes facing left or right.
 // Always swimming fast (the user): it RUNS the arena back and forth along a
 // lane near the top, weaving in an S, leaving a WAKE of shots behind it that
 // spread slowly as it passes. At each end it turns, rears, and ROARS --
@@ -6272,8 +6364,8 @@ public:
     Mahwot() : Enemy(LANE_L, 130, 540, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "MAHWOT"; }
     float       fire_interval() const override { return 0.05f; }   // wake and burst on their own clocks
-    int roar_facing = FACE_DOWN;             // the way it faces through a roar -- locked with the beam,
-                                             // so the open mouth stays on it however the player moves
+    int roar_facing = FACE_RIGHT;            // the way it faces through a roar, left or right -- locked with
+                                             // the beam, so the open mouth stays on it however the player moves
     int move_facing() const override { return roar < 0.0f ? (dir > 0.0f ? FACE_RIGHT : FACE_LEFT) : roar_facing; }
     bool alt_pose() const override { return roar >= 0.0f; }   // roaring: its open-mouthed breath pose (72_mahwot_roar)
     int telegraphs(TeleLine out[], int) const override {
@@ -6302,16 +6394,15 @@ public:
         if ((dir > 0.0f && x >= LANE_R) || (dir < 0.0f && x <= LANE_L)) {
             x = dir > 0.0f ? LANE_R : LANE_L;
             roar = 0.0f;                                     // turn and roar
-            // It turns to face the player to breathe, in its roar pose; the
-            // beam leaves its open mouth -- where the roar sheet draws it in
-            // the facing it turns to (art px in the 98x65 frame, drawn 2x
-            // about the frame's middle).
+            // It turns to the side the player is on to breathe, in its roar
+            // pose (drawn from the side only); the beam leaves the glow in its
+            // open mouth as the roar sheet draws it (art px in the 98x65
+            // frame, drawn 2x about the frame's middle), held where it is at
+            // rest: the beam does not ride its breath.
             {
-                int f = roar_facing = facing_toward(px - x, py - y);
-                float fx = f == FACE_RIGHT ? 83 : f == FACE_LEFT ? 14
-                         : (f == FACE_DOWN_RIGHT || f == FACE_UP_RIGHT) ? 72
-                         : (f == FACE_DOWN_LEFT  || f == FACE_UP_LEFT)  ? 25 : 64;   // D and U: 64
-                mx = x + (fx - 49.0f) * 2.0f; my = y + (27.0f - 32.5f) * 2.0f;
+                roar_facing = px < x ? FACE_LEFT : FACE_RIGHT;
+                float fx = roar_facing == FACE_RIGHT ? 75.0f : 23.0f;
+                mx = x + (fx - 49.0f) * 2.0f; my = y + (30.0f - 32.5f) * 2.0f;
             }
             aim = aim_at(mx, my, px, py);
             pair = ENRAGED;
@@ -6616,8 +6707,10 @@ public:
 
 // The makalala of East Africa, "the noisy one" (A Book of Creatures): a
 // giant ground bird that screams, and clubs its prey to death with the great
-// bony knob on its head. MEDIUM tier, 580 HP, beak-yellow bullets. BIG sheet;
-// flap = 75_makalala_fly (wings beating, the club on its head glowing).
+// bony knob on its head. MEDIUM tier, 580 HP, beak-yellow bullets. BIG sheet,
+// the idle drawn from the front only (the user): planted, it faces us.
+// flap = 75_makalala_fly (wings beating, the club on its head glowing), drawn
+// from the side only: flying, it faces left or right, to the player's side.
 // Phase 1 -- planted on the ground, never moving, all noise: massive
 // patterns, every shot the same speed (the user):
 //   Calls  -- a three-armed spiral turning out of it all the while.
@@ -6649,18 +6742,11 @@ class Makalala : public Enemy {
     // The glowing club: pinned at (49, 15) in every frame of the fly sheet
     // (the user), drawn 2x about the frame's middle (49, 32.5).
     void club(float* ox, float* oy) const { *ox = x; *oy = y + (15.0f - 32.5f) * 2.0f; }
-    // Its beak, where the idle sheet draws it in the facing it shows -- the
-    // tip, closed (frames 0-1, 3-4) or gaping in the scream (frame 2); seen
-    // from behind (U), the back of its head. Art px in the 98x65 frame,
-    // drawn 2x about the frame's middle; the left facings mirror the right.
-    void beak(float px, float py, bool scream, float* ox, float* oy) const {
-        int f = facing_toward(px - x, py - y);
-        float fx = f == FACE_DOWN_RIGHT || f == FACE_DOWN_LEFT ? (scream ? 63.0f : 61.0f)
-                 : f == FACE_RIGHT || f == FACE_LEFT           ? (scream ? 71.0f : 68.0f)
-                 : f == FACE_UP_RIGHT || f == FACE_UP_LEFT     ? (scream ? 64.0f : 62.0f) : 49.0f;
-        float fy = f == FACE_UP ? 12.0f : scream ? 17.0f : 18.0f;
-        if (f == FACE_LEFT || f == FACE_DOWN_LEFT || f == FACE_UP_LEFT) fx = 97.0f - fx;
-        *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
+    // Its beak, where the idle sheet draws it (from the front, the one view):
+    // the tip, closed, or the middle of its gape in the scream (frame 2).
+    // Art px in the 98x65 frame, drawn 2x about the frame's middle.
+    void beak(float, float, bool scream, float* ox, float* oy) const {
+        *ox = x + (49.5f - 49.0f) * 2.0f; *oy = y + ((scream ? 16.5f : 21.5f) - 32.5f) * 2.0f;
     }
     // A phase-1 shot: out of the beak at (ox, oy).
     BulletSpawn from_beak(float a, float r, float ox, float oy) const {
@@ -6682,6 +6768,8 @@ public:
     Makalala() : Enemy(320, 140, 580, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()           const override { return "MAKALALA"; }
     int         breath_frame()   const override { return 2; }       // the scream
+    int         fly_face = FACE_RIGHT;                               // flying: the side the player is on
+    int         move_facing()    const override { return ENRAGED ? fly_face : FACE_DOWN; }
     float       fire_interval()  const override { return 0.05f; }   // the spiral, burst and rings on their own clocks
     // Phase 2 is FLOWN, a wingbeat per 0.28 s.
     float flap_phase() const override { return ENRAGED ? fmodf(bob / 0.28f, 1.0f) : -1.0f; }
@@ -6692,6 +6780,7 @@ public:
     }
     void update(float dt, float px, float py) override {
         bob += dt;
+        fly_face = px < x ? FACE_LEFT : FACE_RIGHT;
         if (!ENRAGED) { arm_t += dt; scream_t += dt; return; }   // planted
         if (!hovering) {
             // Taking off: up to its spot at the top, then hanging there.
@@ -7316,9 +7405,11 @@ public:
 // scorpions for spurs and a swarm of bees for a hat, with birds following
 // to sing its praises -- swallowed three times by the man-eating Dodo, it
 // burst out through its head. UPPER tier, 630 HP, bee-gold bullets. MEDIUM
-// sheet (frame 1 the boast: snake staff raised); flap = 78_zankallala_run,
-// the jerboa bounding. Every shot leaves from the part of it that makes it
-// (the user): its bee hat, its snake staff, its scorpion spurs.
+// sheet, redrawn 2026-10-12 after the user's reference, four drawn
+// directions: 10 idle frames of 130 ms (the old loop's 1.3 s; frames 3 and 4
+// the boast, its snake staff raised); flap = 78_zankallala_run, the jerboa
+// bounding, the staff levelled ahead. Every shot leaves from the part of it
+// that makes it (the user): its bee hat, its snake staff, its scorpion spurs.
 // Phase 1:
 //   Run    -- VERY FAST (the user): it stands a beat, turns to a new spot,
 //             and its staff shoots a LASER out ahead along the way it's
@@ -7328,7 +7419,7 @@ public:
 //   Bees   -- its hat sheds bees all the while it runs: pairs flying out to
 //             both sides of its run, buzzing gently -- a ladder in its wake.
 // Every shot goes at about the same pace, SPEED (the user): pretty to watch.
-//   Boast  -- standing, as it raises its staff (idle frame 1): the birds'
+//   Boast  -- standing, as it raises its staff (idle frame BOAST_FRAME): the birds'
 //             praise-song, a SUN coming down (the user) -- a ring of notes
 //             with eight rays round it, sinking from the staff's tip and
 //             slowly swelling as it falls.
@@ -7373,17 +7464,46 @@ class Zankallala : public Enemy {
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (58x53, drawn 2x about its middle) -> screen
         *ox = x + (fx - 29.0f) * 2.0f; *oy = y + (fy - 26.5f) * 2.0f;
     }
-    // The tip of its snake staff, facing `f`.
+    // The sheet's cell for a facing: D DR R UR U UL L DL. Three views are
+    // drawn; a diagonal below it shows the front, one above it the side, the
+    // left ones mirrored -- the tables below are per cell.
+    static int cell(int f) {
+        return f == FACE_DOWN ? 0 : f == FACE_DOWN_RIGHT ? 1 : f == FACE_RIGHT ? 2 : f == FACE_UP_RIGHT ? 3
+             : f == FACE_UP ? 4 : f == FACE_UP_LEFT ? 5 : f == FACE_LEFT ? 6 : 7;
+    }
+    static bool side_on(int d) { return d == 2 || d == 3 || d == 5 || d == 6; }
+    static constexpr int BOAST_FRAME = 3;    // the idle frame its staff is first full up (390 ms; the old sheet's frame 1 began at 400)
+    int idle_f = 0;                          // the idle frame shown
+    // How far the dash frame shown has it off the ground, art px.
+    float hop() const {
+        static const float UP[4] = { 0, 4, 7, 2 };
+        return state == RUN || state == HOME ? UP[(int)(flap_phase() * 4.0f) & 3] : 0.0f;
+    }
+    // Four drawn directions (the user): it runs facing the nearer axis.
+    static int axis_facing(float dx, float dy) {
+        return fabsf(dx) > fabsf(dy) ? (dx > 0.0f ? FACE_RIGHT : FACE_LEFT) : (dy > 0.0f ? FACE_DOWN : FACE_UP);
+    }
+    // The tip of its snake staff as drawn, facing `f`: standing, where the
+    // idle frame shown has it (raised on frames 2-5); running, on the dash
+    // sheet, levelled ahead from the side and riding its bounds.
     void staff(int f, float* ox, float* oy) const {
-        static const float FX[8] = { 33, 35, 33, 30, 27, 26, 23, 22 };   // D DR R UR U UL L DL
-        int d = f == FACE_DOWN ? 0 : f == FACE_DOWN_RIGHT ? 1 : f == FACE_RIGHT ? 2 : f == FACE_UP_RIGHT ? 3
-              : f == FACE_UP ? 4 : f == FACE_UP_LEFT ? 5 : f == FACE_LEFT ? 6 : 7;
-        at(FX[d], 13.0f, ox, oy);
+        static const float IX[8] = { 44, 44, 36, 36, 14, 22, 22, 14 };   // idle sheet
+        static const float RX[8] = { 44, 44, 48, 48, 14, 10, 10, 14 };   // dash sheet
+        static const float RAISED[10] = { 0, 0, 2, 5, 5, 2, 0, 0, 0, 0 };
+        int d = cell(f);
+        if (state == RUN || state == HOME) at(RX[d], (side_on(d) ? 19.5f : 13.5f) - hop(), ox, oy);
+        else at(IX[d], 13.5f - RAISED[idle_f % 10], ox, oy);
+    }
+    // The middle of its beehive hat, facing `f`.
+    void hat(int f, float* ox, float* oy) const {
+        static const float HX[8] = { 29.5f, 29.5f, 26.5f, 26.5f, 29.5f, 31.5f, 31.5f, 28.5f };
+        at(HX[cell(f)], 15.5f - hop(), ox, oy);
     }
 public:
     Zankallala() : Enemy(320, 140, 630, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "ZANKALLALA"; }
-    int         breath_frame()  const override { return 1; }       // the boast, staff raised
+    int         breath_frame()  const override { return BOAST_FRAME; }   // the boast, staff raised
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }   // the frame its staff is read on
     float       fire_interval() const override { return 0.02f; }   // bees and spurs on their own clocks
     int   move_facing() const override { return state == STAND || state == CENTRE ? -1 : run_face; }
     float flap_phase()  const override { return state == RUN || state == HOME ? fmodf(t / 0.24f, 1.0f) : -1.0f; }
@@ -7434,7 +7554,7 @@ public:
         if (fade >= 0.0f && (fade += dt) >= FADE_T) fade = -1.0f;
         if (ENRAGED && (state == STAND || state == AIM)) {      // phase 2: back to the middle
             state = HOME; t = 0.0f; tx = HOME_X; ty = HOME_Y; fade = -1.0f;
-            run_face = facing_toward(tx - x, ty - y);
+            run_face = axis_facing(tx - x, ty - y);
         }
         if (state == HOME) {
             float dx = tx - x, dy = ty - y, d = hypotf(dx, dy), st = run_speed() * dt;
@@ -7464,7 +7584,7 @@ public:
                     ty = ARENA_TOP + 50.0f + ernd() * 200.0f;
                     if (hypotf(tx - px, ty - py) > 160.0f && hypotf(tx - x, ty - y) > 120.0f) break;
                 }
-                run_face = facing_toward(tx - x, ty - y);
+                run_face = axis_facing(tx - x, ty - y);
                 float dx = tx - x, dy = ty - y, d = hypotf(dx, dy) + 1e-3f;
                 bx = tx + dx / d * 60.0f; by = ty + dy / d * 60.0f;
                 state = AIM; t = 0.0f;
@@ -7488,7 +7608,7 @@ public:
                 bee_t -= BEE_EVERY * 0.6f;
                 swarm_a += 0.55f;
                 float hx, hy;
-                at(27.0f, 21.0f, &hx, &hy);
+                hat(facing_toward(px - x, py - y), &hx, &hy);
                 BulletSpawn b = mk(swarm_a, SPEED, 2.5f, 5.0f);
                 b.from = true; b.ox = hx; b.oy = hy;
                 b.zig = 0.25f; b.zig_every = 0.2f;
@@ -7502,7 +7622,7 @@ public:
             // left in its wake, buzzing gently.
             bee_t -= bee;
             float hx, hy, run = atan2f(ty - y, tx - x);
-            at(27.0f, 21.0f, &hx, &hy);
+            hat(run_face, &hx, &hy);
             for (int side = -1; side <= 1; side += 2) {
                 BulletSpawn b = mk(run + side * PI / 2, SPEED, 2.5f, 5.0f);
                 b.from = true; b.ox = hx; b.oy = hy;
@@ -8036,7 +8156,7 @@ Enemy* enemy_create(int id) {
         case 96: return new Unfinished("BREGDI", 920, T_ELITE);
         case 97: return new Unfinished("RO", 950, T_ELITE);
         case 98: return new Unfinished("BOIUNA", 980, T_ELITE);
-        case 99: return new Unfinished("FAD FELEN", 1000, T_ELITE);
+        case 99: return new FadFelen();
         case 100: return new Unfinished("FLESH PLANET", 6000, T_BOSS3);   // final boss: the ball only for now
         default: return new Skvader();
     }

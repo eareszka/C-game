@@ -521,6 +521,20 @@ static inline bool is_yard_wall(int id) { return id == YARD_FENCE_MARK || id == 
 // the overlay on grass, like a rock, so it can be struck, shakes and breaks --
 // for a little wood and stone.
 static constexpr int SIGN_CELL = TILE_TOWN0_BASE;
+
+// The boardwalk: the coastal town's wharf, drawn from the graveyard dungeon's
+// planks in the houses' projection and cut into cells of its own on the sheet
+// (rows TOWN1_DECK_ROW0.., tools/town1_layout.py). Laid as a tile it is a
+// deck over the sea.
+static inline bool is_boardwalk(int t) {
+    int row = (t - TILE_TOWN0_BASE) / TOWN0_SHEET_COLS;
+    return t >= TILE_TOWN0_BASE && row >= TOWN1_DECK_ROW0 && row < TOWN1_DECK_ROW0 + TOWN1_DECK_ROWS;
+}
+// The coastal town's art (the sheet's rows from 180): its buildings and the
+// boardwalk's cells. Laid as overlays where they stand on, under or beside the wharf.
+static inline bool is_coast_art(int t) {
+    return t >= TILE_TOWN0_BASE + 180 * TOWN0_SHEET_COLS && t <= TILE_TOWN0_END;
+}
 // Which wall stands at (x, y), or 0. A building on the yard's line -- the
 // mausoleum, the church -- takes over the wall's cells in the overlay, but the
 // wall runs on behind it: a cell of entrance art with the same wall on both
@@ -635,7 +649,8 @@ static void clear_overlays_near_liquid(Tilemap* map) {
             int ov = map->overlay[y][x];
             // A structure entrance's art is a building, not a tree: it stands
             // whole beside water rather than losing a cell to it.
-            if (ov == 0 || entrance_art_role(ov) != ART_NONE || is_oasis_mark(ov)) continue;
+            // Nor is the wharf's: its sheds overhang the sea and its posts stand in it.
+            if (ov == 0 || entrance_art_role(ov) != ART_NONE || is_oasis_mark(ov) || is_coast_art(ov)) continue;
             bool dry = overlay_site_dry(map, x, y);
             // A tree's canopy is drawn one tile up, so that tile needs the same
             // clearance or the crown hangs out over the water.
@@ -1670,10 +1685,134 @@ static void place_cliffs(Tilemap* map, unsigned int seed,
         }
 }
 
-// Stamp a town blueprint onto the map at tile position (tx, ty).
+// One cell of a town blueprint onto the map.
 // Canvas value encoding: 0=blank, 1=grass, 2=path, 3=hub, 4=water, 5=tree, >=6=sprite.
+// filled: the footprint was pre-filled with the placeholder, so a tree needs
+// ground put under it.
+static void stamp_town_cell(Tilemap* map, int val, int wx, int wy, bool filled) {
+    if (val == 0 || wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) return;
+    int tile = -1;
+    if (val == 5) {
+        if (filled) map->tiles[wy][wx] = TILE_GRASS;
+        map->overlay[wy][wx] = TILE_TREE;
+        return;
+    } else if (val == 6) {
+        map->tiles[wy][wx]   = TILE_GRASS;
+        map->overlay[wy][wx] = SIGN_CELL;
+        return;
+    } else if (val == 1) { tile = TILE_GRASS;
+    } else if (val == 2) { tile = TILE_PATH;
+    } else if (val == 3) { tile = TILE_HUB;
+    } else if (val == 4) { tile = TILE_WATER;
+    } else if (val >= 6) {
+        tile = TILE_TOWN0_BASE + (val - 6);
+    }
+    if (tile < 0) return;
+    map->tiles[wy][wx]   = tile;
+    map->overlay[wy][wx] = 0;
+}
+
+// The coastal town's wharf: its lighthouse, boathouse and fishing shacks on a
+// boardwalk over the sea. The one part of the town not fixed in place, since
+// the ocean is on a different border in every seed -- and it is that border
+// the way out heads for, whatever other water lies nearer. A road goes toward
+// it in the town's own road pieces while the ground is dry: Main Street on
+// from its end, west or east; North Street on past its end and round a corner
+// onto a street going back, north; the mill lane on over South Street, south
+// (a street "going back" runs up and to the right at 45 degrees, which is
+// straight away from the viewer as the houses are drawn). At the first sea
+// tile the road gives way to that border's wharf (TOWN1_WHARF), its deck in
+// the same projection and on the same line, the lighthouse at its seaward tip.
+static void stamp_town_pier(Tilemap* map, int tx, int ty) {
+    const int side = map->ocean_side;                       // 0 west, 1 east, 2 north, 3 south
+    const int REACH = 60;                                   // how far the road looks for the sea
+    auto sea = [&](int x, int y) { return in_bounds(x, y) && map->tiles[y][x] == TILE_WATER; };
+    auto clear_woods = [&](int x, int y, int r) {           // no tree within r tiles
+        for (int j = -r - 1; j <= r; j++)                   // a row more below: a crown is drawn a tile up
+            for (int i = -r; i <= r; i++)
+                if (in_bounds(x + i, y - j) && map->overlay[y - j][x + i] == TILE_TREE)
+                    map->overlay[y - j][x + i] = 0;
+    };
+    // Road cells from x along row y, named as tools/town1_layout.py names
+    // them: two hex digits each, the sheet's column and row.
+    auto put = [&](int x, int y, const char* cells) {
+        auto hex = [](char c) { return c <= '9' ? c - '0' : c - 'a' + 10; };
+        for (; cells[0] && cells[1]; cells += cells[2] ? 3 : 2, x++) {
+            if (!in_bounds(x, y)) continue;
+            map->tiles[y][x] = TILE_TOWN0_BASE + hex(cells[1]) * TOWN0_SHEET_COLS + hex(cells[0]);
+            map->overlay[y][x] = 0;
+            clear_woods(x, y, 2);
+        }
+    };
+    int jx, jy;                                             // the tile the wharf's joining cell goes on
+    if (side <= 1) {
+        // Main Street's two rows, straight on from its end cap.
+        const int dx = side == 0 ? -1 : 1, y = ty + TOWN1_MAIN_Y;
+        int x = tx + (side == 0 ? TOWN1_MAIN_W : TOWN1_MAIN_E);
+        for (int n = 0; n < REACH && in_bounds(x, y) && !sea(x, y + 1); n++, x += dx) {
+            put(x, y, "67");
+            put(x, y + 1, "68");
+        }
+        jx = x - dx; jy = y;                                // the deck's slanted end begins on the last dry tile
+    } else {
+        // A street going back is three cells a row, one tile over per row;
+        // k is the x + y of its left cell.
+        const int y = ty + (side == 2 ? TOWN1_NORTH_Y : TOWN1_SOUTH_Y);
+        const int k = tx + ty + (side == 2 ? TOWN1_NORTH_K : TOWN1_SOUTH_K);
+        const int dy = side == 2 ? -1 : 1;
+        int r;
+        if (side == 2) {                                    // on west past the cap, and round the corner
+            for (int x = k - y + 3; x <= tx + TOWN1_NORTH_CAP; x++) {
+                put(x, y, "67");
+                put(x, y + 1, "68");
+            }
+            put(k - y, y, "79 89 99");
+            put(k - y - 1, y + 1, "6a 7a 8a 9a");
+            r = y - 1;
+        } else {                                            // the lane's tee becomes a crossing
+            put(k - y - 1, y + 1, "88 ba b7 9a");
+            put(k - y - 2, y + 2, "79 89 a8 b8");
+            r = y + 3;
+        }
+        for (int n = 0; n < REACH && in_bounds(k - r, r) && !sea(k - r + 1, r); n++, r += dy)
+            put(k - r, r, "46 56 66");
+        jx = k - r; jy = r;
+    }
+    const TownWharf& wf = TOWN1_WHARF[side];
+    const int ox = jx - wf.join_x, oy = jy - wf.join_y;
+    for (int j = 0; j < wf.h; j++)
+        for (int i = 0; i < wf.w; i++) {
+            int wx = ox + i, wy = oy + j;
+            int cell = wf.cell[j * wf.w + i], kind = wf.kind[j * wf.w + i], art = wf.art[j * wf.w + i];
+            if (!in_bounds(wx, wy) || (!cell && !art)) continue;
+            bool wet = sea(wx, wy);
+            clear_woods(wx, wy, 1);
+            if (kind == 3) {
+                // the planks' face and posts stand in water, nowhere else
+                if (wet && !art) map->overlay[wy][wx] = TILE_TOWN0_BASE + (cell - 6);
+            } else if (kind && (wet || art)) {
+                map->tiles[wy][wx]   = TILE_TOWN0_BASE + (cell - 6);
+                map->overlay[wy][wx] = 0;
+                map->coll[wy][wx]    = (kind == 2);         // a building's foot, or a sliver of floor
+            } else if (kind) {
+                // its landward end, over dry ground: laid on it, the ground showing round it
+                map->overlay[wy][wx] = TILE_TOWN0_BASE + (cell - 6);
+            }
+            if (art) map->overlay[wy][wx] = TILE_TOWN0_BASE + (art - 6);
+        }
+}
+
+// Stamp a town blueprint onto the map at tile position (tx, ty).
 static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
     const int (*layout)[TOWN_W] = all_towns[town_idx];
+
+    // The coastal town's woods give way to the sea instead of filling it in:
+    // where a tree of its layout would stand in the water, the water stays.
+    static bool wet[TOWN_H][TOWN_W];
+    for (int dy = 0; dy < TOWN_H; dy++)
+        for (int dx = 0; dx < TOWN_W; dx++)
+            wet[dy][dx] = town_idx == 1 && layout[dy][dx] == 5 && in_bounds(tx + dx, ty + dy)
+                          && map->tiles[ty + dy][tx + dx] == TILE_WATER;
 
     // Towns 1 and 2 have no interior yet -- their layout is 0 everywhere, and
     // 0 means "leave biome terrain unchanged", so with nothing pre-filled they
@@ -1691,39 +1830,16 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
         for (int dy = 0; dy < TOWN_H; dy++)
             for (int dx = 0; dx < TOWN_W; dx++) {
                 int wx = tx + dx, wy = ty + dy;
-                if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
+                if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT || wet[dy][dx]) continue;
                 map->tiles[wy][wx]   = TILE_BLUEPRINT;
                 map->overlay[wy][wx] = 0;
             }
     }
 
-    for (int dy = 0; dy < TOWN_H; dy++) {
-        for (int dx = 0; dx < TOWN_W; dx++) {
-            int val = layout[dy][dx];
-            if (val == 0) continue;
-            int wx = tx + dx, wy = ty + dy;
-            if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT) continue;
-
-            int tile = -1;
-            if (val == 5) {
-                map->overlay[wy][wx] = TILE_TREE;
-                continue;
-            } else if (val == 6) {
-                map->tiles[wy][wx]   = TILE_GRASS;
-                map->overlay[wy][wx] = SIGN_CELL;
-                continue;
-            } else if (val == 1) { tile = TILE_GRASS;
-            } else if (val == 2) { tile = TILE_PATH;
-            } else if (val == 3) { tile = TILE_HUB;
-            } else if (val == 4) { tile = TILE_WATER;
-            } else if (val >= 6) {
-                tile = TILE_TOWN0_BASE + (val - 6);
-            }
-            if (tile < 0) continue;
-            map->tiles[wy][wx]   = tile;
-            map->overlay[wy][wx] = 0;
-        }
-    }
+    for (int dy = 0; dy < TOWN_H; dy++)
+        for (int dx = 0; dx < TOWN_W; dx++)
+            if (!wet[dy][dx]) stamp_town_cell(map, layout[dy][dx], tx + dx, ty + dy, town_idx != 0);
+    if (town_idx == 1) stamp_town_pier(map, tx, ty);
     // Stamp collision layer
     const char** coll_layout = all_towns_coll[town_idx];
     for (int dy = 0; dy < TOWN_H && coll_layout[dy]; dy++) {
@@ -6373,6 +6489,9 @@ static const int OASIS_BIOME = NUM_GROUND_BIOMES - 1;
 static int biome_at(const Tilemap* map, int x, int y) {
     if (!in_world(&x, &y)) return -1;
     int t = map->tiles[y][x];
+    // A deck stands over the water on posts: no ground of its own, so no bank
+    // forms against it and the sea does not round into it (as a bridge).
+    if (is_boardwalk(t)) return -1;
     if (t >= TILE_TOWN0_BASE) return 0;  // town cells paint grass behind themselves
     if (t == TILE_POND && is_oasis_mark(map->overlay[y][x])) return OASIS_BIOME;
     // A plateau top is the ground it is a plateau of -- the same grass, snow
@@ -7306,6 +7425,8 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // drawn over whatever it lands on. is_cliff is still read below.
                 const GroundCover* cover = is_body ? cliff_top_cover(tile_id)
                                                    : tile_cover(map, x, y);
+                // A deck has no ground of its own; the sea shows past its slanted edges.
+                if (is_boardwalk(tile_id)) cover = &COVER_WATER;
                 // A cave's tile has no ground of its own, only the cave
                 // glyph, and neither of its drawings covers the whole cell:
                 // the mouth is drawn lifted off it and the ladder hole has
@@ -8011,28 +8132,6 @@ int tilemap_sweep(Tilemap* map, float px, float py, float radius,
     return struck;
 }
 
-float tilemap_first_along(const Tilemap* map, float px, float py,
-                          float angle, float half_width, float max_reach) {
-    int tx0, ty0, tx1, ty1;
-    tile_box(px, py, (int)max_reach + TILE_SIZE, &tx0, &ty0, &tx1, &ty1);
-
-    float best = -1.0f;
-    for (int uy = ty0; uy <= ty1; uy++) {
-        for (int ux = tx0; ux <= tx1; ux++) {
-            int tx, ty;
-            if (!harvestable_at(map, ux, uy, &tx, &ty)) continue;
-            float cx = (ux + 0.5f) * TILE_SIZE;
-            float cy = (uy + 0.5f) * TILE_SIZE;
-            float along, side;
-            thrust_project(angle, cx - px, cy - py, &along, &side);
-            if (along < 0.0f || along > max_reach) continue;
-            if (side < -half_width || side > half_width) continue;
-            if (best < 0.0f || along < best) best = along;
-        }
-    }
-    return best;
-}
-
 int tilemap_thrust(Tilemap* map, float px, float py, float angle,
                    float half_width, float from, float to,
                    Weapon weapon, HarvestResult* out) {
@@ -8133,6 +8232,10 @@ static bool cliff_bars_overlay(int x, int y) {
 
 int tilemap_cliff_elev_at(int x, int y) {
     return in_world(&x, &y) ? (int)s_cliff_elev[y][x] : 0;
+}
+
+bool tilemap_cave_hole_at(const Tilemap* map, int x, int y) {
+    return in_world(&x, &y) && !is_cave_mouth_cell(map->overlay[y][x]);   // as dress_cave_entrances draws it
 }
 
 bool tilemap_cliff_sealed_at(int x, int y) {

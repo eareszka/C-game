@@ -12,6 +12,7 @@
 #include <vector>
 #include <algorithm>
 #include "dungeon_wall_tiles.inc"   // tools/gen_dungeon_wall_tiles.py: where the interiors' wall pieces sit
+#include "cave_rock.inc"            // tools/gen_cave_tiles.py: the cave rock's pieces in a cave's block
 
 // ── Color palettes per dungeon type ───────────────────────────────────────
 struct DngPalette { SDL_Color wall, floor, entry, exit_; };
@@ -22,7 +23,7 @@ static const DngPalette PALETTES[DUNGEON_ENT_COUNT] = {
     // and the wall from MaterialDef::minimap_wall. What is left reaching this
     // row is the minimap of a cave whose ore is out of range, and the case
     // where assets/tileset.png fails to load. The main view never uses it --
-    // it draws the material's own rock art, see draw_cave_wall() below.
+    // it draws the material's own rock art, see cave_bake() below.
     {{ 60, 65,100,255},{ 90, 80, 74,255},{200,175, 40,255},{180, 45, 45,255}},
     // RUINS
     {{ 75, 65, 55,255},{110, 98, 82,255},{200,175, 40,255},{180, 45, 45,255}},
@@ -58,9 +59,7 @@ static const DngAscii ASCII_CHARS[DUNGEON_ENT_COUNT] = {
 };
 
 // Both tables above are indexed by dungeon type and both need the same range
-// clamp. Three callers wanted it -- dungeon_draw(), dungeon_minimap_draw() and
-// draw_cave_wall() -- so it lives here once rather than as three copies that
-// can drift apart.
+// clamp: dungeon_draw() and dungeon_minimap_draw() share this one.
 static inline int dng_palette_index(const DungeonMap* dmap) {
     int ci = (int)dmap->type;
     return (ci < 0 || ci >= DUNGEON_ENT_COUNT) ? 0 : ci;
@@ -70,28 +69,24 @@ static inline int dng_palette_index(const DungeonMap* dmap) {
 // One material per enemy band (see spawner_enemy_base() below), gated on the
 // cave's difficulty so the strong stuff is far out or high up.
 //
-// Each material's rock is its OWN art. tools/gen_cave_tiles.py bakes seven
-// recoloured copies of the hand-painted block into assets/tileset.png and a cave
-// samples the one its material picks -- see cave_art_col_shift() further down.
-//
-// That replaced a multiplicative `rock_mod` colour-mod, and the reason is worth
-// keeping: the master art is blue-dominant with its red channel never above 132,
-// so a multiply could shift or darken that blue but never add a hue to it. Gold
-// and red rock were simply unreachable, which is why `floor` -- a flat
-// RenderFillRect, under no such limit -- used to carry each material's identity
-// on its own. It still colours open cave ground, but it no longer has to do that
-// job alone.
-//
-// MAT_VEYRITE is the identity rung deliberately: its generated block is a
-// byte-for-byte copy of the master and its floor is the colour caves always had,
-// so a Veyrite cave renders byte-identical to the build before any of this
-// existed. DNGSHOT_ORE=3 forces it, which makes that an exact regression check
-// rather than a judgement call.
+// Each material's rock is its OWN art. tools/gen_cave_tiles.py lays the cave
+// rock's pieces into a block of assets/tileset.png for each, in that ore's
+// tones, and a cave samples the one its material picks -- see cave_block_col()
+// further down. Baked, not a colour-mod: a multiply can darken a hue but never
+// add one, so gold and red rock were out of reach.
 struct MaterialDef {
     const char* name;
-    SDL_Color   floor;          // flat fill for cave floor
+    SDL_Color   floor;          // the cave floor's colour on the minimap
     SDL_Color   minimap_wall;   // per-pixel wall colour on the minimap
     float       max_difficulty; // upper bound of this material's band
+    // The floor as the cave draws it (cave_bake; user, 2026-10-12): the wall's
+    // own cobble lying flat -- its stones, and the lines between them;
+    // ground_rounded, large rounded cobbles in the oblique view instead
+    // (Reality Shard's: black stone outlined in light purple). The minimap
+    // keeps `floor`: these sit too near some ores' minimap walls, and black
+    // would vanish on its panel.
+    SDL_Color   ground, ground_line;
+    bool        ground_rounded;
 };
 
 // Thresholds are quantile-calibrated from 3026 cave systems across 8 worlds
@@ -108,13 +103,15 @@ struct MaterialDef {
 // them. Re-run it and paste when that table or the shape of worldgen changes.
 static const MaterialDef MATERIALS[MAT_COUNT] = {
     // name             floor              minimap wall       up to
-    { "Stone",        {108,108,116,255}, { 74, 74, 80,255}, 0.3722f },
-    { "Bronze",       {110, 88, 58,255}, { 92, 74, 48,255}, 0.4520f },
-    { "Emerald",      { 70,105, 78,255}, { 46, 78, 58,255}, 0.4935f },
-    { "Veyrite",      { 90, 80, 74,255}, { 60, 65,100,255}, 0.5728f },
-    { "Dravium",      {110, 64, 60,255}, { 92, 44, 44,255}, 0.6285f },
-    { "Kharvite",     {120,105, 55,255}, {104, 88, 40,255}, 0.6958f },
-    { "Reality Shard",{ 30, 28, 34,255}, { 24, 22, 30,255}, 2.0f    },
+    // the ground: grey, olive brown, green, indigo, dark red, a darker olive
+    // gold, and black stone outlined in light purple (the user's, an ore each)
+    { "Stone",        {108,108,116,255}, { 74, 74, 80,255}, 0.3722f, {0x59,0x59,0x65,255}, {0x47,0x47,0x51,255}, false },
+    { "Bronze",       {110, 88, 58,255}, { 52, 30, 16,255}, 0.4520f, {0x60,0x50,0x28,255}, {0x46,0x34,0x22,255}, false },   // its rock's shade: { 92, 74, 48} drew as the floor's own palette colour
+    { "Emerald",      { 70,105, 78,255}, { 46, 78, 58,255}, 0.4935f, {0x29,0x63,0x3e,255}, {0x23,0x54,0x36,255}, false },
+    { "Veyrite",      { 90, 80, 74,255}, { 60, 65,100,255}, 0.5728f, {0x37,0x38,0x7b,255}, {0x30,0x1b,0x5a,255}, false },
+    { "Dravium",      {110, 64, 60,255}, { 92, 44, 44,255}, 0.6285f, {0x42,0x16,0x18,255}, {0x31,0x11,0x13,255}, false },
+    { "Kharvite",     {120,105, 55,255}, {104, 88, 40,255}, 0.6958f, {0x5c,0x46,0x16,255}, {0x40,0x30,0x10,255}, false },
+    { "Reality Shard",{ 30, 28, 34,255}, { 24, 22, 30,255}, 2.0f   , {0x00,0x00,0x00,255}, {0xb6,0x9c,0xee,255}, true  },
 };
 
 // Which material a cave of this difficulty holds. Monotonic by construction --
@@ -149,7 +146,7 @@ SDL_Color material_color(Material m, int tone) {
 
 // Which material this cave is made of. Split out from cave_material() because
 // the atlas block a cave draws its rock from is derived from the same index
-// (see cave_art_col_shift() below), and a second copy of this clamp is exactly
+// (see cave_block_col() below), and a second copy of this clamp is exactly
 // how the two would drift apart.
 static inline int cave_material_index(const DungeonMap* dmap) {
     int mi = (int)dmap->ore;
@@ -185,6 +182,14 @@ static DngPalette dng_palette(const DungeonMap* dmap) {
 // A block of stonehenge's barrow maze (see carve_stonehenge_layout): wide, deep, tall.
 static const int BRW_BW = 32, BRW_BD = 16, BRW_BZ = 64;
 static const int LADDER_COL0 = 7, LADDER_ROW = 14, DOOR_FOOT_ROW = 15;
+// The caves' rock: a block of the sheet an ore, stamped by
+// tools/gen_cave_tiles.py. KEEP IN SYNC with OUT_COL0 / BLOCK_COLS there;
+// there is no way to check that agreement from here.
+static const int CAVE_ART_COL0    = 33;
+static const int CAVE_ART_COLS    = 5;
+static inline int cave_block_col(const DungeonMap* dmap) {     // this cave's block, its first column
+    return CAVE_ART_COL0 + cave_material_index(dmap) * CAVE_ART_COLS;
+}
 struct WayOutDoor { int col, w, h, foot; };   // sheet column, cells wide and tall, the row its foot is on
 
 // Which way out a kind of dungeon has: a doorway, or (null) the ladder.
@@ -202,15 +207,19 @@ static const WayOutDoor* way_out_door(const DungeonMap* dmap) {
         case DUNGEON_ENT_GRAVEYARD_SM:
         case DUNGEON_ENT_GRAVEYARD_LG: return &GRAVE;
         case DUNGEON_ENT_CATACOMBS:    return &CHURCH;
-        default:                       return nullptr;   // the cave, the stonehenge pit, the oasis
+        case DUNGEON_ENT_CAVE: {                         // the arch a mouth is, in the cave's own rock
+            static WayOutDoor cave;
+            cave = { cave_block_col(dmap) + CAVE_PIECE[CP_ARCH][0], 2, 2, CAVE_PIECE[CP_ARCH][1] + 1 };
+            return &cave;
+        }
+        default:                       return nullptr;   // the stonehenge pit, the oasis
     }
 }
 
-// How many tiles tall the wall's face is over a way out: the cave's and the
-// stonehenge's walls stand three tiles high, the rest one.
+// How many tiles tall the wall's face is over a ladder out: the stonehenge's
+// walls stand four tiles high, the rest one.
 static int way_out_face(const DungeonMap* dmap) {
-    if (dmap->type == DUNGEON_ENT_STONEHENGE) return BRW_BZ / 16;     // the barrow's wall
-    return dmap->type == DUNGEON_ENT_CAVE ? 3 : 1;
+    return dmap->type == DUNGEON_ENT_STONEHENGE ? BRW_BZ / 16 : 1;     // the barrow's wall
 }
 
 // The dungeons that lie open (user): known whole from the start and all in
@@ -230,9 +239,21 @@ static bool gyw_walkways(const DungeonMap* dmap) {
 // graveyard's walls on its landings, stonehenge's ladders on flat back walls,
 // the giant tree's hollow on its middle floor, the catacombs' door at the
 // hall's end -- so binding only says which is which and nothing moves them.
+static bool terraced(const DungeonMap* dmap);
 static bool fixed_ways(const DungeonMap* dmap) {
     return gyw_walkways(dmap) || dmap->type == DUNGEON_ENT_STONEHENGE || dmap->type == DUNGEON_ENT_OASIS ||
-           dmap->type == DUNGEON_ENT_LARGE_TREE || dmap->type == DUNGEON_ENT_CATACOMBS;
+           terraced(dmap) || dmap->type == DUNGEON_ENT_CATACOMBS;
+}
+// The terraced dungeons (terraces_join): the giant tree, and the caves, a
+// mouth an arch on its own level's floor.
+static bool terraced(const DungeonMap* dmap) {
+    return dmap->type == DUNGEON_ENT_LARGE_TREE || dmap->type == DUNGEON_ENT_CAVE;
+}
+// A cave's way out that is a ladder down a hole outside (the user): inside, a
+// ladder up the back wall into a hatch, on its portal's tile, not the arch.
+static const int CAVE_HATCH_UP = 4;                       // cells from the floor to the hatch's top
+static bool cave_ladder_out(const DungeonMap* d, int p) {
+    return d->type == DUNGEON_ENT_CAVE && d->want_hole[p];
 }
 
 // A way out's wall stands across the back of its landing, GYW_FOOT deep: its
@@ -311,13 +332,6 @@ static BSPNode s_bsp[MAX_BSP_NODES];
 static int     s_bsp_n;
 static int     s_leaves[MAX_BSP_NODES];
 static int     s_leaf_n;
-
-// ── Cellular automata buffers (cave & tree generation) ────────────────────
-static uint8_t  s_ca_buf[DMAP_H][DMAP_W];           // CA double-buffer
-static uint8_t  s_ca_vis[DMAP_H][DMAP_W];           // flood-fill visited
-static int32_t  s_ca_bfs[DMAP_W * DMAP_H];          // BFS queue  (y<<16|x)
-static int16_t  s_ca_px[DMAP_H][DMAP_W];            // BFS parent col
-static int16_t  s_ca_py[DMAP_H][DMAP_W];            // BFS parent row
 
 static void collect_leaves(int idx) {
     if (s_bsp[idx].lc == -1) {
@@ -671,66 +685,6 @@ static void carve_hybrid_layout(DungeonMap* dmap, unsigned int seed) {
 }
 
 // ── Decoration helpers ────────────────────────────────────────────────────
-
-// True if any tile within a Chebyshev radius r of (cx,cy) is ENTRY or EXIT.
-static bool near_special_tile(const DungeonMap* dmap, int cx, int cy, int r) {
-    for (int dy = -r; dy <= r; dy++)
-        for (int dx = -r; dx <= r; dx++) {
-            int x = cx+dx, y = cy+dy;
-            if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) continue;
-            uint8_t t = dmap->tiles[y][x];
-            if (t == DNG_ENTRY || t == DNG_EXIT) return true;
-        }
-    return false;
-}
-
-// Count walkable tiles within a square radius.
-static int count_floor_in_radius(const DungeonMap* dmap, int cx, int cy, int r) {
-    int cnt = 0;
-    for (int dy = -r; dy <= r; dy++)
-        for (int dx = -r; dx <= r; dx++) {
-            int x = cx+dx, y = cy+dy;
-            if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) continue;
-            uint8_t t = dmap->tiles[y][x];
-            if (t == DNG_FLOOR || t == DNG_ENTRY || t == DNG_EXIT) cnt++;
-        }
-    return cnt;
-}
-
-// Place a wall on a floor tile only if far enough from entry/exit.
-static void place_obstacle(DungeonMap* dmap, int x, int y, int safety_r) {
-    if (x < 1 || x >= DMAP_W-1 || y < 1 || y >= DMAP_H-1) return;
-    if (dmap->tiles[y][x] != DNG_FLOOR) return;
-    if (safety_r > 0 && near_special_tile(dmap, x, y, safety_r)) return;
-    dmap->tiles[y][x] = DNG_WALL;
-}
-
-// ── CAVE: stalactite / stalagmite pillar clusters ─────────────────────────
-static void decorate_cave(DungeonMap* dmap, uint32_t* rng) {
-    int attempts = 300, placed = 0;
-    while (attempts-- > 0 && placed < 60) {
-        int x = 3 + (int)(rng_next(rng) % (DMAP_W - 6));
-        int y = 3 + (int)(rng_next(rng) % (DMAP_H - 6));
-        if (dmap->tiles[y][x] != DNG_FLOOR) continue;
-        if (near_special_tile(dmap, x, y, 4)) continue;
-        // Only place in fairly open areas so passages remain clear.
-        if (count_floor_in_radius(dmap, x, y, 3) < 28) continue;
-        dmap->tiles[y][x] = DNG_WALL;
-        // 45% chance: grow into a small cluster.
-        if (rng_next(rng) % 20 < 9) {
-            int dx = (int)(rng_next(rng) % 3) - 1;
-            int dy = (int)(rng_next(rng) % 3) - 1;
-            place_obstacle(dmap, x+dx, y+dy, 4);
-        }
-        // 20% chance: one more tile.
-        if (rng_next(rng) % 20 < 4) {
-            int dx = (int)(rng_next(rng) % 3) - 1;
-            int dy = (int)(rng_next(rng) % 3) - 1;
-            place_obstacle(dmap, x+dx, y+dy, 4);
-        }
-        placed++;
-    }
-}
 
 // ── RUINS: Brogue-style room accretion ────────────────────────────────────
 //
@@ -1413,8 +1367,6 @@ static void carve_pyramid_layout(DungeonMap* dmap, uint32_t* rng) {
     pyr_place_decals(dmap, flights, rng);
 }
 
-static void ca_ensure_connectivity(DungeonMap* dmap, int entry_x, int entry_y); // forward decl
-
 // ── OASIS: a flooded cave seen from the side ──────────────────────────────
 // The user's reference (a Mother 1 cave strip, tools/gen_oasis.py -> oasis.inc)
 // and its mirror end to end: a level is a stretch of that run 5-15 screens
@@ -1451,6 +1403,12 @@ static bool oasis_blocked(const DungeonMap* d, int x, int y) {
 // The swimmer's body, not only its feet -- seen from the side the head comes
 // up under the rock too: of its 28 x 40 frame, x 4..24 and y 10..40 (dungeon
 // pixels), in level pixels.
+// Shaft i's way out on the map: the tile under the swimmer's feet when it has
+// surfaced there, its head up out of the water (the feet 12 below the head).
+static void oasis_way_tile(const DungeonMap* d, int i, int* tx, int* ty) {
+    *tx = 8 + (d->oasis_air[i].x0 + d->oasis_air[i].x1) / 2 / 16;
+    *ty = 8 + (d->oasis_air[i].line - OASIS_HEAD + 12) / 16;
+}
 static void oasis_body(const DungeonMap* d, float x, float y, int* x0, int* y0, int* x1, int* y1) {
     *x0 = (int)floorf((x + 4) * 16 / DMAP_TILE) - d->oasis_x0;  *x1 = (int)floorf((x + 24) * 16 / DMAP_TILE) - d->oasis_x0;
     *y0 = (int)floorf((y + 10) * 16 / DMAP_TILE) - d->oasis_y0; *y1 = (int)floorf((y + 40) * 16 / DMAP_TILE) - d->oasis_y0;
@@ -1624,8 +1582,8 @@ static void carve_oasis(DungeonMap* d, uint32_t* rng) {
     // the ways out at each shaft's surface: the tile under the swimmer's feet
     // when it has surfaced, its head up out of the water (the feet 12 below the head)
     for (int i = 0; i < 2; i++) {
-        int tx = 8 + (d->oasis_air[i].x0 + d->oasis_air[i].x1) / 2 / S;
-        int ty = 8 + (d->oasis_air[i].line - OASIS_HEAD + 12) / S;
+        int tx, ty;
+        oasis_way_tile(d, i, &tx, &ty);
         if (i == 0) { d->entry_x = tx; d->entry_y = ty; } else { d->exit_x = tx; d->exit_y = ty; }
         d->tiles[ty][tx] = i == 0 ? DNG_ENTRY : DNG_EXIT;
         d->tiles[ty - 1][tx] = DNG_WALL;
@@ -1897,378 +1855,6 @@ static void clear_portal_surroundings(DungeonMap* dmap) {
         dmap->tiles[dmap->portals[p].ty][dmap->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
 }
 
-// ── CELLULAR AUTOMATA: cave and tree interior generation ──────────────────
-//
-// Steps:
-//  1. Seed the map with random wall/floor noise at a chosen fill ratio.
-//  2. Run N passes of the standard cave CA rule:
-//       cell → wall  if it has ≥ 5 wall neighbours (Moore); floor otherwise.
-//  3. Connectivity post-pass: multi-source BFS from the main (entry-reachable)
-//     region expands through ALL tiles.  The first non-main floor tile found
-//     is the closest island; we trace the BFS parent chain back and carve
-//     every wall along that path to floor.  Repeat until fully connected.
-
-// Count wall tiles in the Moore neighbourhood; out-of-bounds counts as wall.
-static int ca_wall_count(const DungeonMap* dmap, int x, int y) {
-    int walls = 0;
-    for (int dy = -1; dy <= 1; dy++)
-        for (int dx = -1; dx <= 1; dx++) {
-            if (dx == 0 && dy == 0) continue;
-            int nx = x+dx, ny = y+dy;
-            if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) { walls++; continue; }
-            if (dmap->tiles[ny][nx] != DNG_FLOOR) walls++;
-        }
-    return walls;
-}
-
-// One CA pass: cell becomes wall if it has ≥ wall_thresh wall neighbours.
-static void ca_step(DungeonMap* dmap, int wall_thresh) {
-    for (int y = 0; y < DMAP_H; y++) {
-        for (int x = 0; x < DMAP_W; x++) {
-            if (x == 0 || x == DMAP_W-1 || y == 0 || y == DMAP_H-1) {
-                s_ca_buf[y][x] = DNG_WALL; continue;
-            }
-            int w = ca_wall_count(dmap, x, y);
-            s_ca_buf[y][x] = (w >= wall_thresh) ? DNG_WALL : DNG_FLOOR;
-        }
-    }
-    memcpy(dmap->tiles, s_ca_buf, sizeof(dmap->tiles));
-}
-
-// 4-connected flood fill from (sx,sy) marking reachable floor in s_ca_vis.
-static void ca_flood_fill(const DungeonMap* dmap, int sx, int sy) {
-    static const int DX[4] = {1,-1,0,0};
-    static const int DY[4] = {0,0,1,-1};
-    int head = 0, tail = 0;
-    s_ca_vis[sy][sx] = 1;
-    s_ca_bfs[tail++] = (sy << 16) | sx;
-    while (head < tail) {
-        int cell = s_ca_bfs[head++];
-        int x = cell & 0xFFFF, y = (cell >> 16) & 0xFFFF;
-        for (int d = 0; d < 4; d++) {
-            int nx = x+DX[d], ny = y+DY[d];
-            if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) continue;
-            if (dmap->tiles[ny][nx] == DNG_WALL) continue;
-            if (s_ca_vis[ny][nx]) continue;
-            s_ca_vis[ny][nx] = 1;
-            s_ca_bfs[tail++] = (ny << 16) | nx;
-        }
-    }
-}
-
-// Connect all disconnected floor islands to the region containing (entry_x,entry_y).
-// Uses multi-source BFS expanding through any tile so it finds the shortest tunnel.
-static void ca_ensure_connectivity(DungeonMap* dmap, int entry_x, int entry_y) {
-    static const int DX[4] = {1,-1,0,0};
-    static const int DY[4] = {0,0,1,-1};
-
-    // Guarantee entry tile is walkable.
-    if (dmap->tiles[entry_y][entry_x] == DNG_WALL)
-        dmap->tiles[entry_y][entry_x] = DNG_FLOOR;
-
-    for (;;) {
-        // Re-flood-fill to find the current main (entry-connected) region.
-        memset(s_ca_vis, 0, sizeof(s_ca_vis));
-        ca_flood_fill(dmap, entry_x, entry_y);
-
-        // Locate the first unreachable floor tile (any island).
-        int island_x = -1, island_y = -1;
-        for (int y = 1; y < DMAP_H-1 && island_x < 0; y++)
-            for (int x = 1; x < DMAP_W-1 && island_x < 0; x++)
-                if (!s_ca_vis[y][x] && dmap->tiles[y][x] != DNG_WALL)
-                    { island_x = x; island_y = y; }
-
-        if (island_x < 0) break;   // fully connected
-
-        // Multi-source BFS from every main-region tile through ALL tiles.
-        // s_ca_buf reused as the per-BFS visited array (uint8_t, same dims).
-        memset(s_ca_buf, 0, sizeof(s_ca_buf));
-        int head = 0, tail = 0;
-        for (int y = 1; y < DMAP_H-1; y++)
-            for (int x = 1; x < DMAP_W-1; x++)
-                if (s_ca_vis[y][x]) {
-                    s_ca_buf[y][x] = 1;
-                    s_ca_px[y][x]  = (int16_t)x;
-                    s_ca_py[y][x]  = (int16_t)y;
-                    s_ca_bfs[tail++] = (y << 16) | x;
-                }
-
-        int found = -1;
-        while (head < tail) {
-            int cell = s_ca_bfs[head++];
-            int x = cell & 0xFFFF, y = (cell >> 16) & 0xFFFF;
-            // Island reached: floor tile outside main region.
-            if (!s_ca_vis[y][x] && dmap->tiles[y][x] != DNG_WALL)
-                { found = cell; break; }
-            for (int d = 0; d < 4; d++) {
-                int nx = x+DX[d], ny = y+DY[d];
-                if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) continue;
-                if (s_ca_buf[ny][nx]) continue;
-                s_ca_buf[ny][nx] = 1;
-                s_ca_px[ny][nx]  = (int16_t)x;
-                s_ca_py[ny][nx]  = (int16_t)y;
-                s_ca_bfs[tail++] = (ny << 16) | nx;
-            }
-        }
-
-        if (found < 0) break;   // bounded map should never reach here
-
-        // Carve the parent-chain path from island back to main region.
-        // Use a 2×2 brush so the tunnel is at least 32 px wide (2 tiles).
-        int px = found & 0xFFFF, py = (found >> 16) & 0xFFFF;
-        while (!s_ca_vis[py][px]) {
-            for (int dy2 = 0; dy2 <= 1; dy2++)
-                for (int dx2 = 0; dx2 <= 1; dx2++) {
-                    int tx = px+dx2, ty = py+dy2;
-                    if (tx>=1&&tx<DMAP_W-1&&ty>=1&&ty<DMAP_H-1)
-                        dmap->tiles[ty][tx] = DNG_FLOOR;
-                }
-            int nx = s_ca_px[py][px], ny = s_ca_py[py][px];
-            px = nx; py = ny;
-        }
-    }
-}
-
-// Paint an irregular blob seed: a small core circle plus 3–5 randomly
-// offset satellite lobes.  The overlapping circles produce a spiky amoeba
-// shape that CA then smooths into an organic chamber (not a circle).
-static void paint_cave_blob(DungeonMap* dmap, int cx, int cy, int base_r, uint32_t* rng) {
-    // Core — half the declared radius so it doesn't dominate the shape.
-    int core_r = base_r / 2 + 1;
-    for (int dy = -core_r; dy <= core_r; dy++)
-        for (int dx = -core_r; dx <= core_r; dx++) {
-            if (dx*dx + dy*dy > core_r*core_r) continue;
-            int tx = cx+dx, ty = cy+dy;
-            if (tx>=1&&tx<DMAP_W-1&&ty>=1&&ty<DMAP_H-1)
-                dmap->tiles[ty][tx] = DNG_FLOOR;
-        }
-    // Satellite lobes at random angles and distances.
-    int num_lobes = 3 + (int)(rng_next(rng) % 3);   // 3–5
-    for (int l = 0; l < num_lobes; l++) {
-        float angle = (float)(rng_next(rng) % 628) * 0.01f;   // 0–2π
-        int   dist  = base_r / 3 + (int)(rng_next(rng) % (base_r * 2 / 3 + 1));
-        int   lx    = cx + (int)(cosf(angle) * dist);
-        int   ly    = cy + (int)(sinf(angle) * dist);
-        int   lr    = base_r / 4 + (int)(rng_next(rng) % (base_r / 2 + 1));
-        lx = lx < 1 ? 1 : (lx >= DMAP_W-1 ? DMAP_W-2 : lx);
-        ly = ly < 1 ? 1 : (ly >= DMAP_H-1 ? DMAP_H-2 : ly);
-        for (int dy = -lr; dy <= lr; dy++)
-            for (int dx = -lr; dx <= lr; dx++) {
-                if (dx*dx + dy*dy > lr*lr) continue;
-                int tx = lx+dx, ty = ly+dy;
-                if (tx>=1&&tx<DMAP_W-1&&ty>=1&&ty<DMAP_H-1)
-                    dmap->tiles[ty][tx] = DNG_FLOOR;
-            }
-    }
-}
-
-// ── CAVE CA generator — Guided Generation ────────────────────────────────
-//
-// Irregular blob seeds are placed along a winding spine and pre-connected
-// with 2-tile corridors; CA then smooths the blobs into organic chambers.
-static void carve_cave_ca(DungeonMap* dmap, uint32_t* rng) {
-    int cx = DMAP_W/2, cy = DMAP_H/2;
-
-    // As big as the mountain it is in. Sixteen tiles of half-side per mouth, so
-    // a two-mouth hill gets a 64x64 cave and a four-mouth mountain the 128x128
-    // one every cave used to get regardless. At the six-mouth ceiling the box is
-    // 192, still inside the 768x512 grid this is centred on.
-    int want = dmap->want_portals;
-    if (want < 2) want = 2;
-    if (want > DMAP_MAX_PORTALS) want = DMAP_MAX_PORTALS;
-    const int CAVE_R = 16 * want;
-    const int MARGIN = CAVE_R / 6;              // 10 at the old size
-    const int MAX_CH = 10;
-
-    int ch_x[MAX_CH], ch_y[MAX_CH], ch_r[MAX_CH];
-    int num_ch = want + 2 + (int)(rng_next(rng) % 3);
-    if (num_ch > MAX_CH) num_ch = MAX_CH;
-    if (num_ch < want + 1) num_ch = want + 1;   // portal i needs chamber i
-
-    // Radius scales with the box: at 64x64 the old 8-14 would merge every
-    // chamber into a single blob. This reproduces 8-14 exactly at 128x128.
-    for (int i = 0; i < num_ch; i++)
-        ch_r[i] = CAVE_R/8 + (int)(rng_next(rng) % (CAVE_R/10 + 1));
-
-    // ── Lay the chambers out the way the mouths are laid out ──
-    //
-    // Chamber 0 is a hub at the centre and chamber 1+i is the one mouth i opens
-    // into, placed in that mouth's own direction from the mouths' centroid and
-    // at a radius proportional to its distance. So the cave's shape echoes the
-    // mountain's: walk in at the south face and you are in the south of the
-    // cave, and the way out onto a north top is at the north of it.
-    //
-    // This used to be a west-to-east spine, which told you nothing — a mouth in
-    // the south wall and one on a north top both landed somewhere on the same
-    // line.
-    float mx = 0.0f, my = 0.0f;
-    for (int i = 0; i < want; i++) { mx += dmap->want_ox[i]; my += dmap->want_oy[i]; }
-    mx /= want; my /= want;
-    float far = 0.0f;
-    for (int i = 0; i < want; i++) {
-        float dx = dmap->want_ox[i] - mx, dy = dmap->want_oy[i] - my;
-        float d = sqrtf(dx*dx + dy*dy);
-        if (d > far) far = d;
-    }
-
-    bool star = (far > 0.5f);
-    if (star) {
-        int reach = CAVE_R - MARGIN;
-        ch_x[0] = cx; ch_y[0] = cy;
-        for (int i = 0; i < want && 1 + i < num_ch; i++) {
-            float dx = dmap->want_ox[i] - mx, dy = dmap->want_oy[i] - my;
-            float d  = sqrtf(dx*dx + dy*dy);
-            // Keep every chamber off the hub even when two mouths nearly
-            // coincide, or their blobs merge and the two ways out become one.
-            float t  = 0.45f + 0.55f * (d / far);
-            float ux = (d > 0.001f) ? dx / d : 1.0f;
-            float uy = (d > 0.001f) ? dy / d : 0.0f;
-            ch_x[1+i] = cx + (int)(ux * reach * t);
-            ch_y[1+i] = cy + (int)(uy * reach * t);
-        }
-        // Anything left over is filler, scattered inside the box.
-        for (int i = want + 1; i < num_ch; i++) {
-            ch_x[i] = cx - reach + (int)(rng_next(rng) % (unsigned)(2*reach + 1));
-            ch_y[i] = cy - reach + (int)(rng_next(rng) % (unsigned)(2*reach + 1));
-        }
-    } else {
-        // Degenerate offsets — every mouth in the same place, which the placement
-        // pass should never produce. Fall back to the old winding spine rather
-        // than dividing by a zero-length direction.
-        int x0 = cx - CAVE_R + MARGIN, x1 = cx + CAVE_R - MARGIN;
-        int jit = CAVE_R / 3;
-        int sy = cy + (int)(rng_next(rng) % (unsigned)(2*jit + 1)) - jit;
-        for (int i = 0; i < num_ch; i++) {
-            ch_x[i] = x0 + i * (x1 - x0) / (num_ch - 1);
-            sy += (int)(rng_next(rng) % (unsigned)(2*jit + 1)) - jit;
-            if (sy < cy - CAVE_R + MARGIN) sy = cy - CAVE_R + MARGIN;
-            if (sy > cy + CAVE_R - MARGIN) sy = cy + CAVE_R - MARGIN;
-            ch_y[i] = sy;
-        }
-    }
-
-    // Keep every chamber inside the grid whatever the arithmetic produced.
-    for (int i = 0; i < num_ch; i++) {
-        if (ch_x[i] < 2) ch_x[i] = 2;
-        if (ch_y[i] < 2) ch_y[i] = 2;
-        if (ch_x[i] > DMAP_W - 3) ch_x[i] = DMAP_W - 3;
-        if (ch_y[i] > DMAP_H - 3) ch_y[i] = DMAP_H - 3;
-    }
-
-    // Carve irregular blob seeds.
-    for (int i = 0; i < num_ch; i++)
-        paint_cave_blob(dmap, ch_x[i], ch_y[i], ch_r[i], rng);
-
-    // Sparse background noise confined to the 128×128 box.
-    for (int y = cy - CAVE_R + 1; y < cy + CAVE_R - 1; y++)
-        for (int x = cx - CAVE_R + 1; x < cx + CAVE_R - 1; x++)
-            if (dmap->tiles[y][x] == DNG_WALL && rng_next(rng) % 100 < 22)
-                dmap->tiles[y][x] = DNG_FLOOR;
-
-    // Carve 2-wide L-shaped corridors. A star joins every chamber to the hub,
-    // which is what makes it a star and not a chain; the spine fallback joins
-    // consecutive ones as it always did.
-    for (int i = 0; i+1 < num_ch; i++) {
-        int a = star ? 0 : i, b = i + 1;
-        int ax = ch_x[a], ay = ch_y[a];
-        int bx = ch_x[b], by = ch_y[b];
-        int x0 = ax < bx ? ax : bx, x1 = ax < bx ? bx : ax;
-        int y0 = ay < by ? ay : by, y1 = ay < by ? by : ay;
-        // Horizontal leg at ay.
-        for (int x = x0; x <= x1+1; x++) {
-            if (x>=1&&x<DMAP_W-1&&ay  >=1&&ay  <DMAP_H-1) dmap->tiles[ay  ][x] = DNG_FLOOR;
-            if (x>=1&&x<DMAP_W-1&&ay+1>=1&&ay+1<DMAP_H-1) dmap->tiles[ay+1][x] = DNG_FLOOR;
-        }
-        // Vertical leg at bx.
-        for (int y = y0; y <= y1+1; y++) {
-            if (bx  >=1&&bx  <DMAP_W-1&&y>=1&&y<DMAP_H-1) dmap->tiles[y][bx  ] = DNG_FLOOR;
-            if (bx+1>=1&&bx+1<DMAP_W-1&&y>=1&&y<DMAP_H-1) dmap->tiles[y][bx+1] = DNG_FLOOR;
-        }
-    }
-
-    // 4 CA smoothing passes — smooths circle edges without merging distant chambers.
-    for (int i = 0; i < 4; i++) ca_step(dmap, 5);
-
-    // ── Portals: one per mouth, at the chamber that mouth opens into ──
-    //
-    // In a star, chamber 1+i belongs to mouth i by construction, so there is
-    // nothing to match up: bind them by index and the inside comes out arranged
-    // like the outside. The spine fallback has no such correspondence, so it
-    // keeps the old behaviour of entry at the first chamber and exit at the
-    // farthest tile from it.
-    //
-    // The CA eats a chamber now and then, so each portal rings outward for the
-    // nearest floor. A mouth whose portal was dropped is a way into the mountain
-    // with no way back out of it, which is worse than a portal a few tiles off
-    // its chamber's centre.
-    auto solid_spot = [&](int& px, int& py) -> bool {
-        if (dmap->tiles[py][px] != DNG_WALL) return true;
-        for (int r = 1; r < 24; r++)
-            for (int dy = -r; dy <= r; dy++)
-                for (int dx = -r; dx <= r; dx++) {
-                    if (abs(dx) != r && abs(dy) != r) continue;
-                    int tx = px + dx, ty = py + dy;
-                    if (tx < 1 || tx >= DMAP_W-1 || ty < 1 || ty >= DMAP_H-1) continue;
-                    if (dmap->tiles[ty][tx] == DNG_WALL) continue;
-                    px = tx; py = ty; return true;
-                }
-        return false;
-    };
-
-    dmap->num_portals = 0;
-    if (star) {
-        for (int i = 0; i < want && 1 + i < num_ch; i++) {
-            int px = ch_x[1+i], py = ch_y[1+i];
-            if (!solid_spot(px, py)) continue;
-            bool taken = false;
-            for (int q = 0; q < dmap->num_portals; q++)
-                if (dmap->portals[q].tx == px && dmap->portals[q].ty == py) taken = true;
-            if (taken) continue;
-            dmap->tiles[py][px] = DNG_FLOOR;
-            dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
-        }
-    }
-    if (dmap->num_portals < 2) {
-        // Either the fallback spine, or a star that lost chambers to the CA.
-        int ex = ch_x[0], ey = ch_y[0];
-        solid_spot(ex, ey);
-        dmap->num_portals = 0;
-        dmap->tiles[ey][ex] = DNG_FLOOR;
-        dmap->portals[dmap->num_portals++] = { ex, ey, -1, -1 };
-        for (int i = 1; i < num_ch && dmap->num_portals < want; i++) {
-            int px = ch_x[i], py = ch_y[i];
-            if (!solid_spot(px, py)) continue;
-            bool taken = false;
-            for (int q = 0; q < dmap->num_portals; q++)
-                if (dmap->portals[q].tx == px && dmap->portals[q].ty == py) taken = true;
-            if (taken) continue;
-            dmap->tiles[py][px] = DNG_FLOOR;
-            dmap->portals[dmap->num_portals++] = { px, py, -1, -1 };
-        }
-    }
-
-    // entry_x/exit_x stay the names the rest of the file reads.
-    dmap->entry_x = dmap->portals[0].tx; dmap->entry_y = dmap->portals[0].ty;
-    ca_ensure_connectivity(dmap, dmap->entry_x, dmap->entry_y);
-
-    if (dmap->num_portals < 2) {
-        // One chamber survived. Fall back to the farthest walkable tile so the
-        // cave still has a second way out rather than none.
-        int best = -1, bx = dmap->entry_x, by = dmap->entry_y;
-        for (int ty = 1; ty < DMAP_H-1; ty++)
-            for (int tx = 1; tx < DMAP_W-1; tx++) {
-                if (dmap->tiles[ty][tx] == DNG_WALL) continue;
-                int d = abs(tx - dmap->entry_x) + abs(ty - dmap->entry_y);
-                if (d > best) { best = d; bx = tx; by = ty; }
-            }
-        dmap->portals[dmap->num_portals++] = { bx, by, -1, -1 };
-    }
-    dmap->exit_x = dmap->portals[1].tx; dmap->exit_y = dmap->portals[1].ty;
-
-    for (int p = 0; p < dmap->num_portals; p++)
-        dmap->tiles[dmap->portals[p].ty][dmap->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
-}
-
 // ── Giant tree: terraces in a triangle ───────────────────────────────────
 // The user's reference (Mother 1's tower): floors stepping up a wall of solid
 // mass, ladders up the walls between them. Every tier is one level of the
@@ -2289,12 +1875,206 @@ static const int TREE_U = 64, TREE_P = 3, TREE_TOP = 2, TREE_Z = 144;
 static bool tree_walkable(const DungeonMap* d, int x, int y) {
     if (x < 0 || y < 0 || x >= d->tree_w || y >= d->tree_h) return false;
     for (int t = 0; t < d->tree_n; t++)
-        if (y >= d->tree_b[t][x] && y < d->tree_b[t + 1][x] - TREE_Z) return true;
+        if (y >= d->tree_b[t][x] && y < d->tree_b[t + 1][x] - d->tree_z) return true;
     for (int i = 0; i < d->num_tree_ladders; i++) {
         const auto& l = d->tree_ladders[i];
         if (x >= l.x0 && x < l.x0 + 16 && y >= l.y0 && y < l.y1) return true;
     }
     return false;
+}
+
+// The ladder feet centred at picture pixel (fx, fy) are on, or are stepping
+// onto -- near its middle and pressing on along it from just below its foot
+// or just above its top -- or -1. dy: the way pressed, up or down.
+static int tree_ladder_at(const DungeonMap* d, float fx, float fy, float dy) {
+    for (int i = 0; i < d->num_tree_ladders; i++) {
+        const auto& l = d->tree_ladders[i];
+        if (fabsf(fx - (l.x0 + 8)) > 10) continue;
+        if ((fy >= l.y0 && fy < l.y1) ||
+            (dy < 0 && fy >= l.y1 && fy - l.y1 < 4) ||
+            (dy > 0 && fy < l.y0 && l.y0 - fy <= 4)) return i;
+    }
+    return -1;
+}
+static bool tree_on_ladder(const DungeonMap* d, float fx, float fy) {
+    for (int i = 0; i < d->num_tree_ladders; i++) {
+        const auto& l = d->tree_ladders[i];
+        if (fx >= l.x0 && fx < l.x0 + 16 && fy >= l.y0 && fy < l.y1) return true;
+    }
+    return false;
+}
+
+// ── Terraces: what the giant tree stands on ──────────────────────────────
+// Levels stepping up the screen, each wall one level (tree_z) tall with the
+// next tier's floor on its top; tree_b[t][x] is the back edge of tier t's floor
+// at picture column x, tree_b[N] the line in front of the lowest. Given each
+// tier's back edge as its layout has it (back(t, x); t == N that line), this
+// stands the levels one behind another, closes a floor never 48 deep (the
+// reference's least: a pinch's tip, not a floor), asks where the ways out go
+// (pick), and joins the floors by ladders: up a wall between a level and the
+// next behind it, wherever both are flat over 16 pixels; a tree of them from
+// the first way out's floor, a fifth of the rest for loops; a floor no ladder
+// can reach is closed and the lot rebuilt. A way out left on a closed floor is
+// asked for again. False if pick finds no place. stand: how deep both floors
+// must be where a ladder joins them -- 1 for the tree, any floor at all; a
+// cave's 48, so a ladder's ends are on the floors' bodies and never on a
+// taper's tip, where the tiles (terraces_tiles) lose the way the feet have.
+static uint8_t s_ter_pin[TREE_MAX_TIERS][TREE_MAX_W];      // a floor closed at a column: its level has no depth there
+struct TerWay { int tier, x; };                            // a way out: its floor's tier, the middle of its doorway (32 wide)
+static int ter_depth(const DungeonMap* d, int t, int x) { return d->tree_b[t + 1][x] - d->tree_z - d->tree_b[t][x]; }
+
+template <class Back, class Pick>
+static bool terraces_join(DungeonMap* d, uint32_t* rng, int N, int W, int stand, Back back, Pick pick, std::vector<TerWay>& ways) {
+    const int Z = d->tree_z;
+    auto rnd = [&](int n) { return (int)(rng_next(rng) % (uint32_t)n); };
+    // The levels per column, front to back: each stands one wall above the one
+    // in front; a level with no floor here has no depth, and the walls meet.
+    auto& pin = s_ter_pin;
+    memset(pin, 0, sizeof pin);
+    auto build = [&]() {
+        for (int x = 0; x < W; x++) {
+            int bf = back(N, x);
+            d->tree_b[N][x] = (int16_t)bf;
+            for (int t = N - 1; t >= 0; t--) {
+                int f = bf - Z, b = pin[t][x] ? f : std::min(back(t, x), f);
+                d->tree_b[t][x] = (int16_t)b;
+                bf = b;
+            }
+        }
+    };
+    auto depth = [&](int t, int x) { return ter_depth(d, t, x); };
+    auto stack = [&](int x, int* st) {                // the tiers whose floors show at x, front to back
+        int n = 0;
+        for (int t = N - 1; t >= 0; t--) if (depth(t, x) >= 1) st[n++] = t;
+        return n;
+    };
+    // a floor never 48 deep (the reference's least) is a pinch's tip, not a floor
+    build();
+    for (int t = 0; t < N; t++)
+        for (int x = 0; x < W;) {
+            if (depth(t, x) < 1) { x++; continue; }
+            int x0 = x, dep = 0;
+            while (x < W && depth(t, x) >= 1) dep = std::max(dep, depth(t, x++));
+            if (dep < 48) for (int i = x0; i < x; i++) pin[t][i] = 1;
+        }
+    build();
+
+    static int16_t comp[TREE_MAX_TIERS][TREE_MAX_W];
+    struct Edge { int a, b; std::vector<int> xs; };
+    std::vector<Edge> cands;
+    std::vector<std::pair<int, int>> chosen;           // (edge, x0)
+    for (;;) {
+        ways.clear();
+        if (!pick(ways)) return false;
+        for (;;) {
+            build();
+            int ncomp = 0;
+            for (int t = 0; t < N; t++) {
+                bool prev = false;
+                for (int x = 0; x < W; x++) {
+                    bool on = depth(t, x) >= 1;
+                    if (on && !prev) ncomp++;
+                    comp[t][x] = on ? (int16_t)(ncomp - 1) : (int16_t)-1;
+                    prev = on;
+                }
+            }
+            cands.clear();
+            for (int x0 = 0; x0 < W - 16; x0 += 16) {
+                int st[TREE_MAX_TIERS], ns = stack(x0, st);
+                for (int i = 0; i + 1 < ns; i++) {
+                    int a = st[i], b = st[i + 1];
+                    // a block clear of a way out either side (user), up to its floor or from it
+                    bool by_way = false;
+                    for (const TerWay& w : ways)
+                        by_way = by_way || ((a == w.tier || b == w.tier) && x0 + 16 > w.x - 32 && x0 < w.x + 32);
+                    if (by_way) continue;
+                    bool ok = true;
+                    for (int x = x0; x < x0 + 16 && ok; x++) {
+                        int s2[TREE_MAX_TIERS], n2 = stack(x, s2);
+                        ok = n2 > i + 1 && s2[i] == a && s2[i + 1] == b && depth(a, x) >= stand && depth(b, x) >= stand &&
+                             d->tree_b[a][x] == d->tree_b[a][x0] && d->tree_b[b + 1][x] == d->tree_b[b + 1][x0];
+                    }
+                    if (!ok) continue;
+                    int ka = comp[a][x0], kb = comp[b][x0];
+                    auto it = std::find_if(cands.begin(), cands.end(), [&](const Edge& e) { return e.a == ka && e.b == kb; });
+                    if (it == cands.end()) { cands.push_back({ ka, kb, {} }); it = cands.end() - 1; }
+                    it->xs.push_back(x0);
+                }
+            }
+            std::vector<char> reached(ncomp, 0);
+            reached[comp[ways[0].tier][ways[0].x]] = 1;
+            chosen.clear();
+            for (;;) {
+                std::vector<int> grow;
+                for (int e = 0; e < (int)cands.size(); e++)
+                    if (reached[cands[e].a] != reached[cands[e].b]) grow.push_back(e);
+                if (grow.empty()) break;
+                int e = grow[rnd((int)grow.size())];
+                chosen.push_back({ e, cands[e].xs[rnd((int)cands[e].xs.size())] });
+                reached[cands[e].a] = reached[cands[e].b] = 1;
+            }
+            for (int e = 0; e < (int)cands.size(); e++) {
+                if (!reached[cands[e].a] || !reached[cands[e].b]) continue;
+                bool have = std::any_of(chosen.begin(), chosen.end(), [&](const std::pair<int, int>& c) { return c.first == e; });
+                if (!have && rnd(100) < 20) chosen.push_back({ e, cands[e].xs[rnd((int)cands[e].xs.size())] });
+            }
+            bool lost = false;
+            for (int t = 0; t < N; t++)
+                for (int x = 0; x < W; x++)
+                    if (comp[t][x] >= 0 && !reached[comp[t][x]]) { pin[t][x] = 1; lost = true; }
+            if (!lost) break;
+        }
+        bool stand = true;                             // every way out still on a floor that is left
+        for (const TerWay& w : ways) stand = stand && comp[w.tier][w.x] >= 0;
+        if (stand) break;
+    }
+    // the floors, numbered as their components are (tier by tier, left to right)
+    d->num_tree_floors = 0;
+    for (int t = 0; t < N; t++)
+        for (int x = 0; x < W;) {
+            if (comp[t][x] < 0) { x++; continue; }
+            int x0 = x;
+            while (x < W && comp[t][x] == comp[t][x0]) x++;
+            if (d->num_tree_floors < TREE_MAX_FLOORS) d->tree_floors[d->num_tree_floors++] = { (int16_t)t, (int16_t)x0, (int16_t)x };
+        }
+    d->num_tree_ladders = 0;
+    for (const auto& c : chosen) {
+        if (d->num_tree_ladders >= TREE_MAX_LADDERS) break;
+        const Edge& e = cands[c.first];
+        int x0 = c.second, st[TREE_MAX_TIERS], ns = stack(x0, st);
+        for (int i = 0; i + 1 < ns; i++) {
+            if (comp[st[i]][x0] != e.a || comp[st[i + 1]][x0] != e.b) continue;
+            d->tree_ladders[d->num_tree_ladders++] = { (int16_t)x0, (int16_t)(d->tree_b[st[i + 1] + 1][x0] - Z),
+                                                       (int16_t)d->tree_b[st[i]][x0], (int16_t)e.a, (uint8_t)(st[i] > d->tree_e) };
+            break;
+        }
+    }
+    return true;
+}
+
+static bool tree_walkable(const DungeonMap* d, int x, int y);
+
+// The tiles (sight, spawners, loot; the feet go by the pixel): floor where a
+// tile's middle is ground to stand on and the tiles join it to (tx, ty) -- a
+// taper's tip can leave a middle on ground with none beside it.
+static void terraces_tiles(DungeonMap* d, int tx, int ty) {
+    static uint8_t on[DMAP_H][DMAP_W];
+    for (int y = 0; y < DMAP_H; y++)
+        for (int x = 0; x < DMAP_W; x++)
+            on[y][x] = tree_walkable(d, x * 16 + 8 - d->tree_ox, y * 16 + 8 - d->tree_oy);
+    std::vector<int> q = { ty * DMAP_W + tx };
+    on[ty][tx] = 0;
+    for (size_t h = 0; h < q.size(); h++) {
+        int x = q[h] % DMAP_W, y = q[h] / DMAP_W;
+        d->tiles[y][x] = DNG_FLOOR;
+        const int dx[4] = { 1, -1, 0, 0 }, dy[4] = { 0, 0, 1, -1 };
+        for (int k = 0; k < 4; k++) {
+            int nx = x + dx[k], ny = y + dy[k];
+            if (nx < 0 || ny < 0 || nx >= DMAP_W || ny >= DMAP_H || !on[ny][nx]) continue;
+            on[ny][nx] = 0;
+            q.push_back(ny * DMAP_W + nx);
+        }
+    }
 }
 
 static void carve_tree_terraces(DungeonMap* d, uint32_t* rng) {
@@ -2310,7 +2090,7 @@ static void carve_tree_terraces(DungeonMap* d, uint32_t* rng) {
     // the hollow: the tiers' own slope, 1.5 units clear of their ends; a floor
     // stops at it
     auto half = [&](int y) { return (R0 + 2.0f * ((float)y / U - TOP) / P) * U + 96; };
-    d->tree_n = N; d->tree_e = E; d->tree_w = W; d->tree_h = H;
+    d->tree_n = N; d->tree_e = E; d->tree_w = W; d->tree_h = H; d->tree_z = Z;
     d->tree_ox = 8 * 16; d->tree_oy = 8 * 16;
     d->tree_seed = rng_next(rng) * 65536u + rng_next(rng);
 
@@ -2365,174 +2145,171 @@ static void carve_tree_terraces(DungeonMap* d, uint32_t* rng) {
         return fabsf((float)(x - Cx)) >= half(b) - 1 ? INF : b;
     };
 
-    // The levels per column, front to back: each stands one wall above the one
-    // in front; a level with no floor here has no depth, and the walls meet.
-    static uint8_t pin[TREE_MAX_TIERS][TREE_MAX_W];
-    memset(pin, 0, sizeof pin);
-    auto build = [&]() {
-        for (int x = 0; x < W; x++) {
-            int bf = FRONT_B;
-            d->tree_b[N][x] = (int16_t)FRONT_B;
-            for (int t = N - 1; t >= 0; t--) {
-                int f = bf - Z, b = pin[t][x] ? f : std::min(back(t, x), f);
-                d->tree_b[t][x] = (int16_t)b;
-                bf = b;
-            }
-        }
-    };
-    auto depth = [&](int t, int x) { return d->tree_b[t + 1][x] - Z - d->tree_b[t][x]; };
-    auto stack = [&](int x, int* st) {                // the tiers whose floors show at x, front to back
-        int n = 0;
-        for (int t = N - 1; t >= 0; t--) if (depth(t, x) >= 1) st[n++] = t;
-        return n;
-    };
-    // a floor never 48 deep (the reference's least) is a pinch's tip, not a floor
-    build();
-    for (int t = 0; t < N; t++)
-        for (int x = 0; x < W;) {
-            if (depth(t, x) < 1) { x++; continue; }
-            int x0 = x, dep = 0;
-            while (x < W && depth(t, x) >= 1) dep = std::max(dep, depth(t, x++));
-            if (dep < 48) for (int i = x0; i < x; i++) pin[t][i] = 1;
-        }
-
     // The door: a flat column of the way in's floor, flat either side, nearest
     // the middle, where the floor truly is 48 deep -- a pinch in front of it
     // merges the walls there and leaves it shallower, even to nothing. Chosen
     // once the layout stands: pinching a floor out later only deepens the one
     // behind it. Failing any, the levels in front of the middle column are
     // pinched out under it.
-    build();
-    auto deep = [&](int c) {
-        for (int x = c * U; x < (c + 1) * U; x++) if (depth(E, x) < 48) return false;
+    std::vector<TerWay> ways;
+    terraces_join(d, rng, N, W, 1, [&](int t, int x) { return t == N ? FRONT_B : back(t, x); },
+                  [&](std::vector<TerWay>& w) {
+        auto deep = [&](int c) {
+            for (int x = c * U; x < (c + 1) * U; x++) if (ter_depth(d, E, x) < 48) return false;
+            return true;
+        };
+        int door_c = -1;
+        for (int i = 1; i + 1 < 2 * R[E]; i++)
+            if (offs[E][i] == offs[E][i - 1] && offs[E][i] == offs[E][i + 1] && deep(Cu - R[E] + i)) {
+                int c = Cu - R[E] + i;
+                if (door_c < 0 || abs(c - Cu) < abs(door_c - Cu)) door_c = c;
+            }
+        if (door_c < 0) {
+            door_c = Cu;
+            for (int t = E + 1; t < N; t++)
+                for (int x = door_c * U; x < (door_c + 1) * U; x++) s_ter_pin[t][x] = 1;
+        }
+        w.push_back({ E, door_c * U + 32 });
         return true;
-    };
-    int door_c = -1;
-    for (int i = 1; i + 1 < 2 * R[E]; i++)
-        if (offs[E][i] == offs[E][i - 1] && offs[E][i] == offs[E][i + 1] && deep(Cu - R[E] + i)) {
-            int c = Cu - R[E] + i;
-            if (door_c < 0 || abs(c - Cu) < abs(door_c - Cu)) door_c = c;
-        }
-    if (door_c < 0) {
-        door_c = Cu;
-        for (int t = E + 1; t < N; t++)
-            for (int x = door_c * U; x < (door_c + 1) * U; x++) pin[t][x] = 1;
-    }
-    const int door_x = door_c * U + 32;
-
-    // Floors (a tier's columns that show, contiguous) are joined by ladders: up a
-    // wall between a level and the next behind it, wherever both are flat over
-    // 16 pixels. A tree of them from the way in's floor, a fifth of the rest for
-    // loops; a floor no ladder can reach is pinched out and the lot rebuilt.
-    static int16_t comp[TREE_MAX_TIERS][TREE_MAX_W];
-    struct Edge { int a, b; std::vector<int> xs; };
-    std::vector<Edge> cands;
-    std::vector<std::pair<int, int>> chosen;           // (edge, x0)
-    for (;;) {
-        build();
-        int ncomp = 0;
-        for (int t = 0; t < N; t++) {
-            bool prev = false;
-            for (int x = 0; x < W; x++) {
-                bool on = depth(t, x) >= 1;
-                if (on && !prev) ncomp++;
-                comp[t][x] = on ? (int16_t)(ncomp - 1) : (int16_t)-1;
-                prev = on;
-            }
-        }
-        cands.clear();
-        for (int x0 = 0; x0 < W - 16; x0 += 16) {
-            int st[TREE_MAX_TIERS], ns = stack(x0, st);
-            for (int i = 0; i + 1 < ns; i++) {
-                int a = st[i], b = st[i + 1];
-                // a block clear of the door either side (user), up to its floor or from it
-                if ((a == E || b == E) && x0 + 16 > door_x - 32 && x0 < door_x + 32) continue;
-                bool ok = true;
-                for (int x = x0; x < x0 + 16 && ok; x++) {
-                    int s2[TREE_MAX_TIERS], n2 = stack(x, s2);
-                    ok = n2 > i + 1 && s2[i] == a && s2[i + 1] == b &&
-                         d->tree_b[a][x] == d->tree_b[a][x0] && d->tree_b[b + 1][x] == d->tree_b[b + 1][x0];
-                }
-                if (!ok) continue;
-                int ka = comp[a][x0], kb = comp[b][x0];
-                auto it = std::find_if(cands.begin(), cands.end(), [&](const Edge& e) { return e.a == ka && e.b == kb; });
-                if (it == cands.end()) { cands.push_back({ ka, kb, {} }); it = cands.end() - 1; }
-                it->xs.push_back(x0);
-            }
-        }
-        std::vector<char> reached(ncomp, 0);
-        reached[comp[E][door_x]] = 1;
-        chosen.clear();
-        for (;;) {
-            std::vector<int> grow;
-            for (int e = 0; e < (int)cands.size(); e++)
-                if (reached[cands[e].a] != reached[cands[e].b]) grow.push_back(e);
-            if (grow.empty()) break;
-            int e = grow[rnd((int)grow.size())];
-            chosen.push_back({ e, cands[e].xs[rnd((int)cands[e].xs.size())] });
-            reached[cands[e].a] = reached[cands[e].b] = 1;
-        }
-        for (int e = 0; e < (int)cands.size(); e++) {
-            if (!reached[cands[e].a] || !reached[cands[e].b]) continue;
-            bool have = std::any_of(chosen.begin(), chosen.end(), [&](const std::pair<int, int>& c) { return c.first == e; });
-            if (!have && rnd(100) < 20) chosen.push_back({ e, cands[e].xs[rnd((int)cands[e].xs.size())] });
-        }
-        bool lost = false;
-        for (int t = 0; t < N; t++)
-            for (int x = 0; x < W; x++)
-                if (comp[t][x] >= 0 && !reached[comp[t][x]]) { pin[t][x] = 1; lost = true; }
-        if (!lost) break;
-    }
-    // the floors, numbered as their components are (tier by tier, left to right)
-    d->num_tree_floors = 0;
-    for (int t = 0; t < N; t++)
-        for (int x = 0; x < W;) {
-            if (comp[t][x] < 0) { x++; continue; }
-            int x0 = x;
-            while (x < W && comp[t][x] == comp[t][x0]) x++;
-            if (d->num_tree_floors < TREE_MAX_FLOORS) d->tree_floors[d->num_tree_floors++] = { (int16_t)t, (int16_t)x0, (int16_t)x };
-        }
-    d->num_tree_ladders = 0;
-    for (const auto& c : chosen) {
-        if (d->num_tree_ladders >= TREE_MAX_LADDERS) break;
-        const Edge& e = cands[c.first];
-        int x0 = c.second, st[TREE_MAX_TIERS], ns = stack(x0, st);
-        for (int i = 0; i + 1 < ns; i++) {
-            if (comp[st[i]][x0] != e.a || comp[st[i + 1]][x0] != e.b) continue;
-            d->tree_ladders[d->num_tree_ladders++] = { (int16_t)x0, (int16_t)(d->tree_b[st[i + 1] + 1][x0] - Z),
-                                                       (int16_t)d->tree_b[st[i]][x0], (int16_t)e.a, (uint8_t)(st[i] > E) };
-            break;
-        }
-    }
+    }, ways);
+    const int door_x = ways[0].x;
 
     // the way out: the floor before the door, which stands two tiles wide on
     // the back wall; the second tile is the layout's exit, which a solo binding
     // floors again (a giant tree never pairs)
     int tx = (d->tree_ox + door_x - 16) / 16, ty = (d->tree_oy + d->tree_b[E][door_x]) / 16;
-    // The tiles (sight, spawners, loot; the feet go by the pixel): floor where a
-    // tile's middle is ground to stand on and the tiles join it to the way in --
-    // a taper's tip can leave a middle on ground with none beside it.
-    static uint8_t on[DMAP_H][DMAP_W];
-    for (int y = 0; y < DMAP_H; y++)
-        for (int x = 0; x < DMAP_W; x++)
-            on[y][x] = tree_walkable(d, x * 16 + 8 - d->tree_ox, y * 16 + 8 - d->tree_oy);
-    std::vector<int> q = { ty * DMAP_W + tx };
-    on[ty][tx] = 0;
-    for (size_t h = 0; h < q.size(); h++) {
-        int x = q[h] % DMAP_W, y = q[h] / DMAP_W;
-        d->tiles[y][x] = DNG_FLOOR;
-        const int dx[4] = { 1, -1, 0, 0 }, dy[4] = { 0, 0, 1, -1 };
-        for (int k = 0; k < 4; k++) {
-            int nx = x + dx[k], ny = y + dy[k];
-            if (nx < 0 || ny < 0 || nx >= DMAP_W || ny >= DMAP_H || !on[ny][nx]) continue;
-            on[ny][nx] = 0;
-            q.push_back(ny * DMAP_W + nx);
-        }
-    }
+    terraces_tiles(d, tx, ty);
     d->entry_x = tx;     d->entry_y = ty;
     d->exit_x  = tx + 1; d->exit_y  = ty;
     d->tiles[ty][tx]     = DNG_ENTRY;
     d->tiles[ty][tx + 1] = DNG_EXIT;
+}
+
+// ── Caves: terraces, a level of the mountain each ────────────────────────
+// The user's reference (an EarthBound cave): floors on several levels, a tall
+// band of fluted rock behind each, its top and foot flat or at 45 degrees and
+// parallel, ladders up the bands between. A cave has a floor for every level
+// its mountain's mouths stand on outside (want_lvl), the flat's lowest and at
+// the front, and each mouth is on the back wall of its own level's floor --
+// an arch for a mouth walked into outside, a ladder up into a hatch for a
+// hole climbed down (want_hole) -- laid across the cave as the mouths lie
+// across the mountain. The back
+// wall runs on up to the top of the map; the lowest floor is a ledge, rock
+// hanging CAVE_UNDER below its edge over the dark. The terraces are the giant
+// tree's (terraces_join), a wall CAVE_Z tall; mocked in art/structures/
+// dungeon_walls/cave_terrace_mock.py, the picture by cave_bake.
+static const int CAVE_Z = 80, CAVE_TOP = 3, CAVE_UNITS = 28, CAVE_UNDER = 32, CAVE_BELOW = 96;
+
+static void carve_cave_terraces(DungeonMap* d, uint32_t* rng) {
+    const int U = TREE_U, P = TREE_P, TOP = CAVE_TOP, UNITS = CAVE_UNITS;
+    auto rnd = [&](int n) { return (int)(rng_next(rng) % (uint32_t)n); };
+    const int want = d->want_portals;
+    int lvl[DMAP_MAX_PORTALS], top = 0, ox0 = d->want_ox[0], ox1 = d->want_ox[0];
+    for (int m = 0; m < want; m++) {
+        lvl[m] = std::max(0, std::min(3, d->want_lvl[m]));
+        top = std::max(top, lvl[m]);
+        ox0 = std::min(ox0, d->want_ox[m]); ox1 = std::max(ox1, d->want_ox[m]);
+    }
+    if (top == 0) {                                    // no mountain to take levels from: two, a way out on each
+        for (int m = 0; m < want; m++) lvl[m] = m & 1;
+        top = 1;
+    }
+    const int N = top + 1, W = UNITS * U, H = (TOP + N * P + 1) * U + CAVE_BELOW;
+    d->tree_n = N; d->tree_e = N; d->tree_w = W; d->tree_h = H; d->tree_z = CAVE_Z;
+    d->tree_ox = 8 * 16; d->tree_oy = 8 * 16;
+    d->tree_seed = rng_next(rng) * 65536u + rng_next(rng);
+
+    // Each tier's back edge, a row offset (-1, 0, 1) per unit column, between its
+    // two ends; tier N is the line the lowest floor's front edge stands Z above.
+    static int8_t offs[TREE_MAX_TIERS + 1][64];
+    int end0[TREE_MAX_TIERS + 1], end1[TREE_MAX_TIERS + 1];
+    auto back = [&](int t, int x) {
+        auto row = [&](int i) { return TOP + t * P + offs[t][i]; };
+        const int a = end0[t], b = end1[t];
+        if (x < a * U) return row(a) * U + (a * U - x);              // past an end: on down at 45 degrees
+        if (x >= b * U) return row(b - 1) * U + (x - b * U + 1);
+        const int i = x / U, lx = x % U, r0 = i > a ? row(i - 1) : row(i), r1 = row(i);
+        return r0 == r1 ? r1 * U : r0 * U + (r1 > r0 ? lx + 1 : -lx);   // a step: 45 degrees across the column
+    };
+    // A mouth a way out: on its level's floor, a flat 64 pixels where the floor
+    // is 48 deep, as far across the cave as the mouth lies across the mountain;
+    // two on one floor two columns apart.
+    auto pick = [&](std::vector<TerWay>& w) {
+        for (int m = 0; m < want; m++) {
+            const int t = N - 1 - lvl[m];
+            const float f = ox1 > ox0 ? (float)(d->want_ox[m] - ox0) / (float)(ox1 - ox0) : 0.5f;
+            const int target = (int)((0.25f + 0.5f * f) * UNITS);
+            int best = -1;
+            for (int c = 1; c + 1 < UNITS; c++) {
+                bool ok = true;
+                for (int x = c * U; x < (c + 1) * U && ok; x++)
+                    ok = d->tree_b[t][x] == d->tree_b[t][c * U] && ter_depth(d, t, x) >= 48;
+                for (const TerWay& o : w) ok = ok && !(o.tier == t && abs(o.x - (c * U + 32)) < 2 * U);
+                if (ok && (best < 0 || abs(c - target) < abs(best - target))) best = c;
+            }
+            if (best < 0) return false;
+            w.push_back({ t, best * U + 32 });
+        }
+        return true;
+    };
+    std::vector<TerWay> ways;
+    for (int attempt = 0; ; attempt++) {
+        const bool level = attempt >= 12;              // past any luck: level floors the whole width, which always join
+        for (int t = 0; t <= N; t++) {
+            end0[t] = (t == N || level) ? 0 : 4 + rnd(3);
+            end1[t] = (t == N || level) ? UNITS : UNITS - 4 - rnd(3);
+            int cur = rnd(3) - 1;
+            for (int i = 0; i < UNITS; i++) {
+                if (i > 0 && rnd(100) < 35) cur = std::max(-1, std::min(1, cur + (rnd(2) ? 1 : -1)));
+                offs[t][i] = (int8_t)(level ? 0 : cur);
+            }
+        }
+        if (terraces_join(d, rng, N, W, 48, back, pick, ways)) break;
+    }
+
+    // every mouth its own way out: the floor tile before its arch, which stands
+    // two tiles wide on the back wall
+    d->num_portals = 0;
+    for (int m = 0; m < want; m++) {
+        int tx = (d->tree_ox + ways[m].x - 16) / 16, ty = (d->tree_oy + d->tree_b[ways[m].tier][ways[m].x]) / 16;
+        d->portals[d->num_portals++] = { tx, ty, -1, -1 };
+    }
+    terraces_tiles(d, d->portals[0].tx, d->portals[0].ty);
+    d->entry_x = d->portals[0].tx; d->entry_y = d->portals[0].ty;
+    d->exit_x  = d->portals[1].tx; d->exit_y  = d->portals[1].ty;
+    for (int p = 0; p < d->num_portals; p++)
+        d->tiles[d->portals[p].ty][d->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
+}
+
+// The crystals to mine: each a tile of a floor's open middle -- floor all
+// round it, so none shuts a way -- marked in art[][] (a cave draws no tile
+// art) and solid until mined (tile_solid). Clear of the mouths and ladders.
+static void place_cave_nodes(DungeonMap* d, uint32_t* rng) {
+    auto rnd = [&](int n) { return (int)(rng_next(rng) % (uint32_t)n); };
+    auto open = [&](int tx, int ty) {
+        for (int j = -1; j <= 1; j++)
+            for (int i = -1; i <= 1; i++)
+                if (d->tiles[ty + j][tx + i] != DNG_FLOOR) return false;
+        return true;
+    };
+    int want = 6 + rnd(5);
+    for (int tries = 0; want > 0 && tries < 4000; tries++) {
+        int tx = d->tree_ox / 16 + rnd(d->tree_w / 16), ty = d->tree_oy / 16 + rnd(d->tree_h / 16);
+        if (tx < 1 || ty < 1 || tx >= DMAP_W - 1 || ty >= DMAP_H - 1 || !open(tx, ty)) continue;
+        bool near = false;
+        for (int p = 0; p < d->num_portals; p++)
+            near = near || (abs(tx - d->portals[p].tx) < 4 && abs(ty - d->portals[p].ty) < 4);
+        for (int i = 0; i < d->num_tree_ladders; i++) {
+            const auto& l = d->tree_ladders[i];
+            int lx = (d->tree_ox + l.x0) / 16, ly0 = (d->tree_oy + l.y0) / 16, ly1 = (d->tree_oy + l.y1) / 16;
+            near = near || (abs(tx - lx) < 3 && ty >= ly0 - 3 && ty <= ly1 + 3);
+        }
+        if (near) continue;
+        d->tiles[ty][tx] = DNG_WALL;
+        d->art[ty][tx]   = 1;
+        resource_nodes_add(&d->dungeon_rocks, RESOURCE_ROCK, (float)(tx * DMAP_TILE), (float)(ty * DMAP_TILE));
+        want--;
+    }
 }
 
 // ── Spawner placement ─────────────────────────────────────────────────────
@@ -2690,12 +2467,6 @@ static bool tile_open_interior(const DungeonMap* dmap, int tx, int ty) {
     return open >= 6;
 }
 
-// Defined later, alongside cave_wall_classify() (whose tall_band_standalone
-// flag is the exact placement criterion) -- forward-declared here so
-// dungeon_generate() and dungeon_player_update() can call it before that
-// point in the file.
-static void place_cave_rock_nodes(DungeonMap* dmap);
-static bool cave_tile_is_rock_candidate(const DungeonMap* dmap, int tx, int ty);
 static bool tile_in_the_open(const DungeonMap* dmap, int tx, int ty);   // beside tile_solid
 
 // Spread loot across floor tiles using the same grid + local-search shape as
@@ -3239,12 +3010,11 @@ static void generate_layout(DungeonMap* dmap, DungeonEntranceType type,
 
     // ── Cave: cellular automata + stalactite clusters ────────────────────
     if (type == DUNGEON_ENT_CAVE) {
-        carve_cave_ca(dmap, &rng);
-        decorate_cave(dmap, &rng);
+        carve_cave_terraces(dmap, &rng);
+        place_cave_nodes(dmap, &rng);
         clear_portal_surroundings(dmap);
         place_spawners(dmap, &rng);
         place_loot(dmap, &rng);
-        place_cave_rock_nodes(dmap);
         return;
     }
 
@@ -3372,7 +3142,7 @@ static void generate_layout(DungeonMap* dmap, DungeonEntranceType type,
 static int tree_floor_at(const DungeonMap* d, int x, int y) {
     for (int i = 0; i < d->num_tree_floors; i++) {
         const auto& f = d->tree_floors[i];
-        if (x >= f.x0 && x < f.x1 && y >= d->tree_b[f.t][x] && y < d->tree_b[f.t + 1][x] - TREE_Z) return i;
+        if (x >= f.x0 && x < f.x1 && y >= d->tree_b[f.t][x] && y < d->tree_b[f.t + 1][x] - d->tree_z) return i;
     }
     for (int i = 0; i < d->num_tree_ladders; i++) {
         const auto& l = d->tree_ladders[i];
@@ -3395,7 +3165,7 @@ static void build_regions(DungeonMap* d) {
     static int q[DMAP_W * DMAP_H];
     const int d4x[4] = { 1, -1, 0, 0 }, d4y[4] = { 0, 0, 1, -1 };
     auto fresh = [&]() { return (uint16_t)(d->num_regions < DMAP_MAX_REGIONS ? ++d->num_regions : DMAP_MAX_REGIONS); };
-    if (d->type == DUNGEON_ENT_LARGE_TREE) {
+    if (terraced(d)) {
         d->num_regions = std::min(d->num_tree_floors, DMAP_MAX_REGIONS);
         for (int y = 0; y < DMAP_H; y++)
             for (int x = 0; x < DMAP_W; x++)
@@ -3568,6 +3338,18 @@ void dungeon_update_sight(DungeonMap* d, int ptx, int pty) {
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type, float difficulty, unsigned int seed) {
     generate_layout(dmap, type, difficulty, seed);
     build_regions(dmap);
+    // The box the floor fills, a wall ring round it (the ring is where
+    // dungeon_seat_portals later stands the ways out): the minimap's frame.
+    int x0 = DMAP_W, y0 = DMAP_H, x1 = -1, y1 = -1;
+    for (int y = 0; y < DMAP_H; y++)
+        for (int x = 0; x < DMAP_W; x++)
+            if (dmap->tiles[y][x] != DNG_WALL) {
+                x0 = std::min(x0, x); x1 = std::max(x1, x);
+                y0 = std::min(y0, y); y1 = std::max(y1, y);
+            }
+    if (x1 < 0) { x0 = y0 = 0; x1 = DMAP_W - 1; y1 = DMAP_H - 1; }   // no floor at all: the grid
+    dmap->floor_x0 = std::max(x0 - 1, 0);        dmap->floor_y0 = std::max(y0 - 1, 0);
+    dmap->floor_x1 = std::min(x1 + 1, DMAP_W - 1); dmap->floor_y1 = std::min(y1 + 1, DMAP_H - 1);
 }
 
 // ── Public: orient portals to match overworld direction ───────────────────
@@ -3690,6 +3472,9 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
             if (i == entrance_idx) w.my_mouth = w.n_mouths;
             w.mouth_ow_x[w.n_mouths] = m->x;
             w.mouth_ow_y[w.n_mouths] = m->y;
+            // where you stand to walk in: the flat before a foot mouth (whose
+            // cliff_level is the wall's, 1), the plateau a ladder hole is cut in
+            w.want_lvl[w.n_mouths]   = tilemap_cliff_elev_at(m->x, m->y);
             w.n_mouths++;
         }
         // One mouth is not a system. Clear my_mouth with it: leaving it at 0
@@ -3787,6 +3572,15 @@ DungeonWiring dungeon_wiring_for(const Tilemap* map, unsigned int map_seed,
         }
     }
     // 4. Otherwise solo, which is what the defaults above already say.
+
+    // A cave's ways out are what its entrances are: a hole's a ladder, a
+    // mouth's an arch. By portal -- a system's mouths, or the pair's two ends.
+    if (w.type == DUNGEON_ENT_CAVE) {
+        w.want_hole[0] = tilemap_cave_hole_at(map, w.entry_ow_x, w.entry_ow_y);
+        w.want_hole[1] = tilemap_cave_hole_at(map, w.exit_ow_x, w.exit_ow_y);
+        for (int m = 0; m < w.n_mouths; m++)
+            w.want_hole[m] = tilemap_cave_hole_at(map, w.mouth_ow_x[m], w.mouth_ow_y[m]);
+    }
 
     return w;
 }
@@ -3947,6 +3741,19 @@ void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
     dungeon_seat_portals(dmap);
 }
 
+void dungeon_want(DungeonMap* dmap, const DungeonWiring* w) {
+    dmap->want_portals = (w->n_mouths >= 2) ? w->n_mouths : 2;
+    dmap->starter      = w->starter;
+    dmap->step_pyramid = w->step_pyramid;
+    for (int m = 0; m < DMAP_MAX_PORTALS; m++) {
+        bool mine = m < w->n_mouths;
+        dmap->want_ox[m]  = mine ? w->want_ox[m]  : 0;
+        dmap->want_oy[m]  = mine ? w->want_oy[m]  : 0;
+        dmap->want_lvl[m] = mine ? w->want_lvl[m] : 0;
+        dmap->want_hole[m] = w->want_hole[m];
+    }
+}
+
 void dungeon_bind_cave_mouths(DungeonMap* dmap, const int* ow_x, const int* ow_y, int n) {
     // A cave keeps all its ways out and each one leads to its own mouth.
     // Orienting is a two-mouth idea -- it aligns the underground direction with
@@ -3969,6 +3776,7 @@ void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dm
     dp->y        = (float)(spawn_ty * DMAP_TILE + DMAP_TILE / 2 - 24);
     dp->speed    = PLAYER_WALK_SPEED;
     dp->at_exit  = 0;
+    dp->at_way   = -1;
     dp->at_entry = 0;
     if (dmap->type == DUNGEON_ENT_OASIS && dmap->num_oasis_air >= 2) {   // up at the shaft's surface
         const auto& a = dmap->oasis_air[from_exit ? 1 : 0];
@@ -4005,48 +3813,96 @@ static bool tile_solid(const void* map, float px, float py) {
                              (int)floorf(py * 16 / DMAP_TILE) - dmap->oasis_y0);
     if (dmap->type == DUNGEON_ENT_CATACOMBS)                 // the feet taken back into the world
         return !cat_walkable(dmap, px * 16 / DMAP_TILE, py * 16 / DMAP_TILE);
-    if (dmap->type == DUNGEON_ENT_LARGE_TREE)                // floors and ladders to the art pixel
+    if (terraced(dmap)) {                                    // floors and ladders to the art pixel
+        if (dmap->type == DUNGEON_ENT_CAVE && dmap->art[ty][tx]) return true;   // a crystal, the tile it stands on
         return !tree_walkable(dmap, (int)floorf(px * 16 / DMAP_TILE) - dmap->tree_ox,
                               (int)floorf(py * 16 / DMAP_TILE) - dmap->tree_oy);
+    }
     return dmap->tiles[ty][tx] == DNG_WALL;
 }
 
 bool dungeon_solid_at(const void* dmap, float px, float py) { return tile_solid(dmap, px, py); }
 
-int dungeon_way_at(const DungeonMap* dmap, float cx, float cy) {
-    // The barrow's ladders stand where its picture has them, not on the tile
-    // grid: the hitbox is the box at the ladder's foot (user's sketch) -- wider
-    // than the ladder, from a little up the wall to half a tile out before it.
-    if (dmap->type == DUNGEON_ENT_STONEHENGE) {
-        const float S = DMAP_TILE / 16.0f;
-        for (int w = 0; w < 2; w++) {
-            float lx = (dmap->barrow_ox + dmap->barrow_way_x[w] + dmap->barrow_way_d[w]) * S;
-            float fy = (dmap->barrow_oy - dmap->barrow_way_d[w]) * S;
-            if (fabsf(cx - lx) > 18.0f || cy < fy - 10.0f || cy > fy + 16.0f) continue;
-            int ptx, pty;
-            barrow_way_tile(dmap, w, &ptx, &pty);
-            uint8_t t = dmap->tiles[pty][ptx];
-            if (t == DNG_ENTRY || t == DNG_EXIT) return t;
-        }
-        return -1;
+// Where way out p is drawn: the middle of its ladder or door at the foot of
+// the wall it stands on, in world pixels, and half its drawn width. Every
+// kind says it here, from what draws it -- the hitbox, where the player is
+// stood on arriving and which way out was taken all read this, so they can
+// not drift from the picture again (they did: a two-wide door is drawn from
+// its tile to the next, a projected one wherever the projection puts it).
+static void way_point(const DungeonMap* d, int p, float* wx, float* wy, float* half) {
+    const float A = DMAP_TILE / 16.0f;                     // world pixels an art pixel
+    int tx = d->portals[p].tx, ty = d->portals[p].ty;
+    *wx = (tx + 0.5f) * DMAP_TILE; *wy = (float)(ty * DMAP_TILE); *half = 8 * A;   // a ladder on its tile
+    switch (d->type) {
+        case DUNGEON_ENT_STONEHENGE:                       // the barrow's ladders, where the picture has them
+            for (int w = 0; w < 2; w++) {
+                int x, y;
+                barrow_way_tile(d, w, &x, &y);
+                if (x != tx || y != ty) continue;
+                *wx = (d->barrow_ox + d->barrow_way_x[w] + d->barrow_way_d[w]) * A;
+                *wy = (d->barrow_oy - d->barrow_way_d[w]) * A;
+            }
+            return;
+        case DUNGEON_ENT_GRAVEYARD_SM: case DUNGEON_ENT_GRAVEYARD_LG:
+            for (int w = 0; w < 2; w++) {                  // the ladder or door 24 in on its wall, 16 wide
+                int x, y;
+                gyw_way_tile(d, w, &x, &y);
+                if (x != tx || y != ty) continue;
+                int vf = gyw_wall_v(d, w);
+                *wx = (d->gyw_ox + gyw_wall_u(d, w) + vf + 32) * A;
+                *wy = (d->gyw_oy - vf) * A;
+            }
+            return;
+        case DUNGEON_ENT_CATACOMBS:                        // the cut's door, at its projected foot
+            for (int i = 0; i < d->num_cat_cuts; i++) {
+                const auto& c = d->cat_cuts[i];
+                if (c.area != 0 || c.tx != tx || c.ty != ty) continue;
+                float ax, ay;
+                cat_screen(d, 0, c.u0 + c.k / 2.0f, c.v0 + c.k / 2.0f, &ax, &ay);
+                *wx = ax * A; *wy = ay * A;
+            }
+            return;
+        case DUNGEON_ENT_OASIS:                            // the shaft's ladder, at its water line
+            for (int i = 0; i < 2 && i < d->num_oasis_air; i++) {
+                int x, y;
+                oasis_way_tile(d, i, &x, &y);
+                if (x != tx || y != ty) continue;
+                *wx = (d->oasis_x0 + (d->oasis_air[i].x0 + d->oasis_air[i].x1) / 2) * A;
+                *wy = (d->oasis_y0 + d->oasis_air[i].line) * A;
+            }
+            return;
+        default:
+            if (cave_ladder_out(d, p)) return;                // a ladder on its tile
+            if (const WayOutDoor* door = way_out_door(d)) {   // draw_ways_out: from tx - (w-1)/2, w wide
+                *wx = (tx - (door->w - 1) / 2 + door->w * 0.5f) * DMAP_TILE;
+                *half = door->w * 8 * A;
+            }
+            return;
     }
-    int tx = (int)(cx / DMAP_TILE), ty = (int)(cy / DMAP_TILE);
-    if (tx < 0 || tx >= DMAP_W || !way_opening(cx - tx * DMAP_TILE)) return -1;
-    if (!feet_walked_into(dmap, cx, cy, 0, -1, tile_solid)) return -1;
-    // Its own tile, or the one behind: a wall drawn to the pixel has its foot
-    // anywhere between the two tiles' middles.
-    for (int y = ty; y <= ty + 1; y++) {
-        if (y < 0 || y >= DMAP_H) continue;
-        uint8_t t = dmap->tiles[y][tx];
-        if (t == DNG_ENTRY || t == DNG_EXIT) return t;
+}
+
+int dungeon_way_at(const DungeonMap* dmap, float cx, float cy) {
+    for (int p = 0; p < dmap->num_portals; p++) {
+        float wx, wy, half;
+        way_point(dmap, p, &wx, &wy, &half);
+        if (dmap->type == DUNGEON_ENT_OASIS) {
+            // Surfaced under the ladder: the head up out of the water (as
+            // dungeon_breathing has it), the body's middle under the ladder.
+            int x0, y0, x1, y1;
+            oasis_body(dmap, cx - (HB_X1 + HB_X2) * 0.5f, cy - (HB_Y1 + HB_Y2) * 0.5f, &x0, &y0, &x1, &y1);
+            float mid = (x0 + x1) * 0.5f + dmap->oasis_x0, lx = wx * 16 / DMAP_TILE;
+            if (fabsf(mid - lx) <= 8 && y0 <= wy * 16 / DMAP_TILE - dmap->oasis_y0 - 2) return p;
+            continue;
+        }
+        // The box at its foot: its drawn width and a little, from a little up
+        // the wall to WAY_REACH out before it.
+        if (fabsf(cx - wx) <= half + 2 && cy >= wy - 10 && cy <= wy + 8 + WAY_REACH) return p;
     }
     return -1;
 }
 
 void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp) {
-    if (dmap->type == DUNGEON_ENT_OASIS) return;           // comes up in the water, at the shaft
-    // The way out the player was put on: the nearest. Its middle, at the foot
-    // of the wall it is on.
+    // The way out the player was put on: the nearest.
     float cx = dp->x + (HB_X1 + HB_X2) * 0.5f, cy = dp->y + (HB_Y1 + HB_Y2) * 0.5f;
     int best = -1;
     float bd = 0;
@@ -4055,13 +3911,14 @@ void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp) {
         if (best < 0 || dx * dx + dy * dy < bd) { best = p; bd = dx * dx + dy * dy; }
     }
     if (best < 0) return;
-    float wx = (dmap->portals[best].tx + 0.5f) * DMAP_TILE, wy = (float)(dmap->portals[best].ty * DMAP_TILE);
-    for (int w = 0; w < 2 && dmap->type == DUNGEON_ENT_STONEHENGE; w++) {   // the barrow's, where it is drawn
-        int ptx, pty;
-        barrow_way_tile(dmap, w, &ptx, &pty);
-        if (ptx != dmap->portals[best].tx || pty != dmap->portals[best].ty) continue;
-        wx = (dmap->barrow_ox + dmap->barrow_way_x[w] + dmap->barrow_way_d[w]) * (DMAP_TILE / 16.0f);
-        wy = (dmap->barrow_oy - dmap->barrow_way_d[w]) * (DMAP_TILE / 16.0f);
+    float wx, wy, half;
+    way_point(dmap, best, &wx, &wy, &half);
+    if (dmap->type == DUNGEON_ENT_OASIS) {
+        // under the ladder, the head a pixel short of surfacing: one stroke up
+        // and out (oasis_body: the head is 10 below the frame's top)
+        dp->x = wx - 14;
+        dp->y = (wy * 16 / DMAP_TILE - 1) * DMAP_TILE / 16 - 10;
+        return;
     }
     if (!stand_clear(&wx, &wy, 0, 1,
             [&](float x, float y) { return dungeon_way_at(dmap, x, y) >= 0; },
@@ -4174,30 +4031,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         int rty = (int)(h->hits[i].y / DMAP_TILE);
         if (rtx < 0 || rtx >= DMAP_W || rty < 0 || rty >= DMAP_H) continue;
         dmap->tiles[rty][rtx] = DNG_FLOOR;
-
-        // Cave-only: a neighbor that only just became a headroom-orphaned
-        // tall_band tile (see cave_wall_classify()'s tall_band_standalone)
-        // would otherwise show the same 32:0 art but not be struck-able --
-        // pick up any newly-qualifying, not-yet-tracked neighbor so digging
-        // further keeps finding real, harvestable rock. Non-cave dungeons
-        // don't place any rock nodes yet, so there's nothing to rescan there.
-        if (dmap->type != DUNGEON_ENT_CAVE) continue;
-        for (int ndy = -1; ndy <= 1; ndy++) {
-            for (int ndx = -1; ndx <= 1; ndx++) {
-                int nx = rtx + ndx, ny = rty + ndy;
-                if (nx < 0 || nx >= DMAP_W || ny < 0 || ny >= DMAP_H) continue;
-                if (dmap->tiles[ny][nx] != DNG_WALL) continue;
-                if (!cave_tile_is_rock_candidate(dmap, nx, ny)) continue;
-                bool tracked = false;
-                for (int k = 0; k < dmap->dungeon_rocks.count; k++) {
-                    ResourceNode& rn = dmap->dungeon_rocks.nodes[k];
-                    if ((int)(rn.x / DMAP_TILE) == nx && (int)(rn.y / DMAP_TILE) == ny) { tracked = true; break; }
-                }
-                if (!tracked)
-                    resource_nodes_add(&dmap->dungeon_rocks, RESOURCE_ROCK,
-                                       (float)(nx * DMAP_TILE), (float)(ny * DMAP_TILE));
-            }
-        }
+        dmap->art[rty][rtx]   = 0;                     // a cave's crystal stood here (place_cave_nodes)
     }
 
     float dx = 0.0f, dy = 0.0f;
@@ -4205,6 +4039,30 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         player_read_input(player, in, &dx, &dy);
 
     player_gait(in, &dp->speed, &anim_speed);
+
+    // The giant tree's ladders, climbed as EarthBound's are (user): pressing
+    // up or down at one draws the player across onto it -- a slide at walking
+    // pace, not a jump -- and on it they go only up or down. LADDER_LEAN: where
+    // on it, art pixels left of its middle (user: one).
+    const float ART = 16.0f / DMAP_TILE;                   // art pixels a world pixel
+    auto feet_art = [&](float* fx, float* fy) {
+        *fx = (dp->x + (HB_X1 + HB_X2) * 0.5f) * ART - dmap->tree_ox;
+        *fy = (dp->y + (HB_Y1 + HB_Y2) * 0.5f) * ART - dmap->tree_oy;
+    };
+    if (terraced(dmap) && !noclip) {
+        float fx, fy;
+        feet_art(&fx, &fy);
+        bool on = tree_on_ladder(dmap, fx, fy);
+        int lad = tree_ladder_at(dmap, fx, fy, dy);
+        if (lad >= 0 && (dy != 0.0f || on)) {
+            const float LADDER_LEAN = 1;
+            float sx = (dmap->tree_ox + dmap->tree_ladders[lad].x0 + 8 - LADDER_LEAN) / ART - (HB_X1 + HB_X2) * 0.5f;
+            float step = dp->speed * dt, nx = dp->x + std::max(-step, std::min(step, sx - dp->x));
+            if (nx != dp->x && can_occupy(dmap, nx, dp->y, tile_solid)) { dp->x = nx; player->is_moving = 1; }
+            dx = 0.0f;
+            dy = dy < 0.0f ? -1.0f : dy > 0.0f ? 1.0f : 0.0f;
+        }
+    }
 
     if (dmap->type == DUNGEON_ENT_OASIS) {
         // Swimming (the oasis): the way pressed is where the swimmer heads, at
@@ -4264,6 +4122,11 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         if (dp->x == px && dp->y == py && !(fixed_ways(dmap) && player->is_moving && dp->slide > 0))
             player->is_moving = 0;
     }
+    if (terraced(dmap)) {                                  // facing the ladder, up it or down
+        float fx, fy;
+        feet_art(&fx, &fy);
+        if (tree_on_ladder(dmap, fx, fy)) player->facing = FACE_UP;
+    }
 
     dp->at_link = dmap->type == DUNGEON_ENT_CATACOMBS ? cat_link_at(dmap, dp) : -1;
 
@@ -4273,8 +4136,10 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     int tx = (int)(cx / DMAP_TILE);
     int ty = (int)(cy / DMAP_TILE);
     int way = dungeon_way_at(dmap, cx, cy);
-    dp->at_exit  = way == DNG_EXIT;
-    dp->at_entry = way == DNG_ENTRY;
+    uint8_t wt = way >= 0 ? dmap->tiles[dmap->portals[way].ty][dmap->portals[way].tx] : 0;
+    dp->at_way   = way;
+    dp->at_exit  = wt == DNG_EXIT;
+    dp->at_entry = wt == DNG_ENTRY;
 
     // Loot pickup: auto-collect when standing on an unclaimed loot tile --
     // gold into the purse, a treasure into the inventory.
@@ -4298,434 +4163,6 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     // ── Sight: the regions in reach lit, and remembered ──
     dungeon_update_sight(dmap, (int)((dp->x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE),
                          (int)((dp->y + (HB_Y1 + HB_Y2) * 0.5f) / DMAP_TILE));
-}
-
-// ── CAVE: directional NES-style wall faces ────────────────────────────────
-// Classic top-down dungeon convention: only the wall bordering floor to its
-// SOUTH shows a tall "face" (you're looking at it as it recedes north, away
-// from you) — every other wall (bordering floor to the north/east/west, or
-// bordering no floor at all) is a flat, single-height boundary marker. The art
-// is one recoloured copy per Material of the user's hand-drawn rock swatch,
-// stamped by tools/gen_cave_tiles.py across cols 33-67 rows 0-7 (nothing else
-// reads there — no sheet_cell() call touches cols 27+, and the interior.h tile
-// atlas only covers rows 0-14 cols 0-13).
-static inline bool cave_floor_at(const DungeonMap* dmap, int x, int y) {
-    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;
-    uint8_t t = dmap->tiles[y][x];
-    return t == DNG_FLOOR || t == DNG_ENTRY || t == DNG_EXIT;
-}
-
-// Edge trims from the user's own hand-built mockup at assets/tileset.png
-// cols 28-32, rows 0-7. That block is now the INPUT to
-// tools/gen_cave_tiles.py rather than the art the renderer samples -- see the
-// note below TALL_BAND_SOLO_X -- but the shapes described here are its shapes
-// and every generated copy has them pixel for pixel, since recolouring cannot
-// move a pixel between art and colour key (the generator asserts exactly that).
-// These are only HALF filled: (29,7) (South) is opaque in its TOP half only,
-// and (31,0) (West/East) in its LEFT half only. Stretching that across a
-// full-tile destination (an earlier approach) left the other half of every
-// south/west/east wall tile transparent, showing the render's clear colour
-// through it -- a black half hiding in plain sight inside what looked like
-// "one solid tile" at a glance. The correct read: these are half-tile trims
-// meant to hug the boundary edge, not full-tile fills.
-static const int TRIM_WE_X = 31 * 16, TRIM_WE_Y = 0 * 16;   // opaque left 8px of this 16x16 cell
-static const int TRIM_S_X  = 29 * 16, TRIM_S_Y  = 7 * 16;   // opaque top 8px of this 16x16 cell
-
-// Corner-transition accent pieces, layered on top of a plain West/East trim
-// (TRIM_WE) for the tile immediately above or below a corner, blending its
-// trim run into the turn, and also as the four diagonal corner nubs. Only the
-// cell's own top-left 8x8 quadrant is painted. An earlier version stretched
-// this across the full tile height as a *replacement* for the plain trim
-// instead of an accent on top of it, which left the untouched bottom half of
-// the source (fully transparent) stretched into a visible gap at the bottom of
-// the tile -- confirmed by direct pixel dump.
-//
-// There used to be a second cell here, TRIM_TRANS_R at (32,7), holding the same
-// bead in its top-RIGHT quadrant for the east-facing cases, and the below-corner
-// and south nub cases drew one of the two vertically flipped. Both are gone.
-// The atlas has exactly ONE bead motif -- an 8x8 gem lit from the upper left,
-// byte-identical in (31,7), (32,7), (31,0)'s left column, (28,0)'s top-left and
-// (29,7)'s top-left, verified by comparing raw bytes. Which quadrant of the
-// destination a bead lands in is the destination rect's job, so a second source
-// cell bought nothing, and flipping actively broke the atlas's own convention:
-// variants differ by POSITION, never by mirroring, so every gem faces the same
-// way. (32,7) is now blank.
-static const int TRIM_TRANS_L_X = 31 * 16, TRIM_TRANS_L_Y = 7 * 16;   // the one bead
-static const int TALL_BAND_X = 28 * 16, TALL_BAND_Y = 0 * 16;         // (28,0)(28,1)(28,2), stacked into one tall face
-static const int TALL_BAND_SOLO_X = 32 * 16, TALL_BAND_SOLO_Y = 0 * 16;  // standalone boulder, single cell, not stacked
-
-// Every cell constant above is a MASTER coordinate, and the master block is not
-// what the renderer reads: tools/gen_cave_tiles.py stamps one recoloured copy of
-// it per Material into the seven blocks to its right, and a cave draws from the
-// one its own material picks. Because the used columns (28,29,31,32) all sit
-// inside a 5-wide window and no piece reaches outside rows 0-7, a variant is a
-// pure column shift -- so every source rect below stays written in master
-// coordinates and is shifted by exactly one number. KEEP IN SYNC with
-// MASTER_COL0 / OUT_COL0 / BLOCK_COLS in tools/gen_cave_tiles.py; there is no
-// way to check that agreement from here.
-static const int CAVE_MASTER_COL0 = 28;
-static const int CAVE_ART_COL0    = 33;
-static const int CAVE_ART_COLS    = 5;
-
-// How many columns right of the master this cave's own block sits.
-static inline int cave_art_col_shift(const DungeonMap* dmap) {
-    return CAVE_ART_COL0 - CAVE_MASTER_COL0
-         + cave_material_index(dmap) * CAVE_ART_COLS;
-}
-
-// Whether the wall tile at (tx,ty) is itself a corner -- both a South-style
-// trim condition and a West/East-style one true at once. Called from inside
-// cave_wall_classify() below to detect a corner sitting just above OR just
-// below a plain West/East tile (see trim_trans_above/trim_trans_below).
-static bool cave_is_corner(const DungeonMap* dmap, int tx, int ty) {
-    bool vert  = cave_floor_at(dmap, tx, ty - 1) || cave_floor_at(dmap, tx, ty + 1);
-    bool horiz = cave_floor_at(dmap, tx + 1, ty) || cave_floor_at(dmap, tx - 1, ty);
-    return vert && horiz;
-}
-
-// Does the cave wall tile at (x,y) draw the 3-cell stacked north face? Used to
-// find where a run of them ends, so the exposed flank can be outlined.
-// Equivalent to cave_wall_classify(dmap,x,y).tall_band && !tall_band_standalone,
-// reduced to three neighbor lookups instead of a full re-classify: tall_band's
-// cardinal_count>=3 arm can only fire without floor_s when floor_n is also true,
-// which is exactly the standalone case -- so "floor south, no floor north" is
-// the whole condition. Deliberately NOT a call back into cave_wall_classify(),
-// which calls this; keeping it flat keeps that one-directional.
-static inline bool cave_is_tall_face(const DungeonMap* dmap, int x, int y) {
-    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;  // map edge ends the run
-    if (cave_floor_at(dmap, x, y)) return false;                     // not a wall at all
-    return cave_floor_at(dmap, x, y + 1) && !cave_floor_at(dmap, x, y - 1);
-}
-
-// May a run-end outline segment paint into the cell at (x,y)? The strip is a
-// solid half-tile bar (31:0/31:1/31:2 are each opaque across their whole left
-// 8px, no soft edge), so it never blends with what it lands on: it either
-// outlines blank rock or defaces whatever art was already there. So the cell has
-// to be blank -- unlit interior rock mass -- with one deliberate exception.
-//
-// The cardinal scan is the whole test, and it is exact rather than approximate.
-// Sort cave_wall_classify()'s pieces by what triggers them and they fall into
-// two groups: the band and all four cardinal trims need floor in one of the four
-// CARDINAL neighbours, while the four nubs need floor on a DIAGONAL. So "no
-// floor N/S/E/W" IS "this cell draws no band and no trim", without enumerating
-// them, and the diagonals are left out on purpose.
-//
-// The exception is those nubs, and it is not an oversight. A nub is an 8x8
-// corner bead, and the one beside a run end is nearly always there: the band's
-// own floor-to-the-south sits on that cell's diagonal, so the cell level with
-// the band's base carries a nub_se/nub_sw almost every time. Excluding them too
-// cost every such cell -- 25 of them across the 8-seed set -- and since those
-// cells are otherwise void, what appeared was a half-cell black notch bitten out
-// of a rock edge that had been continuous, which looked worse than the overdraw
-// it was meant to prevent. Confirmed by cropping two of them at 7x rather than
-// by any count; a blank/non-blank check cannot see this. Letting the strip cross
-// a corner bead matches what this file already does at a literal corner (see the
-// note above about nubs staying unconditional under tall_band).
-//
-// Three rounds each blocked one piece at a time -- floor, then the band, then
-// the trims -- and each time the neighbourhood turned out to hold another thing
-// worth avoiding. Sorting the pieces by trigger is what actually settled it.
-// Measured over the 8-seed set at each step: 541 cells -> 246 -> 233, never
-// adding a cell back, so the render can only ever lose pixels and the regression
-// check stays exact in both directions.
-static inline bool cave_strip_lands_on_bare_rock(const DungeonMap* dmap, int x, int y) {
-    if (x < 0 || x >= DMAP_W || y < 0 || y >= DMAP_H) return false;
-    if (cave_floor_at(dmap, x, y)) return false;
-    if (cave_floor_at(dmap, x, y + 1) || cave_floor_at(dmap, x, y - 1) ||
-        cave_floor_at(dmap, x + 1, y) || cave_floor_at(dmap, x - 1, y)) return false;
-    // No band and no trim of its own, so the only thing left that can reach this
-    // cell is another face's upward bleed: TALL_BAND draws rows f-2..f from a
-    // single blit, so a face at y+1 or y+2 lands here from BELOW. (This is
-    // cave_is_tall_face()'s only remaining caller -- it is not dead.)
-    return !cave_is_tall_face(dmap, x, y + 1) && !cave_is_tall_face(dmap, x, y + 2);
-}
-
-// Which tileset pieces the cave wall tile at (tx,ty) is built from, derived
-// once from its local floor/wall neighborhood. Single source of truth,
-// consumed by both draw_cave_wall() (renders it) and cave_wall_debug_cell()
-// (labels it on the F2 debug grid overlay) -- previously each independently
-// re-derived this same boundary logic by hand, with a comment warning future
-// editors to keep the two copies in sync.
-struct CaveWallPieces {
-    bool tall_band = false;
-    bool tall_band_standalone = false;  // tall_band true, but floor sits
-                                          // immediately north -- the bleed's
-                                          // upper segment(s) would land on
-                                          // real floor and get erased by the
-                                          // second-pass floor reclaim,
-                                          // leaving 28:2 orphaned with
-                                          // nothing above it. Drawn as a
-                                          // single standalone boulder
-                                          // (TALL_BAND_SOLO) instead.
-    uint8_t band_edge_w = 0;   // this tall face is the West/East end of its run
-    uint8_t band_edge_e = 0;   // -- the neighbor on that side isn't itself a
-                               // stacked face, so the run's flank is exposed.
-                               // Outlined with the 3-cell 31:0/31:1/31:2 strip
-                               // drawn into the NEIGHBORING cell's near half,
-                               // by dungeon_draw()'s third pass rather than
-                               // draw_cave_wall_decor() (see there for why it
-                               // can't live in either earlier pass).
-                               // A MASK, not a flag: bit k means "paint the
-                               // segment k rows ABOVE this tile" (k = 0,1,2).
-                               // The set bits need not be contiguous: where a
-                               // neighboring face's bleed fills the lower cells,
-                               // only the top one is still blank, and the single
-                               // segment that survives outlines the step between
-                               // two faces of different heights.
-                               // See cave_strip_lands_on_bare_rock().
-    bool trim_n = false, trim_s = false;
-    bool trim_e = false, trim_w = false;
-    bool trim_trans_above = false;  // corner sits directly above this tile's
-    bool trim_trans_below = false;  // trim_e/trim_w -- layers a small corner-
-                                      // blending accent onto the plain trim
-                                      // (above and below draw the same
-                                      // unflipped bead, placed in the upper or
-                                      // lower half of the trim) instead of
-                                      // replacing it outright.
-    bool nub_ne = false, nub_se = false, nub_sw = false, nub_nw = false;
-};
-
-static CaveWallPieces cave_wall_classify(const DungeonMap* dmap, int tx, int ty) {
-    CaveWallPieces p;
-    bool floor_s = cave_floor_at(dmap, tx, ty + 1);
-    bool floor_n = cave_floor_at(dmap, tx, ty - 1);
-    bool floor_e = cave_floor_at(dmap, tx + 1, ty);
-    bool floor_w = cave_floor_at(dmap, tx - 1, ty);
-    int cardinal_count = (floor_s?1:0) + (floor_n?1:0) + (floor_e?1:0) + (floor_w?1:0);
-
-    if (cardinal_count >= 3) {
-        p.tall_band = true;
-    } else if (floor_s) {
-        // Any wall bordering floor to its south gets the tall face -- no
-        // additional requirement that a diagonal (SW/SE) neighbor also be
-        // floor. That extra check used to silently fall back to a flat
-        // trim_s marker for any single-tile-wide floor notch (wall flanking
-        // both sides of the notch, so both diagonals are wall too), breaking
-        // the tall-band silhouette for an entirely ordinary jagged-cave
-        // shape -- confirmed against a concrete generated example.
-        p.tall_band = true;
-    }
-    if (p.tall_band) {
-        // tall_band's 3-cell texture bleeds two tiles upward from this
-        // tile's own row. If floor sits immediately north, the second-pass
-        // floor reclaim in dungeon_draw() repaints exactly where the bled
-        // texture landed there, erasing it -- leaving just this tile's own
-        // bottom segment (28:2) on screen with nothing above it, a
-        // disconnected fragment of a "tall face" that was never going to
-        // read as tall in the first place (there's no wall mass above it to
-        // face). Draw the standalone piece instead when there's no room for
-        // the bleed to land on real wall. Confirmed via the 8-seed test set
-        // that this never fires on adjacent tiles in the same row, so it's
-        // always an isolated single-tile situation, not a run that would
-        // look repetitive rendered piecemeal.
-        p.tall_band_standalone = floor_n;
-    }
-
-    // Where a run of tall faces ends, its flank is a hard vertical cut through
-    // the band texture -- the face reads as art that got clipped rather than a
-    // rock mass with ends. Outline both exposed ends (31:0/31:1/31:2, drawn at
-    // the band's own full 3-tile height by the third pass in dungeon_draw()).
-    // Two faces side by side each see the other as a tall face, so neither
-    // claims the gap between them: an outline lands at most once per gap.
-    if (p.tall_band && !p.tall_band_standalone) {
-        // Each of the strip's three cells stands or falls on its own -- per-cell
-        // rather than per-side, because the rock beside a run end routinely runs
-        // out partway up, and a face one row off makes a stair-step where only
-        // the top cell is still bare. Both are ordinary cave shapes, not edge
-        // cases, so a single blocked flag for the whole side throws away cells
-        // that are perfectly good.
-        for (int k = 0; k <= 2; k++) {
-            if (cave_strip_lands_on_bare_rock(dmap, tx - 1, ty - k)) p.band_edge_w |= (uint8_t)(1 << k);
-            if (cave_strip_lands_on_bare_rock(dmap, tx + 1, ty - k)) p.band_edge_e |= (uint8_t)(1 << k);
-        }
-    }
-
-    // tall_band's asset is a continuous, fully opaque vertical band (bled
-    // upward, cleaned up by the second floor-repaint pass in dungeon_draw())
-    // that already covers this tile completely on its own -- unlike the
-    // nub_ne/nub_se sampling bug fixed alongside this, a tall_band tile was
-    // never actually *blank* without a cardinal trim layered on it, so
-    // there's nothing to rescue by drawing one. What layering a cardinal
-    // trim on top DOES do is paint a visibly different, unrelated source
-    // crop over part of tall_band's own continuous texture -- confirmed by
-    // direct pixel inspection of a rendered tile: a hard vertical seam right
-    // down the middle where trim_w's art meets tall_band's, not a blend.
-    // So all four cardinal trims are suppressed under tall_band, not just
-    // trim_s -- trim_trans can never coexist with tall_band anyway (proven
-    // below), and the diagonal nubs are left unconditional since they're a
-    // much smaller quarter-tile accent at a literal corner (where pieces
-    // already deliberately combine elsewhere in this file) and this
-    // combination is rare enough in practice (1 instance across 8 test
-    // seeds) not to be worth the same treatment without concrete evidence
-    // it looks bad too.
-    p.trim_s = floor_s && !p.tall_band;
-    p.trim_n = floor_n && !p.tall_band;
-    p.trim_e = floor_e && !p.tall_band;
-    p.trim_w = floor_w && !p.tall_band;
-    bool trim_axis = (floor_e || floor_w) && !floor_n && !floor_s;
-    p.trim_trans_above = trim_axis && cave_is_corner(dmap, tx, ty - 1);
-    p.trim_trans_below = trim_axis && cave_is_corner(dmap, tx, ty + 1);
-
-    bool floor_ne = cave_floor_at(dmap, tx + 1, ty - 1);
-    bool floor_se = cave_floor_at(dmap, tx + 1, ty + 1);
-    bool floor_nw = cave_floor_at(dmap, tx - 1, ty - 1);
-    bool floor_sw = cave_floor_at(dmap, tx - 1, ty + 1);
-    p.nub_ne = floor_ne && !floor_n && !floor_e;
-    p.nub_se = floor_se && !floor_s && !floor_e;
-    p.nub_sw = floor_sw && !floor_s && !floor_w;
-    p.nub_nw = floor_nw && !floor_n && !floor_w;
-    return p;
-}
-
-// A cave wall tile is a rock-node candidate exactly when it renders the
-// standalone crystal/boulder sprite (TALL_BAND_SOLO/32:0) -- see
-// tall_band_standalone above. Placement and rendering share this one
-// criterion, so the two can never disagree.
-static bool cave_tile_is_rock_candidate(const DungeonMap* dmap, int tx, int ty) {
-    return cave_wall_classify(dmap, tx, ty).tall_band_standalone;
-}
-
-static void place_cave_rock_nodes(DungeonMap* dmap) {
-    for (int ty = 0; ty < DMAP_H; ty++) {
-        for (int tx = 0; tx < DMAP_W; tx++) {
-            if (dmap->tiles[ty][tx] != DNG_WALL) continue;
-            if (!cave_tile_is_rock_candidate(dmap, tx, ty)) continue;
-            resource_nodes_add(&dmap->dungeon_rocks, RESOURCE_ROCK,
-                               (float)(tx * DMAP_TILE), (float)(ty * DMAP_TILE));
-        }
-    }
-}
-
-// Everything a cave wall tile draws EXCEPT tall_band: the half-tile trims,
-// corner-transition accents, and diagonal nubs. Split out of draw_cave_wall()
-// so dungeon_draw()'s bleed-reclaim second pass can redraw the same
-// decoration a second time, on top of any tall_band bleed from a tile below
-// that would otherwise silently paint over it -- tall_band bleeds two tile
-// heights upward, and the main pass draws rows north-to-south, so a
-// tall_band tile drawn later in the same pass can erase a decorated tile's
-// art that was already drawn above it. Caller is responsible for the
-// texture color mod (FOV dimming) around this call. `dx` is the caller's
-// cave_art_col_shift() in pixels -- see the master-coordinate note above
-// TRIM_WE_X; every source rect here is a master coordinate plus that.
-static void draw_cave_wall_decor(SDL_Renderer* ren, SDL_Texture* tex,
-                                  const CaveWallPieces& p, int sx, int sy, int tsz,
-                                  int dx) {
-    int half = tsz / 2;
-
-    // No base fill: true interior wall mass (nothing covered by an
-    // edge/corner piece below) is left as blank void, showing the raw
-    // background clear color through -- reverted from a textured base fill
-    // per request, back to how the rim/trim system looked on its own.
-
-    // A tile can qualify for more than one of these (a corner, where the
-    // boundary turns) -- each trim only ever touches its own half of the
-    // tile, so at a corner they naturally combine into an L-shape instead
-    // of needing a separate composited corner asset.
-    //
-    // A round-gem single-accent version was tried in place of this combo
-    // and reported as looking worse, not better -- reverted. Leaving this
-    // as the known-working baseline rather than guessing again blind.
-    if (p.trim_s) {
-        // No dedicated "north" piece exists in the mockup -- North and
-        // South are visually symmetric (floor on the near side either
-        // way), so this reuses the South trim's art, just bottom-aligned
-        // instead of top-aligned since the floor here is south of the
-        // tile, not north.
-        SDL_Rect src = { TRIM_S_X + dx, TRIM_S_Y, 16, 8 };
-        SDL_Rect dst = { sx, sy + half, tsz, half };
-        SDL_RenderCopy(ren, tex, &src, &dst);
-    }
-    if (p.trim_n) {
-        SDL_Rect src = { TRIM_S_X + dx, TRIM_S_Y, 16, 8 };
-        SDL_Rect dst = { sx, sy, tsz, half };
-        SDL_RenderCopy(ren, tex, &src, &dst);
-    }
-    // Shared 8x8 accent helper: takes the one bead and places it in one
-    // quadrant of the destination tile -- used below by both the
-    // corner-transition trim accents and the diagonal corner nubs. Never
-    // flipped or mirrored: the destination rect decides which corner the bead
-    // sits in, and the bead itself always faces the same way (see
-    // TRIM_TRANS_L_X above).
-    auto accent = [&](int dst_x, int dst_y) {
-        SDL_Rect src = { TRIM_TRANS_L_X + dx, TRIM_TRANS_L_Y, 8, 8 };
-        SDL_Rect dst = { dst_x, dst_y, half, half };
-        SDL_RenderCopy(ren, tex, &src, &dst);
-    };
-
-    if (p.trim_e) {
-        // Source width must stay 8 (just the filled half of the 16-wide
-        // cell) to match the destination's half-tile width at the same 2x
-        // scale every other trim uses -- a first version left it at 16,
-        // which squished the content to half its correct width instead.
-        SDL_Rect src = { TRIM_WE_X + dx, TRIM_WE_Y, 8, 16 };
-        SDL_Rect dst = { sx + (tsz - half), sy, half, tsz };
-        SDL_RenderCopy(ren, tex, &src, &dst);
-        // Corner-transition accent, layered on top of the plain trim rather
-        // than replacing it -- the bead only paints an 8x8 quadrant, so
-        // stretching it across the full tile like the old code did left the
-        // bottom half fully transparent whenever this fired.
-        if (p.trim_trans_above) accent(sx + (tsz - half), sy);
-        if (p.trim_trans_below) accent(sx + (tsz - half), sy + half);
-    }
-    if (p.trim_w) {
-        SDL_Rect src = { TRIM_WE_X + dx, TRIM_WE_Y, 8, 16 };
-        SDL_Rect dst = { sx, sy, half, tsz };
-        SDL_RenderCopy(ren, tex, &src, &dst);
-        if (p.trim_trans_above) accent(sx, sy);
-        if (p.trim_trans_below) accent(sx, sy + half);
-    }
-
-    // Diagonal-only corner nubs -- unconditional, independent of whichever
-    // cardinal edges just got drawn above (see cave_wall_classify()). All four
-    // are the same bead in a different quadrant; none is flipped.
-    if (p.nub_ne) accent(sx + half, sy);
-    if (p.nub_nw) accent(sx, sy);
-    if (p.nub_se) accent(sx + half, sy + half);
-    if (p.nub_sw) accent(sx, sy + half);
-}
-
-static void draw_cave_wall(SDL_Renderer* ren, SDL_Texture* tex,
-                           const DungeonMap* dmap, int tx, int ty,
-                           int sx, int sy, int tsz) {
-    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
-    int dx = cave_art_col_shift(dmap) * 16;
-
-    if (p.tall_band) {
-        // A wall face two tiles above its own, filled with the cave's rock
-        // texture. Falls through (no return)
-        // so a trim/nub on the tile's orthogonal E/W axis or diagonal
-        // corners can still layer on top.
-        //
-        // No room above for the bleed to land on real wall (floor sits
-        // immediately north) -- draw the standalone single-cell piece
-        // instead of a 3-cell stretch that would just get partially erased
-        // by the floor reclaim, orphaning the bottom segment.
-        if (p.tall_band_standalone) {
-            // 32:0 is a shaped cluster with transparent margins -- 38% of the
-            // cell -- and a wall tile gets no base fill, so those margins used
-            // to show the raw clear color and the node read as a hole punched
-            // in the passage rather than a rock standing in it. A standalone
-            // always has floor to the north (that is what makes it standalone),
-            // so floor is what belongs behind it. Same color as the floor fills
-            // in dungeon_draw()'s two passes, so a node never seams against
-            // the floor beside it.
-            const SDL_Color fc = dng_palette(dmap).floor;
-            SDL_Rect back = { sx, sy, tsz, tsz };
-            fc_draw_color(ren, fc.r, fc.g, fc.b, 255);
-            SDL_RenderFillRect(ren, &back);
-
-            SDL_Rect src = { TALL_BAND_SOLO_X + dx, TALL_BAND_SOLO_Y, 16, 16 };
-            SDL_Rect dst = { sx, sy, tsz, tsz };
-            SDL_RenderCopy(ren, tex, &src, &dst);
-        } else {
-            int wall_h = 2 * tsz;
-            SDL_Rect src = { TALL_BAND_X + dx, TALL_BAND_Y, 16, 3 * 16 };
-            SDL_Rect dst = { sx, sy - wall_h, tsz, tsz + wall_h };
-            SDL_RenderCopy(ren, tex, &src, &dst);
-        }
-    }
-
-    draw_cave_wall_decor(ren, tex, p, sx, sy, tsz, dx);
 }
 
 // ── Built walls: drawing (the ruins, the pyramid) ────────────────────────────────────────────────────────────────────────────
@@ -4753,6 +4190,159 @@ static bool art_open(const DungeonMap* d, int x, int y) {      // what the rim r
 static void draw_ways_out(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren,
                           int tx0, int ty0, int tx1, int ty1, int tsz);
 
+// ── Torches (user: caves and ruins have torches) ─────────────────────────
+// One drawing, assets/torch.png: frames 16 x 32 side by side, the flame in a
+// frame's upper 16 rows, the cup and handle below. Nothing of it is a wall's
+// tone (user: "match the them of the dungeon but not look exactly like the
+// stone or walls"): the flame is drawn as fire, and a dungeon may show it in a
+// colour of its own. Round it a glow on the wall, which grows and shrinks with
+// the flame (user).
+static const Uint32 TORCH_MS = 150;               // a frame's time
+static const int GLOW_G = 30;                     // a glow's cell: the widest disc, 14 px, about the flame's middle
+// A flame's colours: its heart, body and edge (0xRRGGBB), a set a hue. With
+// more than one it is a rainbow (user: "the individual flame is rainbow
+// colored", its stripes "alternating", "sideways ... instead of purly vertical
+// or horizontal", and "the circle should reflect that its rainbow"): slanted
+// stripes 2 px wide, moving along a stripe a frame, and the glow striped with
+// them. Kept soft (user: "more sutle maybe mixxing some white"): a stripe is
+// its hue's pale tone, and the flame's heart stays white, as the white flame's
+// is. None: fire, as drawn.
+struct Flame {
+    const uint32_t (*tones)[3] = nullptr;
+    int hues = 0;
+};
+struct TorchArt {
+    SDL_Surface* sw = nullptr;                    // the drawing
+    SDL_Renderer* ren = nullptr;
+    SDL_Texture* tex = nullptr;                   // it with the flame last asked for
+    uint32_t key = 0;
+    Flame flame;
+    std::vector<int> glow;                        // each frame's glow: a disc of this many px
+    uint32_t body = 0;                            // the flame's body tone, which its glow leans to
+};
+static TorchArt s_torch;
+static SDL_Surface* sheet_pixels();
+
+static uint32_t rgba32(uint32_t rgb) {            // 0xRRGGBB as an RGBA32 pixel
+    const uint8_t b[4] = { (uint8_t)(rgb >> 16), (uint8_t)(rgb >> 8), (uint8_t)rgb, 255 };
+    uint32_t c;
+    memcpy(&c, b, 4);
+    return c;
+}
+
+// The tone the torch's light is at (x, y) of its cell in frame f: the flame's
+// body -- a rainbow's, the stripe's there, the stripes `wide` px. (x, y) may
+// lie off the cell: the glow reads it too, in stripes twice the flame's, so
+// the rock's own texture does not chop them to specks.
+static uint32_t torch_light(int x, int y, int f, int wide) {
+    const Flame& fl = s_torch.flame;
+    return fl.hues > 1 ? rgba32(fl.tones[((x + y + 64) / wide + f) % fl.hues][0]) : s_torch.body;
+}
+
+static SDL_Texture* torch_tex(SDL_Renderer* ren, Flame flame) {
+    const uint32_t key = flame.hues ? flame.tones[0][1] * 31u + (uint32_t)flame.hues : 0u;
+    if (s_torch.tex && s_torch.ren == ren && s_torch.key == key) return s_torch.tex;
+    if (!s_torch.sw)
+        if (SDL_Surface* raw = IMG_Load("assets/torch.png")) {
+            s_torch.sw = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_RGBA32, 0);
+            SDL_FreeSurface(raw);
+        }
+    if (!s_torch.sw) return nullptr;
+    if (s_torch.tex) SDL_DestroyTexture(s_torch.tex);
+    s_torch.tex = nullptr;
+    SDL_Surface* s = SDL_ConvertSurface(s_torch.sw, s_torch.sw->format, 0);
+    if (!s) return nullptr;
+    auto px = [&](int x, int y) -> uint32_t& { return *(uint32_t*)((uint8_t*)s->pixels + y * s->pitch + x * 4); };
+    auto ink = [](uint32_t c) { const uint8_t* b = (const uint8_t*)&c; return b[3] && (b[0] | b[1] | b[2]); };   // not black, not clear
+    auto lum = [](uint32_t c) { const uint8_t* b = (const uint8_t*)&c; return b[0] * 299 + b[1] * 587 + b[2] * 114; };
+    std::vector<uint32_t> tones;                  // the flame's as drawn, lightest first
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < s->w; x++)
+            if (ink(px(x, y)) && std::find(tones.begin(), tones.end(), px(x, y)) == tones.end()) tones.push_back(px(x, y));
+    std::sort(tones.begin(), tones.end(), [&](uint32_t a, uint32_t b) { return lum(a) > lum(b); });
+    s_torch.flame = flame;
+    s_torch.body = flame.hues ? rgba32(flame.tones[0][1]) : tones.empty() ? 0 : tones[tones.size() / 2];
+    s_torch.glow.clear();
+    for (int f = 0; f < s->w / 16; f++) {         // a frame's glow by its flame's height: 11 rows, the steady one, 12 px
+        int rows = 0;
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+                if (px(f * 16 + x, y) >> 24) { rows++; break; }
+        s_torch.glow.push_back(10 + 2 * std::max(0, std::min(2, rows - 10)));
+    }
+    for (int y = 0; flame.hues && y < 16; y++)    // each tone of the flame to the dungeon's -- the lightest drawn is the
+        for (int x = 0; x < s->w; x++)            // heart, then the body, the edge; a rainbow's heart white, the rest by its stripe
+            if (ink(px(x, y))) {
+                const int part = (int)((std::find(tones.begin(), tones.end(), px(x, y)) - tones.begin()) * 3 / tones.size());
+                px(x, y) = flame.hues == 1 ? rgba32(flame.tones[0][part]) : part ? torch_light(x % 16, y, x / 16, 2) : rgba32(0xfcfcfc);
+            }
+    s_torch.tex = SDL_CreateTextureFromSurface(ren, s);
+    SDL_FreeSurface(s);
+    if (s_torch.tex) SDL_SetTextureBlendMode(s_torch.tex, SDL_BLENDMODE_BLEND);
+    s_torch.ren = ren; s_torch.key = key;
+    return s_torch.tex;
+}
+
+// The glows of n torches, a row each, a cell a frame: the wall behind the
+// torch (wall(i, x, y), a cell's pixel, 0 where there is none to light) inside
+// that frame's disc, each pixel pulled two fifths of the way to the torch's
+// light there (torch_light) and put back on the palette -- nothing blends.
+template <class Wall> static SDL_Texture* torch_glow_tex(SDL_Renderer* ren, int n, Wall wall) {
+    const int nf = (int)s_torch.glow.size();
+    SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, nf * GLOW_G, n * GLOW_G, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!s) return nullptr;
+    SDL_FillRect(s, nullptr, 0);
+    for (int i = 0; i < n; i++)
+        for (int k = 0; k < nf; k++)
+            for (int y = 0; y < GLOW_G; y++)
+                for (int x = 0; x < GLOW_G; x++) {
+                    const uint32_t light = torch_light(x - 7, y - 4, k, 4);         // the cell's corner is (-7, -4) of the torch's
+                    const uint8_t* to = (const uint8_t*)&light;
+                    const int dx = 2 * x - (GLOW_G - 1), dy = 2 * y - (GLOW_G - 1), r = 2 * s_torch.glow[k] + 1;   // half pixels
+                    const uint32_t c = dx * dx + dy * dy <= r * r ? wall(i, x, y) : 0;
+                    if (!(c >> 24)) continue;
+                    const uint8_t* w = (const uint8_t*)&c;
+                    const SDL_Color m = fc_snap((uint8_t)(w[0] + (to[0] - w[0]) * 2 / 5), (uint8_t)(w[1] + (to[1] - w[1]) * 2 / 5),
+                                                (uint8_t)(w[2] + (to[2] - w[2]) * 2 / 5));
+                    const uint8_t out[4] = { m.r, m.g, m.b, 255 };
+                    memcpy((uint8_t*)s->pixels + (i * GLOW_G + y) * s->pitch + (k * GLOW_G + x) * 4, out, 4);
+                }
+    SDL_Texture* t = SDL_CreateTextureFromSurface(ren, s);
+    SDL_FreeSurface(s);
+    if (t) SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+    return t;
+}
+
+// A torch, its 16 x 32 cell at (ax, ay) in art pixels on the map (16 a tile),
+// and its glow, row i of `glow`. Neighbours burn out of step.
+static void draw_torch(const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex, SDL_Texture* glow, int i, int ax, int ay, int tsz) {
+    const int nf = (int)s_torch.glow.size();
+    if (!nf) return;
+    const int f = (int)((SDL_GetTicks() / TORCH_MS + (Uint32)(ax / 16 + ay / 16) * 2u) % (Uint32)nf);
+    auto at = [&](int x, int y, int w, int h) {
+        return SDL_Rect{ cam_px(cam, (float)(x * DMAP_TILE / 16)), cam_py(cam, (float)(y * DMAP_TILE / 16)), w * tsz / 16, h * tsz / 16 };
+    };
+    if (glow) {
+        SDL_Rect src = { f * GLOW_G, i * GLOW_G, GLOW_G, GLOW_G }, dst = at(ax - 7, ay - 4, GLOW_G, GLOW_G);
+        SDL_RenderCopy(ren, glow, &src, &dst);
+    }
+    SDL_Rect src = { f * 16, 0, 16, 32 }, dst = at(ax, ay, 16, 32);
+    SDL_RenderCopy(ren, tex, &src, &dst);
+}
+
+// Where torches hang along a straight run of n wall cells: one for about every
+// eight, spread evenly, each moved to the nearest cell within two that can
+// take one (ok) -- no such cell, no torch. A run under three cells has none.
+template <class Ok, class Put> static void torch_run(int n, Ok ok, Put put) {
+    if (n < 3) return;
+    const int k = std::max(1, (n + 4) / 8);
+    for (int i = 0; i < k; i++) {
+        const int c = (2 * i + 1) * n / (2 * k);
+        for (int o : { 0, 1, -1, 2, -2 })
+            if (c + o >= 0 && c + o < n && ok(c + o)) { put(c + o); break; }
+    }
+}
+
 static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex,
                          int tx0, int ty0, int tx1, int ty1, int tsz) {
     const int blk = d->type == DUNGEON_ENT_RUINS ? WALL_RUINS : d->step_pyramid ? WALL_MAYA : WALL_EGYPT;
@@ -4761,12 +4351,16 @@ static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* 
         SDL_Rect src = { (c0 + col) * 16, (r0 + row) * 16, 16, 16 }, dst = { sx, sy, tsz, tsz };
         SDL_RenderCopy(ren, tex, &src, &dst);
     };
+    auto ground = [&](int tx, int ty, int sx, int sy) {       // the block's floor, laid by where the tile is (WALL_FLOOR)
+        const int* f = WALL_FLOOR[blk];
+        piece(f[0] + tx % f[2], f[1] + ty % f[3], sx, sy);
+    };
     for (int ty = ty0; ty < ty1; ty++)
         for (int tx = tx0; tx < tx1; tx++) {
             int sx = cam_px(cam, tx * DMAP_TILE), sy = cam_py(cam, ty * DMAP_TILE);
             uint8_t a = d->art[ty][tx], p = d->art_p[ty][tx];
             switch (a) {
-                case WA_FLOOR:  piece(PYR_FLOOR_COL, PYR_RIM_ROW, sx, sy); break;
+                case WA_FLOOR:  ground(tx, ty, sx, sy); break;
                 case WA_BACK:   piece(PYR_FACE_BACK + tx % 6, p, sx, sy); break;
                 case WA_BAND:                                // the ruins' picked per face, the pyramids' by phase
                     piece(PYR_FACE_CORR + (blk == WALL_RUINS ? p >> 4 : tx % 6), p & 15, sx, sy);
@@ -4775,7 +4369,7 @@ static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* 
                 case WA_SIDE_R: piece(PYR_SIDE_COL, PYR_RIM_ROW, sx, sy); break;
                 case WA_DIAG_L:
                 case WA_DIAG_R:
-                    piece(PYR_FLOOR_COL, PYR_RIM_ROW, sx, sy);
+                    ground(tx, ty, sx, sy);
                     piece(PYR_SIDE_COL + (a == WA_DIAG_L ? 1 : 2), PYR_RIM_ROW, sx, sy);
                     break;
                 case WA_END_L:
@@ -4810,6 +4404,38 @@ static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* 
                         draw_loot(ren, lo, sx, sy, tsz);
                 }
         }
+
+    // the ruins' torches (user: fire), as drawn: along each straight run of faces, in
+    // the middle of a face's height -- on a whole face between two whole ones
+    // (not a cracked one, or one with a block fallen out), clear of a doorway
+    if (SDL_Texture* torch = blk == WALL_RUINS ? torch_tex(ren, Flame{}) : nullptr) {
+        // one glow serves them all: a torch only hangs on a whole face between
+        // two whole ones, so the wall behind each is the same three by three
+        static SDL_Texture* glow = nullptr;
+        static SDL_Renderer* glow_ren = nullptr;
+        if (SDL_Surface* sh = !glow || glow_ren != ren ? sheet_pixels() : nullptr) {
+            glow = torch_glow_tex(ren, 1, [&](int, int x, int y) {       // the cell's corner is 7 left of the torch's, 12 down the face
+                return *(const uint32_t*)((const uint8_t*)sh->pixels + ((r0 + (y + 4) / 16) * 16 + (y + 4) % 16) * sh->pitch +
+                                          ((c0 + PYR_FACE_CORR) * 16 + (x + 9) % 16) * 4);
+            });
+            glow_ren = ren;
+        }
+        auto top = [&](int x, int y) { return x >= 0 && x < DMAP_W && d->art[y][x] == WA_BAND && !(d->art_p[y][x] & 15); };
+        for (int ty = std::max(ty0 - 2, 0); ty < ty1; ty++)
+            for (int tx = tx0; tx < tx1; tx++) {
+                if (!top(tx, ty)) continue;
+                int x0 = tx, n = 1;
+                while (top(x0 - 1, ty)) x0--;
+                while (top(x0 + n, ty)) n++;
+                torch_run(n, [&](int i) {
+                    for (int q = 0; q < d->num_portals; q++)
+                        if (abs(d->portals[q].tx - (x0 + i)) <= 2 && abs(d->portals[q].ty - (ty + 2)) <= 2) return false;
+                    for (int o = -1; o <= 1; o++)
+                        if (i + o < 0 || i + o >= n || d->art_p[ty][x0 + i + o] >> 4) return false;
+                    return true;
+                }, [&](int i) { if (x0 + i == tx) draw_torch(cam, ren, torch, glow, 0, tx * 16, ty * 16 + 8, tsz); });
+            }
+    }
 
     // the pieces laid whole: a chamber's mural (Mayan; the gate scene where it
     // has a doorway), then the carved stones and cartouches
@@ -5044,6 +4670,27 @@ static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
 
 static inline int floordiv(int a, int b) { return a >= 0 ? a / b : -((-a + b - 1) / b); }
 
+// Small lights behind a picture, at half the camera's speed: one in about
+// `one_in` 16 px cells, a third of them twinkling between their two shapes --
+// a 2 x 2 at (sx, sy) of `tex` and a 3 x 3 cross four to its right. The
+// barrow's stars, and the glints in a cave's dark.
+static void draw_twinkles(const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex, int sx, int sy, int tsz, uint32_t one_in) {
+    int offx = cam->ox / 2, offy = cam->oy / 2;
+    Uint32 now = SDL_GetTicks();
+    for (int j = floordiv(offy, tsz); j * tsz - offy < cam->screen_h; j++)
+        for (int i = floordiv(offx, tsz); i * tsz - offx < cam->screen_w; i++) {
+            uint32_t h = pyr_hash((uint32_t)i * 92821u, (uint32_t)j * 68917u);
+            if (h % one_in) continue;
+            int kind = (h >> 4) & 1;
+            if ((h >> 7) % 3 == 0) kind ^= (int)((now / 700 + (h >> 9)) & 1);
+            int ox = 2 + (int)((h >> 12) % 11), oy = 2 + (int)((h >> 16) % 11);
+            SDL_Rect src = kind ? SDL_Rect{ sx + 4, sy, 3, 3 } : SDL_Rect{ sx, sy, 2, 2 };
+            SDL_Rect dst = { i * tsz - offx + ox * tsz / 16, j * tsz - offy + oy * tsz / 16,
+                             src.w * tsz / 16, src.h * tsz / 16 };
+            SDL_RenderCopy(ren, tex, &src, &dst);
+        }
+}
+
 // The sky behind it all, floor and void alike: half the camera's speed, a
 // star in about one sky cell of five, a third of them twinkling between their
 // two shapes; and the cryptids' constellations, one in a stretch of sky in
@@ -5054,7 +4701,6 @@ static void draw_barrow_sky(const Camera* cam, SDL_Renderer* ren, SDL_Texture* t
     SDL_Rect all = { 0, 0, cam->screen_w, cam->screen_h };
     SDL_RenderFillRect(ren, &all);
     int offx = cam->ox / 2, offy = cam->oy / 2;
-    Uint32 now = SDL_GetTicks();
     int big = 48 * tsz, bigh = 32 * tsz;                          // a stretch of sky, a constellation's
     for (int J = floordiv(offy, bigh); J * bigh - offy < cam->screen_h; J++)
         for (int I = floordiv(offx, big); I * big - offx < cam->screen_w; I++) {
@@ -5066,19 +4712,7 @@ static void draw_barrow_sky(const Camera* cam, SDL_Renderer* ren, SDL_Texture* t
                              6 * tsz, 4 * tsz };
             SDL_RenderCopy(ren, tex, &src, &dst);
         }
-    for (int j = floordiv(offy, tsz); j * tsz - offy < cam->screen_h; j++)
-        for (int i = floordiv(offx, tsz); i * tsz - offx < cam->screen_w; i++) {
-            uint32_t h = pyr_hash((uint32_t)i * 92821u, (uint32_t)j * 68917u);
-            if (h % 5) continue;
-            int kind = (h >> 4) & 1;
-            if ((h >> 7) % 3 == 0) kind ^= (int)((now / 700 + (h >> 9)) & 1);
-            int ox = 2 + (int)((h >> 12) % 11), oy = 2 + (int)((h >> 16) % 11);
-            SDL_Rect src = kind ? SDL_Rect{ c0 + BARROW_STAR_COL * 16 + 4, r0, 3, 3 }
-                                : SDL_Rect{ c0 + BARROW_STAR_COL * 16, r0, 2, 2 };
-            SDL_Rect dst = { i * tsz - offx + ox * tsz / 16, j * tsz - offy + oy * tsz / 16,
-                             src.w * tsz / 16, src.h * tsz / 16 };
-            SDL_RenderCopy(ren, tex, &src, &dst);
-        }
+    draw_twinkles(cam, ren, tex, c0 + BARROW_STAR_COL * 16, r0, tsz, 5);
 }
 
 static void draw_barrow(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex,
@@ -5411,7 +5045,7 @@ static void tree_bake(const DungeonMap* d, SDL_Renderer* ren) {
     if (s_tree.tex) SDL_DestroyTexture(s_tree.tex);
     s_tree.tex = nullptr;
 
-    const int W = d->tree_w, H = d->tree_h, N = d->tree_n, E = d->tree_e, Z = TREE_Z;
+    const int W = d->tree_w, H = d->tree_h, N = d->tree_n, E = d->tree_e, Z = d->tree_z;
     const int FRONT_B = d->tree_b[N][0];
     const uint32_t BLACK = 0xFF000000u;
     auto sw = [&](int k, int x, int y) {
@@ -5499,6 +5133,351 @@ static void draw_tree(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren,
                          d->tree_w * tsz / 16, d->tree_h * tsz / 16 };
         SDL_RenderCopy(ren, s_tree.tex, nullptr, &dst);
     }
+    for (int li = 0; li < d->num_loot; li++) {
+        const DungeonLoot& lo = d->loot[li];
+        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+    }
+}
+
+// ── Caves: the picture ───────────────────────────────────────────────────
+// Baked once from the cave's block of the sheet (the 16 x 16 pieces of
+// art/structures/dungeon_walls/cave_rock_design.py, in its ore's tones), as
+// cave_terrace_mock.py lays it: a whole cell at a time, never a texture bent
+// to an edge (user). The terraces' edges are level or at 45 degrees and meet
+// the 16px grid at a cell's corners or its middle, so each of a cell's four
+// quarters -- the triangles its diagonals cut -- is wholly rock or not, and one
+// piece serves each way they can fall. Rock over the dark hangs ragged; the
+// floor is the material's flat fill; the mouths' arches and the ladders (the
+// dungeons' own, in the ore's colour) go on top. What is dark stays clear, for
+// the ore's glints to show through (draw_cave).
+struct CaveArt {
+    uint32_t key = 0;
+    SDL_Renderer* ren = nullptr;
+    SDL_Texture *tex = nullptr, *glint = nullptr;  // the picture; the dark's two glints, as draw_twinkles reads them
+    SDL_Texture* glow = nullptr;                   // its torches' glows, a row each (torch_glow_tex)
+    int misfits = 0;                               // cells whose quarters no piece fits: none, by the terraces' rules
+    std::vector<SDL_Point> torches;                // each torch's cell, in the picture
+};
+// A cave's flame, by its ore (user): fire in stone and bronze, white in emerald
+// and veyrite, black fire in dravium and kharvite, a rainbow in reality shard.
+static Flame cave_flame(const DungeonMap* d) {
+    static const uint32_t WHITE[1][3] = { { 0xfcfcfc, 0xdcf0ff, 0xbcbeca } };
+    static const uint32_t BLACK[1][3] = { { 0x000000, 0x181224, 0x9797aa } };      // black to its heart, a pale rim to be seen by
+    static const uint32_t RAINBOW[6][3] = { { 0xec8476, 0xb70000, 0x7c0a1b }, { 0xf0b890, 0xfc9838, 0xb6433d },   // the pale tone is the stripe's
+                                            { 0xfae488, 0xf0bc3c, 0xc9a433 }, { 0xa8f0bc, 0x4edc4a, 0x058f3a },
+                                            { 0x84a7e9, 0x5c94fc, 0x2850a0 }, { 0xb69cee, 0x664b95, 0x301b5a } };
+    switch (cave_material_index(d)) {
+        case MAT_EMERALD: case MAT_VEYRITE:  return { WHITE, 1 };
+        case MAT_DRAVIUM: case MAT_KHARVITE: return { BLACK, 1 };
+        case MAT_REALITY_SHARD:              return { RAINBOW, 6 };
+        default:                             return {};
+    }
+}
+static CaveArt s_cave;
+int dungeon_cave_misfits() { return s_cave.misfits; }
+
+// The piece for a cell some of whose quarters are rock: bit 0 the top quarter,
+// 1 the bottom, 2 the left, 3 the right.
+static int cave_quarter_piece(int rock) {
+    switch (rock) {
+        case 1 | 4:     return CP_FOOT_UP;     case 2 | 8:     return CP_TOP_UP;
+        case 1 | 8:     return CP_FOOT_DOWN;   case 2 | 4:     return CP_TOP_DOWN;
+        case 1 | 2 | 4: return CP_TIP_L;       case 1 | 2 | 8: return CP_TIP_R;
+        case 2 | 4 | 8: return CP_VALLEY;      case 1 | 4 | 8: return CP_VAULT;
+        case 2:         return CP_PEAK;        case 1:         return CP_FANG;
+        default:        return -1;
+    }
+}
+
+// How a piece of wall stands (user: "make it obvious which is a corner tile and
+// whats a straight up and down tile"): 0 a level run, facing you; -1 / 1 a
+// sloped run, turned away, rising / falling to the right; 2 a turn's own piece.
+static int cave_piece_lean(int p) {
+    switch (p) {
+        case CP_FACE0: case CP_FACE1: case CP_FACE2: case CP_TOP_FLAT: case CP_FOOT_FLAT: case CP_HANG_FLAT: return 0;
+        case CP_LEAN_UP: case CP_TOP_UP: case CP_FOOT_UP: case CP_HANG_UP: return -1;
+        case CP_LEAN_DOWN: case CP_TOP_DOWN: case CP_FOOT_DOWN: case CP_HANG_DOWN: return 1;
+        default: return 2;
+    }
+}
+
+static void cave_bake(const DungeonMap* d, SDL_Renderer* ren) {
+    const int mat = cave_material_index(d);
+    uint32_t key = d->tree_seed ^ (uint32_t)d->tree_w * 7919u ^ (uint32_t)d->num_tree_ladders * 104729u ^
+                   (uint32_t)(mat + 1) * 2654435761u;
+    for (int p = 0; p < d->num_portals; p++)
+        key = key * 31u + (uint32_t)(d->portals[p].tx * 131 + d->portals[p].ty) * 2u + cave_ladder_out(d, p);
+    if (s_cave.key == key && s_cave.ren == ren && s_cave.tex) return;
+    SDL_Surface* sh = sheet_pixels();
+    if (!sh) return;
+    if (s_cave.tex) SDL_DestroyTexture(s_cave.tex);
+    if (s_cave.glint) SDL_DestroyTexture(s_cave.glint);
+    if (s_cave.glow) SDL_DestroyTexture(s_cave.glow);
+    s_cave.tex = s_cave.glint = s_cave.glow = nullptr;
+
+    const int W = d->tree_w, H = d->tree_h, N = d->tree_n, Z = d->tree_z, C = 16;
+    const int bx = cave_block_col(d) * C;
+    auto sheet = [&](int x, int y) { return *(const uint32_t*)((const uint8_t*)sh->pixels + y * sh->pitch + x * 4); };
+    auto clear = [](uint32_t c) {                          // the sheet's colour key
+        const uint8_t* s = (const uint8_t*)&c;
+        return (s[0] == 255 && s[1] == 0 && s[2] == 0) || s[3] == 0;
+    };
+    auto rgba = [](uint8_t r, uint8_t g, uint8_t b) { uint32_t c; const uint8_t s[4] = { r, g, b, 255 }; memcpy(&c, s, 4); return c; };
+    // what a pixel is: rock behind a floor (on up to the top of the map, and
+    // hanging under the lowest floor's edge), floor, or the dark
+    enum { DARK, ROCK, FLOOR };
+    auto cls = [&](int x, int y) {
+        if (x < 0 || x >= W || y >= H) return (int)DARK;
+        if (y < d->tree_b[0][x]) return (int)ROCK;
+        for (int t = 0; t < N; t++) {
+            if (y >= d->tree_b[t][x] && y < d->tree_b[t + 1][x] - Z) return (int)FLOOR;
+            if (y >= d->tree_b[t][x] - Z && y < d->tree_b[t][x]) return (int)ROCK;
+        }
+        const int front = d->tree_b[N][x] - Z;
+        return y >= front && y < front + CAVE_UNDER ? (int)ROCK : (int)DARK;
+    };
+    // the floor (user: "somewhat similar to the cave wall texture"): the wall's
+    // own cobble as it is drawn there, lying flat -- its stones the ore's
+    // ground colour, the dark between them the ground's lines -- laid by where
+    // a pixel is in the world, so it runs on unbroken from floor to floor. A
+    // rounded ground is CAVE_COBBLE instead (user: "the other stone texture";
+    // of four shown, the large rounded cobbles), read at (x + y, y) -- the
+    // oblique view, as the pyramids' floors are read
+    const MaterialDef& md = cave_material(d);
+    const uint32_t ground_px = rgba(md.ground.r, md.ground.g, md.ground.b);
+    const uint32_t line_px = rgba(md.ground_line.r, md.ground_line.g, md.ground_line.b);
+    auto floor_line = [&](int x, int y) {                  // is a pixel of the picture on one of the floor's lines
+        const int wx = d->tree_ox + x, wy = d->tree_oy + y;
+        if (md.ground_rounded) {
+            const int u = (wx + wy) % CAVE_COBBLE_W;
+            return (CAVE_COBBLE[wy % CAVE_COBBLE_H][u / 8] >> u % 8 & 1) != 0;
+        }
+        return sheet(bx + CAVE_PIECE[CP_FACE0][0] * C + wx % C, CAVE_PIECE[CP_FACE0][1] * C + wy % C) == rgba(0, 0, 0);
+    };
+    std::vector<uint32_t> out((size_t)W * H, 0);
+    std::vector<uint8_t> isfloor((size_t)W * H, 0);        // a pixel showing floor: laid as floor, nothing drawn over it
+    auto put = [&](int sx, int sy, int w, int h, int ox, int oy) {   // the sheet's (sx, sy), w x h, onto the picture
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) {
+                uint32_t c = sheet(sx + x, sy + y);
+                if (!clear(c) && ox + x >= 0 && oy + y >= 0 && ox + x < W && oy + y < H) {
+                    out[(size_t)(oy + y) * W + ox + x] = c;
+                    isfloor[(size_t)(oy + y) * W + ox + x] = 0;
+                }
+            }
+    };
+    auto piece = [&](int p, int cx, int cy) { put(bx + CAVE_PIECE[p][0] * C, CAVE_PIECE[p][1] * C, C, C, cx, cy); };
+    // how the band the rock at (x, y) is in runs across its cell: its foot (and
+    // its top, parallel) rising to the right (-1), falling (1), or level
+    auto lean = [&](int x, int y) {
+        int t = 0;
+        if (y >= d->tree_b[0][x])
+            while (t < N && !(y >= d->tree_b[t][x] - Z && y < d->tree_b[t][x])) t++;
+        const int x0 = x - x % C, dy = d->tree_b[t][std::min(x0 + C - 1, W - 1)] - d->tree_b[t][x0];
+        return dy >= 12 ? 1 : dy <= -12 ? -1 : 0;
+    };
+    const int cw = W / C, ch = H / C;
+    std::vector<int8_t> kind((size_t)cw * ch, 2);          // each cell's cave_piece_lean
+    std::vector<uint8_t> hang((size_t)cw * ch, 0);         // a face cell: 1 a torch may hang on it, 2 not (a gem, a ladder, a mouth)
+    auto cover = [&](int x, int y, int w, int h) {         // what is drawn over the rock: no torch there,
+        for (int gy = std::max(y / C, 0); gy < ch && gy * C < y + h; gy++)                // nor a cell either side
+            for (int gx = std::max(x / C - 1, 0); gx < cw && gx * C < x + w + C; gx++)
+                if (hang[(size_t)gy * cw + gx]) hang[(size_t)gy * cw + gx] = 2;
+    };
+    s_cave.misfits = 0;
+    for (int cy = 0; cy + C <= H; cy += C)
+        for (int cx = 0; cx + C <= W; cx += C) {
+            const int t = cls(cx + 8, cy + 3), b = cls(cx + 8, cy + 12), l = cls(cx + 3, cy + 8), r = cls(cx + 12, cy + 8);
+            const int rock = (t == ROCK) | (b == ROCK) << 1 | (l == ROCK) << 2 | (r == ROCK) << 3;
+            // the ground first: the floor, and under a piece's clear edge the
+            // floor it stands by (a level top's is the cell's above)
+            uint8_t cl[16][16];
+            bool ground = false;
+            for (int y = 0; y < C; y++)
+                for (int x = 0; x < C; x++) ground = ((cl[y][x] = (uint8_t)cls(cx + x, cy + y)) == FLOOR) || ground;
+            if (!ground && rock == 15)
+                for (int x = 0; x < C && !ground; x++) ground = cls(cx + x, cy - 1) == FLOOR;
+            for (int y = 0; y < C; y++)
+                for (int x = 0; x < C; x++)
+                    if (cl[y][x] == FLOOR || (ground && cl[y][x] == ROCK)) {
+                        out[(size_t)(cy + y) * W + cx + x] = floor_line(cx + x, cy + y) ? line_px : ground_px;
+                        isfloor[(size_t)(cy + y) * W + cx + x] = 1;
+                    }
+            int p = -1;                                    // the cell's piece of wall, if it has one
+            if (rock == 15) {
+                const int up = cls(cx + 8, cy - C + 12), down = cls(cx + 8, cy + C + 3);
+                const int way = lean(cx + 8, cy + 8), k = (int)(pyr_hash((uint32_t)cx, (uint32_t)cy) % 10);
+                p = up != ROCK ? CP_TOP_FLAT : down == DARK ? CP_HANG_FLAT : down != ROCK ? CP_FOOT_FLAT
+                    : way < 0 ? CP_LEAN_UP : way > 0 ? CP_LEAN_DOWN
+                    : k == 0 ? CP_FACE2 : k < 4 ? CP_FACE1 : CP_FACE0;     // a gem in one cell in ten
+            } else if (rock) {
+                p = cave_quarter_piece(rock);
+                if (b == DARK && p == CP_FOOT_UP) p = CP_HANG_UP;          // over the dark a foot hangs ragged
+                if (b == DARK && p == CP_FOOT_DOWN) p = CP_HANG_DOWN;
+                if (p < 0) s_cave.misfits++;
+            } else if (t == FLOOR && b == FLOOR && l == FLOOR && r == FLOOR &&
+                       pyr_hash((uint32_t)cx * 5u + 1u, (uint32_t)cy) % 60 == 0) {
+                piece(CP_FLOOR1, cx, cy);                                  // a stalagmite, now and then
+            }
+            if (p >= 0) {
+                piece(p, cx, cy);
+                kind[(size_t)(cy / C) * cw + cx / C] = (int8_t)cave_piece_lean(p);
+                hang[(size_t)(cy / C) * cw + cx / C] = p == CP_FACE0 || p == CP_FACE1 ? 1 : p == CP_FACE2 ? 2 : 0;
+            }
+        }
+    // the corner where a front turns to a side: a black line down it, as the
+    // bible has for a front meeting a side
+    for (int gy = 0; gy < H / C; gy++)
+        for (int gx = 0; gx < cw; gx++) {
+            const int k = kind[(size_t)gy * cw + gx], cx = gx * C, cy = gy * C;
+            auto turns = [&](int nx, int ny) {
+                if (nx >= cw || ny >= H / C) return false;
+                const int n = kind[(size_t)ny * cw + nx];
+                return k != 2 && n != 2 && n != k;
+            };
+            if (turns(gx + 1, gy))
+                for (int y = 0; y < C; y++)
+                    if (cls(cx + C - 1, cy + y) == ROCK && cls(cx + C, cy + y) == ROCK)
+                        out[(size_t)(cy + y) * W + cx + C - 1] = rgba(0, 0, 0), isfloor[(size_t)(cy + y) * W + cx + C - 1] = 0;
+            if (turns(gx, gy + 1))
+                for (int x = 0; x < C; x++)
+                    if (cls(cx + x, cy + C - 1) == ROCK && cls(cx + x, cy + C) == ROCK)
+                        out[(size_t)(cy + C - 1) * W + cx + x] = rgba(0, 0, 0), isfloor[(size_t)(cy + C - 1) * W + cx + x] = 0;
+        }
+    for (int p = 0; p < d->num_portals; p++) {             // the mouths, each its foot on its floor's back edge
+        const int x = d->portals[p].tx * 16 - d->tree_ox, y = d->portals[p].ty * 16 - d->tree_oy;
+        if (!cave_ladder_out(d, p)) {                      // an arch
+            put(bx + CAVE_PIECE[CP_ARCH][0] * C, CAVE_PIECE[CP_ARCH][1] * C, 2 * C, 2 * C, x, y - 2 * C);
+            cover(x, y - 2 * C, 2 * C, 2 * C);
+            continue;
+        }
+        cover(x, y - CAVE_HATCH_UP * C, C, CAVE_HATCH_UP * C);
+        piece(CP_HATCH, x, y - CAVE_HATCH_UP * C);         // a ladder up to its hatch
+        for (int k = 1; k < CAVE_HATCH_UP; k++)
+            put((LADDER_COL0 + mat) * C, (k == 1 ? LADDER_ROW + 1 : LADDER_ROW) * C, C, C, x, y - k * C);
+    }
+    for (int i = 0; i < d->num_tree_ladders; i++) {        // the ladders: lengths, and the foot on the floor
+        const auto& l = d->tree_ladders[i];
+        for (int y = l.y0; y < l.y1; y += C)
+            put((LADDER_COL0 + mat) * C, (y + C >= l.y1 ? LADDER_ROW + 1 : LADDER_ROW) * C, C, C, l.x0, y);
+        cover(l.x0, l.y0, C, l.y1 - l.y0);
+    }
+    // where the quiet floor meets the walls' black (user: "find a way to make
+    // the transitions between the pure black of the walls and the more sutle
+    // floors work"): a shadow along every wall. Within 3 px of anything that
+    // is not floor, the floor is a tone down -- its stones the line colour,
+    // its lines black. Not a black ground, which has no tone to fall to.
+    if (ground_px != rgba(0, 0, 0)) {
+        std::vector<uint8_t> near(isfloor.size());
+        for (size_t k = 0; k < near.size(); k++) near[k] = !isfloor[k];
+        for (int step = 0; step < 3; step++) {
+            std::vector<uint8_t> grown = near;
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++) {
+                    const size_t k = (size_t)y * W + x;
+                    if ((x > 0 && near[k - 1]) || (x + 1 < W && near[k + 1]) || (y > 0 && near[k - W]) || (y + 1 < H && near[k + W])) grown[k] = 1;
+                }
+            near.swap(grown);
+        }
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++)
+                if (isfloor[(size_t)y * W + x] && near[(size_t)y * W + x]) out[(size_t)y * W + x] = floor_line(x, y) ? rgba(0, 0, 0) : line_px;
+    }
+    // the torches (user): on the rock that faces you, never the turned --
+    // along each level run of face cells of one height, in the middle of that
+    // height, by torch_run
+    s_cave.torches.clear();
+    auto rows = [&](int gx, int gy) {                      // the face cells down from this one, where a run of them starts
+        if (gx >= cw || !hang[(size_t)gy * cw + gx] || (gy > 0 && hang[(size_t)(gy - 1) * cw + gx])) return 0;
+        int m = 0;
+        while (gy + m < ch && hang[(size_t)(gy + m) * cw + gx]) m++;
+        return m;
+    };
+    for (int gy = 0; gy < ch; gy++)
+        for (int gx = 0, n; gx < cw; gx += n) {
+            const int m = rows(gx, gy);
+            for (n = 1; m >= 2 && rows(gx + n, gy) == m; n++) {}
+            if (m < 2) continue;
+            const int y = gy * C + (m - 2) * C / 2;        // its cell is 32 tall
+            torch_run(n, [&](int i) {
+                for (int j = y / C; j <= (y + 2 * C - 1) / C; j++)
+                    if (hang[(size_t)j * cw + gx + i] != 1) return false;
+                return true;
+            }, [&](int i) { s_cave.torches.push_back({ (gx + i) * C, y }); });
+        }
+    if (!s_cave.torches.empty() && torch_tex(ren, cave_flame(d)))        // their glows: on rock only, never the floor or the dark
+        s_cave.glow = torch_glow_tex(ren, (int)s_cave.torches.size(), [&](int i, int x, int y) {
+            const int px = s_cave.torches[i].x - 7 + x, py = s_cave.torches[i].y - 4 + y;
+            return cls(px, py) == ROCK && py >= 0 ? out[(size_t)py * W + px] : 0u;
+        });
+
+    SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
+    SDL_Surface* gl = SDL_CreateRGBSurfaceWithFormat(0, 8, 4, 32, SDL_PIXELFORMAT_RGBA32);
+    if (!surf || !gl) { if (surf) SDL_FreeSurface(surf); if (gl) SDL_FreeSurface(gl); return; }
+    for (int y = 0; y < H; y++)
+        memcpy((uint8_t*)surf->pixels + y * surf->pitch, &out[(size_t)y * W], W * 4);
+    // the dark's glints (user: "just glints of the material color"), in the
+    // rock's own two tones: the gem's lit one, the lightest in the gem's face,
+    // and the rock's base, the lightest in a plain face -- a 2 x 2 of the lit,
+    // and a cross of it with the base for arms
+    auto lightest = [&](int p) {
+        uint32_t best = 0;
+        int lum = -1;
+        for (int y = 0; y < C; y++)
+            for (int x = 0; x < C; x++) {
+                uint32_t c = sheet(bx + CAVE_PIECE[p][0] * C + x, CAVE_PIECE[p][1] * C + y);
+                const uint8_t* s = (const uint8_t*)&c;
+                const int l = s[0] * 299 + s[1] * 587 + s[2] * 114;
+                if (!clear(c) && l > lum) { lum = l; best = c; }
+            }
+        return best;
+    };
+    const uint32_t lit = lightest(CP_FACE2), base = lightest(CP_FACE0);
+    SDL_FillRect(gl, nullptr, 0);
+    auto dot = [&](int x, int y, uint32_t c) { *(uint32_t*)((uint8_t*)gl->pixels + y * gl->pitch + x * 4) = c; };
+    dot(0, 0, lit); dot(1, 0, lit); dot(0, 1, lit); dot(1, 1, lit);
+    dot(5, 1, lit); dot(5, 0, base); dot(4, 1, base); dot(6, 1, base); dot(5, 2, base);
+    s_cave.tex = SDL_CreateTextureFromSurface(ren, surf);
+    s_cave.glint = SDL_CreateTextureFromSurface(ren, gl);
+    SDL_FreeSurface(surf);
+    SDL_FreeSurface(gl);
+    if (s_cave.tex) SDL_SetTextureBlendMode(s_cave.tex, SDL_BLENDMODE_BLEND);
+    if (s_cave.glint) SDL_SetTextureBlendMode(s_cave.glint, SDL_BLENDMODE_BLEND);
+    s_cave.key = key; s_cave.ren = ren;
+}
+
+static void draw_cave(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren,
+                      int tx0, int ty0, int tx1, int ty1, int tsz) {
+    fc_draw_color(ren, 0, 0, 0, 255);
+    SDL_Rect all = { 0, 0, cam->screen_w, cam->screen_h };
+    SDL_RenderFillRect(ren, &all);
+    cave_bake(d, ren);
+    SDL_Rect dst = { cam_px(cam, (float)(d->tree_ox * DMAP_TILE / 16)), cam_py(cam, (float)(d->tree_oy * DMAP_TILE / 16)),
+                     d->tree_w * tsz / 16, d->tree_h * tsz / 16 };
+    SDL_Texture* sheet = tilemap_get_town_tex();
+    const int bx = cave_block_col(d) * 16;
+    // The dark below (user: not the game's sprites -- "just glints of the
+    // material color"): glints in the cave's own ore, scattered and twinkling
+    // as the barrow's stars are. Only under the cave's own width, and only
+    // where the picture is clear: below the ledge.
+    if (s_cave.glint) {
+        SDL_Rect clip = { dst.x, dst.y, dst.w, cam->screen_h - dst.y };
+        SDL_RenderSetClipRect(ren, &clip);
+        draw_twinkles(cam, ren, s_cave.glint, 0, 0, tsz, 6);
+        SDL_RenderSetClipRect(ren, nullptr);
+    }
+    if (s_cave.tex) SDL_RenderCopy(ren, s_cave.tex, nullptr, &dst);
+    if (SDL_Texture* torch = s_cave.torches.empty() ? nullptr : torch_tex(ren, cave_flame(d)))
+        for (int i = 0; i < (int)s_cave.torches.size(); i++)
+            draw_torch(cam, ren, torch, s_cave.glow, i, d->tree_ox + s_cave.torches[i].x, d->tree_oy + s_cave.torches[i].y, tsz);
+    if (sheet)                                             // the crystals to mine, each on its tile
+        for (int i = 0; i < d->dungeon_rocks.count; i++) {
+            const ResourceNode& n = d->dungeon_rocks.nodes[i];
+            if (!n.alive) continue;
+            SDL_Rect src = { bx + 4 * 16, 0, 16, 16 }, to = { cam_px(cam, n.x), cam_py(cam, n.y), tsz, tsz };
+            SDL_RenderCopy(ren, sheet, &src, &to);
+        }
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
         if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
@@ -5651,21 +5630,74 @@ static void cat_bake(const DungeonMap* d, int a, SDL_Renderer* ren) {
         if (rank[k] >= 0 && (long)dp * 4 + (3 - rk) < (long)dep[k] * 4 + (3 - rank[k])) return;   // something nearer
         out[k] = c; rank[k] = (int8_t)rk; dep[k] = dp;
     };
+    auto face = [&](int u, int v) {                    // the face a wall cell shows: 1 its +v, 2 its +u, 3 face-on
+        if (!has(u, v, BAND)) return 0;
+        if (at(u, v) & FACE_ON) return 3;
+        bool eu = !has(u + 1, v, BAND);
+        return !has(u, v + 1, BAND) || (!has(u + 1, v + 1, BAND) && !eu) ? 1 : eu ? 2 : 0;
+    };
+    // A section's skulls (user: to the interior bible -- laid whole, never
+    // sheared, never sliced by an edge): along each straight run of a face as
+    // many as fit whole, 16 apart, centred; on a face-on wall either side of
+    // its ladder. Per cell: the column of the bones' picture it shows, and
+    // how many rows it sits below its skull's first column -- taken back out
+    // when it is drawn, so a skull stands upright on a slanted wall while
+    // the bone courses lean with it.
+    // The sections take two walls in turn, so one catacomb is told from the next
+    // (user): odd ones a row of skulls over courses of long bones, even ones
+    // skulls all the way down -- the left and right half of the bones' picture.
+    const int bones_x = a % 2 ? 0 : 64, skull_rows = a % 2 ? 24 : 48;   // its skull courses: 24 tall each, from the top
+    std::vector<int16_t> skull(hall ? 0 : NU * NV, -1);
+    if (!hall) {
+        auto lay = [&](int n, auto cell) {                               // a run of n cells, cell(t) its t-th
+            int k = n / 16, off = (n - 16 * k) / 2;
+            for (int t = 0; t < 16 * k; t++) {
+                auto [u, v] = cell(off + t);
+                auto [us, vs] = cell(off + t / 16 * 16);
+                skull[(v - vmin) * NU + u - umin] = (int16_t)(t % 64 | ((u + v) / 2 - (us + vs) / 2) << 6);
+            }
+        };
+        for (int v = vmin; v < vmax; v++)
+            for (int u = umin, n; u < umax; u += n + 1) {
+                for (n = 0; face(u + n, v) == 1; n++) {}
+                lay(n, [&](int t) { return std::make_pair(u + t, v); });
+            }
+        for (int u = umin; u < umax; u++)
+            for (int v = vmin, n; v < vmax; v += n + 1) {
+                for (n = 0; face(u, v + n) == 2; n++) {}
+                lay(n, [&](int t) { return std::make_pair(u, v + t); });
+            }
+        for (int i = 0; i < d->num_cat_cuts; i++) {
+            const auto& c = d->cat_cuts[i];
+            if (c.area != a) continue;
+            const int k = (c.k - 9) / 16, off = (c.k - 9 - 16 * k) / 2;   // a side of the ladder: c.k - 9 across
+            for (int v = c.v0; v < c.v0 + c.k; v++)
+                for (int u = c.u0; u < c.u0 + c.k; u++) {
+                    int dx = u - v - (c.u0 - c.v0), t = (dx >= 0 ? dx - 8 : -dx - 9) - off;
+                    if (face(u, v) == 3 && t >= 0 && t < 16 * k) skull[(v - vmin) * NU + u - umin] = (int16_t)(t % 64 | 3 << 6);
+                }
+        }
+    }
+    auto bones = [&](int col, int zr, int16_t sk) {                      // a section's wall, col along its face
+        if (zr < skull_rows) {
+            const int top = zr / 24 * 24, j = (sk >> 6) + zr - top - 8;  // the skull's row: 14 of them, 5 down its course
+            return sk >= 0 && j >= 0 && j < 14 ? sw(CS_BONES, bones_x + (sk & 63), top + 5 + j) : sw(CS_BONES, bones_x, top);
+        }
+        return sw(CS_BONES, bones_x + pmod(col, 64), zr);
+    };
     for (int v = vmin; v < vmax; v++)
         for (int u = umin; u < umax; u++) {
+            const int f = face(u, v);
             if (!(at(u, v) & BAND)) continue;
-            bool fo = at(u, v) & FACE_ON;
-            bool eu = !fo && !has(u + 1, v, BAND);
-            bool ev = !fo && (!has(u, v + 1, BAND) || (!has(u + 1, v + 1, BAND) && !eu));
+            const int16_t sk = hall ? -1 : skull[(v - vmin) * NU + u - umin];
             int x = SX(u, v), y = SY(u, v), dp = u + v;
             for (int z = 0; z < Z; z++) {
                 int zr = Z - 1 - z;
-                if (ev) put(x, y - z, dp, 1, hall ? sw(CS_ASHLAR, pmod(u, 96), zr % 80) : sw(CS_BONES, pmod(u, 64), zr % 64));
-                else if (eu) put(x, y - z, dp, 2, hall ? sw(CS_ASHLAR_SIDE, pmod(v, 48), zr % 80) : shade(sw(CS_BONES, pmod(v, 64), zr % 64)));
-                if (fo) put(x, y - z, dp, 3, hall ? sw(CS_ASHLAR, pmod(u - v, 96), zr % 80) : sw(CS_BONES, pmod(u - v, 64), zr % 64));
+                if (f == 1) put(x, y - z, dp, 1, hall ? sw(CS_ASHLAR, pmod(u, 96), zr % 80) : bones(u, zr, sk));
+                else if (f == 2) put(x, y - z, dp, 2, hall ? sw(CS_ASHLAR_SIDE, pmod(v, 48), zr % 80) : shade(bones(v, zr, sk)));
+                else if (f == 3) put(x, y - z, dp, 3, hall ? sw(CS_ASHLAR, pmod(u - v, 96), zr % 80) : bones(u - v, zr, sk));
             }
-            uint32_t top = hall ? ((u + v) / 2 % 16 ? rgb(0xc6ccda) : rgb(0x9797aa))
-                                : ((u + v) / 2 % 4 ? rgb(0xb2966a) : rgb(0x8d6b4f));
+            uint32_t top = hall ? ((u + v) / 2 % 16 ? rgb(0xc6ccda) : rgb(0x9797aa)) : rgb(0xb2966a);   // bone: the plain base
             put(x, y - Z, dp, 0, top);
         }
     // the lines: the silhouette, a top's edge over a face, where two faces
@@ -5759,9 +5791,9 @@ static void draw_catacombs(const DungeonMap* d, const DungeonPlayer* dp, const C
 }
 
 // ── Oasis: the picture ───────────────────────────────────────────────────
-// Baked once: the rock filled with the overworld cliffs' texture
-// (cliff_texture.inc) in the oasis's darker olive -- line, 2d230c, 5c4616,
-// 7b601d -- outlined black; the water's dot lattice; the air. Every frame,
+// Baked once: the rock filled with the overworld cliffs' texture, each stone
+// one flat tone (OASIS_ROCK, tools/gen_oasis.py), in the oasis's darker olive
+// -- line, 2d230c, 5c4616 -- outlined black; the water's dot lattice; the air. Every frame,
 // behind it: the water, the far wall and its light at a quarter of the
 // camera's pace (brighter shafts over a cavern), the far leviathan at a sixth,
 // the sunken town's walls and the eyes at half, the close leviathan swimming
@@ -5769,7 +5801,6 @@ static void draw_catacombs(const DungeonMap* d, const DungeonPlayer* dp, const C
 // the weed (behind the rock, its foot in it); in front: the air pockets'
 // water lines and the shafts' ladders. Weed and water lines step through
 // three poses a second each (the graveyard roots' beat).
-#include "cliff_texture.inc"
 struct OasisArt {
     uint32_t key = 0;
     SDL_Renderer* ren = nullptr;
@@ -5800,7 +5831,7 @@ static void oasis_bake(const DungeonMap* d, SDL_Renderer* ren) {
     const int W = d->oasis_w, H = OASIS_PX_H;
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     if (!surf) return;
-    const uint32_t RAMP[4] = { 0xFF000000u, 0xFF0C232Du, 0xFF16465Cu, 0xFF1D607Bu };   // RGBA32 as ABGR words
+    const uint32_t RAMP[3] = { 0xFF000000u, 0xFF0C232Du, 0xFF16465Cu };   // RGBA32 as ABGR words
     const uint32_t DOT = 0xFF582A3Bu, AIR = 0xFF703C42u, BLACK = 0xFF000000u;
     for (int y = 0; y < H; y++) {
         uint32_t* row = (uint32_t*)((uint8_t*)surf->pixels + y * surf->pitch);
@@ -5809,7 +5840,7 @@ static void oasis_bake(const DungeonMap* d, SDL_Renderer* ren) {
             if (oasis_rock(d, x, y)) {
                 bool edge = !oasis_rock(d, x - 1, y) || !oasis_rock(d, x + 1, y) ||
                             !oasis_rock(d, x, y - 1) || !oasis_rock(d, x, y + 1);
-                c = edge ? BLACK : RAMP[CLIFF_TEX[y % CLIFF_TEX_N][x % CLIFF_TEX_N] - '0'];
+                c = edge ? BLACK : RAMP[OASIS_ROCK[y % OASIS_ROCK_N][x % OASIS_ROCK_N] - '0'];
             } else {
                 for (int i = 0; i < d->num_oasis_air; i++) {
                     const auto& a = d->oasis_air[i];
@@ -6131,6 +6162,10 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
         draw_tree(dmap, cam, ren, tx0, ty0, tx1, ty1, tsz);   // its way out is in the picture
         return;
     }
+    if (dmap->type == DUNGEON_ENT_CAVE) {
+        draw_cave(dmap, cam, ren, tx0, ty0, tx1, ty1, tsz);   // its mouths and ladders are in the picture
+        return;
+    }
     if (dmap->type == DUNGEON_ENT_STONEHENGE) {
         if (SDL_Texture* tex = tilemap_get_town_tex()) {
             draw_barrow(dmap, cam, ren, tex, tx0, ty0, tx1, ty1, tsz);   // its ladders are in the picture
@@ -6148,19 +6183,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
     for (int ty = ty0; ty < ty1; ty++) {
         for (int tx = tx0; tx < tx1; tx++) {
             uint8_t tile = dmap->tiles[ty][tx];
-
-            if (tile == DNG_WALL && dmap->type == DUNGEON_ENT_CAVE) {
-                SDL_Texture* cave_tex = tilemap_get_town_tex();
-                if (cave_tex) {
-                    int sx = cam_px(cam, tx * DMAP_TILE);
-                    int sy = cam_py(cam, ty * DMAP_TILE);
-                    draw_cave_wall(ren, cave_tex, dmap, tx, ty, sx, sy, tsz);
-                    continue;
-                }
-                // sheet failed to load — fall through to the generic border-cull +
-                // flat-fill path below, same degraded fallback every other
-                // dungeon type already has.
-            }
 
             // Outline walls: skip wall tiles not adjacent to any open tile
             if (tile == DNG_WALL) {
@@ -6205,7 +6227,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             char ch; Uint8 cr, cg, cb;
             switch (tile) {
                 case DNG_FLOOR:
-                    if (dmap->type == DUNGEON_ENT_CAVE) continue;   // flat floor reads cleaner bare
                     ch = ascii.floor;
                     cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
                     break;
@@ -6229,123 +6250,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
         }
     }
 
-    // Second pass (cave): redraw floor/entry/exit tiles over
-    // tall wall extensions — a tall north-facing wall bleeds upward into
-    // screen space already drawn by an earlier (smaller-ty) loop iteration.
-    if (dmap->type == DUNGEON_ENT_CAVE) {
-        bool is_cave = dmap->type == DUNGEON_ENT_CAVE;
-        for (int ty = ty0; ty < ty1; ty++) {
-            for (int tx = tx0; tx < tx1; tx++) {
-                uint8_t tile = dmap->tiles[ty][tx];
-                int sx = cam_px(cam, tx * DMAP_TILE);
-                int sy = cam_py(cam, ty * DMAP_TILE);
-
-                if (tile == DNG_WALL) {
-                    // Reclaim a cave wall tile's own decoration (trim/nub)
-                    // from any tall_band bleed a tile below it painted over
-                    // it in the main pass -- tall_band bleeds two tile
-                    // heights upward, and the main pass draws north row
-                    // first, so a tall_band tile drawn later can erase a
-                    // decorated tile's art already drawn above it.
-                    // tall_band itself isn't redrawn here: it can only ever
-                    // get bled over by another tall_band tile (same
-                    // continuous rock texture drawn over itself, no visible
-                    // seam either way), so there's nothing worth reclaiming.
-                    if (is_cave) {
-                        CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
-                        if (p.trim_n || p.trim_s || p.trim_e || p.trim_w ||
-                            p.nub_ne || p.nub_se || p.nub_sw || p.nub_nw) {
-                            SDL_Texture* cave_tex = tilemap_get_town_tex();
-                            if (cave_tex)
-                                draw_cave_wall_decor(ren, cave_tex, p,
-                                                     sx, sy, tsz, cave_art_col_shift(dmap) * 16);
-                        }
-                    }
-                    continue;
-                }
-
-                const SDL_Color* c = &pal.floor;               // the ways out stand on it too
-                SDL_Rect rect = { sx, sy, tsz, tsz };
-                fc_draw_color(ren, c->r, c->g, c->b, 255);
-                SDL_RenderFillRect(ren, &rect);
-
-                bool has_loot = false;
-                if (tile == DNG_FLOOR) {
-                    for (int li = 0; li < dmap->num_loot; li++) {
-                        const DungeonLoot& lo = dmap->loot[li];
-                        if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                        draw_loot(ren, lo, sx, sy, tsz);
-                        has_loot = true;
-                        break;
-                    }
-                }
-                if (has_loot) continue;   // skip the ASCII floor dot — keep the square clean
-                if (tile == DNG_ENTRY || tile == DNG_EXIT) continue;   // a ladder, drawn last
-
-                if (is_cave && tile == DNG_FLOOR) continue;   // no ascii dot on cave floor, matches main pass
-
-                char ch; Uint8 cr, cg, cb;
-                switch (tile) {
-                    case DNG_ENTRY: ch = '<'; cr=255; cg=240; cb=80; break;
-                    case DNG_EXIT:  ch = '>'; cr=255; cg=100; cb=100; break;
-                    default:
-                        ch = ascii.floor;
-                        cr = c->r / 2; cg = c->g / 2; cb = c->b / 2;
-                        break;
-                }
-                char buf[2] = {ch, '\0'};
-                draw_text(ren, buf, sx + coff, sy + coff, scale, cr, cg, cb);
-            }
-        }
-    }
-
-    // Third pass (cave only): outline the exposed flanks of each tall-face run.
-    //
-    // Needs a pass of its own. The strip deliberately overhangs the NEIGHBORING
-    // cell by half a tile, and that neighbor is usually floor -- that's why the
-    // run ended there. The second pass above repaints every floor tile flat, so
-    // anything the main pass draws onto one dies. Putting it in the second
-    // pass's own wall branch fails differently: that pass walks west to east,
-    // so an east-side strip at column tx+1 is drawn before that column's floor
-    // repaint and gets erased, leaving only the west side. Drawn here, last,
-    // after every floor repaint and decor redraw, nothing can overwrite it.
-    //
-    // Sourced one 8x16 cell per tile row rather than as a single 8x48 crop, so
-    // a segment whose cell does not qualify can be left out without disturbing
-    // the rest. Cell 2-k for row k: the 3-cell source runs top to bottom over
-    // rows ty-2..ty, so the band's own row takes the bottom cell. 8x16 into
-    // half-tile by one tile is the same 2x mapping every other piece here
-    // renders at, so nothing rescales.
-    if (dmap->type == DUNGEON_ENT_CAVE) {
-        SDL_Texture* cave_tex = tilemap_get_town_tex();
-        if (cave_tex) {
-            int half = tsz / 2;
-            for (int ty = ty0; ty < ty1; ty++) {
-                for (int tx = tx0; tx < tx1; tx++) {
-                    if (dmap->tiles[ty][tx] != DNG_WALL) continue;
-                    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
-                    if (!p.band_edge_w && !p.band_edge_e) continue;
-
-                    int sx = cam_px(cam, tx * DMAP_TILE);
-                    int sy = cam_py(cam, ty * DMAP_TILE);
-                    for (int k = 0; k <= 2; k++) {
-                        SDL_Rect src = { TRIM_WE_X + cave_art_col_shift(dmap) * 16,
-                                         TRIM_WE_Y + (2 - k) * 16, 8, 16 };
-                        SDL_Rect dst = { 0, sy - k * tsz, half, tsz };
-                        if (p.band_edge_w & (1 << k)) {   // right half of the cell to the west
-                            dst.x = sx - half;
-                            SDL_RenderCopy(ren, cave_tex, &src, &dst);
-                        }
-                        if (p.band_edge_e & (1 << k)) {   // left half of the cell to the east
-                            dst.x = sx + tsz;
-                            SDL_RenderCopy(ren, cave_tex, &src, &dst);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     draw_ways_out(dmap, cam, ren, tx0, ty0, tx1, ty1, tsz);
 }
 
@@ -6357,7 +6261,6 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
 static void draw_ways_out(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren,
                           int tx0, int ty0, int tx1, int ty1, int tsz) {
     if (SDL_Texture* tex = tilemap_get_town_tex()) {
-        int mat = dmap->type == DUNGEON_ENT_CAVE ? cave_material_index(dmap) : 0;
         const WayOutDoor* door = way_out_door(dmap);
         int face = way_out_face(dmap);
         for (int ty = ty0; ty < ty1; ty++)
@@ -6372,7 +6275,7 @@ static void draw_ways_out(const DungeonMap* dmap, const Camera* cam, SDL_Rendere
                     continue;
                 }
                 for (int k = 1; k <= face; k++) {   // up the face from its foot
-                    SDL_Rect src = { (LADDER_COL0 + mat) * 16, (k == 1 ? LADDER_ROW + 1 : LADDER_ROW) * 16, 16, 16 };
+                    SDL_Rect src = { LADDER_COL0 * 16, (k == 1 ? LADDER_ROW + 1 : LADDER_ROW) * 16, 16, 16 };
                     SDL_Rect dst = { sx, sy - k * tsz, tsz, tsz };
                     SDL_RenderCopy(ren, tex, &src, &dst);
                 }
@@ -6380,7 +6283,7 @@ static void draw_ways_out(const DungeonMap* dmap, const Camera* cam, SDL_Rendere
     }
 }
 
-// Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
+// Weapon swing/throw visual for the dungeon player -- thin wrapper
 // around weapon_swing_draw() (combat.h), the same one overworld_draw_swing()
 // (src/overworld.cpp) calls.
 void dungeon_draw_swing(const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren)
@@ -6390,102 +6293,9 @@ void dungeon_draw_swing(const DungeonPlayer* dp, const Camera* cam, SDL_Renderer
     weapon_swing_draw(&dp->swing, px, py, cam, ren);
 }
 
-// For the debug grid overlay: which tileset.png cell(s) a cave wall tile at
-// (tx,ty) actually draws from. Shares its classification with
-// draw_cave_wall() via cave_wall_classify() above, so the two can no longer
-// drift out of sync. Returns false for non-wall tiles and for true-interior
-// wall tiles that draw nothing at all (blank void, no rim/trim touching them).
-static bool cave_wall_debug_cell(const DungeonMap* dmap, int tx, int ty, char* buf, size_t buflen) {
-    if (dmap->tiles[ty][tx] != DNG_WALL) return false;
-
-    CaveWallPieces p = cave_wall_classify(dmap, tx, ty);
-    // Named in the cave's OWN block, not in master coordinates. The point of
-    // this overlay is to say which cell the renderer actually sampled, so a
-    // Bronze cave has to report 38:0 rather than the 28:0 the code is written
-    // in -- otherwise the label names art that is not on screen.
-    int sh = cave_art_col_shift(dmap);
-
-    buf[0] = '\0';
-    if (p.tall_band) {
-        SDL_snprintf(buf, buflen, "%d:0", p.tall_band_standalone ? 32 + sh : 28 + sh);
-    }
-    // Run-end outline strips. Labelled on the band tile that OWNS the strip,
-    // not on the neighboring cell it actually paints into, so the label lines
-    // up with cave_wall_classify()'s owner. Both sides draw the same source
-    // unflipped now, so the label carries no orientation suffix.
-    // Three digits, read top-to-bottom like the strip itself: the segment two
-    // rows up, one row up, then this tile's own row. Deliberately the mask and
-    // not a popcount -- the set bits need not be contiguous (a neighboring
-    // face's bleed can take the lower cells and leave the top one), so "2"
-    // would be ambiguous between the bottom two and a top-and-bottom pair with
-    // a hole in the middle. The overlay has to say exactly which cells are
-    // painted or it starts claiming rock that isn't.
-    auto seg_bits = [](uint8_t mask, char* out) {
-        out[0] = (mask & 4) ? '1' : '0';
-        out[1] = (mask & 2) ? '1' : '0';
-        out[2] = (mask & 1) ? '1' : '0';
-        out[3] = '\0';
-    };
-    char bits[4];
-    if (p.band_edge_w) {
-        size_t len = SDL_strlen(buf);
-        seg_bits(p.band_edge_w, bits);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:0w%s", len ? "+" : "", 31 + sh, bits);
-    }
-    if (p.band_edge_e) {
-        size_t len = SDL_strlen(buf);
-        seg_bits(p.band_edge_e, bits);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:0e%s", len ? "+" : "", 31 + sh, bits);
-    }
-    // Every piece below joins onto whatever's already in buf via the same
-    // len-guarded "+" pattern, so it doesn't matter that tall_band is now
-    // just the first optional piece instead of an early return -- trim_s/
-    // trim_n are provably mutually exclusive with tall_band (see
-    // cave_wall_classify()) and never actually co-occur with it, but nub_ne/
-    // nub_nw can (a floor_s-triggered tall_band tile can still have a
-    // diagonal-only NW/NE corner), which is exactly the case this fix
-    // restores.
-    if (p.trim_s || p.trim_n) {
-        size_t len = SDL_strlen(buf);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 29 + sh);
-    }
-    if (p.trim_e || p.trim_w) {
-        size_t len = SDL_strlen(buf);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:0", len ? "+" : "", 31 + sh);
-    }
-    // Corner-transition accent, layered on top of the base trim above (see
-    // draw_cave_wall()) -- shown as a separate "+"-joined piece rather than
-    // swapped in for 31:0, since both actually draw now. Same known,
-    // deliberately-accepted quirk as the nub labels below: if a tile has
-    // floor on both east *and* west with a transition active, this only
-    // shows the east variant -- rendering itself is correct either way.
-    // Every bead below is the same unflipped 31:7 source; they differ only by
-    // which quadrant of the tile they land in, so there is no orientation
-    // suffix and no second cell to name.
-    if (p.trim_trans_above) {
-        size_t len = SDL_strlen(buf);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh);
-    }
-    if (p.trim_trans_below) {
-        size_t len = SDL_strlen(buf);
-        SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh);
-    }
-    if (p.nub_ne) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh); }
-    if (p.nub_nw) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh); }
-    if (p.nub_se) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh); }
-    if (p.nub_sw) { size_t len = SDL_strlen(buf); SDL_snprintf(buf+len, buflen-len, "%s%d:7", len ? "+" : "", 31 + sh); }
-    return buf[0] != '\0';
-}
-
 // ── Public: debug tile-grid overlay ───────────────────────────────────────
-// One line per DMAP_TILE boundary in view, plus a label in each cell's
-// corner once tiles are big enough to read one. The label is the tileset
-// (col,row) that tile actually draws from -- see cave_wall_debug_cell()
-// above -- rather than the world (tx,ty), since that's the coordinate
-// system assets/tileset.png edits are made in. Only cave wall tiles source
-// from the tileset (every other dungeon type, and floor/entry/exit tiles
-// even within a cave, are flat colour fills), so those are left unlabeled.
-void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren) {
+// One line per DMAP_TILE boundary in view.
+void dungeon_draw_debug_grid(const DungeonMap*, const Camera* cam, SDL_Renderer* ren) {
     float z   = cam->zoom;
     int   tsz = (int)(DMAP_TILE * z);
     if (tsz < 1) tsz = 1;
@@ -6510,45 +6320,44 @@ void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Rend
         }
     }
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-
-    if (tsz >= 24) {   // labels need room; skip them at small zoom rather than smear illegible text
-        bool is_cave = dmap->type == DUNGEON_ENT_CAVE;
-        for (int ty = ty0; ty < ty1; ty++) {
-            for (int tx = tx0; tx < tx1; tx++) {
-                char buf[56];   // base fill + 2 run-end strips + up to 2 edges + up to 4 nubs
-                if (!is_cave || !cave_wall_debug_cell(dmap, tx, ty, buf, sizeof(buf))) continue;
-                int sx = cam_px(cam, tx * DMAP_TILE);
-                int sy = cam_py(cam, ty * DMAP_TILE);
-                draw_text(ren, buf, sx + 1, sy + 1, 1, 60, 255, 60);
-            }
-        }
-    }
 }
 
 // ── Public: minimap overlay ───────────────────────────────────────────────
+// The map's frame: the box the dungeon's floor fills with the wall ring round
+// it, scaled to fill 80% of the screen: a cave's tile is an 8-pixel block, the
+// catacombs' not quite one pixel. The frame used to be the whole 768x512 grid
+// at half scale, which drew a cave's 62x30 tiles as a 31x15 smudge in an empty
+// panel. Draw and click share it: the click is this scaling run backwards.
+struct DngMiniFrame {
+    int x0, y0, x1, y1, ox, oy, mw, mh; float s;   // tiles framed, panel origin and size, pixels a tile
+    int px(int k) const { return (int)(k * s); }   // where the k-th tile's block starts, from the panel's edge
+};
+static DngMiniFrame dng_mini_frame(const DungeonMap* d, int screen_w, int screen_h) {
+    DngMiniFrame f = { d->floor_x0, d->floor_y0, d->floor_x1, d->floor_y1, 0, 0, 0, 0, 1 };
+    int bw = f.x1 - f.x0 + 1, bh = f.y1 - f.y0 + 1;
+    f.s = std::min(screen_w * 0.8f / bw, screen_h * 0.8f / bh);
+    f.mw = (int)(bw * f.s); f.mh = (int)(bh * f.s);
+    f.ox = (screen_w - f.mw) / 2; f.oy = (screen_h - f.mh) / 2;
+    return f;
+}
+
 void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                           SDL_Renderer* ren, int screen_w, int screen_h,
                           bool show_all) {
-    // Scale so minimap fits within 80% of the smaller screen dimension.
-    int max_dim = (screen_w < screen_h ? screen_w : screen_h) * 4 / 5;
-    int step = 1;
-    while (DMAP_W / step > max_dim || DMAP_H / step > max_dim)
-        step++;
-
-    int mw = DMAP_W / step;
-    int mh = DMAP_H / step;
-    int ox = (screen_w - mw) / 2;
-    int oy = (screen_h - mh) / 2;
-
+    const DngMiniFrame f = dng_mini_frame(dmap, screen_w, screen_h);
     const DngPalette pal = dng_palette(dmap);
 
     SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-    draw_nes_panel(ren, ox - 4, oy - 4, mw + 8, mh + 8);
+    draw_nes_panel(ren, f.ox - 4, f.oy - 4, f.mw + 8, f.mh + 8);
 
-    // Draw one pixel per explored dungeon tile only
-    for (int ty = 0; ty < DMAP_H; ty += step) {
-        for (int tx = 0; tx < DMAP_W; tx += step) {
+    // Every explored tile as its block of the frame; a block narrower than a
+    // pixel (the map shrunk) is the tile that sampling drops.
+    for (int ty = f.y0; ty <= f.y1; ty++) {
+        for (int tx = f.x0; tx <= f.x1; tx++) {
             if (!show_all && !dmap->explored[ty][tx]) continue;
+            int bx = f.px(tx - f.x0), by = f.px(ty - f.y0);
+            SDL_Rect r = { f.ox + bx, f.oy + by, f.px(tx - f.x0 + 1) - bx, f.px(ty - f.y0 + 1) - by };
+            if (!r.w || !r.h) continue;
             uint8_t tile = dmap->tiles[ty][tx];
             const SDL_Color* c;
             switch (tile) {
@@ -6558,13 +6367,13 @@ void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                 default:        c = &pal.wall;  break;
             }
             fc_draw_color(ren, c->r, c->g, c->b, 255);
-            SDL_RenderDrawPoint(ren, ox + tx / step, oy + ty / step);
+            SDL_RenderFillRect(ren, &r);
         }
     }
 
-    // Player — flashing 5×5 square, matching the overworld minimap marker.
-    int px = ox + (int)(dplayer->x / DMAP_TILE) / step;
-    int py = oy + (int)(dplayer->y / DMAP_TILE) / step;
+    // Player -- their feet, a flashing 5x5 square, matching the overworld minimap marker.
+    int px = f.ox + (int)(((dplayer->x + (HB_X1 + HB_X2) * 0.5f) / DMAP_TILE - f.x0) * f.s);
+    int py = f.oy + (int)(((dplayer->y + HB_Y2) / DMAP_TILE - f.y0) * f.s);
     if ((SDL_GetTicks() / MINIMAP_FLASH_MS) & 1)
         fc_draw_color(ren, 0, 255, 255, 255);
     else
@@ -6580,27 +6389,21 @@ bool dungeon_minimap_click_to_world(const DungeonMap* dmap,
                                     bool show_all,
                                     float* out_world_x, float* out_world_y)
 {
-    // Mirror the step/offset calculation from dungeon_minimap_draw exactly
-    int max_dim = (screen_w < screen_h ? screen_w : screen_h) * 4 / 5;
-    int step = 1;
-    while (DMAP_W / step > max_dim || DMAP_H / step > max_dim)
-        step++;
-
-    int mw = DMAP_W / step;
-    int mh = DMAP_H / step;
-    int ox = (screen_w - mw) / 2;
-    int oy = (screen_h - mh) / 2;
-
-    // Check the click is inside the minimap rectangle
-    if (mx < ox || mx >= ox + mw || my < oy || my >= oy + mh)
+    const DngMiniFrame f = dng_mini_frame(dmap, screen_w, screen_h);
+    if (mx < f.ox || mx >= f.ox + f.mw || my < f.oy || my >= f.oy + f.mh)
         return false;
 
-    // step can overshoot the map edge by up to step-1, so clamp before
-    // indexing into the tile arrays.
-    int tx = (mx - ox) * step;
-    int ty = (my - oy) * step;
-    if (tx >= DMAP_W) tx = DMAP_W - 1;
-    if (ty >= DMAP_H) ty = DMAP_H - 1;
+    // The tile whose block holds the pixel: the scaling run backwards, then
+    // settled against the block edges the draw uses, since truncating p / s
+    // and k * s separately puts a click one tile off wherever s is a fraction.
+    auto tile_at = [&](int p, int n) {
+        int k = (int)(p / f.s);
+        while (k > 0 && f.px(k) > p) k--;
+        while (k < n - 1 && f.px(k + 1) <= p) k++;
+        return k;
+    };
+    int tx = f.x0 + tile_at(mx - f.ox, f.x1 - f.x0 + 1);
+    int ty = f.y0 + tile_at(my - f.oy, f.y1 - f.y0 + 1);
 
     // Don't send the player into a wall, or into fog they can't see on the
     // very minimap they're clicking.

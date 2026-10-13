@@ -32,13 +32,16 @@ runs on seamless; under every south edge hangs that material's underside.
 
 Tones -- four a 16px cell, one palette.
 """
-import json, math, random, sys
+import json, math, os, random, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
+from interior_style import MATERIALS, masonry, bond, chip, planks
 
 PAL = {'K': '000000',
        'M': '9797aa', 'D': '595965', 'L': 'c6ccda', 'T': '235436',          # stone, moss
-       'W': '967448', 'V': '785830', 'E': '493712',                          # wood, its shade, earth
+       **dict(zip('WVE', MATERIALS['wood']['tones'])),                       # wood, its shade, earth
        'B': 'e8e0c0', 'S': 'b2966a',                                         # bone, its shade
-       'R': 'b6433d', 'r': '792727', 'm': '531b1c', 'n': '5d1e1f',           # brick (the houses'), its shade, mortar, the shaded face
+       **dict(zip('Rrn', MATERIALS['brick']['tones'])),                      # brick (the houses'), its shade, the shaded face
+       'm': MATERIALS['brick']['joint'],                                     # its mortar
        'g': '1e1e24', 'h': '292931', 'j': '34343e'}                          # the dark's faint greys
 VW, VH = 128, 64
 
@@ -51,50 +54,13 @@ def brick():
     """Red pavers in running bond, tiling 64: each 16 x 8, its lower row and
     right column in shade, the mortar dark; some bricks worn darker, a few
     chipped corners."""
-    g = [['R'] * 64 for _ in range(64)]
-    rng = random.Random(5)
-    for row in range(8):
-        off = 8 * (row % 2)
-        for b in range(4):
-            x0, y0 = (b * 16 + off) % 64, row * 8
-            worn = rng.random() < 0.25
-            for y in range(y0, y0 + 8):
-                for i in range(16):
-                    x = (x0 + i) % 64
-                    if y == y0 + 7 or i == 15:
-                        g[y][x] = 'm'                            # the mortar
-                    elif worn or y == y0 + 6 or i == 14:
-                        g[y][x] = 'r'                            # shade
-            if rng.random() < 0.3:                               # a chipped corner
-                for dy, w in ((0, 3), (1, 2), (2, 1)):
-                    for i in range(w):
-                        g[y0 + dy][(x0 + i) % 64] = 'K'
-    return g
+    return bond(64, 64, 16, 8, 'R', 'r', 'm', seed=5)
 
 
 def board():
     """Planks across, 8 tall, a dark gap between, their ends staggered,
     nail heads at each end, grain in the shade."""
-    g = [['W'] * 64 for _ in range(64)]
-    for y in range(64):
-        r = y % 8
-        if r == 7:
-            for x in range(64):
-                g[y][x] = 'E'                                # the gap
-        elif r == 6:
-            for x in range(64):
-                g[y][x] = 'V'                                # its shadowed edge
-    for p in range(8):
-        end = (p * 23) % 64                                  # each plank's butt joint
-        for y in range(p * 8, p * 8 + 7):
-            g[y][end] = 'E'
-        for nx in ((end + 2) % 64, (end - 3) % 64):
-            g[p * 8 + 2][nx] = 'K'; g[p * 8 + 3][nx] = 'K'   # nail heads
-        for x in range(0, 64, 9):                            # grain
-            g[p * 8 + 1 + (x // 9) % 4][(x + p * 5) % 64] = 'V'
-            g[p * 8 + 1 + (x // 9) % 4][(x + p * 5 + 1) % 64] = 'V'
-            g[p * 8 + 1 + (x // 9) % 4][(x + p * 5 + 2) % 64] = 'V'
-    return g
+    return planks(64, 64, 'W', 'V', 'E')
 
 
 def under(kind):
@@ -140,20 +106,15 @@ def under(kind):
 def face(kind, side):
     """The walkway's thickness, 64 x 8, read at (depth below the top's edge,
     along); the last row is the foot's outline."""
+    if kind == 'brick':                                      # two courses, rows 0-2 and 4-6
+        g = (masonry(64, 8, [(0, 4, 16, 0), (4, 4, 16, -8)], 'R', 'r', 'm') if side == 's' else
+             masonry(64, 8, [(0, 4, 8, 1), (4, 4, 8, -3)], 'r', 'n', 'm'))
+        g[7] = ['K'] * 64
+        return g
     g = [['K'] * 64 for _ in range(8)]
     for y in range(7):
         for x in range(64):
-            if kind == 'brick':
-                course, r = divmod(y, 4)                     # two courses, rows 0-2 and 4-6
-                if r == 3:
-                    c = 'm'
-                elif side == 's':
-                    joint = (x + 8 * course) % 16 == 15
-                    c = 'm' if joint else ('r' if r == 2 or (x + 8 * course) % 16 == 14 else 'R')
-                else:
-                    joint = (x + 4 * course) % 8 == 0
-                    c = 'm' if joint else ('n' if r == 2 or (x + 4 * course) % 8 == 7 else 'r')
-            elif side == 's':                                # the last plank's side, the stringer
+            if side == 's':                                  # the last plank's side, the stringer
                 c = 'W' if y < 3 else ('E' if y == 3 else 'V')
                 if y == 1 and x % 9 in (2, 3, 4):
                     c = 'V'                                  # grain
@@ -174,35 +135,24 @@ def wall(kind):
     g = blank(72, 64)
     rng = random.Random(7)
     worn = {(c, b): rng.random() < 0.25 for c in range(6) for b in range(5)}   # dark bricks, as the path's
-    for y in range(16, 64):                                  # the front face
+    if kind == 'brick':                                      # the front face: courses up from the foot
+        g[16:] = [r + ['.'] * 8 for r in masonry(64, 48, [(41 - 8 * c, 8, 16, -8 * (c % 2)) for c in range(7)],
+                                                 'R', 'r', 'm', worn=lambda c, b: worn.get((c, b)))]
+        for course in range(6):                              # chipped corners, as the path's bricks
+            for bx in range(-8 * (course % 2), 64, 16):
+                if bx >= 0 and rng.random() < 0.3:
+                    chip(g, bx, 57 - course * 8)
+    for y in range(16, 64):
         z = 63 - y
         for x in range(64):
-            if kind == 'brick':
-                course = z // 8
-                if z % 8 == 7:
-                    c = 'm'
-                elif (x + 8 * (course % 2)) % 16 == 15:
-                    c = 'm'
-                elif z % 8 == 0 or (x + 8 * (course % 2)) % 16 == 14 or                         worn[(course, (x + 8 * (course % 2)) // 16)]:
-                    c = 'r'
-                else:
-                    c = 'R'
-            else:                                            # boards across, a post at each end and the middle
+            if kind == 'board':                              # boards across, a post at each end and the middle
                 if x in (0, 1, 2, 30, 31, 32, 61, 62, 63):
                     c = 'W' if x in (0, 30, 61) else 'V'
                 else:
                     c = 'E' if z % 8 == 7 else ('V' if z % 8 == 0 else 'W')
                     if z % 8 == 4 and x % 11 in (3, 4, 5):
                         c = 'V'                              # grain
-            g[y][x] = c
-    if kind == 'brick':                                      # chipped corners, as the path's bricks
-        for course in range(6):
-            for bx in range(-8 * (course % 2), 64, 16):
-                if bx < 0 or rng.random() >= 0.3:
-                    continue
-                for dz, w in ((0, 3), (1, 2), (2, 1)):
-                    for i in range(w):
-                        g[63 - (course * 8 + 6 - dz)][bx + i] = 'K'
+                g[y][x] = c
     if kind == 'board':                                      # the boardwalk's marks: each board's
         for b in range(6):                                   # butt joint and the slashed nail pair by it
             y0 = 63 - b * 8 - 6                              # the board's top row

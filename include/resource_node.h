@@ -111,14 +111,10 @@ float sweep_relative_angle(float start_ang, float dx, float dy);
 // Shared with the tile thrust so both measure the corridor identically.
 void thrust_project(float angle, float dx, float dy, float* out_along, float* out_side);
 
-// Distance to the nearest node in the corridor ahead, or -1 if there is none
-// within max_reach. This is the "first target" a thrust extends beyond.
-float resource_nodes_first_along(const ResourceNodeList* list, float px, float py,
-                                 float angle, float half_width, float max_reach);
-
-// Strike nodes the thrust head passed this frame: those in the corridor whose
-// distance along the line falls in [from, to). Half-open for the same reason as
-// the sweep — each node is struck once per thrust however the frames land.
+// Strike the nodes a thrown weapon that goes through passed this frame: those
+// in the corridor whose distance along its line falls in [from, to). Half-open
+// for the same reason as the sweep — each node is struck once however the
+// frames land.
 int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
                           float half_width, float from, float to,
                           Weapon weapon, HarvestResult* out);

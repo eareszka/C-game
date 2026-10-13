@@ -215,13 +215,13 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
 }
 
 void player_draw(const Player* player, float world_x, float world_y,
-                 const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite)
+                 const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite, int frame)
 {
     float z  = cam->zoom;
     int sx = cam_screen_x(cam, world_x);
     int sy = cam_screen_y(cam, world_y);
 
-    int frame = player_frame(player);
+    if (frame < 0) frame = player_frame(player);
     SDL_Rect src = { frame * 14, 0, 14, 20 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);

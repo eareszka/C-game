@@ -160,6 +160,7 @@ struct DungeonMap {
     // rising from the level in front. Ladders up the walls between; the
     // picture drawn at art pixel (tree_ox, tree_oy).
     int  tree_n, tree_e, tree_w, tree_h, tree_ox, tree_oy;   // tiers, the way in's tier, picture size
+    int  tree_z;                                             // a wall's height: one level
     int16_t tree_b[TREE_MAX_TIERS + 1][TREE_MAX_W];
     struct { int16_t x0, y0, y1, floor; uint8_t root; } tree_ladders[TREE_MAX_LADDERS];   // floor: the one at its foot
     struct { int16_t t, x0, x1; } tree_floors[TREE_MAX_FLOORS];    // each floor: its tier, its columns
@@ -212,8 +213,18 @@ struct DungeonMap {
     // so a mouth on the south face opens into the south of the cave and one on
     // a north top into the north of it. Zero for anything that is not a cave.
     int want_ox[DMAP_MAX_PORTALS], want_oy[DMAP_MAX_PORTALS];
+    // The level each of those mouths stands on outside (0 the flat, 1-3 the
+    // plateau storeys): a cave has a floor a level, and a mouth opens onto its
+    // own. Set with the above (dungeon_want).
+    int want_lvl[DMAP_MAX_PORTALS];
+    // Whether each is a ladder down a hole outside rather than a mouth walked
+    // into: inside, a ladder up into a hatch in the rock rather than an arch.
+    bool want_hole[DMAP_MAX_PORTALS];
     int entry_x, entry_y;
     int exit_x,  exit_y;
+    // The box the floor fills with the wall ring round it: the minimap's frame
+    // (dungeon_minimap_draw). Set by dungeon_generate().
+    int floor_x0, floor_y0, floor_x1, floor_y1;
     DungeonEntranceType type;
     float difficulty;
     // Which material this cave's rock is, derived from difficulty by
@@ -231,13 +242,14 @@ struct DungeonMap {
 struct DungeonPlayer {
     float x, y;
     float speed;
+    int   at_way;     // the portal whose way out the player has walked into, or -1 (dungeon_way_at)
     int   at_exit;    // 1 if the player has walked into a DNG_EXIT's way out (dungeon_way_at)
     int   at_entry;   // 1 if into the DNG_ENTRY's (exit back to overworld)
     float slide = 0;  // sliding along a 45-degree edge: how far owed (see dungeon_player_update)
     float vx = 0, vy = 0;   // swimming (the oasis): the drift kept from frame to frame
     int   at_link = -1;     // the catacombs: the hole or ladder stood at (dungeon_link_name), -1 none
 
-    // Weapon swing/thrust/throw state -- see combat.h. Shared machinery with
+    // Weapon swing/throw state -- see combat.h. Shared machinery with
     // the overworld (Overworld, include/overworld.h).
     WeaponSwingState swing;
 
@@ -304,11 +316,19 @@ struct DungeonWiring {
     // 0 for anything that is not a mountain with two or more ways in.
     int   mouth_ow_x[DMAP_MAX_PORTALS], mouth_ow_y[DMAP_MAX_PORTALS];
     int   want_ox[DMAP_MAX_PORTALS],    want_oy[DMAP_MAX_PORTALS];
+    int   want_lvl[DMAP_MAX_PORTALS];   // the level each mouth stands on outside (tilemap_cliff_elev_at)
+    bool  want_hole[DMAP_MAX_PORTALS];  // a cave's ways out, by portal: a ladder down a hole outside (tilemap_cave_hole_at)
     int   n_mouths;
     int   my_mouth;                   // which mouth was walked into, or -1
     bool  starter;                    // one of the starting island's two (dungeon_is_starter)
     bool  step_pyramid;               // a pyramid off the desert: the Mayan interior
 };
+
+// What a dungeon is asked for before it is generated, from its wiring: how
+// many ways out, which interior, where a cave's mouths lie and on which
+// levels. The map is reused between visits, so this clears what the last one
+// asked for too. Call it, then dungeon_generate().
+void dungeon_want(DungeonMap* dmap, const DungeonWiring* w);
 
 // Which dungeon the entrance at this index opens, and where its ways out lead.
 // Takes a map and an index so a headless tool can ask exactly what the game
@@ -365,10 +385,12 @@ void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y);
 // Whether a point (dungeon pixels) is solid to the player's feet -- the
 // collision the game moves them by. Exposed for the tools.
 bool dungeon_solid_at(const void* dmap, float px, float py);
-// The way out that feet centred at (cx, cy) have walked into (collision.h):
-// DNG_ENTRY or DNG_EXIT, else -1. A way out's ladder or door stands on the
-// wall behind its tile, so it is taken in the opening, against that wall.
+// The portal whose way out feet centred at (cx, cy) have walked into, else -1:
+// the box at the foot of its ladder or door, where that is drawn (way_point in
+// src/dungeon.cpp); in the oasis, surfaced under the shaft's ladder.
 int dungeon_way_at(const DungeonMap* dmap, float cx, float cy);
+// A check for the tools: the cells of the last cave picture baked that no piece fitted (none).
+int dungeon_cave_misfits();
 // Arriving inside: the player, already put at a way out, stood before the
 // middle of it, a pixel clear of its hitbox (stand_clear, collision.h).
 void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp);
@@ -380,14 +402,11 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
 // wall when they are behind it. Nothing for any other kind.
 void dungeon_draw_front(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                         const Camera* cam, SDL_Renderer* ren);
-// Weapon swing/thrust/throw visual for the dungeon player -- thin wrapper
+// Weapon swing/throw visual for the dungeon player -- thin wrapper
 // around weapon_swing_draw() (combat.h), the same one overworld_draw_swing()
 // (src/overworld.cpp) calls.
 void dungeon_draw_swing(const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren);
-// Debug overlay: thin lines around every DMAP_TILE grid cell in view,
-// labeled with the tileset (col,row) a cave wall tile actually draws from
-// (blank for floor tiles, non-cave dungeon types, and deep-interior void,
-// none of which source from the tileset).
+// Debug overlay: thin lines around every DMAP_TILE grid cell in view.
 void dungeon_draw_debug_grid(const DungeonMap* dmap, const Camera* cam, SDL_Renderer* ren);
 void dungeon_minimap_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
                           SDL_Renderer* ren, int screen_w, int screen_h,

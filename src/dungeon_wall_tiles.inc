@@ -6,10 +6,13 @@
 enum { WALL_EGYPT, WALL_MAYA, WALL_RUINS, WALL_BARROW, WALL_GRAVEYARD };
 static const int WALL_COL0[5] = { 100, 100, 180, 186, 228 };
 static const int WALL_ROW0[5] = { 44, 54, 44, 44, 44 };
+// A block's floor: its first cell, and how many cells across and down it
+// repeats -- the tile at (tx, ty) takes cell (tx mod across, ty mod down).
+static const int WALL_FLOOR[3][4] = { { 4, 3, 1, 1 }, { 0, 4, 6, 6 }, { 3, 0, 2, 2 } };
 enum {
     PYR_FACE_CORR = 0, PYR_FACE_BACK = 6,           // + phase, rows 0-2
     PYR_RIM_COL = 0, PYR_RIM_ROW = 3,               // outer, vedge, hedge, inner
-    PYR_FLOOR_COL = 4, PYR_SIDE_COL = 5,            // row PYR_RIM_ROW; side: solid, diag_l, diag_r, end_l, end_r
+    PYR_SIDE_COL = 5,                                // row PYR_RIM_ROW: solid, diag_l, diag_r, end_l, end_r
     PYR_FLIGHT_COL = 12,                              // + dir * 3 + kind, rows 0-8
     PYR_FWALL_COL = 18,                               // + dir * 12 + cp * 2 + rp, strip rows 1-5
     PYR_MURAL_COL = 42, PYR_MURAL_W = 112, PYR_MURAL_H = 48, PYR_MURALS = 5,   // + i * 7, row 0

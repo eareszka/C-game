@@ -36,8 +36,10 @@ overworld's), E dark grass (its blades).
 """
 import json, math, os, random, sys
 from PIL import Image
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
+from interior_style import MATERIALS, masonry, crack
 
-PAL = {'K': '000000', 'M': 'c6ccda', 'D': '9797aa', 'S': '595965', 'G': '4fa667', 'E': '235436'}
+PAL = {'K': '000000', **dict(zip('MDS', MATERIALS['stone']['tones'])), **dict(zip('GE', MATERIALS['grass']['tones']))}
 # the overworld grass's own colours, read off its cells and laid moonlit
 OVERWORLD_GRASS = {'K': '000000', 'G': '4edc4a', 'E': '00881b'}
 VW, VH = 96, 64
@@ -59,24 +61,8 @@ def front():
     reference's bond), each stone shaded along its lower right edge, the
     joints black; a crack in one block of three, roots from the grass in
     another. Rows from the top (z = 63) to the foot (z = 0)."""
-    g = [['M'] * VW for _ in range(VH)]
-    for y in range(VH):
-        for x in range(VW):
-            bx = x % 32
-            if y == 31 or bx == 31 or (y > 31 and bx == 15):
-                g[y][x] = 'K'                                  # the joints
-    for x0 in range(0, VW, 32):
-        for (a, b, y0, y1) in ((x0, x0 + 30, 0, 30), (x0, x0 + 14, 32, 63), (x0 + 16, x0 + 30, 32, 63)):
-            for x in range(a, b + 1):
-                for y in (y1 - 1, y1):
-                    g[y][x] = 'D'
-            for y in range(y0, y1 + 1):
-                for x in (b - 1, b):
-                    g[y][x] = 'D'
-    x = 32 + 19                                                # a crack down the second block
-    for y in range(6, 26):
-        g[y][x] = 'K'
-        x += 1 if y % 5 == 0 else -1 if y % 7 == 0 else 0
+    g = masonry(VW, VH, [(0, 32, 32, 0), (32, 33, 16, 0)], 'M', 'D', 'K', edge=2)   # the foot has no joint: the outline is its line
+    crack(g, 32 + 19, 6, 26)                                  # down the second block
     for rx, n in ((64 + 5, 9), (64 + 11, 5), (64 + 26, 11)):  # roots down the third
         for y in range(4, 4 + n):
             g[y][rx + (1 if (y // 4) % 2 else 0)] = 'E'
@@ -86,12 +72,7 @@ def front():
 
 def side():
     """The blocks' side in shade, its course line, a joint every block back."""
-    g = [['S'] * 48 + ['.'] * (VW - 48) for _ in range(VH)]
-    for x in range(48):
-        g[31][x] = 'K'
-        if x % 16 == 15:
-            for y in range(VH):
-                g[y][x] = 'K'
+    g = [r + ['.'] * (VW - 48) for r in masonry(48, VH, [(0, 32, 16, 0), (32, 33, 16, 0)], 'S', 'S', 'K')]
     lip(g, 48)
     return g
 

@@ -235,6 +235,7 @@ def cryptid(m, name, x0, y0, flip=False):
     m.take(x0, y0, 32, 20)
 
 
+JOINT, SHADE = 'K', 'D'    # the masonry's joints, and each stone's shade inside them along its bottom and right
 PERIOD = 96          # the pattern repeats every 96 columns: a wall's tiles come in 6 column variants
 ROWS = 4             # and every 4 stone rows (32 px) up: a side wall stands 96 px above the
                      # corridor beside it and a flight rises 256, so the upright masonry meets
@@ -311,16 +312,16 @@ def pattern(X, z, carved=True, fits=None, h=None):
     if big is not None:
         rows, lx, lz, _ = big
         if lx in (0, 33) or lz in (0, 21):
-            return 'D'                             # its joint
-        if lx == 1 or lz == 20:
-            return 'M'                             # its lit edge
+            return JOINT                           # its joint
+        if lx == 32 or lz == 20:
+            return SHADE                           # its shade, bottom and right (the interior bible's block)
         c = rows[lz - 1][lx - 1] if 0 <= lz - 1 < 20 and 0 <= lx - 1 < 32 else '.'
         return 'S' if c == '.' else c
     here = _stone(X, z)
     if _stone(X + 1, z) != here or _stone(X, z - 1) != here:
-        return 'D'                                 # a joint between stones
-    if _stone(X - 1, z) != here or _stone(X, z + 1) != here:
-        return 'M'                                 # the stone's lit edge, top and left
+        return JOINT                               # a joint between stones
+    if _stone(X + 2, z) != here or _stone(X, z - 2) != here:
+        return SHADE                               # the stone's shade, bottom and right: no lit edge (the interior bible)
     return 'S'
 
 

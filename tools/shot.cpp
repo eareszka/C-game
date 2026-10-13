@@ -15,6 +15,7 @@
 #include "resource_node.h"
 #include "collision.h"
 #include "interior.h"
+#include "combat.h"
 
 static Tilemap g_map;
 
@@ -472,6 +473,25 @@ int main(int argc, char** argv)
         }
     }
     SDL_Texture* who = np ? IMG_LoadTexture(ren, "assets/player_small.png") : nullptr;
+    // SHOT_SWING="weapon,ore,seconds,facing[,walk];..." also draws those players, one
+    // entry each (the last serves the rest), facing that way and that far into
+    // a swing of that weapon, as the game draws it (weapon_swing_body,
+    // weapon_swing_draw): a sweep or a slash `seconds` in, or a throw with
+    // `seconds` of its freeze left, the weapon 40px out. `walk` is the phase of
+    // the walk they are in: 0 standing (the default), 1 or 2 a step.
+    int sw_type[64], sw_ore[64], sw_face[64], sw_walk[64], nsw = 0;
+    float sw_t[64];
+    if (const char* sw = getenv("SHOT_SWING")) {
+        int used;
+        while (nsw < 64 && sscanf(sw, "%d,%d,%f,%d%n", &sw_type[nsw], &sw_ore[nsw], &sw_t[nsw], &sw_face[nsw], &used) == 4) {
+            sw += used;
+            sw_walk[nsw] = 0;
+            if (sscanf(sw, ",%d%n", &sw_walk[nsw], &used) == 1) sw += used;
+            nsw++;
+            if (*sw != ';') break;
+            sw++;
+        }
+    }
     bool each = getenv("SHOT_EACH") != nullptr;
     for (int pic = 0; pic < (each && np ? np : 1); pic++) {
         SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
@@ -480,11 +500,30 @@ int main(int argc, char** argv)
         resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
         for (int i = each ? pic : 0; i < (each ? pic + 1 : np); i++) {
             float ox = px[i] - (HB_X1 + HB_X2) * 0.5f, oy = py[i] - (HB_Y1 + HB_Y2) * 0.5f;
-            SDL_Rect src = { 0, 0, 14, 20 };
+            int k = i < nsw ? i : nsw - 1;      // this player's swing, if any
+            WeaponSwingState swing;
+            if (nsw) {
+                WeaponType w = (WeaponType)sw_type[k];
+                float ang = facing_angle(sw_face[k]);
+                swing.swing_weapon = { w, (Material)sw_ore[k] };
+                if (weapon_sweeps(w))        { swing.swing_t = sw_t[k]; swing.swing_angle = ang + weapon_sweep_profile(w).start_offset; }
+                else if (weapon_throws(w))   { swing.freeze_t = sw_t[k];
+                                               swing.thrown[0].live = 1; swing.thrown[0].weapon = swing.swing_weapon;
+                                               swing.thrown[0].dx = cosf(ang); swing.thrown[0].dy = sinf(ang);
+                                               swing.thrown[0].x = px[i] + cosf(ang) * 40; swing.thrown[0].y = py[i] + sinf(ang) * 40; }
+                else                         { swing.slash_t = sw_t[k]; swing.slash_angle = ang; }
+                swing.body_frame = weapon_swing_body(&swing, sw_face[k], w, sw_walk[k]);
+            }
+            // a player who is not swinging stands or steps in their walk frame
+            int frame = !nsw ? 0 : swing.body_frame >= 0 ? swing.body_frame
+                      : sw_walk[k] == 0 ? sw_face[k] : sw_walk[k] == 1 ? sw_face[k] + 1
+                      : sw_face[k] == FACE_RIGHT ? STRIDE2_RIGHT : sw_face[k] == FACE_LEFT ? STRIDE2_LEFT : sw_face[k] + 2;
+            SDL_Rect src = { frame * 14, 0, 14, 20 };
             SDL_Rect dst = { cam_screen_x(&cam, ox), cam_screen_y(&cam, oy), 28, 40 };
             SDL_RenderCopy(ren, who, &src, &dst);
             tilemap_draw_over_player(&g_map, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
             resource_nodes_draw_over_player(&nodes, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
+            if (nsw) weapon_swing_draw(&swing, px[i], py[i], &cam, ren);
             int blocked = 0;
             for (int yy = HB_Y1; yy < HB_Y2; yy++)
                 for (int xx = HB_X1; xx < HB_X2; xx++)

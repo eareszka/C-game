@@ -340,6 +340,7 @@ int main(int argc, char** argv)
                 for (int m = 0; m < k; m++) {
                     dm.want_ox[m] = mox[m] - ssx;
                     dm.want_oy[m] = moy[m] - ssy;
+                    dm.want_lvl[m] = tilemap_cliff_elev_at(mox[m], moy[m]);
                 }
                 dungeon_generate(&dm, DUNGEON_ENT_CAVE, diff, dseed);
                 tested++;

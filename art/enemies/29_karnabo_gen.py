@@ -15,8 +15,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from enemy_shapes import drawn_frames, write, source_path
 
 VW, VH = 42, 46
-PAL = {'K': '000000', 'G': '8c9c78', 'g': '5c6c4c', 'C': '4a3c4a', 'c': '2c242c', 'Y': 'f8e858',
-       'O': 'f8a800', 'W': 'fcfcfc', 'B': '6c4c2c', 'b': '9c7444'}
+PAL = {'K': '000000', 'G': '4fa667', 'g': '2c6c44', 'C': '5e486a', 'c': '361f42', 'Y': 'f0e880',
+       'O': 'fc9838', 'W': 'fcfcfc', 'b': '967448'}
 
 def main():
     V = drawn_frames(os.path.join(os.path.dirname(os.path.abspath(__file__)), '29_views.png'), PAL, VW, VH)

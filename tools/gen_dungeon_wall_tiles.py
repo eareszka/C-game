@@ -18,8 +18,13 @@ tile is at:
   faces       a 3-tile north face, 6 column phases (X / 16 mod 6) -- corridor
               faces plain, back walls with the desert's hieroglyph frieze
   rim         the wall top's quarter autotile (tools/dungeon_walls.py)
-  floor, side the floor; a chamber's slanted side wall, one flat dark tone,
-              its diagonal floor edge and its corner line (user's rules)
+  floor       a block's own, a cell or a few that repeat (FLOOR_AT): the ruins a
+              herringbone of 16 x 8 brick in dark slate; the desert tomb its
+              walls' own brick in sandstone a step down; the step pyramid its
+              walls' interlocking stones, quiet. The pyramids' are oblique, as
+              the graveyard's walkways are (floor_tile)
+  side        a chamber's slanted side wall, one flat dark tone, its diagonal
+              floor edge and its corner line (user's rules)
   flights     a 45-degree flight is one 9-tile strip a column. The strip's
               caps, floor line and 3D steps (pyramid_design.stair_steps) per
               direction and column kind (first, middle, last -- the steps start
@@ -49,6 +54,7 @@ import ruins_design as rd
 import barrow_design as bd
 import graveyard_design as gd
 import ladder_up_design as lud
+import interior_style as st
 from dungeon_walls import sheet_rows
 from maya_cryptids_design import CRYPTIDS
 
@@ -58,14 +64,22 @@ CELL, KEY = 16, (255, 0, 0)
 # each interior's block: first column and row, and how many of each it spans
 BLOCKS = {'egypt': (100, 44, 80, 10), 'maya': (100, 54, 80, 10), 'ruins': (180, 44, 6, 4),
           'barrow': (186, 44, 41, 4), 'graveyard': (228, 44, 26, 8)}
-# the floor: its own tone, from the game palette (the mocks' are not on it;
-# the ruins' nearest was the wall's own shade, so the nearest brown)
-FLOOR = {'egypt': '967448', 'maya': '474751', 'ruins': '8d6b4f', 'barrow': '000000', 'graveyard': '000000'}
+# the floor's tones -- base 'F', shade 'f', joint 'j' -- from the interior
+# bible's materials (user, 2026-10-12): the desert tomb's is its walls'
+# sandstone a step down; the ruins' dark slate; the step pyramid's the same
+# slate kept quiet -- no shade, the joint one tone under the stone
+_SAND, _SLATE = st.MATERIALS['sandstone'], st.MATERIALS['slate']
+FLOOR = {'egypt': (_SAND['tones'][1], _SAND['tones'][2], _SAND['joint']),
+         'maya': (_SLATE['tones'][0], _SLATE['tones'][0], _SLATE['tones'][1]),
+         'ruins': (_SLATE['tones'][0], _SLATE['tones'][1], _SLATE['joint']),
+         'barrow': ('000000',) * 3, 'graveyard': ('000000',) * 3}
+# where a block's floor is, in cells from its corner; how many cells across
+# and down it repeats comes from its texture (mirrored in the .inc)
+FLOOR_AT = {'egypt': (4, 3), 'maya': (0, 4), 'ruins': (3, 0)}
 
 # where each piece is, in cells from the block's corner (mirrored in the .inc)
 FACE_CORR, FACE_BACK = 0, 6                  # cols, rows 0-2: phase p at col + p
 RIM_COL, RIM_ROW = 0, 3                      # outer, vedge, hedge, inner
-FLOOR_COL = 4                                # row 3
 SIDE_COL = 5                                 # row 3: solid, diag_l, diag_r, end_l, end_r
 FLIGHT_COL = 12                              # + dir * 3 + kind, rows 0-8
 FWALL_COL = 18                               # + dir * 12 + cp * 2 + rp, rows 1-5
@@ -83,7 +97,7 @@ class Block:
         self.v = variant
         pal = (rd.PAL if variant == 'ruins' else bd.PAL if variant == 'barrow'
                else gd.PAL if variant == 'graveyard' else pd.VARIANTS[variant]['pal'])
-        self.pal = dict(pal, F=FLOOR[variant])
+        self.pal = dict(pal, **dict(zip('Ffj', FLOOR[variant])))
         self.px = {}
 
     def put(self, col, row, x, y, c):
@@ -94,6 +108,53 @@ class Block:
         for y, r in enumerate(rows):
             for x, c in enumerate(r):
                 self.put(col, row, x, y, c)
+
+
+def herringbone():
+    """16 x 8 bricks in herringbone (user: the ruins'): on the 8 px grid, by
+    (column - row) mod 4 -- 0, 1 a lying brick, 3 the top of a standing one, 2
+    its foot. 32 x 32."""
+    g = [[''] * 32 for _ in range(32)]
+    for y in range(32):
+        for x in range(32):
+            k = (x // 8 - y // 8) % 4
+            g[y][x] = (st.unit_tone(k * 8 + x % 8, y % 8, 16, 8, 'F', 'f', 'j') if k < 2
+                       else st.unit_tone(x % 8, (3 - k) * 8 + y % 8, 8, 16, 'F', 'f', 'j'))
+    return g
+
+
+def oblique(g):
+    """A floor swatch as the oblique view shows it (user: "pyramid and cave
+    floors should be oblique projected"): read at (x + y, y), so its courses
+    stay level and the joints across them climb 45 degrees -- each pixel still
+    one of the swatch's, none resampled. As tall as it takes to repeat."""
+    h, w = len(g), len(g[0])
+    rows = h
+    while rows % w:
+        rows += h
+    return [[g[y % h][(x + y) % w] for x in range(w)] for y in range(rows)]
+
+
+def floor_tile(v):
+    """A block's floor, rows of letters, a multiple of 16 each way."""
+    if v == 'ruins':
+        return herringbone()
+    if v == 'egypt':                             # the walls' own brick (pyramid_design.pattern's: 16 x 8, every other course half along)
+        return oblique(st.bond(16, 16, 16, 8, 'F', 'f', 'j', wear=False))
+    stones = [[None] * mm.PERIOD for _ in range(8 * mm.ROWS)]      # maya: the walls' own interlocking stones
+    for y in range(8 * mm.ROWS):
+        for x in range(mm.PERIOD):
+            z = 8 + 8 * mm.ROWS - 1 - y
+            here = mm._stone(x, z)
+            stones[y][x] = 'j' if mm._stone(x + 1, z) != here or mm._stone(x, z - 1) != here else 'F'
+    return oblique(stones)
+
+
+def floor(b):
+    t = floor_tile(b.v)
+    for y, r in enumerate(t):
+        for x, c in enumerate(r):
+            b.put(FLOOR_AT[b.v][0] + x // 16, FLOOR_AT[b.v][1] + y // 16, x % 16, y % 16, c)
 
 
 def faces(b):
@@ -115,7 +176,7 @@ def rim_floor_side(b):
     v = pd.design(b.v)['views']
     for i, k in enumerate(('outer', 'vedge', 'hedge', 'inner')):
         b.cell(RIM_COL + i, RIM_ROW, v[k])
-    b.cell(FLOOR_COL, RIM_ROW, ['F' * 16] * 16)
+    floor(b)
     side = pd.VARIANTS[b.v]['side']
     def piece(f):
         return [''.join(f(x, y) for x in range(16)) for y in range(16)]
@@ -139,7 +200,7 @@ def ruins(b):
         b.cell(FACE_CORR + i, 0, v['band%d' % i])
     for i, k in enumerate(('outer', 'vedge', 'hedge', 'inner')):
         b.cell(RIM_COL + i, RIM_ROW, v[k])
-    b.cell(FLOOR_COL, RIM_ROW, ['F' * 16] * 16)
+    floor(b)
 
 
 # The stonehenge barrow (barrow_design.py): not tiles but the swatches and
@@ -178,6 +239,11 @@ def strip_u(step, x, y):
 def flights(b):
     steps, sbase = pd.stair_steps()
     C0 = 64
+    # the floor a flight's foot shows: the block's own where that is one cell
+    # (it then falls the same in every cell); the plain base where the floor
+    # repeats over several, as the piece cannot know where it will stand
+    tile = floor_tile(b.v)
+    ground = (lambda x, y: tile[y % 16][x]) if len(tile) == 16 and len(tile[0]) == 16 else (lambda x, y: 'F')
     for d, step in enumerate((-1, 1)):                  # 0: climbing right, 1: climbing left
         strip = [r for t in pd.flight_strip(step < 0) for r in t]
         for kind, i in enumerate((0, N_FLIGHT // 2, N_FLIGHT - 1)):
@@ -203,7 +269,7 @@ def flights(b):
                             on = False
                         if step > 0 and 16 * (fx + N_FLIGHT) - 1 - X < min(Y - 16 * (fy + N_FLIGHT), 16 * (fy + N_FLIGHT + 2) - Y):
                             on = False
-                        c = steps(C0 + lx, sbase + C0 + ly) if on else 'F'
+                        c = steps(C0 + lx, sbase + C0 + ly) if on else ground(x, y)
                     b.put(FLIGHT_COL + d * 3 + kind, y // 16, x, y % 16, c)
         # the wall over the flight: upright rows, z from the bottom corridor's
         # floor row; column i of a flight sits 16 higher than column i - 1
@@ -223,21 +289,22 @@ def flights(b):
                         b.put(FWALL_COL + d * 12 + cp * 2 + rp, y // 16, x, y % 16, c)
 
 
-def stone(b, rows, w, h, frame, lit):
-    """A carving in its stone, w x h: a carved joint round it (frame), a lit
-    edge inside top-left (lit, or None), rounded corners left to the wall --
-    the lit (Mayan) stones' rounder, as maya_murals._big cuts them."""
+def stone(b, rows, w, h, frame, shade):
+    """A carving in its stone, w x h: a carved joint round it (frame), its
+    shade inside along the bottom and right (shade, or None), rounded corners
+    left to the wall -- the shaded (Mayan) stones' rounder, as
+    maya_murals._big cuts them."""
     out = []
     for ly in range(h):
         r = ''
         for lx in range(w):
             edge = lx in (0, w - 1) or ly in (0, h - 1)
-            if (lx in (0, w - 1) and ly in (0, h - 1)) or                     (lit and edge and lx in (0, 1, w - 2, w - 1) and ly in (0, 1, h - 2, h - 1)):
+            if (lx in (0, w - 1) and ly in (0, h - 1)) or                     (shade and edge and lx in (0, 1, w - 2, w - 1) and ly in (0, 1, h - 2, h - 1)):
                 r += '.'
             elif lx in (0, w - 1) or ly in (0, h - 1):
                 r += frame
-            elif lit and (lx == 1 or ly == h - 2):
-                r += lit
+            elif shade and (lx == w - 2 or ly == h - 2):
+                r += shade
             else:
                 gx, gy = lx - (w - len(rows[0])) // 2, ly - (h - len(rows)) // 2
                 c = rows[gy][gx] if 0 <= gy < len(rows) and 0 <= gx < len(rows[0]) else '.'
@@ -253,7 +320,7 @@ def overlays(b, sheet):
             col = STONE_COL + (i * 2 + flip) * 3
             if b.v == 'maya':
                 b.field = 'S'                                  # as maya_murals._big carves it
-                rows = stone(b, mm.carving(name, bool(flip)), 34, 22, 'D', 'M')
+                rows = stone(b, mm.carving(name, bool(flip)), 34, 22, mm.JOINT, mm.SHADE)
             else:
                 b.field = 'M'                                  # as pyramid_design._cartouche
                 rows = stone(b, sheet_rows(os.path.join(WALLS, 'desert_cryptids.png'), pd.PAL, 32, 20, i, bool(flip)),
@@ -362,10 +429,13 @@ INC_TEXT = '''// Generated by tools/gen_dungeon_wall_tiles.py -- do not edit.
 enum { WALL_EGYPT, WALL_MAYA, WALL_RUINS, WALL_BARROW, WALL_GRAVEYARD };
 static const int WALL_COL0[5] = { %d, %d, %d, %d, %d };
 static const int WALL_ROW0[5] = { %d, %d, %d, %d, %d };
+// A block's floor: its first cell, and how many cells across and down it
+// repeats -- the tile at (tx, ty) takes cell (tx mod across, ty mod down).
+static const int WALL_FLOOR[3][4] = { %s };
 enum {
     PYR_FACE_CORR = %d, PYR_FACE_BACK = %d,           // + phase, rows 0-2
     PYR_RIM_COL = %d, PYR_RIM_ROW = %d,               // outer, vedge, hedge, inner
-    PYR_FLOOR_COL = %d, PYR_SIDE_COL = %d,            // row PYR_RIM_ROW; side: solid, diag_l, diag_r, end_l, end_r
+    PYR_SIDE_COL = %d,                                // row PYR_RIM_ROW: solid, diag_l, diag_r, end_l, end_r
     PYR_FLIGHT_COL = %d,                              // + dir * 3 + kind, rows 0-8
     PYR_FWALL_COL = %d,                               // + dir * 12 + cp * 2 + rp, strip rows 1-5
     PYR_MURAL_COL = %d, PYR_MURAL_W = %d, PYR_MURAL_H = %d, PYR_MURALS = %d,   // + i * 7, row 0
@@ -417,8 +487,11 @@ def main():
                     for k, (c, r, _, _, _, w, h) in GRAVEYARD.items()))
         V5 = ('egypt', 'maya', 'ruins', 'barrow', 'graveyard')
         f.write(INC_TEXT % (*(BLOCKS[v][0] for v in V5),
-                            *(BLOCKS[v][1] for v in V5), FACE_CORR, FACE_BACK, RIM_COL, RIM_ROW,
-                            FLOOR_COL, SIDE_COL, FLIGHT_COL, FWALL_COL,
+                            *(BLOCKS[v][1] for v in V5),
+                            ', '.join('{ %d, %d, %d, %d }' % (*FLOOR_AT[v], len(floor_tile(v)[0]) // 16, len(floor_tile(v)) // 16)
+                                      for v in V5[:3]),
+                            FACE_CORR, FACE_BACK, RIM_COL, RIM_ROW,
+                            SIDE_COL, FLIGHT_COL, FWALL_COL,
                             MURAL_COL, mm.W, mm.H, 5, STONE_COL, STONE_ROW,
                             34, 22, pd.CART_W, pd.CART_H,
                             SMALL_COL, SMALL_ROW, SMALL_W, SMALL_H, DOOR_COL, DOOR_ROW, len(CRYPTIDS),

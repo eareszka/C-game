@@ -80,12 +80,8 @@ def heart():
 def soil(deep):
     g = grid(64, 64, 'S')
     rng = random.Random(21 + deep)
-    for _ in range(16):                                              # clods, never a lone pixel
-        x0, y0, w, h = rng.randrange(64), rng.randrange(64), rng.randrange(2, 5), rng.randrange(2, 4)
-        for y in range(h):
-            for x in range(w):
-                if (x, y) not in ((0, 0), (w - 1, h - 1)) or w == 2:
-                    g[(y0 + y) % 64][(x0 + x) % 64] = 's'
+    for _ in range(16):                                              # (clods were scattered here: the bible has no
+        rng.randrange(64), rng.randrange(64), rng.randrange(2, 5), rng.randrange(2, 4)   # scatter; their draws stay, so the rootlets keep their places)
     roots = [(14, 0.0, 6, 2 + 2 * deep)] + ([(44, 2.6, 8, 3)] if deep else [(46, 2.6, 5, 1)])
     for y0, ph, amp, th in roots:                                    # roots across, wandering, wrapping at 64
         def yc(x):
@@ -109,19 +105,15 @@ def shade(g, kind):
 
 
 def fungus():
-    """Growth zones across the shelf, wavy, pores in the dark."""
-    g = grid(64, 64, 'f')
+    """Growth zones across the shelf, wavy: the pale top its base, each zone a
+    band of its shade and a dark line (the bible: nothing lighter than the base)."""
+    g = grid(64, 64, 'F')
     for k in range(4):
         for x in range(64):
             y = 16 * k + 4 + round(2 * math.sin(2 * math.pi * x / 32 + k))
-            g[y % 64][x] = 'F'
-            g[(y + 1) % 64][x] = 'F'
+            g[y % 64][x] = 'f'
+            g[(y + 1) % 64][x] = 'f'
             g[(y + 5) % 64][x] = 'G'
-    rng = random.Random(31)
-    for _ in range(24):
-        x, y = rng.randrange(64), rng.randrange(64)
-        if g[y][x] == 'f' and g[y][(x + 1) % 64] == 'f':
-            g[y][x] = g[y][(x + 1) % 64] = 'G'
     return g
 
 
@@ -138,14 +130,12 @@ def fungus_lip():
 def dirt():
     g = grid(64, 64, 'a')
     rng = random.Random(41)
-    for _ in range(40):
+    for _ in range(10):                                              # hollows trodden in, in the dirt's shade
         x, y = rng.randrange(64), rng.randrange(64)
-        g[y][x] = g[y][(x + 1) % 64] = 'A'
-    for _ in range(10):                                              # pebbles, lit on top
-        x, y = rng.randrange(64), rng.randrange(64)
-        for dx in range(3):
-            g[y % 64][(x + dx) % 64] = 'A'
-            g[(y + 1) % 64][(x + dx) % 64] = 'd'
+        for dx in range(4):
+            g[y % 64][(x + dx) % 64] = 'd'
+            if 0 < dx < 3:
+                g[(y + 1) % 64][(x + dx) % 64] = 'd'
     return g
 
 
@@ -153,7 +143,7 @@ def dirt_lip():
     g = grid(64, 8, 'd')
     rng = random.Random(51)
     for x in range(64):
-        g[0][x] = 'A'
+        g[0][x] = 'a'                                                # the floor's own tone at its edge
         g[6][x] = 'S'
         g[7][x] = 'K'
     for _ in range(10):

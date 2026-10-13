@@ -188,7 +188,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/04_lili.png",                   {0, 1, 2, 1} },  // medium, 4 dirs (D R U, L mirrored): pink many-legged scuttler; the 3 frames are its run, Lili::anim_frame steps them
     { "assets/enemies/05_crowing_crested_cobra.png",  {0, 1, 0, 2}, 3, false, "assets/enemies/05_crowing_crested_cobra_slither.png" },
     { "assets/enemies/06_wakmangganchi_aragondi.png", {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 0, "assets/enemies/06_wakmangganchi_aragondi_bite.png" },   // giant, the Dajna's size (302x166), one view: seven roaring heads, mouths snapping, drool, rivers running, bamboo swaying; one row per direction; its two lowest heads are parts (the bite sheet), not on this one
-    { "assets/enemies/07_alber.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/07_alber.png",                  {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 72x64), 4 dirs (front, side, back; left mirrored): its one animation, flying -- a 6-frame wingbeat, 0.72 s
     { "assets/enemies/08_snawfus.png",                {0, 1, 0, 2} },
     { "assets/enemies/09_questing_beast.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/09_questing_beast_walk.png" },
     { "assets/enemies/10_grand_goule.png",            {0, 1, 0, 2} },
@@ -203,14 +203,14 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/18_vatnaormur.png",             {}, 5 },
     { "assets/enemies/19_skeljaskrimsli.png",         {}, 5 },
     { "assets/enemies/20_sermilik.png",               {}, 5 },
-    { "assets/enemies/21_asp.png",                    {0, 1, 0, 2} },
-    { "assets/enemies/22_cactus_cat.png",             {0, 1, 0, 2} },
+    { "assets/enemies/21_asp.png",                    {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 42x35), 4 dirs (front, side, back; left mirrored): coiled serpent; 10 frames in the old 1.3 s loop -- it sways, bounces and breathes, its tail in its ear on 3-5, its tongue out on 8-9 (the hiss)
+    { "assets/enemies/22_cactus_cat.png",             {}, 8, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 170 },   // medium (frame 50x35), 3/4 only: sitting, its cactus tail swaying a pixel a frame, the breath a frame behind; 8 frames in a 1.36 s loop
     { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 8 },
-    { "assets/enemies/24_zoureg.png",                 {0, 1, 0, 2}, 3, false, nullptr, "assets/enemies/24_zoureg_three.png" },  // alt: head split into three needle heads (phase 2 lasers; its frame is 60x35)
+    { "assets/enemies/24_zoureg.png",                 {}, 6, false, "assets/enemies/24_zoureg_dash.png", "assets/enemies/24_zoureg_windup.png", nullptr, 1, 1, nullptr, 170 },  // medium (frame 44x29), 4 dirs (front, side, back; left mirrored): 6-frame idle; flap = the dash, uncoiled and thrown like a knife; alt = drawn back and glowing hotter, shown while it aims
     { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
     { "assets/enemies/26_akhekh.png",                 {0, 1, 0, 2} },
     { "assets/enemies/27_grootslang.png",             {}, 5 },
-    { "assets/enemies/28_opimachus.png",              {0, 1, 0, 2} },
+    { "assets/enemies/28_opimachus.png",              {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 50x39), one view, never mirrored: sitting, tail curling up then stretching out, crest in the wind; 10 frames in the old 1.3 s loop
     { "assets/enemies/29_karnabo.png",                {0, 1, 0, 2} },
     { "assets/enemies/30_dajna.png",                  {}, 8, true, "assets/enemies/30_dajna_sit.png", "assets/enemies/30_dajna_sat.png" },   // fills the top of the arena: one row per direction
     { "assets/enemies/31_man_eating_boulder.png",     {0, 1, 0, 2} },
@@ -221,7 +221,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/36_cu_sith.png",                {0, 1, 0, 2} },
     { "assets/enemies/37_celestial_stag.png",         {0, 1, 0, 2} },
     { "assets/enemies/38_igtuk.png",                  {0, 1, 0, 2} },
-    { "assets/enemies/39_ajaju.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/39_ajaju.png",                  {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 62x47), 4 dirs (front, side, back; left mirrored): its idle, 10 frames in the old 1.3 s loop -- breath on 2-4, tongues fanned on 3, a flick on 8, the tail flipping on 5-8
     { "assets/enemies/40_slide_rock_bolter.png",      {}, 5 },
     { "assets/enemies/41_sasnalkahi.png",             {}, 5 },
     { "assets/enemies/42_nykur.png",                  {0, 1, 0, 2} },
@@ -229,8 +229,8 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/44_itqiirpak.png",              {}, 8, true },   // giant: one row per direction
     { "assets/enemies/45_kusa_kap.png",               {0, 1, 0, 2} },
     { "assets/enemies/46_lusca.png",                  {0, 1, 0, 2} },
-    { "assets/enemies/47_moha_moha.png",              {}, 5 },
-    { "assets/enemies/48_bjarndyrakongur.png",        {0, 1, 0, 2} },
+    { "assets/enemies/47_moha_moha.png",              {}, 24, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 100 },  // approved side view: 24 frames at 100 ms, always facing right
+    { "assets/enemies/48_bjarndyrakongur.png",        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on 5-9; 12 frames in a 1.94 s loop; one row per direction
     { "assets/enemies/49_physeter.png",               {}, 8, true },   // fills the top of the arena: one row per direction
     { "assets/enemies/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
     { "assets/enemies/51_aspidochelone.png",                 {}, 8, true },  // giant, 8 dirs: colossal island turtle, palms and a campfire on its back; frames 3-4 head raised, jaws wide
@@ -243,7 +243,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/57_dingbat.png",                {}, 5, false, "assets/enemies/57_dingbat_stare.png", "assets/enemies/57_dingbat_catch.png" },  // big, 6 dirs; alt = catching pose (perched); flap = the stare's wingbeat
     { "assets/enemies/58_agropelter.png",             {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, front only, one row a direction: squatting, both long arms in a sine wave; 8 frames in the old 1.3 s loop; an arm fullest out on frames 2 and 6, the scream on 4
     { "assets/enemies/59_tripodero.png",              {0, 1, 0, 2}, 3, false, "assets/enemies/59_tripodero_walk.png" },  // frame 1: fires a clay slug; walk = big steps left then right
-    { "assets/enemies/60_rumptifusel.png",            {}, 5 },         // big: a huge fur pelt, the hood arching; frame 2 reared highest, purple belly bared
+    { "assets/enemies/60_rumptifusel.png",            {}, 12, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, one 3/4 view, always facing left as drawn (the same in every direction of the sheet, never mirrored): a fur pelt, hood swaying; frame 2 reared highest, purple belly bared; frames 3-8 the roll comes down over the belly, eyes shut on 7-8; 12 frames in a 1.94 s loop (it was 1.3 s)
     { "assets/enemies/61_roperite.png",               {}, 5 },         // big, 8 dirs: always dashing, rope-snout lasso, rattle tail; frame 2 the lasso flicked out
     { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png" },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
     { "assets/enemies/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
@@ -253,23 +253,23 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/67_lagopus.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/67_lagopus_fly.png" },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
     { "assets/enemies/68_shuyu.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/68_shuyu_flap.png" },  // frames 1, 2: heads plucking the air; flap (phase 2) = wings beating
     { "assets/enemies/69_bes_chem.png",               {0, 1, 0, 2} },  // big (59x45 frame), one view: 3/4 right, mirrored for the left; a still breathed into 3 frames
-    { "assets/enemies/70_trollgadda.png",             {}, 5 },         // big, 6 dirs: angry mossy pike, a massive tree wedged in its jaws; frame 2 jaws strained widest
-    { "assets/enemies/71_namungumi.png",              {}, 5 },         // big, 6 dirs: veined black cloak over a red skirt, glowing eye, fang comb; frame 2 reared highest
-    { "assets/enemies/72_mahwot.png",                 {}, 5, false, nullptr, "assets/enemies/72_mahwot_roar.png" },  // big, 8 dirs: swimming mini-Godzilla; alt: reared roar, jaws wide, plates glowing (atomic breath)
+    { "assets/enemies/70_trollgadda.png",             {}, 5 },         // big, side view only (mirrored when the player is on its left): green pike, a tree wedged in its jaws; tail flicking, crown swaying; frame 2 jaws strained widest
+    { "assets/enemies/71_namungumi.png",              {}, 12, false, nullptr, "assets/enemies/71_namungumi_flash.png", nullptr, 1, 1, nullptr, 162 },   // big, front view only: veined black cloak over a red skirt, one eye, fang comb; frames 1-6 a long breath (crest highest on 2), 7-11 its steps; alt: the same frames with the eye pure white (the warning before a beam); 12 frames in a 1.94 s loop (it was 1.3 s)
+    { "assets/enemies/72_mahwot.png",                 {}, 6, false, nullptr, "assets/enemies/72_mahwot_roar.png", nullptr, 1, 1, nullptr, 105 },  // big (frame 98x65), left and right only (one side view, mirrored): swimming mini-Godzilla, 6 frames -- a wave down its body, its limbs paddling; alt: stopped and reared, its head turned to face us, eyes and plates lit, mouth open (atomic breath), breathing
     { "assets/enemies/73_liderc.png",                 {}, 5, false, nullptr, nullptr, nullptr, 1, 1, "assets/enemies/73_liderc_prints.png" },  // big, 8 dirs: creepy ghost hen of fire; frame 2 flare-up; fades in only as the player nears; prints: human + goose foot
-    { "assets/enemies/74_bes_rap.png",                {}, 5 },         // big, 8 dirs: skinny pink pig ghoul, toothy grin; frame 2 lunges and sprays foamy spit
-    { "assets/enemies/75_makalala.png",               {}, 5, false, "assets/enemies/75_makalala_fly.png" },  // big, 8 dirs: giant slate ground bird, ivory club on its head; frame 2 the scream; flap = flying, the club glowing
+    { "assets/enemies/74_bes_rap.png",                {}, 5 },         // big, front view only, always as drawn (the same in every direction, never mirrored): skinny pink pig ghoul squatting, head turned right; 1 winds up, 2 head lunged and jaw dropped (the spit), 3 jaw closing with spit off the chin, 4 breathes out
+    { "assets/enemies/75_makalala.png",               {}, 5, false, "assets/enemies/75_makalala_fly.png" },  // big (frame 98x65): giant slate ground bird, ivory club on its head. Idle from the front only, 5 frames, frame 2 the scream (beak gaping, wings flung out); flap = flying, from the side only (left mirrored), the club glowing on (49, 15) in every frame
     { "assets/enemies/76_loch_oich_monster.png",      {}, 5 },         // big, 8 dirs: dog-headed slippery lake serpent, two fins; frame 2 a bark
     { "assets/enemies/77_hoga.png",                   {}, 5 },         // big, 8 dirs: ox-headed lake fish, curved horns; frame 2 a bellow
-    { "assets/enemies/78_zankallala.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/78_zankallala_run.png" },  // medium, 8 dirs: tiny trickster riding a jerboa; frame 1 boast; flap = very fast run
+    { "assets/enemies/78_zankallala.png",             {}, 10, false, "assets/enemies/78_zankallala_run.png", nullptr, nullptr, 1, 1, nullptr, 130 },  // medium (frame 58x53), 4 dirs (front, side, back; left mirrored): hairy trickster in a beehive hat riding a jerboa; 10 frames in the old 1.3 s loop, frames 3-4 the boast, staff raised; flap = the dash, staff levelled ahead
     { "assets/enemies/79_ugjuknarpak.png",            {}, 5 },         // big, 8 dirs: giant tusked bearded seal reared on its hind legs, clawing the air; frame 2 widest roar
     { "assets/enemies/80_bes_kotak.png",              {}, 5 },         // big, 8 dirs: blocky floating box spirit; frame 2 lid lifts, mouth slot gapes
     { "assets/enemies/81_ieltxu.png",                 {0, 1, 0, 2}, 3, false, nullptr, "assets/enemies/81_ieltxu_fire.png" },  // medium, 8 dirs: near-black night bird, dark; alt = lit up breathing fire (frame 1 the jet)
     { "assets/enemies/82_nadubi.png",                 {}, 5, false, "assets/enemies/82_nadubi_crawl.png", "assets/enemies/82_nadubi_scratch.png" },  // big, 8 dirs: barbed spirit on all fours; flap = spider crawl; alt = reared, raking claws
-    { "assets/enemies/83_beast_of_barrisdale.png",    {}, 5, false, "assets/enemies/83_beast_of_barrisdale_fly.png" },  // big, 8 dirs: massive three-legged bat-winged beast; frame 2 rears and roars; flap = flying, legs swept back
+    { "assets/enemies/83_beast_of_barrisdale.png",    {}, 10, true, nullptr, "assets/enemies/83_beast_of_barrisdale_fly.png", nullptr, 1, 1, nullptr, 130 },  // 100x65, 10 frames at 130 ms: planted breathing idle; alt = tucked airborne pose for all phase two; one left-facing view
     { "assets/enemies/84_kigutilik.png",              {}, 5 },  // big, 8 dirs: violet stilt-legged beast, walrus head, cup on its head; frame 2 jaws open
     { "assets/enemies/85_nanabolele.png",                    {}, 5 },  // big, 8 dirs: glowing-scaled river dragon; frame 2 jaws gape, lights blaze
-    { "assets/enemies/86_leucrocotta.png",                   {}, 5 },  // big, 8 dirs: stag-legged lion-hyena, badger head; frame 2 calls, ear-to-ear bone mouth gaping
+    { "assets/enemies/86_leucrocotta.png",                   {}, 5, false, "assets/enemies/86_leucrocotta_run.png", nullptr, nullptr, 1, 1, nullptr, 170 },  // big (frame 98x65), 4 dirs (front, side, back; left mirrored): stag-legged lion, badger head; 5 frames, 0.85 s, its call's beat -- mouth gaping on 2-3 (Leucrocotta::anim_frame keeps it on the call); flap = the gallop, drawn from the side only
     { "assets/enemies/87_corocotta.png",                     {}, 5 },  // big, 8 dirs: grey hyena-wolf, bristling mane, colour-shifting eyes; frame 2 jaws wide
     { "assets/enemies/88_amixsak.png",                       {}, 5 },  // big, 8 dirs: risen empty walrus hide, floating; frame 2 flippers flung high to seize
     { "assets/enemies/89_cuero.png",                         {}, 5 },  // big, 8 dirs: living stretched cowhide, rim of eyes and hooked claws; frame 2 heaves up, claws flared
@@ -282,7 +282,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/96_bregdi.png",                        {}, 8, true },  // giant, 8 dirs: dark sea beast surfacing, two huge wing-fins; frames 3-4 fins wrap round in front, jaws open
     { "assets/enemies/97_ro.png",                            {}, 8, true },  // giant, 8 dirs: reared dark-red dragon, great wings, long tail; frames 3-4 wings high, howling
     { "assets/enemies/98_boiuna.png",                        {}, 8, true },  // giant, 8 dirs: colossal black river snake, searchlight eyes, horn fangs, V wake; frames 3-4 reared, jaws gaping
-    { "assets/enemies/99_fad_felen.png",                     {}, 5 },  // big, 8 dirs: pillar of yellow plague cloud, hag face, misty claws; frame 2 arms flung wide, mouth gaping
+    { "assets/enemies/99_fad_felen.png", {}, 10, true, nullptr, "assets/enemies/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 180 },  // approved crouched idle; alt = standing on hind legs, ten frames at 180ms
     { "assets/enemies/100_flesh_planet.png",          {}, 8, true },   // giant: the final boss's ball (final_boss_views, one row a direction, all alike) -- the rest of its fight later
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
@@ -1371,7 +1371,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         int foot = ey + fh;   // the frame's bottom row: an alt of another size stands on the same ground
         if (!(flap >= 0.0f && _flap) && _alt && _enemy->alt_pose()) {
             // The other pose, same frame -- its own frame size, which may be
-            // bigger than the idle's (Zoureg's three heads): centred, feet down.
+            // bigger than the idle's: centred, feet down.
             int aw, ah;
             SDL_QueryTexture(_alt, NULL, NULL, &aw, &ah);
             fw = es.rows ? aw / es.frames : aw / (8 * es.frames); fh = es.rows ? ah / 8 : ah;
@@ -1410,8 +1410,11 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         Uint8 alpha = (Uint8)(255 * (float)(int)(fminf(fmaxf(op, 0.0f), 1.0f) * 4.0f + 0.001f) / 4.0f);
         if (_enemy_flash > 0.0f) alpha = 255;   // a hit always flashes it, white and whole, however unseen (the user)
         SDL_SetTextureAlphaMod(tex, alpha);
+        const bool mirror = _enemy->mirror_sprite();
+        const SDL_RendererFlip sprite_flip = mirror ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+        const SDL_Point sprite_center = { dst.w / 2, dst.h / 2 };
         if (k >= 1.0f) {
-            SDL_RenderCopy(ren, tex, &src, &dst);
+            SDL_RenderCopyEx(ren, tex, &src, &dst, 0.0, &sprite_center, sprite_flip);
             SDL_SetTextureAlphaMod(tex, 255);
         } else {
             // Phasing in, the map's stripe wipe in reverse: bands two art
@@ -1422,8 +1425,9 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
                 int rh = fh - row < 2 ? fh - row : 2;
                 int sx = band % 2 ? fw - sw : 0;
                 SDL_Rect bs = { src.x + sx, src.y + row, sw, rh };
-                SDL_Rect bd = { dst.x + sx * 2, dst.y + row * 2, sw * 2, rh * 2 };
-                SDL_RenderCopy(ren, tex, &bs, &bd);
+                int shown_x = mirror ? fw - sx - sw : sx;
+                SDL_Rect bd = { dst.x + shown_x * 2, dst.y + row * 2, sw * 2, rh * 2 };
+                SDL_RenderCopyEx(ren, tex, &bs, &bd, 0.0, NULL, sprite_flip);
             }
             SDL_SetTextureAlphaMod(tex, 255);
         }

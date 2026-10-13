@@ -1,0 +1,11 @@
+Simplified first-frame redraw, 2026-10-12. The previous generated draft was too detailed and is backed up under art/_backup/99_detailed_first. Current source is 99_fad_felen_first.py: a flat native pixel drawing authored via the Aseprite pixel plugin, with eight palette colors, broad skin and mane fills, tiny white/pupil eyes, one simple tooth shape and sparse shared structural lines. No hair strands, skull cracks, realistic sockets, knuckle texture or individual finger shading. Reference crouch, tail, hanging claw and right-facing view preserved. First frame only; game assets unchanged.
+
+Refined after the user edited the eyes: all eye pixels preserved exactly. Added one broad mane highlight, jaw/cheek planes, tapered forearm shading and sparse shared structural lines. Eight colors and silhouette remain unchanged. Current editable source is the draft Aseprite; 99_fad_felen_refine.py records this refinement.
+
+Readability pass: stronger shared black boundaries around mane/torso, hip/shin, hanging forearm and planted arm; broad lighter near surfaces against the dark far hind leg. Eyes and silhouette preserved. Eight colors, 45px drawn height. Recorded by 99_fad_felen_readability.py.
+
+Idle draft: ten 180ms frames, slow breathing, one-pixel creepy forward lean/head dip, lengthening saliva and falling drops. User eyes and planted feet verified unchanged. Draft Aseprite is 99_fad_felen_idle_draft.aseprite; master is 99_fad_felen_idle_master.png. Game assets remain unchanged pending approval of this animation.
+
+Second sheet: 99_fad_felen_standing_draft.aseprite. Upright hunched pose on two planted bent hind legs, loose hanging claws, slow breath/head sway and dripping drool. Ten 180ms frames, 76x74 canvas, drawn height within 70px, eight game-palette colors. Original eyes preserved as part of the translated face. First idle sheet unchanged. Both sheets remain art drafts.
+
+Installed both approved animations on 2026-10-12: assets/enemies/99_fad_felen.aseprite and 99_fad_felen_standing.aseprite. Ten 180ms frames; standing switches on below 50% HP through FadFelen::alt_pose. Both retain their authored reference angle. Standing asset adds one transparent bottom row to align the planted feet between poses. Placeholder combat behavior remains pending its pattern round. Build, style checks and all 20 rendered frames passed.

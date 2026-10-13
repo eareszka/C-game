@@ -22,9 +22,6 @@ from items_design import ORDER
 ART = os.path.join(HERE, "items.png")
 OUT = os.path.join(ROOT, "assets", "items.png")
 T = dict(TONES)
-# White fur: line, then the stone ramp's base and lit as shade and base, and
-# the palette's white as its light -- all palette colours.
-WHITE = [T["stone"][0], T["stone"][2], T["stone"][3], (252, 252, 252)]
 
 # (drawing, ramp) per column, in enum Item order.
 COLUMNS = [
@@ -36,9 +33,9 @@ COLUMNS = [
     ("spearhead", T["stone"]), ("moon_steel", T["veyrite"]), ("reapers_edge", T["reality_shard"]),
     # The weapon books: the raft book's drawing, each in its own cover.
     ("raft_book", T["dravium"]), ("raft_book", T["veyrite"]), ("raft_book", T["reality_shard"]),
-    # The feather Qique drops, in its purple; the polar bear king's white fur,
-    # the hide's drawing in WHITE; the sleeping bag in the hide's leather.
-    ("feather", T["reality_shard"]), ("hide", WHITE), ("sleeping_bag", T["bronze"]),
+    # The feather Qique drops and the bears' white fur, each white itself
+    # with stone's tones as its shade; the sleeping bag in the hide's leather.
+    ("feather", T["stone"]), ("white_fur", T["stone"]), ("sleeping_bag", T["bronze"]),
 ]
 
 

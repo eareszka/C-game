@@ -326,26 +326,6 @@ void thrust_project(float angle, float dx, float dy, float* out_along, float* ou
     if (out_side)  *out_side  = -dx * sa + dy * ca;
 }
 
-float resource_nodes_first_along(const ResourceNodeList* list, float px, float py,
-                                 float angle, float half_width, float max_reach)
-{
-    float best = -1.0f;
-    for (int i = 0; i < list->count; i++) {
-        const ResourceNode* n = &list->nodes[i];
-        if (!n->alive) continue;
-
-        float cx = n->x + n->width  * 0.5f;
-        float cy = n->y + n->height * 0.5f;
-        float along, side;
-        thrust_project(angle, wrap_dpx(cx - px), wrap_dpy(cy - py), &along, &side);
-
-        if (along < 0.0f || along > max_reach) continue;
-        if (side < -half_width || side > half_width) continue;
-        if (best < 0.0f || along < best) best = along;
-    }
-    return best;
-}
-
 int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angle,
                           float half_width, float from, float to,
                           Weapon weapon, HarvestResult* out)

@@ -1,6 +1,6 @@
 // Bare-bones SDL2 tile editor — Game Maker-style multi-tile stamp selection.
 //
-// Usage: ./tile_editor   (always opens town_0)
+// Usage: ./tile_editor [area]   (town_0 if not given; town_1 is the coastal town)
 //
 // Controls:
 //   Sprite panel  LMB drag  — select a rectangle of tiles from the sheet
@@ -31,7 +31,7 @@
 // ---------------------------------------------------------------------------
 // Area
 // ---------------------------------------------------------------------------
-static const char* AREA_NAME  = "town_0";
+static const char* AREA_NAME  = "town_0";   // or argv[1]
 static const char* AREA_FILE  = "include/towns.h";
 static const int   AREA_W     = 156;
 static const int   AREA_H     = 156;
@@ -338,7 +338,8 @@ static bool save_area(const char* file, const char* name, int w, int h) {
     if (!f) { fprintf(stderr, "Cannot open %s\n", file); return false; }
     fseek(f, 0, SEEK_END); long sz = ftell(f); rewind(f);
     std::vector<char> buf(sz + 1);
-    (void)fread(buf.data(), 1, sz, f); buf[sz] = '\0'; fclose(f);
+    // text mode reads CRLF as LF, so fewer than sz come back and what is past them is stale
+    size_t got = fread(buf.data(), 1, sz, f); buf[got] = '\0'; fclose(f);
     std::string src(buf.data());
 
     // Find either new "int <name>[" or legacy "char* <name>[]" declaration.
@@ -429,7 +430,8 @@ static bool save_meta_layer(const char* file, const char* name, const char* suff
     if (!f) { fprintf(stderr, "META SAVE: cannot open %s\n", file); return false; }
     fseek(f, 0, SEEK_END); long sz = ftell(f); rewind(f);
     std::vector<char> buf(sz + 1);
-    (void)fread(buf.data(), 1, sz, f); buf[sz] = '\0'; fclose(f);
+    // text mode reads CRLF as LF, so fewer than sz come back and what is past them is stale
+    size_t got = fread(buf.data(), 1, sz, f); buf[got] = '\0'; fclose(f);
     std::string src(buf.data());
 
     char arr_name[128]; snprintf(arr_name, sizeof(arr_name), "%s_%s", name, suffix);
@@ -488,6 +490,18 @@ static const char* PICKER_SHEET = "assets/tileset.png";
 // ---------------------------------------------------------------------------
 // Render helpers
 // ---------------------------------------------------------------------------
+// The sheet with its clear colour keyed out, as the game loads it
+// (tilemap_init_tile_cache), so what stands on a cell shows the ground under it.
+static SDL_Texture* load_sheet(SDL_Renderer* ren, const char* path) {
+    SDL_Surface* surf = IMG_Load(path);
+    if (!surf) return nullptr;
+    SDL_SetColorKey(surf, SDL_TRUE, SDL_MapRGB(surf->format, 255, 0, 0));
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(ren, surf);
+    SDL_FreeSurface(surf);
+    if (tex) SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+    return tex;
+}
+
 static void draw_tile_at(SDL_Renderer* ren, SDL_Texture* sheet,
                          int val, int px, int py, int size) {
     if (val >= 6 && sheet) {
@@ -509,7 +523,8 @@ static void draw_tile_at(SDL_Renderer* ren, SDL_Texture* sheet,
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
-int main(int /*argc*/, char** /*argv*/) {
+int main(int argc, char** argv) {
+    if (argc > 1) AREA_NAME = argv[1];
     load_area(AREA_FILE, AREA_NAME, AREA_W, AREA_H);
     load_meta_layer(AREA_FILE, AREA_NAME, "depth", g_depth, AREA_W, AREA_H);
     load_meta_layer(AREA_FILE, AREA_NAME, "coll",  g_coll,  AREA_W, AREA_H);
@@ -537,11 +552,11 @@ int main(int /*argc*/, char** /*argv*/) {
         SPRITE_WIN_INIT_W, SPRITE_WIN_INIT_H, SDL_WINDOW_RESIZABLE);
     SDL_Renderer* sprite_ren = SDL_CreateRenderer(sprite_win, -1, SDL_RENDERER_ACCELERATED);
     SDL_SetRenderDrawBlendMode(sprite_ren, SDL_BLENDMODE_BLEND);
-    SDL_Texture*  sprite_win_tex = IMG_LoadTexture(sprite_ren, PICKER_SHEET);
+    SDL_Texture*  sprite_win_tex = load_sheet(sprite_ren, PICKER_SHEET);
     Uint32 sprite_win_id = SDL_GetWindowID(sprite_win);
     Uint32 main_win_id   = SDL_GetWindowID(win);
 
-    SDL_Texture* sheet_tex = IMG_LoadTexture(ren, PICKER_SHEET);
+    SDL_Texture* sheet_tex = load_sheet(ren, PICKER_SHEET);
     if (!sheet_tex) printf("%s not found: %s\n", PICKER_SHEET, SDL_GetError());
 
     // View state
@@ -550,7 +565,8 @@ int main(int /*argc*/, char** /*argv*/) {
 
     // Sprite picker view state
     float sprite_zoom  = 1.0f;
-    float sprite_cam_x = 0.0f, sprite_cam_y = 0.0f;
+    // the coastal town's art lies from sheet row 180: open the picker on it
+    float sprite_cam_x = 0.0f, sprite_cam_y = strcmp(AREA_NAME, "town_0") ? 178.0f * SPRITE_WIN_PX : 0.0f;
 
     // Input state
     bool panning   = false;
@@ -891,14 +907,14 @@ int main(int /*argc*/, char** /*argv*/) {
                 int px = cv.x + (int)(tx * zoom - cam_x);
                 if (px + zoom < cv.x || px >= cv.x + cv.w) continue;
                 int val = g_canvas[ty][tx];
-                if (val == 0) {
+                if (val == 0 || val >= 6) {             // a sheet cell's clear part shows the ground
                     const BasicTile& bg = BASIC_TILES[g_bg[ty][tx]];
                     SDL_SetRenderDrawColor(ren, bg.r/2, bg.g/2, bg.b/2, 255);
                     SDL_Rect cell = { px, py, zoom, zoom };
                     SDL_RenderFillRect(ren, &cell);
-                } else {
-                    draw_tile_at(ren, sheet_tex, val, px, py, zoom);
                 }
+                if (val != 0)
+                    draw_tile_at(ren, sheet_tex, val, px, py, zoom);
                 if (zoom >= 5) {
                     SDL_SetRenderDrawColor(ren, 0, 0, 0, 50);
                     SDL_Rect cell = { px, py, zoom, zoom };

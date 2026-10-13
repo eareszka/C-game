@@ -6,13 +6,16 @@
 //
 // Env: DNGSHOT_TYPE=<0..8> archetype (default cave), DNGSHOT_ORE=<0..6> cave
 //      material, DNGSHOT_MAYA a pyramid's step-pyramid interior, DNGSHOT_DUMP ASCII
-//      floor/wall grid to stdout, DNGSHOT_GRID debug source-cell overlay.
+//      floor/wall grid to stdout, DNGSHOT_GRID the tile grid drawn over it,
+//      DNGSHOT_MINIMAP the minimap (all shown, the player at the way in) on a
+//      640x480 screen instead of the window.
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include <vector>
 #include <algorithm>
+#include <set>
 #include "dungeon.h"
 #include "tilemap.h"
 #include "camera.h"
@@ -37,6 +40,8 @@ int main(int argc, char** argv) {
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");   // matches main.cpp's own hint
 
     int W = tw * DMAP_TILE, H = th * DMAP_TILE;
+    const bool minimap = getenv("DNGSHOT_MINIMAP") != nullptr;
+    if (minimap) { W = 640; H = 480; }
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_Renderer* ren = SDL_CreateSoftwareRenderer(surf);
     if (!ren) { printf("renderer: %s\n", SDL_GetError()); return 1; }
@@ -54,7 +59,17 @@ int main(int argc, char** argv) {
         if (ti >= 0 && ti < DUNGEON_ENT_COUNT) dng_type = (DungeonEntranceType)ti;
     }
 
-    g_dmap.want_portals = 2;        // spine fallback (want_ox/oy left zero) — fine for a preview
+    g_dmap.want_portals = 2;        // a cave of two levels, a mouth on each
+    for (int m = 1; m < DMAP_MAX_PORTALS; m++) g_dmap.want_hole[m] = true;   // a mouth at the foot, holes above
+    // DNGSHOT_LEVELS=n (a cave): n levels, 2 to 4, a mouth on each -- as a
+    // mountain of n - 1 storeys hands it (dungeon_want)
+    if (const char* lv = getenv("DNGSHOT_LEVELS")) {
+        int n = atoi(lv);
+        if (n >= 2 && n <= 4) {
+            g_dmap.want_portals = n;
+            for (int m = 0; m < n; m++) { g_dmap.want_lvl[m] = m; g_dmap.want_ox[m] = (m * 7) % 5 - 2; }
+        }
+    }
     g_dmap.step_pyramid = getenv("DNGSHOT_MAYA") != nullptr;   // the step pyramid's Mayan interior
     dungeon_generate(&g_dmap, dng_type, 0.5f, seed);
     dungeon_seat_portals(&g_dmap);   // as the game's binds do: each way out on the outer wall
@@ -69,11 +84,9 @@ int main(int argc, char** argv) {
     cam.screen_w = W; cam.screen_h = H; cam.zoom = 1.0f;
     camera_place(&cam, (float)(want_x * DMAP_TILE), (float)(want_y * DMAP_TILE));
 
-    // Force the cave's material, so the regression check can pin MAT_VEYRITE
-    // (the identity row, which must render byte-identical to the pre-material
-    // build) and so one cave can be rendered once per material for the
-    // legibility comparison. Without this the material follows dngshot's
-    // hardcoded 0.5 difficulty and only ever lands on one of them.
+    // Force the cave's material, so one cave can be rendered once per
+    // material. Without this the material follows dngshot's hardcoded 0.5
+    // difficulty and only ever lands on one of them.
     if (const char* om = getenv("DNGSHOT_ORE")) {
         int mi = atoi(om);
         if (mi >= 0 && mi < MAT_COUNT) g_dmap.ore = (Material)mi;
@@ -163,15 +176,19 @@ int main(int argc, char** argv) {
             if (feet < l.y0) ok++;
             else { printf("ladder %d: stuck at %.0f, ladder %d..%d\n", i, feet, l.y0, l.y1); bad++; }
         }
-        // and each a block clear of the door (user): the gap across, for a
-        // ladder level with it (the door: 2 tiles from the way in's, 2 up)
-        int near = 0, dx0 = g_dmap.entry_x * 16, dy0 = g_dmap.entry_y * 16;
+        // and each a block clear of a way out (user): the gap across, for a
+        // ladder level with it (a door or a cave's mouth: 2 tiles from its
+        // portal's, 2 up; the tree's two portals are its one door's two tiles)
+        int near = 0;
         for (int i = 0; i < g_dmap.num_tree_ladders; i++) {
             const auto& l = g_dmap.tree_ladders[i];
             int lx = g_dmap.tree_ox + l.x0, ly0 = g_dmap.tree_oy + l.y0, ly1 = g_dmap.tree_oy + l.y1;
-            if (ly1 < dy0 - 32 || ly0 > dy0 + 16) continue;
-            int gap = std::max(dx0 - (lx + 16), lx - (dx0 + 32));
-            if (gap < 16) { printf("ladder %d: %d px from the door\n", i, gap); near++; }
+            for (int p = 0; p < (g_dmap.type == DUNGEON_ENT_CAVE ? g_dmap.num_portals : 1); p++) {
+                int dx0 = (p ? g_dmap.portals[p].tx : g_dmap.entry_x) * 16, dy0 = (p ? g_dmap.portals[p].ty : g_dmap.entry_y) * 16;
+                if (ly1 < dy0 - 32 || ly0 > dy0 + 16) continue;
+                int gap = std::max(dx0 - (lx + 16), lx - (dx0 + 32));
+                if (gap < 16) { printf("ladder %d: %d px from the door\n", i, gap); near++; }
+            }
         }
         printf("ladders: %d climbed, %d failed, %d within a block of the door\n", ok, bad, near);
     }
@@ -303,6 +320,47 @@ int main(int argc, char** argv) {
     fc_draw_color(ren, 5, 5, 8, 255);   // matches STATE_DUNGEON's own clear in main.cpp
     SDL_RenderClear(ren);
     dp.x = want_x * DMAP_TILE + W / 2.0f; dp.y = want_y * DMAP_TILE + H / 2.0f;   // the catacombs draw the area here
+    if (minimap) {
+        // The click must land where the picture shows floor: within the box
+        // the taken pixels span, the colours under pixels a click takes and
+        // under ones it refuses never overlap. Checked with the player's marker
+        // off the panel, so only tiles are under it; the panel's own black edge
+        // lies outside the box, and stonehenge's floor is that same black.
+        DungeonPlayer off{};
+        off.x = off.y = -1e6f;
+        dungeon_minimap_draw(&g_dmap, &off, ren, W, H, true);
+        SDL_RenderPresent(ren);
+        std::set<uint32_t> took, refused;
+        const uint32_t* px = (const uint32_t*)surf->pixels;
+        static bool taken[480][640];
+        int bx0 = W, by0 = H, bx1 = -1, by1 = -1;
+        for (int y = 0; y < H; y++)
+            for (int x = 0; x < W; x++) {
+                float wx, wy;
+                taken[y][x] = dungeon_minimap_click_to_world(&g_dmap, W, H, x, y, true, &wx, &wy);
+                if (!taken[y][x]) continue;
+                bx0 = std::min(bx0, x); bx1 = std::max(bx1, x); by0 = std::min(by0, y); by1 = std::max(by1, y);
+            }
+        for (int y = by0; y <= by1; y++)
+            for (int x = bx0; x <= bx1; x++)
+                (taken[y][x] ? took : refused).insert(px[y * (surf->pitch / 4) + x]);
+        int overlap = 0;
+        for (uint32_t c : took) overlap += refused.count(c);
+        printf("click check: %zu colours under taken pixels, %zu under refused, %d shared%s\n",
+               took.size(), refused.size(), overlap, overlap ? "   <-- CLICK OFF THE PICTURE" : "");
+        Player pl{};                                  // the picture: the marker at the way in
+        dungeon_player_init(&dp, &pl, &g_dmap, 0);
+        dungeon_minimap_draw(&g_dmap, &dp, ren, W, H, true);
+        SDL_RenderPresent(ren);
+        if (IMG_SavePNG(surf, out) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+        printf("wrote %s (minimap) seed %u\n", out, seed);
+        return 0;
+    }
+    // DNGSHOT_AT=ms: draw when the clock reads that -- what moves on it (a
+    // torch's frames, stars, glints) is then the same in every run, and a
+    // series of runs steps through an animation
+    if (const char* at = getenv("DNGSHOT_AT"))
+        while ((int)SDL_GetTicks() < atoi(at)) SDL_Delay(1);
     dungeon_draw(&g_dmap, &dp, &cam, ren);
     // DNGSHOT_PLAYER=x,y (dungeon pixels): a stand-in for the player's sprite,
     // then what the game draws over it (dungeon_draw_front)
@@ -340,6 +398,16 @@ int main(int argc, char** argv) {
     SDL_RenderPresent(ren);
 
     if (IMG_SavePNG(surf, out) != 0) { printf("save: %s\n", IMG_GetError()); return 1; }
+    if (g_dmap.type == DUNGEON_ENT_CAVE) {
+        // a floor the feet can reach must be on the tile map too (sight, spawners, the minimap)
+        static bool tiled[DMAP_MAX_REGIONS + 1];
+        int n_tiled = 0;
+        for (int y = 0; y < DMAP_H; y++)
+            for (int x = 0; x < DMAP_W; x++)
+                if (g_dmap.region[y][x] && !tiled[g_dmap.region[y][x]]) { tiled[g_dmap.region[y][x]] = true; n_tiled++; }
+        printf("cave: %d levels, %d floors (%d on the tile map), %d ladders, %d mouths, %d cells no piece fits\n", g_dmap.tree_n,
+               g_dmap.num_tree_floors, n_tiled, g_dmap.num_tree_ladders, g_dmap.num_portals, dungeon_cave_misfits());
+    }
     printf("wrote %s (%dx%d) seed %u at %d,%d\n", out, W, H, seed, want_x, want_y);
     return 0;
 }

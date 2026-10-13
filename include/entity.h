@@ -36,7 +36,7 @@ enum WeaponType {
 };
 
 // A weapon is a shape and what it is made of. The shape decides how it moves
-// (sweep, thrust, throw, fire rate); the material decides how hard it hits.
+// (sweep, throw, fire rate); the material decides how hard it hits.
 // The upgrade levels are bought in the crafting menu (src/crafting.cpp) and
 // stay with the weapon when it is re-forged in another ore.
 struct Weapon {
@@ -128,50 +128,17 @@ inline SweepProfile weapon_sweep_profile(WeaponType w) {
 
 inline bool weapon_sweeps(WeaponType w) { return weapon_sweep_profile(w).span > 0.0f; }
 
-// A thrusting weapon drives straight ahead instead of turning: it looks for the
-// first thing in front, then carries on `overshoot` past it, striking everything
-// in a corridor `half_width` either side of the line on the way through.
-typedef struct ThrustProfile {
-    float half_width;        // corridor half-width in pixels; 0 = doesn't thrust
-    float base_reach;        // how far ahead it looks for that first target
-    float overshoot;         // how far past the first target it drives
-    float seconds;           // time for the head to travel out
-    bool  cooldown_is_swing; // cooldown is the thrust plus the recovery below
-    float cooldown_recovery;
-    // Otherwise the weapon's fire-rate cooldown scaled by this — 1.0 leaves the
-    // profile alone, 0.5 makes it swing twice as often.
-    float cooldown_scale;
-} ThrustProfile;
-
-inline ThrustProfile weapon_thrust_profile(WeaponType w) {
-    switch (w) {
-        // Halberd: a long weapon. Corridor one tile wide, looks ahead for
-        // something to bite on, then drives two tiles beyond it.
-        //
-        // The distances are half a tile past the round numbers on purpose. On a
-        // 32px grid, a reach of exactly two tiles lands precisely on the centre
-        // of the second tile, where floating point decides whether it is struck
-        // — and the strike test is half-open, so it was being missed. 80 stops
-        // midway between the second and third tile instead: the intended two are
-        // comfortably inside and the third is comfortably out. Likewise 72 for
-        // the look-ahead, so a target exactly two tiles away always registers.
-        //
-        // Cooldown is half its fire rate: still the slow, heavy option, but not
-        // as punishing as the raw 0.6/sec profile.
-        case WEAPON_HALBERD: return { 16.0f, 72.0f, 80.0f, 0.14f, false, 0.0f, 0.5f };
-        default:             return { 0.0f,   0.0f,  0.0f, 0.0f,  false, 0.0f, 1.0f };
-    }
-}
-
-inline bool weapon_thrusts(WeaponType w) { return weapon_thrust_profile(w).half_width > 0.0f; }
-
 // A throwing weapon launches one object in the facing direction instead of
-// striking anything itself. The object flies until it meets something it can
-// harvest, or leaves the screen, and is gone either way.
+// striking anything itself. One that does not pierce tumbles on until it meets
+// something it can harvest, or leaves the screen, and is gone either way. One
+// that does flies point first and goes through: everything within `radius`
+// either side of its line is struck once as it passes, and only leaving the
+// screen ends it.
 typedef struct ThrowProfile {
     float speed;           // pixels/sec; 0 = this weapon doesn't throw
     float radius;          // how close it must come to catch something
     float cooldown_scale;  // multiplier on the weapon's fire-rate cooldown
+    bool  pierces;         // goes through everything in its way
 } ThrowProfile;
 
 inline ThrowProfile weapon_throw_profile(WeaponType w) {
@@ -179,8 +146,13 @@ inline ThrowProfile weapon_throw_profile(WeaponType w) {
         // 600/sec is 10px a frame — well inside the ~28px it needs to come
         // within, so nothing is skipped over at speed. Cooldown is half the
         // fire rate, which still clears the flight time to the screen edge.
-        case WEAPON_AXE: return { 450.0f, 12.0f, 0.5f };
-        default:         return { 0.0f,    0.0f, 1.0f };
+        case WEAPON_AXE:     return { 450.0f, 12.0f, 0.5f, false };
+        // Halberd: goes through everything in a corridor one tile wide until
+        // it is off the screen (the user, 2026-10-12: "pierces everything
+        // until off screen"). Still the slow, heavy option at half its fire
+        // rate; several can be in flight, and a new one ends none of them.
+        case WEAPON_HALBERD: return { 450.0f, 16.0f, 0.5f, true };
+        default:             return { 0.0f,    0.0f, 1.0f, false };
     }
 }
 
@@ -194,7 +166,7 @@ inline float weapon_freeze_seconds(WeaponType w) {
     switch (w) {
         case WEAPON_CLUB:    return 0.20f;
         case WEAPON_AXE:     return 0.24f;
-        case WEAPON_HALBERD: return 0.28f;  // covers the thrust plus a beat after
+        case WEAPON_HALBERD: return 0.28f;
         default:             return 0.0f;
     }
 }
@@ -307,6 +279,16 @@ enum Facing {
 
 // The side views' second stride, the other foot forward.
 enum { STRIDE2_RIGHT = 22, STRIDE2_LEFT = 23 };
+
+// The swing frames, after the walk (art/player/swing_design.py): nine a
+// facing -- down, up, left, right, down-left, down-right, up-left, up-right --
+// which are three phases of the walk (standing, and its two steps) by three
+// arms: drawn back to the side the swing starts on, struck out the way the
+// player faces, and raised beside the head for the scythe's whirl.
+//     frame = SWING_FRAME0 + facing * 9 + phase * 3 + arm
+// Shown on the maps while a weapon is in use (weapon_swing_body, combat.h);
+// never in battle.
+enum { SWING_FRAME0 = 24 };
 
 // The facing for a movement vector; zero on an axis means no lean that way.
 int facing_from(float dx, float dy);

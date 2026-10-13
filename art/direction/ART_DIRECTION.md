@@ -25,9 +25,27 @@ palette colour, so every pixel is still exactly one of the palette.
 
 | Effect | How |
 |---|---|
-| Plateau storeys | a quarter of the pixels per storey in the biome's tint: 25%, 50%, 75%. Grass toward mint, meadow and sand toward white, snow toward a cool blue, waste toward ash |
 | Cave rock out of view | 11 of every 16 pixels black |
 | Water's shore | a pale blue rim, `#dcf0ff` |
+
+## Interiors
+
+Dungeon walls and floors and the house rooms follow `INTERIOR_STYLE.md`: one
+set of materials and one way of drawing a brick, a block or a plank, whatever
+the projection. `python tools/interior_style.py` checks them.
+
+## Overworld
+
+The ground, the trees and other objects, the houses, the entrances and the
+cliffs follow `OVERWORLD_STYLE.md`: ground as a flat fill, built pieces in the
+interiors' materials, objects drawn as the enemy sprites are.
+`python tools/overworld_style.py` checks them.
+
+## Items
+
+The item and weapon icons, and a craftable's drawing where it is placed in
+the world, follow `ITEM_STYLE.md`: one drawing in four key tones, coloured by
+one of the world's ramps. `python tools/item_style.py` checks them.
 
 ## Keeping sprites consistent
 
@@ -63,8 +81,9 @@ colour typed into the source lands where the art's colours land.
 To check a frame: `python tools/palette_check.py some.png`. Renders from
 `shot.exe` and `dngshot.exe` report 0 pixels off the palette.
 
-The few translucent draws (weapon swing trails, the door prompt box, debug
-grids) have their colour on the palette but still alpha-blend.
+The few translucent draws (the door prompt box, debug grids) have their
+colour on the palette but still alpha-blend. A weapon's swing does not: its
+arc is solid and dithered (`ITEM_STYLE.md`).
 
 ## Unused art
 

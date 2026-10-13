@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 27, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 27 Grootslang
+        { 21, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 21 Asp
     };
     const int    TEST_N             = debug ? (int)(sizeof(test_enemies) / sizeof(test_enemies[0])) : 0;   // none in play
     bool         test_armed         = true;
@@ -1045,7 +1045,7 @@ int main(int argc, char *argv[])
                                             cam_screen_y(&cam, fy) - size / 2, size);
                     }
                 }
-                player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite);
+                player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite, ow.swing.body_frame);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_over_player(map, &cam, plat.renderer, ow.x, ow.y,
                                          (float)player.width, (float)player.height, ow.y + HB_Y2);
@@ -1125,13 +1125,7 @@ int main(int argc, char *argv[])
                         int   n_cave_mouth  = w.n_mouths;
                         int   my_mouth      = w.my_mouth;
 
-                        dmap.want_portals = (n_cave_mouth >= 2) ? n_cave_mouth : 2;
-                        dmap.starter      = w.starter;
-                        dmap.step_pyramid = w.step_pyramid;
-                        for (int m = 0; m < n_cave_mouth; m++) {
-                            dmap.want_ox[m] = w.want_ox[m];
-                            dmap.want_oy[m] = w.want_oy[m];
-                        }
+                        dungeon_want(&dmap, &w);
 
                         dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
                         current_dng_seed = w.seed;
@@ -1488,7 +1482,7 @@ int main(int argc, char *argv[])
                         if (chasers[ci].active) draw_actor_hitbox(&cam, chasers[ci].x, chasers[ci].y);
                 }
                 if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer))
-                    player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite);
+                    player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite, dplayer.swing.body_frame);
                 dungeon_draw_front(&dmap, &dplayer, &cam, plat.renderer);
                 dungeon_draw_swing(&dplayer, &cam, plat.renderer);
 
@@ -1526,22 +1520,15 @@ int main(int argc, char *argv[])
                     if (room_taken(true)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
-                        // Leave by the portal you are standing on. A cave has one
+                        // Leave by the portal walked into. A cave has one
                         // per mouth, so which one you are on is the whole question,
                         // and the old pair of destinations could only answer it for
                         // two. Falls back to the pair when a portal carries no
                         // destination of its own.
                         int land_x = dng_entry_portal_x, land_y = dng_entry_portal_y;
-                        {
-                            float pcx = dplayer.x + (HB_X1 + HB_X2) * 0.5f;
-                            float pcy = dplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
-                            int ptx = (int)(pcx / DMAP_TILE), pty = (int)(pcy / DMAP_TILE);
-                            for (int pi = 0; pi < dmap.num_portals; pi++)
-                                if (dmap.portals[pi].tx == ptx && dmap.portals[pi].ty == pty &&
-                                    dmap.portals[pi].ow_x >= 0) {
-                                    land_x = dmap.portals[pi].ow_x;
-                                    land_y = dmap.portals[pi].ow_y;
-                                }
+                        if (dplayer.at_way >= 0 && dmap.portals[dplayer.at_way].ow_x >= 0) {
+                            land_x = dmap.portals[dplayer.at_way].ow_x;
+                            land_y = dmap.portals[dplayer.at_way].ow_y;
                         }
                         overworld_stand_before_entrance(&ow, &player, map, land_x, land_y);
                         state = STATE_OVERWORLD;
@@ -1553,22 +1540,15 @@ int main(int argc, char *argv[])
                     if (room_taken(true)) {
                         dungeon_explored_cache[current_dng_seed].assign(
                             &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
-                        // Leave by the portal you are standing on. A cave has one
+                        // Leave by the portal walked into. A cave has one
                         // per mouth, so which one you are on is the whole question,
                         // and the old pair of destinations could only answer it for
                         // two. Falls back to the pair when a portal carries no
                         // destination of its own.
                         int land_x = dng_exit_portal_x, land_y = dng_exit_portal_y;
-                        {
-                            float pcx = dplayer.x + (HB_X1 + HB_X2) * 0.5f;
-                            float pcy = dplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
-                            int ptx = (int)(pcx / DMAP_TILE), pty = (int)(pcy / DMAP_TILE);
-                            for (int pi = 0; pi < dmap.num_portals; pi++)
-                                if (dmap.portals[pi].tx == ptx && dmap.portals[pi].ty == pty &&
-                                    dmap.portals[pi].ow_x >= 0) {
-                                    land_x = dmap.portals[pi].ow_x;
-                                    land_y = dmap.portals[pi].ow_y;
-                                }
+                        if (dplayer.at_way >= 0 && dmap.portals[dplayer.at_way].ow_x >= 0) {
+                            land_x = dmap.portals[dplayer.at_way].ow_x;
+                            land_y = dmap.portals[dplayer.at_way].ow_y;
                         }
                         overworld_stand_before_entrance(&ow, &player, map, land_x, land_y);
                         state = STATE_OVERWORLD;

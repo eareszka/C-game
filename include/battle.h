@@ -56,6 +56,13 @@ static const int         PLAYER_SHOT_CELL  = 16;
 // menu shows them and the map swings them.
 static const char* const WEAPON_ICON_SHEET = "assets/weapon_icons.png";
 static const int         WEAPON_ICON_CELL  = 16;
+// After the seven icons in each ore's row, the same weapons as they are held
+// on the map, smaller, in the same 16px cells: seven pointing right, grip at
+// the left edge's middle, then seven pointing up and right, grip at the bottom
+// left corner (HELD and HELD_DIAG in weapons_design.py). The map's swing turns
+// one or the other by quarter turns.
+static const int         WEAPON_HELD_X      = 7 * 16;
+static const int         WEAPON_HELD_DIAG_X = 14 * 16;
 static const int ENEMY_X  = 320;
 static const int ENEMY_Y  = 160;
 static const int ENEMY_R  = 24;

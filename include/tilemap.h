@@ -403,9 +403,7 @@ int tilemap_sweep(Tilemap* map, float px, float py, float radius,
                   float start_ang, float rel0, float rel1,
                   Weapon weapon, HarvestResult* out);
 
-// Tile counterparts of the thrust pair.
-float tilemap_first_along(const Tilemap* map, float px, float py,
-                          float angle, float half_width, float max_reach);
+// Tile counterpart of resource_nodes_thrust.
 int tilemap_thrust(Tilemap* map, float px, float py, float angle,
                    float half_width, float from, float to,
                    Weapon weapon, HarvestResult* out);
@@ -493,6 +491,9 @@ bool tilemap_face_at(int x, int y);
 // The plateau level a tile stands at, 0 for the flat. For the tools' ground
 // dumps, which otherwise cannot tell a plateau top from the field below.
 int  tilemap_cliff_elev_at(int x, int y);
+// Whether the cave entrance on this tile is a ladder down a hole (flat ground,
+// a storey's top) rather than a mouth walked into at a wall's foot.
+bool tilemap_cave_hole_at(const Tilemap* map, int x, int y);
 // Whether the plateau on this tile is sealed: no way up on foot, so a cave
 // may be cut for it (the top bit of the face mask, set by the stamp).
 bool tilemap_cliff_sealed_at(int x, int y);

@@ -8,27 +8,49 @@ roots and trunk beside the stamp are solid and everything above is walked
 behind (gen_entrance_art.py works that out, as for a building).
 
 A giant oak, long dead, far bigger than the forest round it: a thick gnarled
-trunk of weathered bark on roots spread over the ground, its limbs bare,
-forking into thinner limbs and at last into the dark twigs the game's own
-dead tree is drawn with. Bark lit on the left of each limb, in shade on the
-right. In the trunk's foot, the way in: a hollow open to the ground, with no
+trunk on roots spread over the ground and four heavy limbs, bare and bent,
+each with a short branch or two -- few and bold and spread apart, forking as
+the game's own dead tree does (the user, 2026-10-12, over limbs grown from a
+seed into a thicket of twigs at the top: "too clustered up top", not the
+game's pixel art). The limbs are placed by hand, LIMBS.
+Its bark is the bark of its inside (interior_style MATERIALS, as
+art/direction/OVERWORLD_STYLE.md has it): the plate tone over most of each
+limb, its shade down the right, the furrow tone only where it turns right
+away. In the trunk's foot, the way in: a hollow open to the ground, with no
 ladder -- the one 1x1 way in that is not the ladder hole, by the user's word --
-its lip of bark lit and shaded like the limbs. The branching is seeded, so the
-tree is the same every build.
+its lip of bark lit and shaded like the limbs.
 """
-import json, math, os, random, sys
+import json, math, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from entrance_shapes import Grid, check, outline, stand, depth_layers
+from interior_style import MATERIALS
 
 W, H, B = 144, 96, 95
 CX = 72                       # the trunk's middle: the middle of the stamp
-PAL = {'K': '000000', 'D': '463422', 'M': '8d6b4f', 'L': 'b2966a'}     # weathered bark
+PAL = dict(zip('LMD', MATERIALS['bark']['tones']), K='000000')        # plate, its shade, furrow
+
+# A limb, then its branches: the points each runs through, (x, y, thickness).
+# The four start inside the top of the trunk, so they leave it as it narrows
+# rather than sitting on it.
+LIMBS = [
+    [(63, 67, 14), (46, 60, 11), (30, 50, 8), (20, 36, 5), (16, 24, 3), (10, 18, 2)],
+    [(30, 51, 6), (16, 54, 4), (7, 50, 2)],
+    [(21, 37, 4), (30, 28, 3), (32, 19, 2)],
+    [(68, 62, 14), (62, 44, 10), (64, 28, 7), (58, 14, 4), (60, 5, 2)],
+    [(63, 30, 5), (74, 20, 4), (78, 9, 2)],
+    [(62, 40, 5), (48, 34, 4), (44, 30, 3)],
+    [(78, 62, 14), (88, 48, 10), (86, 32, 7), (94, 18, 4), (92, 8, 2)],
+    [(88, 34, 5), (100, 30, 4), (104, 26, 3)],
+    [(81, 67, 14), (98, 60, 11), (114, 50, 8), (122, 36, 5), (132, 28, 3), (137, 20, 2)],
+    [(114, 51, 6), (128, 54, 4), (137, 50, 2)],
+    [(122, 38, 4), (114, 28, 3), (112, 19, 2)],
+]
 
 
 def taper(g, x0, y0, x1, y1, w0, w1):
     """A length of wood from (x0, y0), w0 thick, to (x1, y1), w1 thick: round,
-    lit where its surface turns to the upper left and in shade where it turns
-    away, grain running along it where it is thick. Trunk, limbs and roots are
+    its plate tone on the half turned to the upper left, in shade where it
+    turns away, grain running along it a tone down where it is thick. Trunk, limbs and roots are
     all this, so where one grows out of another they are one piece of wood."""
     steps = int(math.hypot(x1 - x0, y1 - y0) * 2) + 1
     for i in range(steps + 1):
@@ -41,26 +63,10 @@ def taper(g, x0, y0, x1, y1, w0, w1):
                 if dx * dx + dy * dy > r * r or not (2 <= xx < W - 2 and 2 <= yy <= B):
                     continue
                 v = (dx * .6 + dy * .8) / max(r, .5)
-                c = 'L' if v < -.45 else 'D' if v > .35 else 'M'
-                if c == 'M' and r > 5 and (round(dx) % 6 == 0):
-                    c = 'D'                                   # the grain
+                c = 'L' if v < -.05 else 'D' if v > .5 else 'M'
+                if c != 'D' and r > 5 and (round(dx) % 6 == 0):
+                    c = 'M' if c == 'L' else 'D'              # the grain
                 g.put(xx, yy, c)
-
-
-def limb(g, twigs, x, y, ang, length, width, rng):
-    """One limb from (x, y) at ang degrees (90 is straight up), then its
-    forks; below a finger's width a limb is a twig, drawn later in line."""
-    a = math.radians(ang)
-    x1, y1 = x + math.cos(a) * length, y - math.sin(a) * length
-    if width < 1.6:
-        twigs.append((x, y, x1, y1))
-        return
-    taper(g, x, y, x1, y1, width, width * .75)
-    n = 2 if rng.random() < .8 else 3
-    for k in range(n):
-        spread = rng.uniform(22, 38)
-        da = (k - (n - 1) / 2) * spread * 2 / max(n - 1, 1) + rng.uniform(-8, 8)
-        limb(g, twigs, x1, y1, ang + da, length * rng.uniform(.62, .78), width * .64, rng)
 
 
 def trunk(g):
@@ -116,29 +122,12 @@ def hollow(g, cx=CX, bot=B):
 
 def tree():
     g = Grid(W, H)
-    rng = random.Random(1234)
-    twigs = []
     trunk(g)
-    # the great limbs, grown from inside the top of the trunk so they leave it
-    # as it narrows rather than sitting on it: up, and out to either side
-    for ang, length, width in ((150, 18, 13), (112, 22, 14), (72, 22, 14), (32, 18, 13)):
-        limb(g, twigs, CX + (ang < 90) * 5 - (ang > 90) * 5, 66, ang, length, width, rng)
+    for pts in LIMBS:
+        for (x0, y0, w0), (x1, y1, w1) in zip(pts, pts[1:]):
+            taper(g, x0, y0, x1, y1, w0, w1)
     g.hollow = hollow(g)
     outline(g)
-    # the twigs last, in the dark line the game's dead tree is drawn in,
-    # each grown from a limb so none floats free
-    for x0, y0, x1, y1 in twigs:
-        steps = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
-        px, py = None, None
-        for i in range(steps + 1):
-            t = i / steps
-            x, y = round(x0 + (x1 - x0) * t), round(y0 + (y1 - y0) * t)
-            if not (2 <= x < W - 2 and 2 <= y < H):
-                break
-            if px is not None and x != px and y != py:
-                g.put(x, py, 'K')                         # never a diagonal step
-            g.put(x, y, 'K')
-            px, py = x, y
     return g
 
 
@@ -149,7 +138,7 @@ FOOT_CY, FOOT_RX, FOOT_RY = B - 8, 18, 8
 
 
 def ground(g):
-    """Every pixel of the tree -- trunk, limbs, twigs -- stands where the
+    """Every pixel of the tree -- trunk and limbs -- stands where the
     trunk does: on the front of its foot in that column, or its middle beyond
     the foot (roots beyond it lie on the ground, each pixel on its own row --
     stand() never puts a pixel's ground above it). The hollow is a way in: what

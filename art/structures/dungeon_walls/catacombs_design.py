@@ -10,10 +10,16 @@ throughout and walled all round with dark bones and skulls (user).
 
 Below (isometric, user):
     brick                64 x 64: the floor throughout, the regular graveyard's
-                         red brick paving (user; graveyard_design.brick, shared)
-    bones                64 x 64: the walls all round -- femurs in bands,
-                         skulls stacked between, in bone's dark tones; a
-                         ladder's wall the same bone, face on
+                         red brick paving (user) less its chips, its shade 2
+                         wide: an isometric floor shows a chip as a comb
+    bones                two walls, 64 across and 48 tall each, as a face square to the
+                         screen shows them, for the sections to alternate (user:
+                         "so the player doesnt get confused what catacombs
+                         theyre in"): a row of skulls over three courses of
+                         long bones, then skulls all the way down. A skull
+                         course is 24 tall, a skull every 16, 5 down it -- the
+                         game lays those whole along each face and stands them
+                         upright on the slanted ones (cat_bake)
 The hall:
     flags                64 x 64: the nave's flagstones
     ashlar, ashlar_side  96 x 80 / 48 x 80: its outer walls, lit and in shade
@@ -27,15 +33,14 @@ Tones -- four a 16px cell, one palette.
 """
 import glob, json, math, os, random, sys
 from PIL import Image
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import graveyard_design as gy
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
+from interior_style import MATERIALS, bond, masonry
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..', '..', '..')
 
-PAL = {'K': '000000', 'M': 'c6ccda', 'D': '9797aa', 'S': '595965',          # stone: lit, mid, shade
-       'B': 'e8e0c0', 'b': 'b2966a', 'n': '493712',                         # bone, its shade, the dark between
-       'o': '8d6b4f', 'J': '34343e',                                        # bone's shade, the graveyard's dark grey
+PAL = {'K': '000000', **dict(zip('MDS', MATERIALS['stone']['tones'])),      # stone: lit, mid, shade
+       **dict(zip('bo', MATERIALS['bone']['tones'])), 'J': MATERIALS['bone']['joint'],   # the walls' bone, its shade, the dark grey between
        'r': '792727', 'm': '531b1c',                                        # the graveyard's brick: shade, mortar (its face is '1')
        '1': 'b6433d', '2': 'ec8476', '3': 'd89830', '4': 'f4ce80',          # glass: red, gold,
        '5': '2c6c44', '6': '4fa667', '7': '664b95', '8': 'b69cee',          # green, violet,
@@ -44,14 +49,28 @@ PAL = {'K': '000000', 'M': 'c6ccda', 'D': '9797aa', 'S': '595965',          # st
 VW, VH = 128, 80
 PANE_W = 64                          # a window's width; its glass leaves a sprite 56 across
 
-SKULL = ["..BBBB..",
-         ".BBBBBBb",
-         "BBBBBBBb",
-         "BKKBBKKb",
-         "BKKBBKKb",
-         "BBBKKBBb",
-         ".BBBBBb.",
-         "..BKBK.."]
+FEMUR = [".bbbb....................bbbb...",      # 30 x 7 in a 32 x 8 cell: a knob at each end, the
+         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",      # shaft between, its shade under it
+         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+         ".bbbbbbbbbbbbbbbbbbbbbbbbbbbb...",
+         "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+         "bbbbboooooooooooooooooooobbbbb..",
+         ".oooo....................oooo...",
+         "................................"]
+SKULL = ["....bbbbbb....",                        # 14 x 14: sockets, nose and teeth black, its shade
+         "..bbbbbbbbbb..",                        # under the jaw
+         ".bbbbbbbbbbbb.",
+         ".bbbbbbbbbbbb.",
+         "bbbbbbbbbbbbbb",
+         "bbKKKbbbbKKKbb",
+         "bbKKKbbbbKKKbb",
+         "bbKKKbbbbKKKbb",
+         ".bbbbbKKbbbbb.",
+         ".bbbbbKKbbbbb.",
+         "..bbbbbbbbbb..",
+         "..bKbKbbKbKb..",
+         "..bKbKbbKbKb..",
+         "...oooooooo..."]
 
 
 def grid(w, h, c):
@@ -59,78 +78,53 @@ def grid(w, h, c):
 
 
 # ── below ────────────────────────────────────────────────────────────────
-DARK = {'B': 'b', 'b': 'o', 'n': 'J'}                       # the walls' bones (user: the game's own colours) --
-                                                            # the graveyard's bone and its shade, its dark grey between
+def brick():
+    """The graveyard's brick, its worn bricks where they are there, less its
+    chips; the shade 2 wide, as the isometric floor needs."""
+    return bond(64, 64, 16, 8, '1', 'r', 'm', seed=5, edge=2, chipped=False)
 
 
-def ossuary(w, h, dark=False):
-    """Bones stacked in courses 16 tall: a band of femurs laid along the wall
-    (4 rows), a row of skulls above it, every other course half a skull along.
-    Tiles at 64 across."""
-    g = grid(w, h, 'n')
-    for y in range(h):
-        band = (h - 1 - y) % 16
-        for x in range(w):
-            if band < 4:
-                g[y][x] = 'K' if band == 0 else ('B' if band < 3 else 'b')
-                if x % 16 in (0, 15) and band in (1, 2):
-                    g[y][x] = 'b'
-    for course in range(h // 16):
-        top = h - 16 * (course + 1) + 2
-        for k in range(w // 8 + 1):
-            for j, r in enumerate(SKULL):
-                for i, c in enumerate(r):
-                    x = k * 8 - 4 * (course % 2) + i
-                    if c != '.' and 0 <= x < w:
-                        g[top + j][x] = c
-    return [[DARK.get(c, c) for c in r] for r in g] if dark else g
+def bone_wall(layout):
+    """64 x 64, its top 48 the wall (the rest the dark between, as the sheet
+    has always held it), a course a letter from the top: S skulls (24 tall),
+    F long bones (8, every other course half a bone along). Whole pieces on the dark
+    between them, in bone's base and shade: nothing the game's shear of a
+    slanted wall can spoil but a skull, and those it stands upright itself."""
+    g = grid(64, 64, 'J')
+    y = nf = 0
+    for c in layout:
+        cell, h, step, x0 = (FEMUR, 8, 32, 16 * (nf % 2)) if c == 'F' else (SKULL, 24, 16, 1)
+        for k in range(-1, 64 // step):
+            for j, row in enumerate(cell):
+                for i, ch in enumerate(row):
+                    if ch != '.':
+                        g[y + (0 if c == 'F' else 5) + j][(k * step + x0 + i) % 64] = ch
+        nf, y = nf + (c == 'F'), y + h
+    assert y == 48, layout
+    return g
+
+
+def bones():
+    """The two walls side by side: odd sections' on the left, even ones' on the right."""
+    return [a + b for a, b in zip(bone_wall('SFFF'), bone_wall('SS'))]
 
 
 # ── the hall ─────────────────────────────────────────────────────────────
 def flags():
-    """Flagstones 32 x 16 in running bond, each a little worn."""
-    g = grid(64, 64, 'D')
-    rng = random.Random(5)
-    for r in range(4):
-        for k in range(3):
-            x0, worn = k * 32 - 16 * (r % 2), rng.random() < 0.3
-            for y in range(r * 16, r * 16 + 16):
-                for x in range(x0, x0 + 32):
-                    X = x % 64
-                    yy, xx = y - r * 16, x - x0
-                    g[y][X] = 'K' if yy == 15 or xx == 31 else ('S' if yy == 14 or xx == 30 else ('M' if not worn and yy < 3 else 'D'))
-    return g
+    """Flagstones 32 x 16 in running bond, plain as the stonehenge's blocks
+    are: a step down the stone from the walls, so the floor reads apart
+    (user), their shade 2 wide, as the isometric floor shows every other row."""
+    return bond(64, 64, 32, 16, 'D', 'S', 'K', edge=2, wear=False)
 
 
 def ashlar(shade):
-    """Big squared stones, courses 16 tall, blocks 48 long, one under two."""
-    w = 48 if shade else 96
-    lit, mid, dk = ('D', 'S', 'K') if shade else ('M', 'D', 'S')
-    g = grid(w, 80, lit)
-    for y in range(80):
-        course = y // 16
-        for x in range(w):
-            xx = (x + 24 * (course % 2)) % 48
-            if y % 16 == 15 or xx == 47:
-                g[y][x] = 'K'
-            elif y % 16 == 14 or xx == 46:
-                g[y][x] = dk
-            elif y % 16 < 2 and not shade:
-                g[y][x] = lit
-            else:
-                g[y][x] = mid if (x // 6 + y) % 11 == 0 else lit
-    return g
+    """Big squared stones, courses 16 tall, blocks 48 long, one under two;
+    the side in shade a step down the stone."""
+    return bond(48 if shade else 96, 80, 48, 16, *('DS' if shade else 'MD'), 'K', wear=False)
 
 
 def cap():
-    g = grid(64, 8, 'M')
-    for x in range(64):
-        g[7][x] = 'K'
-        g[6][x] = 'D'
-        if x % 32 == 31:
-            for y in range(8):
-                g[y][x] = 'K'
-    return g
+    return masonry(64, 8, [(0, 8, 32, 0)], 'M', 'D', 'K')
 
 
 FIG = [('1', '2'), ('3', '4'), ('5', '6'), ('7', '8'), ('9', '0'), ('q', 'Q')]
@@ -214,8 +208,7 @@ def pane(sprite, k):
 def design(n_panes=None):
     def pad(rows):
         return [''.join(r) + '.' * (VW - len(r)) for r in rows] + ['.' * VW] * (VH - len(rows))
-    v = {'brick': [[{'R': '1'}.get(c, c) for c in r] for r in gy.brick()],   # its red is the red glass's: one letter a colour
-         'bones': ossuary(64, 64, dark=True),
+    v = {'brick': brick(), 'bones': bones(),
          'flags': flags(), 'ashlar': ashlar(False), 'ashlar_side': ashlar(True), 'cap': cap()}
     for k, (n, sp) in enumerate(enemies()[:n_panes]):
         v['pane_%02d' % n] = pane(sp, k)

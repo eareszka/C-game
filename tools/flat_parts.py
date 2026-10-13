@@ -78,13 +78,16 @@ def rows(g, w, h):
     """The frame as the build reads it: rows 1..h-1 (it leaves the top row empty), then a blank one."""
     return [''.join(g.get((x, y + 1), '.') for x in range(w)) for y in range(h - 1)] + ['.' * w]
 
-def write(name, frames, pal, w, h, body=40, dirs='down', view='D', pose='frames'):
+def write(name, frames, pal, w, h, body=40, dirs='down', view='D', pose='frames', rows_sheet=False):
     """NAME.json for tools/draw_views.py and NAME.txt for tools/build_enemy.py: one drawn view, its frames.
-    view: which view the drawing is ('D' the front; 'DR' the 3/4, with dirs='quarter').
-    pose: 'frames' when every frame is given; None for one still, which the build breathes about row `body`."""
+    view: which view the drawing is ('D' the front; 'DR' the 3/4, with dirs='quarter'); or several, for a drawing
+          that stands for each of them as it is (('DR', 'DL', 'L', 'UL'): the same way round whichever side the player is on).
+    pose: 'frames' when every frame is given; None for one still, which the build breathes about row `body`.
+    rows_sheet: a giant's sheet, laid out one row per direction (#ROWS)."""
     json.dump({'pal': pal, 'view_w': w, 'views': {str(i): rows(g, w, h) for i, g in enumerate(frames)}, 'order': [str(i) for i in range(len(frames))]}, open(name + '.json', 'w'))
-    t = ['#PAL'] + [f'{k} {v}' for k, v in pal.items()] + ['#BODY', str(body)] + (['#POSE', pose] if pose else []) + ['#DIRS', dirs]
-    for i, g in enumerate(frames): t += ['#' + view + (f'@{i}' if i else '')] + rows(g, w, h)[:-1]
+    t = ['#PAL'] + [f'{k} {v}' for k, v in pal.items()] + ['#BODY', str(body)] + (['#POSE', pose] if pose else []) + ['#DIRS', dirs] + (['#ROWS'] if rows_sheet else [])
+    for v in ((view,) if isinstance(view, str) else view):
+        for i, g in enumerate(frames): t += ['#' + v + (f'@{i}' if i else '')] + rows(g, w, h)[:-1]
     io.open(name + '.txt', 'w', encoding='utf-8', newline='\n').write('\n'.join(t) + '\n')
 
 def image(g, pal, w, h, bg=None):

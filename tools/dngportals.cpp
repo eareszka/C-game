@@ -182,15 +182,17 @@ static int audit(int type, Form form, unsigned seed, float angle) {
     // (dungeon_way_at), which is a narrower thing than standing on its tile, so
     // somewhere the feet can actually stand has to count -- or the player is in
     // there for good.
+    auto fits = [&](float cx, float cy) {                  // the swimmer's body in the oasis
+        DungeonPlayer q = {};
+        q.x = cx - (HB_X1 + HB_X2) * 0.5f; q.y = cy - (HB_Y1 + HB_Y2) * 0.5f;
+        return dungeon_player_fits(d, &q);
+    };
     for (int p = 0; p < d->num_portals; p++) {
         int tx = d->portals[p].tx, ty = d->portals[p].ty;
-        uint8_t want = p ? DNG_EXIT : DNG_ENTRY;
         bool taken = false;
-        for (int cy = (ty - 1) * DMAP_TILE; cy < (ty + 1) * DMAP_TILE && !taken; cy++)
-            for (int cx = tx * DMAP_TILE; cx < (tx + 1) * DMAP_TILE && !taken; cx++)
-                taken = dungeon_way_at(d, (float)cx, (float)cy) == want &&
-                        can_occupy(d, cx - (HB_X1 + HB_X2) * 0.5f, cy - (HB_Y1 + HB_Y2) * 0.5f,
-                                   dungeon_solid_at);
+        for (int cy = (ty - 2) * DMAP_TILE; cy < (ty + 2) * DMAP_TILE && !taken; cy++)
+            for (int cx = (tx - 2) * DMAP_TILE; cx < (tx + 3) * DMAP_TILE && !taken; cx++)
+                taken = dungeon_way_at(d, (float)cx, (float)cy) == p && fits((float)cx, (float)cy);
         if (!taken)
             fail(type, form, seed, angle, "way out cannot be walked into", p, 0);
     }
@@ -198,20 +200,22 @@ static int audit(int type, Form form, unsigned seed, float angle) {
     // Rule 10: arriving, the player is stood before the way in -- on ground the
     // feet fit, and clear of its hitbox, or the door just come through is one
     // that cannot be gone back through without leaving it first.
-    if (d->type != DUNGEON_ENT_OASIS) {                    // comes up in the water instead
+    for (int p = 0; p < d->num_portals; p++) {
         static Player pl;
         DungeonPlayer dp = {};
         dungeon_player_init(&dp, &pl, d, 0);
+        dp.x = (float)(d->portals[p].tx * DMAP_TILE);        // put on it, as main.cpp does a cave mouth
+        dp.y = (float)(d->portals[p].ty * DMAP_TILE + DMAP_TILE / 2 - 24);
         dungeon_stand_before_way(d, &dp);
         float cx = dp.x + (HB_X1 + HB_X2) * 0.5f, cy = dp.y + (HB_Y1 + HB_Y2) * 0.5f;
-        if (!can_occupy(d, dp.x, dp.y, dungeon_solid_at))
+        if (!dungeon_player_fits(d, &dp))
             fail(type, form, seed, angle, "arrives where the feet do not fit", (int)cx, (int)cy);
         if (dungeon_way_at(d, cx, cy) >= 0)
             fail(type, form, seed, angle, "arrives on the way out's hitbox", (int)cx, (int)cy);
         int near = 1 << 30;
         for (int n = 1; n <= 3; n++)
             for (int k = -1; k <= 1; k++)
-                if (dungeon_way_at(d, cx + k * n, cy - n) >= 0 || dungeon_way_at(d, cx + k * n, cy) >= 0) near = n < near ? n : near;
+                if (dungeon_way_at(d, cx + k * n, cy - n) == p || dungeon_way_at(d, cx + k * n, cy) == p) near = n < near ? n : near;
         if (near > 3)
             fail(type, form, seed, angle, "arrives away from the way out", (int)cx, (int)cy);
     }
@@ -233,7 +237,7 @@ int main(int argc, char** argv) {
     IMG_Init(IMG_INIT_PNG);
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_RGBA32);
     SDL_Renderer* ren = SDL_CreateSoftwareRenderer(surf);
-    // Cheap here and not optional: draw_cave_wall() reads the generated tileset
+    // Cheap here and not optional: cave_bake() reads the generated tileset
     // region out of this cache, and a cave generated without it is not the cave
     // the game generates.
     tilemap_init_tile_cache(ren);
@@ -279,6 +283,8 @@ int main(int argc, char** argv) {
                         float a = (float)m * 6.2831853f / (float)form.mouths;
                         g_dmap.want_ox[m] = (int)(cosf(a) * 6.0f);
                         g_dmap.want_oy[m] = (int)(sinf(a) * 6.0f);
+                        g_dmap.want_lvl[m] = m < 4 ? m : 3;       // a foot mouth, then a storey each; any more share the top
+                        g_dmap.want_hole[m] = m > 0;              // and a hole on each storey
                     }
                 }
 
@@ -350,6 +356,7 @@ int main(int argc, char** argv) {
                "-------", "-----", "-------", "---------", "-------");
 
         long ways_stood = 0, ways_doors = 0;
+        long cave_systems = 0, cave_mouths = 0, cave_ladders = 0, cave_by_levels[5] = { 0 };
         for (int wi = 0; wi < nworld; wi++) {
             unsigned wseed = WORLD_SEED[wi];
             tilemap_build_overworld_phase1(&map, wseed);
@@ -418,12 +425,7 @@ int main(int argc, char** argv) {
             int w_audited = 0;
             for (int i = 0; i < n; i += step) {
                 DungeonWiring w = dungeon_wiring_for(&map, wseed, i);
-                g_dmap.want_portals = (w.n_mouths >= 2) ? w.n_mouths : 2;
-                g_dmap.step_pyramid = w.step_pyramid;
-                for (int m = 0; m < w.n_mouths; m++) {
-                    g_dmap.want_ox[m] = w.want_ox[m];
-                    g_dmap.want_oy[m] = w.want_oy[m];
-                }
+                dungeon_want(&g_dmap, &w);
                 dungeon_generate(&g_dmap, w.type, w.difficulty, w.seed);
                 if (w.n_mouths >= 2)
                     dungeon_bind_cave_mouths(&g_dmap, w.mouth_ow_x, w.mouth_ow_y, w.n_mouths);
@@ -435,6 +437,40 @@ int main(int argc, char** argv) {
                     dungeon_bind_solo(&g_dmap, w.entry_ow_x, w.entry_ow_y);
                 audit((int)w.type, wf, wseed, 0.0f);
                 w_audited++; sampled++;
+            }
+
+            // The caves' levels (user: each cave is to match the elevated level
+            // of the outside): every cave system of the world, once -- as many
+            // floors as its highest mouth's level and one, each mouth's arch on
+            // the floor of the level it stands on outside, and leading back to it.
+            for (int i = 0; i < n; i++) {
+                const DungeonEntrance* e = &map.dungeon_entrances[i];
+                if (e->type != DUNGEON_ENT_CAVE || e->cave_anchor_x < 0) continue;
+                DungeonWiring w = dungeon_wiring_for(&map, wseed, i);
+                if (w.n_mouths < 2 || w.my_mouth != 0) continue;       // a system, from its first mouth
+                dungeon_want(&g_dmap, &w);
+                dungeon_generate(&g_dmap, w.type, w.difficulty, w.seed);
+                dungeon_bind_cave_mouths(&g_dmap, w.mouth_ow_x, w.mouth_ow_y, w.n_mouths);
+                int top = 0;
+                for (int m = 0; m < w.n_mouths; m++) top = std::max(top, w.want_lvl[m]);
+                cave_systems++; cave_by_levels[std::min(top + 1, 4)]++;
+                if (g_dmap.tree_n != std::max(top, 1) + 1)
+                    fail((int)w.type, wf, wseed, 0.0f, "cave's floors are not its mountain's levels", g_dmap.tree_n, top + 1);
+                for (int m = 0; m < w.n_mouths && m < g_dmap.num_portals; m++) {
+                    const DungeonPortal& p = g_dmap.portals[m];
+                    int r = g_dmap.region[p.ty][p.tx];
+                    int lvl = r ? g_dmap.tree_n - 1 - g_dmap.tree_floors[r - 1].t : -1;
+                    cave_mouths++;
+                    // inside what it is outside: a hole's a ladder, a mouth's an arch
+                    const bool hole = tilemap_cave_hole_at(&map, w.mouth_ow_x[m], w.mouth_ow_y[m]);
+                    cave_ladders += hole;
+                    if (g_dmap.want_hole[m] != hole)
+                        fail((int)w.type, wf, wseed, 0.0f, "mouth's way out is not what its entrance is", m, hole);
+                    if (top >= 1 && lvl != w.want_lvl[m])
+                        fail((int)w.type, wf, wseed, 0.0f, "mouth's arch is not on its level's floor", lvl, w.want_lvl[m]);
+                    if (p.ow_x != w.mouth_ow_x[m] || p.ow_y != w.mouth_ow_y[m])
+                        fail((int)w.type, wf, wseed, 0.0f, "arch leads to another mouth", m, 0);
+                }
             }
 
             // Rule 9 outside: an entrance with ground to stand on, and every
@@ -482,6 +518,10 @@ int main(int argc, char** argv) {
                " -- all resolve to the harder end now; this is what used to split\n",
                ore_boundary);
         printf("ways in walked into: %ld entrances with ground to stand on, %ld house doors\n", ways_stood, ways_doors);
+        printf("cave systems %ld (of 2 levels %ld, 3 levels %ld, 4 levels %ld), %ld mouths, each on its own level's floor\n"
+               "  their ways out inside: %ld arches (a mouth outside), %ld ladders (a hole outside)\n",
+               cave_systems, cave_by_levels[2], cave_by_levels[3], cave_by_levels[4], cave_mouths,
+               cave_mouths - cave_ladders, cave_ladders);
         printf("interiors built from real wirings and stair-audited: %ld\n", sampled);
     }
 

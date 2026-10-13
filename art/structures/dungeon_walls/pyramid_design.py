@@ -10,16 +10,18 @@ as writing rather than a stamp.
     python tools/draw_views.py <design.json> art/structures/dungeon_walls/pyramid_maya
 
 Sandstone is the pyramid entrance's (entrances/pyramid_design.py): K line,
-D mortar, M lit sandstone, S shaded sandstone, laid as its stone() lays the
-front face -- 4-row courses of 8-wide blocks, joints a half block along each
-course. The glyphs are painted in the mortar brown.
+D mortar, M lit sandstone, S shaded sandstone, laid as the interior bible has
+a block (art/direction/INTERIOR_STYLE.md) -- 16 x 8, its bottom and right
+edge in shade, joints a half block along each course. The glyphs are painted
+in the mortar brown.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from dungeon_walls import Grid, views, h32, sheet_rows
 from entrance_shapes import Scene
+from interior_style import MATERIALS, unit_tone
 
-PAL = {'K': '000000', 'D': '785830', 'M': 'f4ce80', 'S': 'b29e5c'}
+PAL = {'K': '000000', **dict(zip('MS', MATERIALS['sandstone']['tones'])), 'D': MATERIALS['sandstone']['joint']}
 # Anywhere but the desert the pyramid outside is a step pyramid in the ruins'
 # grey stone (entrances/pyramid_design.py), and inside it is Mayan/Aztec: the
 # same build, the same letters in their roles (D mortar and shade, M lit, S
@@ -149,7 +151,7 @@ def pattern(X, z, carved=False, fits=None, h=None, t=None, frieze=False):
         r 13..30    frieze (back walls): an outlined hieroglyph to every 16 columns
         carved      a corridor face: the enemy glyphs, each placed only if
                     fits(first column, last column) -- whole on this face
-        else        4-row courses of 8-wide blocks, joints a half block along
+        else        8-row courses of 16-wide blocks, joints a half block along
     """
     r = 47 - z
     if (z if h is None else h) <= 0:
@@ -173,9 +175,7 @@ def pattern(X, z, carved=False, fits=None, h=None, t=None, frieze=False):
             if g[gy][gx] != '.':
                 return g[gy][gx]
         return 'M'
-    rr = (r - 1) % 4
-    off = ((r - 1) // 4) % 2 * 4
-    return 'D' if rr == 3 or (X + off) % 8 == 7 else 'M'
+    return unit_tone((X + (r - 1) // 8 % 2 * 8) % 16, (r - 1) % 8, 16, 8, 'M', 'S', 'D')
 
 
 def faces_from(pat):
