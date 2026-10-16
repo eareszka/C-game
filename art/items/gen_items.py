@@ -36,6 +36,10 @@ COLUMNS = [
     # The feather Qique drops and the bears' white fur, each white itself
     # with stone's tones as its shade; the sleeping bag in the hide's leather.
     ("feather", T["stone"]), ("white_fur", T["stone"]), ("sleeping_bag", T["bronze"]),
+    # The boat's sail (src/story.cpp): STAND-INS until drawn -- the bat's wing
+    # skin as the hide in veyrite's tones, the keeper's book as the raft book
+    # in emerald, the sail as the raft in emerald.
+    ("hide", T["veyrite"]), ("raft_book", T["emerald"]), ("raft", T["emerald"]),
 ]
 
 

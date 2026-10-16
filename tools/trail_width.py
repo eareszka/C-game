@@ -22,7 +22,13 @@ So this measures PERPENDICULAR width, without needing to know the direction:
                        the stroke there is about 2d-1 tiles across, whatever
                        angle it runs at.
 
-  d = 1  ->  two tiles or fewer.  d = 2  ->  three, the target.  d >= 3 -> wider.
+  d = 1  ->  two tiles or fewer, the target (the stroke is two tiles since the
+  track became the town street's band, 2026-10-13).  d >= 2  ->  three or more.
+
+A stroke clipped to ONE tile is the fault now, and d cannot tell it from two,
+so it is counted apart: a tile with no track on either side of it across or
+none above and below. The drawn band is cut back from the stroke's edge and
+pinches shut there.
 
 Two further numbers, because the histogram alone does not say what it looks like:
 
@@ -170,11 +176,16 @@ def report(name, mask, axis=None):
           % (name, total, nridge, 100.0 * int(interior.sum()) / total))
     for d in sorted(counts):
         wide = 2 * d - 1
-        tag = ('  <-- TOO NARROW' if d == 1 else
-               '  <-- target' if d == 2 else '  <-- wide')
+        tag = '  <-- target' if d == 1 else '  <-- wide'
         print('         d=%d (~%d wide) %6d  %5.1f%%%s'
               % (d, wide, counts[d], 100.0 * counts[d] / nridge, tag))
-    print('         narrow stretches: %d, largest %d tiles at %s' % (nclump, worst, worst_at))
+    def one_wide(m):
+        pad = np.pad(m, 1, constant_values=False)
+        return m & ((~pad[:-2, 1:-1] & ~pad[2:, 1:-1]) | (~pad[1:-1, :-2] & ~pad[1:-1, 2:]))
+    thin = wrapped(one_wide, mask, axis)
+    worst, nclump, worst_at = largest_clump(thin)
+    print('         one tile wide: %d tiles (%.1f%%) in %d stretches, largest %d tiles at %s'
+          % (int(thin.sum()), 100.0 * int(thin.sum()) / total, nclump, worst, worst_at))
     print('         wide cores (5+):  %d, largest %d tiles at %s' % (nwide, wide, wide_at))
 
 

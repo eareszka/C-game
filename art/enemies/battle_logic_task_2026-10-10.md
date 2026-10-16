@@ -436,3 +436,40 @@ What I changed in `class Asp` (`src/enemies.cpp`) and row 21 of `ENEMY_SHEETS` (
 - `move_facing()` is unchanged: it faces the player, and holds its facing through a hiss.
 
 The game compiles. Not seen in a battle yet. `test_enemies` in `src/main.cpp` is set to 21 (it was 75).
+
+## 98 Boiuna (art, one front view, and where its placeholder stands and fires)
+
+Redrawn 2026-10-13. The user's words, in order: their own first frame with "have it breath and the further back tail slither around, make sure it follows the bible rules" (answered: half size; keep the yellow slit eyes); a reference with "have the same pose but have it slither more in the back then the front"; "have it still be in the snake like pose from earlier but with the front up like it is now"; "have the transition at the base here be more curvy and smooth. also make sure all of its design and animation follows the rules of the bible"; then "looks good confirmed". Frame **192x176** (it was 130x81), drawn rows 8-170, one row a direction as before. Only the front is drawn: rows 0-4 are it, rows 5-7 its mirror, and the class faces down so the mirror is never shown.
+
+- `assets/enemies/98_boiuna.png` -- its idle, **12 frames at 130 ms** (1.56 s): a wave runs back along its body to the tail's tip (tail tip 10 px across the loop, rear pass 5, front pass 3.5, neck 2.7), it breathes, and its head is a row up on frames 4-8.
+
+Sources: `art/enemies/98_boiuna_pose_first.py`, `98_boiuna_design.py`, `98_boiuna_install.py`.
+
+It has no fight yet. What I changed so the placeholder suits the sprite (`src/enemies.cpp`, row 98 of `ENEMY_SHEETS` in `src/battle.cpp`). No speed, time, count, angle or gap is changed:
+- row 98: `{}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 130`.
+- `class Boiuna : public Unfinished` (it was a bare `Unfinished`): same name, 980 HP, elite, same five aimed shots every 0.9 s.
+- **It stands at y 190, not 160.** The frame is 352 px tall on screen; at 160 the top of its arch was behind the HUD bar. At 190 it covers x 148-492, y 30-356.
+- `move_facing()` = `FACE_DOWN`: one view.
+- **Its shots leave its open mouth**: `Unfinished` gained `virtual muzzle()` (the enemy's middle by default, so the other placeholders are unchanged) and the Boiuna's is frame pixel (121.5, 81), on screen (371, 176) -- 51 px right of and 14 px above its middle. The aim is taken from the mouth too.
+
+For its pattern round, in frame pixels (the frame's middle is 96, 88): the middle of its open mouth (121.5, 81), a row higher on frames 4-8; its eyes about (118, 71) and (130, 71); the tail's tip about (22, 91) at rest, swinging 5 px either way; the passes lie in rows 88-170.
+
+The game compiles. Not seen in a battle yet. `test_enemies` in `src/main.cpp` is set to 98 (it was 21).
+
+## 23 Olgoi-Khorkhoi (art, one front view, two sheets, and where it fires from)
+
+Redrawn 2026-10-14 to the user's reference. Their words, in order: "yours is the mongolian death worm" (first frame); a pencil reference, "pose and design"; "have the monster be thicker, the same thickness as the orignal but the new design"; "ok front looks good now we must animate it"; "sheet two has the head spinning around while idling"; "the 2 white blades to the left and right should spin with the head. also have the body breath really fast and hyper during the 2nd sheet"; "the blades size should remain consistant at all angles. it is drawn on top of the sane. you will need to increase canvas size for full swing" (answered: both blades 59 px from the mouth); "looks good implement please". Frame **152x124** (it was 140x83), one row a direction, only the front drawn (rows 0-4 are it, 5-7 its mirror, never shown: the class faces down).
+
+- `assets/enemies/23_olgoi_khorkhoi.png` -- its idle, **12 frames at 170 ms** (2.04 s, the beat between its rings): the arch heaves a row and leans 2 px, the head dips 2 px on frames 3-6 with the maw's four lobes spreading (widest 4-6), five feelers whip, acid drops rise out of the sand inside the arch.
+- `assets/enemies/23_olgoi_khorkhoi_spin.png` -- the row's `alt`: the mouth, its lobes and the two blades turning 30 degrees a frame (a full turn a loop) with the body pumping three times a loop. No dip or gape.
+
+Sources: `art/enemies/23_olgoi_khorkhoi_pose_first.py`, `23_olgoi_khorkhoi_design.py`, `23_olgoi_khorkhoi_install.py`; the user's first frame is `23_olgoi_khorkhoi_frame0_draft.aseprite` (140x83, set 11 columns in and 12 rows down on the sheets).
+
+What I changed (`src/enemies.cpp` class OlgoiKhorkhoi, row 23 of `ENEMY_SHEETS` in `src/battle.cpp`). No speed, time, count, angle or gap is changed:
+- row 23: `{}, 12, true, nullptr, "assets/enemies/23_olgoi_khorkhoi_spin.png", nullptr, 1, 1, nullptr, 170`.
+- `move_facing()` = `FACE_DOWN`: one view.
+- `alt_pose()` = `ENRAGED`: **the spinning sheet shows for the whole enraged phase** -- my reading of "spinning around while idling" plus "hyper" breathing; the user did not say when sheet two shows. The other reading, only while it fires, is a one-line change.
+- **Its rings leave the mouth**: `mouth()` sets `from`, `ox = x - 28`, `oy = y` (frame pixel (62, 62) of 152x124, the frame's middle is (76, 62)). The rings were from the sprite's middle. The mouth is 2 rows lower (4 px on screen) on idle frames 4-5; not followed.
+- It still stands at (320, 160): the arch's top is at screen y 68 (ARENA_TOP 28), the sand line at 200, the blades reach screen y 278 when they point down.
+
+For its pattern round, in frame pixels: the mouth (62, 62); the lobe tips about 23 px out from it; the blades' tips 59 px out, at 188 and -11 degrees on the idle, turning on the spin sheet (frame f: + 30 f degrees); the sand line row 82; the arch's top row 16, its right leg x 113-145, the hollow under it about x 73-113, rows 44-82; the drops at (105, 74)-(110, 80) rising 6.

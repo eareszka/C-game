@@ -5,6 +5,7 @@
 #include "input.h"
 #include "entity.h"
 #include "enemy.h"
+#include "core.h"        // SpeechState
 
 // ── Weapon types ──────────────────────────────────────────────────────────────
 
@@ -177,6 +178,10 @@ void hurt_shake_begin(SDL_Renderer* ren, float t, SDL_Rect* saved);
 void hurt_shake_end(SDL_Renderer* ren, const SDL_Rect* saved);
 void hurt_flash(SDL_Renderer* ren, float t, int w, int h);
 
+// A sheet, and in *white the same sheet as a solid white silhouette: what an
+// enemy flashes when hit (the fights), and a chaser's mini as its fight starts.
+SDL_Texture* load_with_white(SDL_Renderer* ren, const char* path, SDL_Texture** white);
+
 // The fade up from black and down to black, in seconds. Doors and stairs on
 // the map fade by the same clock (main.cpp).
 static const float BATTLE_FADE_T = 0.4f;
@@ -245,13 +250,21 @@ private:
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
     int          _hit_bars = 0;      // bars that hit took
     // What the win paid, by Item, for the victory panel.
-    int          _won[32]    = {};
+    int          _won[INVENTORY_ITEM_CAPACITY]    = {};
     // The score -- EXP is hits + grazes + the defeat bonus, paid on the win.
     int          _hits       = 0;   // the player's shots that landed
     int          _grazes     = 0;   // enemy shots that passed close without hitting
     int          _exp_gain   = 0;   // what the win paid
     int          _levels     = 0;   // levels that gained
-    unsigned     _won_new    = 0;   // which of them the player had never held before
+    bool         _won_new[INVENTORY_ITEM_CAPACITY] = {};   // which of them the player had never held before
+    // The win in the speech box, the chest's way: the EXP, a line per item
+    // (its icon in _reward_icons, by line), a level-up. Typed out after VICTORY.
+    char         _reward_text[256] = "";
+    int          _reward_icons[INVENTORY_ITEM_CAPACITY] = {};
+    int          _reward_n  = 0;
+    int          _dlg_part  = 0;
+    float        _dlg_t     = 0.0f;
+    mutable SpeechState _dlg_state = SPEECH_TYPING;   // draw_speech sets it as it draws
     // The item icons, for the pickups (assets/items.png); loaded on first draw.
     mutable SDL_Texture* _item_icons       = nullptr;
     mutable bool         _item_icons_tried = false;
@@ -321,5 +334,9 @@ private:
     static void _draw_rect_outline(SDL_Renderer* ren, int x, int y, int w, int h,
                                     Uint8 r, Uint8 g, Uint8 b);
 };
+
+// An enemy's idle sheet and its layout (src/battle.cpp ENEMY_SHEETS), for the
+// story's boss sites drawn on the map. Null for an enemy without one.
+const char* enemy_sheet_info(int id, int* frames, bool* rows);
 
 #endif

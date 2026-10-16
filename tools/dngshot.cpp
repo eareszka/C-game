@@ -8,7 +8,8 @@
 //      material, DNGSHOT_MAYA a pyramid's step-pyramid interior, DNGSHOT_DUMP ASCII
 //      floor/wall grid to stdout, DNGSHOT_GRID the tile grid drawn over it,
 //      DNGSHOT_MINIMAP the minimap (all shown, the player at the way in) on a
-//      640x480 screen instead of the window.
+//      640x480 screen instead of the window, DNGSHOT_CHESTS where the chests
+//      stand (=open: every other one drawn opened).
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <cstdio>
@@ -73,6 +74,22 @@ int main(int argc, char** argv) {
     g_dmap.step_pyramid = getenv("DNGSHOT_MAYA") != nullptr;   // the step pyramid's Mayan interior
     dungeon_generate(&g_dmap, dng_type, 0.5f, seed);
     dungeon_seat_portals(&g_dmap);   // as the game's binds do: each way out on the outer wall
+    if (getenv("DNGSHOT_CHESTS"))     // where its chests stand, to frame one; DNGSHOT_CHESTS=open draws them opened
+        for (int i = 0; i < g_dmap.num_loot; i++) {
+            printf("chest %d at %d,%d (%s)\n", i, g_dmap.loot[i].tx, g_dmap.loot[i].ty, g_dmap.loot[i].item >= 0 ? "treasure" : "gold");
+            if (SDL_strcmp(getenv("DNGSHOT_CHESTS"), "open") == 0 && i % 2) g_dmap.loot[i].collected = true;
+        }
+    // Frame a generated pyramid chamber without guessing its seeded position.
+    if (const char* room = getenv("DNGSHOT_PYR_ROOM")) {
+        int i = atoi(room);
+        if (SDL_strcmp(room, "last") == 0)
+            for (int j = 0; j < g_dmap.num_pyr_rooms; j++)
+                if (g_dmap.pyr_rooms[j].cx == g_dmap.exit_x && g_dmap.pyr_rooms[j].yb == g_dmap.exit_y) i = j;
+        if (dng_type == DUNGEON_ENT_PYRAMID && i >= 0 && i < g_dmap.num_pyr_rooms) {
+            want_x = g_dmap.pyr_rooms[i].cx - tw / 2;
+            want_y = g_dmap.pyr_rooms[i].yb - 5;
+        }
+    }
     // DNGSHOT_WAYS=ab: the entrance type each way out returns to (digits, a
     // DungeonEntranceType each) -- a graveyard's are a ladder or a door by it
     if (const char* wv = getenv("DNGSHOT_WAYS"))

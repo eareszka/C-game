@@ -4,7 +4,7 @@ Shared by art/enemies/NN_name_pose_first.py. A frame is {(x, y): letter}; a pale
 'K' black. The drawing itself (the rows) stays in each enemy's own script.
 """
 from pathlib import Path
-import colorsys, json, subprocess, sys, tempfile
+import colorsys, json, math, subprocess, sys, tempfile
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +48,25 @@ def layered(parts, pal, w, h):
     for px, kind, _ in built:
         thin |= {p for p in px if kind == 'raw' or not any(inner(px, (p[0] + dx, p[1] + dy)) for dx, dy in N4)}
     return g, thin
+
+
+def path(points):
+    """A smooth line through (x, y, thickness) points, as samples about a pixel apart: [x, y, r, along]."""
+    p = [points[0]] + list(points) + [points[-1]]
+    fine = []
+    for i in range(1, len(p) - 2):
+        for k in range(24):
+            t = k / 24
+            fine.append(tuple(0.5 * (2 * p[i][c] + (p[i + 1][c] - p[i - 1][c]) * t
+                                     + (2 * p[i - 1][c] - 5 * p[i][c] + 4 * p[i + 1][c] - p[i + 2][c]) * t * t
+                                     + (3 * p[i][c] - p[i - 1][c] - 3 * p[i + 1][c] + p[i + 2][c]) * t ** 3) for c in range(3)))
+    fine.append(tuple(points[-1]))
+    out, along, last = [], 0.0, None
+    for x, y, r in fine:
+        if last: along += math.hypot(x - last[0], y - last[1])
+        if not out or along - out[-1][3] >= 1 or (x, y, r) == fine[-1]: out.append([x, y, r, along])
+        last = (x, y)
+    return out
 
 
 def pieces(px):

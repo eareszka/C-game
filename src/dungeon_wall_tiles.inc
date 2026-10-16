@@ -8,7 +8,9 @@ static const int WALL_COL0[5] = { 100, 100, 180, 186, 228 };
 static const int WALL_ROW0[5] = { 44, 54, 44, 44, 44 };
 // A block's floor: its first cell, and how many cells across and down it
 // repeats -- the tile at (tx, ty) takes cell (tx mod across, ty mod down).
-static const int WALL_FLOOR[3][4] = { { 4, 3, 1, 1 }, { 0, 4, 6, 6 }, { 3, 0, 2, 2 } };
+// The ruins' is not a tile but one brick's outline in those cells, laid
+// brick by brick on black (draw_ruins_floor).
+static const int WALL_FLOOR[3][4] = { { 4, 3, 1, 1 }, { 0, 4, 6, 6 }, { 3, 0, 2, 1 } };
 enum {
     PYR_FACE_CORR = 0, PYR_FACE_BACK = 6,           // + phase, rows 0-2
     PYR_RIM_COL = 0, PYR_RIM_ROW = 3,               // outer, vedge, hedge, inner

@@ -258,12 +258,15 @@ typedef struct {
 } InteriorDoor;
 
 typedef struct {
-    int x, y;    // top-left tile coordinate where the village was stamped
-    int variant; // which of the village blueprint variants was used
+    int x, y;    // top-left tile coordinate where the village was laid
+    int set;     // its building set (VillageSet, src/village_houses.inc): its ground's
     int biome;   // biome_of() at the footprint's centre before the stamp: TILE_GRASS
                  // (open flat ground, meadow included), TILE_TREE (forest),
-                 // TILE_SAND, TILE_SNOW or TILE_WASTELAND. The stamp covers the
-                 // ground, so this is the only record of what it stood in.
+                 // TILE_SAND, TILE_SNOW or TILE_WASTELAND -- the ground the
+                 // placement pass chose it for.
+    int gx, gy;  // its gate: the tile just outside the footprint where its street's
+                 // run of road ends, the village's node on the road network
+    int ground;  // the ground tile its footprint is made of, under its streets
 } VillagePlacement;
 
 typedef struct {
@@ -291,6 +294,23 @@ enum RouteKind { ROUTE_NONE = 0, ROUTE_TRAIL = 1, ROUTE_ROAD = 2 };
 const uint16_t* tilemap_debug_route_owner();
 const uint8_t*  tilemap_debug_route_multi();
 
+// A landmark: a small place out in the country with one cache to strike open
+// (src/landmarks.inc, tilemap.cpp "Landmarks"; the user, 2026-10-13: "we need
+// something so whereever the player goes its fun and something new"). (x, y)
+// is the top left tile of its block, kind its row of LANDMARK_KINDS, and
+// difficulty how far out it lies, 0..255 for the 0..1 a dungeon's is. Its
+// index is its bit among the opened: the world regrows from its seed, so the
+// same landmark has the same index every time.
+#define MAX_LANDMARKS 1024
+struct LandmarkPlacement { short x, y; unsigned char kind, difficulty; };
+
+// Where the story's bosses stand on the overworld (include/story.h
+// STORY_BOSSES, one row each in that order; src/story.cpp reads them). Laid
+// at the end of phase 2 from the seed; x -1 for a boss with no site (the sea
+// boss, the swarm). The tile is the boss's feet: its sprite stands on it.
+#define BOSS_SITE_COUNT 9
+struct BossSite { short x, y; };
+
 typedef struct Tilemap {
     int tiles[MAP_HEIGHT][MAP_WIDTH];
     int overlay[MAP_HEIGHT][MAP_WIDTH]; // trees, rocks, gold ore — drawn on top of base tile
@@ -310,11 +330,18 @@ typedef struct Tilemap {
     int wrap_axis;                    // WrapAxis: WRAP_X for a N/S ocean, WRAP_Y for a W/E one
     DungeonEntrance dungeon_entrances[MAX_DUNGEON_ENTRANCES];
     int num_dungeon_entrances;
+
+    // The country's landmarks (LandmarkPlacement below), filled during phase2.
+    LandmarkPlacement landmarks[MAX_LANDMARKS];
+    int num_landmarks;
     TownPlacement    towns[3];         // filled during phase2
     VillagePlacement villages[15];     // filled during phase2
     int num_villages;
     InteriorDoor doors[MAX_INTERIOR_DOORS]; // building doors, registered at stamp time
     int num_doors;
+    BossSite boss_sites[BOSS_SITE_COUNT];   // the story's bosses' places (see BossSite)
+    BossSite wharf_tip;                     // the coastal town's wharf: its most seaward deck tile, where the boat is boarded; x -1 without one
+    int      lighthouse_door;               // the lighthouse's door (doors index), on the wharf outside the town's footprint; -1 without one
     CastlePlacement  castles[4];       // [0-2] placed in phase2; [3] placed via dungeon diving
 } Tilemap;
 
@@ -420,6 +447,14 @@ enum { EXPLORE_CELL = 16,
 void explore_mark(uint8_t explored[EXPLORE_H][EXPLORE_W], float player_x, float player_y);
 // The player's map: always centred on them, only what is explored, drawn
 // at px screen pixels a tile (its zoom: fewer shows more country).
+// Which landmarks have had their cache opened, a bit each by index
+// (MAX_LANDMARKS / 8 bytes). The map's own copy: the game saves it, hands it
+// back before a saved world is grown -- an opened landmark is laid opened --
+// and clears it for a new world.
+uint8_t* tilemap_landmarks_opened(void);
+// The landmark whose cache was struck open since this was last asked, or -1.
+int tilemap_take_opened_landmark(void);
+
 void minimap_draw_local(const Tilemap* map, SDL_Renderer* renderer,
                         int screen_w, int screen_h, float player_x, float player_y,
                         int px,
@@ -480,6 +515,8 @@ void tilemap_reset_gen_cancel();
 int   wrap_x(int x);
 int   wrap_y(int y);
 bool  in_world(int* x, int* y);
+// Which village's footprint tile (x, y) lies in, or -1 (src/tilemap.cpp).
+int   village_at(const Tilemap* map, int x, int y);
 int   wrap_dx(int dx);
 int   wrap_dy(int dy);
 float wrap_dpx(float dx);     // the same, in pixels
@@ -516,11 +553,17 @@ float tilemap_cliff_facing_at(int x, int y);
 // build on. Filled by the town pass and handed to gen_trace_shore() under
 // GEN_TRACE (tools/coastprobe.cpp); the shipping build neither counts nor
 // reports, and there is no second copy of the search to drift from this one.
+// The most of the coastal town's boardwalk floor that may lie on dry ground:
+// the walk coming ashore at its landing. Measured over 300 worlds, a landing
+// is 0 to 6 cells and a shed's bay on a headland is 11 or more.
+#define TOWN1_WHARF_DRY_MAX 6
+
 struct ShoreTally {
     int windows;      // windows examined -- one per line the coast is long
-    int no_coast;     // the sea never reaches inland anywhere in the window
+    int no_coast;     // the coast swings too far in the window for the town's whole edge to stand over it
     int bounds;       // the shifted footprint would leave the map
     int near_town0;   // too close to the starting town
+    int headland;     // more than TOWN1_WHARF_DRY_MAX of the wharf's floor would lie on dry ground
     int unclean;      // something the town would have to level under the footprint
     int kept;         // clean survivors -- what the town is drawn from when there are any
     int coastal;      // windows genuinely on the coast, clean or not
@@ -529,5 +572,8 @@ struct ShoreTally {
     // A town is always coastal; these say what it cost to keep it there.
     int relaxed_cost;   // bad tiles under the chosen footprint, or -1
 };
+
+// Nearby closed chest: optionally open it, returning whether OPEN is available.
+bool tilemap_interact_chest(Tilemap* map, float x, float y, bool open);
 
 #endif

@@ -18,11 +18,11 @@ tile is at:
   faces       a 3-tile north face, 6 column phases (X / 16 mod 6) -- corridor
               faces plain, back walls with the desert's hieroglyph frieze
   rim         the wall top's quarter autotile (tools/dungeon_walls.py)
-  floor       a block's own, a cell or a few that repeat (FLOOR_AT): the ruins a
-              herringbone of 16 x 8 brick in dark slate; the desert tomb its
-              walls' own brick in sandstone a step down; the step pyramid its
-              walls' interlocking stones, quiet. The pyramids' are oblique, as
-              the graveyard's walkways are (floor_tile)
+  floor       a block's own, a cell or a few that repeat (FLOOR_AT): the desert
+              tomb its walls' own brick in sandstone a step down; the step
+              pyramid its walls' interlocking stones, quiet. Both oblique, as
+              the graveyard's walkways are (floor_tile). The ruins' is black,
+              with one brick's outline in slate here for the game to lay
   side        a chamber's slanted side wall, one flat dark tone, its diagonal
               floor edge and its corner line (user's rules)
   flights     a 45-degree flight is one 9-tile strip a column. The strip's
@@ -66,12 +66,12 @@ BLOCKS = {'egypt': (100, 44, 80, 10), 'maya': (100, 54, 80, 10), 'ruins': (180, 
           'barrow': (186, 44, 41, 4), 'graveyard': (228, 44, 26, 8)}
 # the floor's tones -- base 'F', shade 'f', joint 'j' -- from the interior
 # bible's materials (user, 2026-10-12): the desert tomb's is its walls'
-# sandstone a step down; the ruins' dark slate; the step pyramid's the same
-# slate kept quiet -- no shade, the joint one tone under the stone
+# sandstone a step down; the ruins' brick outline the stone's dark grey over
+# the slate (user: "C", the brighter line); the step pyramid's the slate kept quiet -- no shade, the joint one tone under the stone
 _SAND, _SLATE = st.MATERIALS['sandstone'], st.MATERIALS['slate']
 FLOOR = {'egypt': (_SAND['tones'][1], _SAND['tones'][2], _SAND['joint']),
          'maya': (_SLATE['tones'][0], _SLATE['tones'][0], _SLATE['tones'][1]),
-         'ruins': (_SLATE['tones'][0], _SLATE['tones'][1], _SLATE['joint']),
+         'ruins': (st.MATERIALS['stone']['tones'][2], _SLATE['tones'][0], _SLATE['joint']),
          'barrow': ('000000',) * 3, 'graveyard': ('000000',) * 3}
 # where a block's floor is, in cells from its corner; how many cells across
 # and down it repeats comes from its texture (mirrored in the .inc)
@@ -110,16 +110,20 @@ class Block:
                 self.put(col, row, x, y, c)
 
 
-def herringbone():
-    """16 x 8 bricks in herringbone (user: the ruins'): on the 8 px grid, by
-    (column - row) mod 4 -- 0, 1 a lying brick, 3 the top of a standing one, 2
-    its foot. 32 x 32."""
-    g = [[''] * 32 for _ in range(32)]
-    for y in range(32):
-        for x in range(32):
-            k = (x // 8 - y // 8) % 4
-            g[y][x] = (st.unit_tone(k * 8 + x % 8, y % 8, 16, 8, 'F', 'f', 'j') if k < 2
-                       else st.unit_tone(x % 8, (3 - k) * 8 + y % 8, 8, 16, 'F', 'f', 'j'))
+def brick_outline():
+    """The ruins' floor (user, 2026-10-13: "black with brick outlines"): one
+    16 x 8 brick lying on the black, seen from above ("not oblique
+    projection"), as a line -- 17 x 9 with the lines it shares with the bricks
+    beside and below it -- and a smaller broken outline inside it in the
+    shade. 32 x 16, the rest the key; the game lays it brick by brick
+    (draw_ruins_floor)."""
+    g = [['.'] * 32 for _ in range(16)]
+    for j in range(9):
+        for u in range(17):
+            if j in (0, 8) or u in (0, 16):
+                g[j][u] = 'F'
+    for j, u in ((3, 6), (3, 7), (3, 8), (4, 5), (4, 11), (5, 8), (5, 9), (5, 10)):
+        g[j][u] = 'f'
     return g
 
 
@@ -138,7 +142,7 @@ def oblique(g):
 def floor_tile(v):
     """A block's floor, rows of letters, a multiple of 16 each way."""
     if v == 'ruins':
-        return herringbone()
+        return brick_outline()
     if v == 'egypt':                             # the walls' own brick (pyramid_design.pattern's: 16 x 8, every other course half along)
         return oblique(st.bond(16, 16, 16, 8, 'F', 'f', 'j', wear=False))
     stones = [[None] * mm.PERIOD for _ in range(8 * mm.ROWS)]      # maya: the walls' own interlocking stones
@@ -431,6 +435,8 @@ static const int WALL_COL0[5] = { %d, %d, %d, %d, %d };
 static const int WALL_ROW0[5] = { %d, %d, %d, %d, %d };
 // A block's floor: its first cell, and how many cells across and down it
 // repeats -- the tile at (tx, ty) takes cell (tx mod across, ty mod down).
+// The ruins' is not a tile but one brick's outline in those cells, laid
+// brick by brick on black (draw_ruins_floor).
 static const int WALL_FLOOR[3][4] = { %s };
 enum {
     PYR_FACE_CORR = %d, PYR_FACE_BACK = %d,           // + phase, rows 0-2

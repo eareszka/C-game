@@ -162,6 +162,13 @@ seamcensus$(EXE): tools/seamcensus.cpp $(HEADLESS_OBJ)
 
 # The crafting rules (costs, re-forging, caps), asserted. Exits non-zero on a
 # broken one.
+# The story's rules (src/story.cpp): stage from the beaten bits, which boss
+# sites stand, the lead's compass, and every laid site on real worlds.
+storycheck: storycheck$(EXE)
+
+storycheck$(EXE): tools/storycheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/storycheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 craftcheck: craftcheck$(EXE)
 
 craftcheck$(EXE): tools/craftcheck.cpp $(HEADLESS_OBJ)
@@ -213,7 +220,7 @@ sheetcensus$(EXE): tools/sheetcensus.cpp $(SHEET_TRACE_OBJ)
 	$(HEADLESS_CXX) -DSHEET_TRACE -include include/sheet_trace.h tools/sheetcensus.cpp $(SHEET_TRACE_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 clean:
-	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) spawncensus$(EXE) battlecensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
+	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) spawncensus$(EXE) battlecensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) storycheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
 	rm -rf src/sheettrace
 
 endif

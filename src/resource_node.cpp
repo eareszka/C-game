@@ -30,6 +30,7 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
     n->reveal_tile_id = 0;
     n->reveal_tx = -1;
     n->reveal_ty = -1;
+    n->chest = 0;
 
     switch (type) {
         case RESOURCE_TREE:        n->hp = 3; break;
@@ -53,6 +54,13 @@ void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
     n->reveal_tile_id  = reveal_tile_id;
     n->reveal_tx       = hides_entrance ? reveal_tx : -1;
     n->reveal_ty       = hides_entrance ? reveal_ty : -1;
+}
+
+void resource_nodes_add_chest(ResourceNodeList* list, float x, float y)
+{
+    if (list->count >= MAX_RESOURCE_NODES) return;
+    resource_nodes_add(list, RESOURCE_GRAVESTONE, x, y);    // two blows, and no weapon's shortcut (node_target)
+    list->nodes[list->count - 1].chest = 1;
 }
 
 // ASCII placeholder colors for resource nodes
@@ -238,6 +246,11 @@ bool harvest_any_destroyed(const HarvestResult* r)
 
 // Flowers are hittable but pay nothing, so they report -1 and no inventory
 // entry is credited for them.
+static int node_award(ResourceType t);
+// What a blow on n reports: a chest pays nothing by the blow -- its owner pays
+// what it holds once it breaks open (dungeon_player_update).
+static int node_pays(const ResourceNode* n) { return n->chest == 1 ? -1 : node_award(n->type); }
+
 static int node_award(ResourceType t)
 {
     switch (t) {
@@ -285,6 +298,7 @@ static HarvestTarget node_target(ResourceType t)
 
 // One blow: its damage, and the shake it starts. Returns 1 if it finished the node.
 static int node_hit(ResourceNode* n, Weapon weapon) {
+    if (n->chest == 1) return 0;
     n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
     n->hit_at = SDL_GetPerformanceCounter();
     if (n->hp <= 0) { n->alive = 0; return 1; }
@@ -313,7 +327,7 @@ int resource_nodes_sweep(ResourceNodeList* list, float player_x, float player_y,
 
         int destroyed = node_hit(n, weapon);
 
-        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        harvest_add(out, cx, cy, node_pays(n), destroyed);
         struck++;
     }
     return struck;
@@ -345,7 +359,7 @@ int resource_nodes_thrust(ResourceNodeList* list, float px, float py, float angl
 
         int destroyed = node_hit(n, weapon);
 
-        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        harvest_add(out, cx, cy, node_pays(n), destroyed);
         struck++;
     }
     return struck;
@@ -366,7 +380,7 @@ int resource_nodes_strike_point(ResourceNodeList* list, float x, float y, float 
         int destroyed = node_hit(n, weapon);
 
         harvest_add(out, n->x + n->width * 0.5f, n->y + n->height * 0.5f,
-                    node_award(n->type), destroyed);
+                    node_pays(n), destroyed);
         return 1;
     }
     return 0;
@@ -391,7 +405,7 @@ int resource_nodes_try_hit(ResourceNodeList* list, float player_x, float player_
 
         int destroyed = node_hit(n, weapon);
 
-        harvest_add(out, cx, cy, node_award(n->type), destroyed);
+        harvest_add(out, cx, cy, node_pays(n), destroyed);
         struck++;
 
         if (!sweep) break;   // single-target weapons stop at the first node

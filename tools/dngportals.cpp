@@ -172,7 +172,7 @@ static int audit(int type, Form form, unsigned seed, float angle) {
     for (int p = 0; p < d->num_portals; p++) {
         int tx = d->portals[p].tx, ty = d->portals[p].ty;
         if (tx < 1 || ty < 1 || tx >= DMAP_W - 1 || ty >= DMAP_H - 1) continue;
-        if (d->tiles[ty - 1][tx] != DNG_WALL)
+        if (!(type == DUNGEON_ENT_CAVE && d->want_hole[p]) && d->tiles[ty - 1][tx] != DNG_WALL)
             fail(type, form, seed, angle, "way out not under a wall", p, (int)d->tiles[ty - 1][tx]);
         if (d->tiles[ty + 1][tx] == DNG_WALL)
             fail(type, form, seed, angle, "way out walled in to the south", p, 0);
@@ -190,7 +190,7 @@ static int audit(int type, Form form, unsigned seed, float angle) {
     for (int p = 0; p < d->num_portals; p++) {
         int tx = d->portals[p].tx, ty = d->portals[p].ty;
         bool taken = false;
-        for (int cy = (ty - 2) * DMAP_TILE; cy < (ty + 2) * DMAP_TILE && !taken; cy++)
+        for (int cy = (ty - 4) * DMAP_TILE; cy < (ty + 2) * DMAP_TILE && !taken; cy++)
             for (int cx = (tx - 2) * DMAP_TILE; cx < (tx + 3) * DMAP_TILE && !taken; cx++)
                 taken = dungeon_way_at(d, (float)cx, (float)cy) == p && fits((float)cx, (float)cy);
         if (!taken)
@@ -216,8 +216,62 @@ static int audit(int type, Form form, unsigned seed, float angle) {
         for (int n = 1; n <= 3; n++)
             for (int k = -1; k <= 1; k++)
                 if (dungeon_way_at(d, cx + k * n, cy - n) == p || dungeon_way_at(d, cx + k * n, cy) == p) near = n < near ? n : near;
-        if (near > 3)
+        if (type == DUNGEON_ENT_CAVE && d->want_hole[p]) {
+            // Entry stays on the floor; leaving requires a continuous climb
+            // from that floor to the hatch, rather than touching the foot.
+            float foot = d->portals[p].ty * DMAP_TILE;
+            float lx = (d->portals[p].tx + 0.5f) * DMAP_TILE - DMAP_TILE / 16.0f;
+            if (dungeon_way_at(d, lx, foot) >= 0)
+                fail(type, form, seed, angle, "ladder exits at its foot", p, 0);
+            for (float y = cy; y >= foot - 3 * DMAP_TILE + 2; y -= 1)
+                if (!fits(lx, y)) {
+                    fail(type, form, seed, angle, "exit ladder climb blocked", p, (int)y);
+                    break;
+                }
+            if (dungeon_way_at(d, lx, foot - 3 * DMAP_TILE + 2) != p)
+                fail(type, form, seed, angle, "hatch does not exit", p, 0);
+        } else if (near > 3)
             fail(type, form, seed, angle, "arrives away from the way out", (int)cx, (int)cy);
+    }
+
+    if (type == DUNGEON_ENT_PYRAMID) {
+        // Each room widens by one art pixel per row. Probe both sides of
+        // the drawn edge through the public collision API, in both variants.
+        const float scale = DMAP_TILE / 16.0f;
+        int terminal_shells = 0;
+        for (int i = 0; i < d->num_pyr_rooms; i++) {
+            int cx = d->pyr_rooms[i].cx, yb = d->pyr_rooms[i].yb;
+            for (int y = 0; y < 6 * 16; y++) {
+                int left = (cx - 3) * 16 - y;
+                int right = (cx + 4) * 16 - 1 + y;
+                for (int side = 0; side < 2; side++) {
+                    int edge = side ? right : left;
+                    int outside = edge + (side ? 1 : -1);
+                    float py = (yb * 16 + y + 0.5f) * scale;
+                    if (dungeon_solid_at(d, (edge + 0.5f) * scale, py) ||
+                        !dungeon_solid_at(d, (outside + 0.5f) * scale, py))
+                        fail(type, form, seed, angle, "chamber diagonal collision differs from art", i, y);
+                }
+            }
+            // Both endpoint chambers continue their closed side's diagonal
+            // through the front two rows, as the house room shell does.
+            bool terminal = false;
+            for (int side = 0; side < 2; side++) {
+                int tile_x = cx + (side ? 10 : -10);
+                if (d->art[yb + 6][tile_x] != (side ? 7 : 6)) continue; // WA_DIAG_R/L
+                terminal = true;
+                for (int y = 96; y < 128; y++) {
+                    int edge = side ? (cx + 4) * 16 - 1 + y : (cx - 3) * 16 - y;
+                    float py = (yb * 16 + y + 0.5f) * scale;
+                    if (dungeon_solid_at(d, (edge + 0.5f) * scale, py) ||
+                        !dungeon_solid_at(d, (edge + (side ? 1 : -1) + 0.5f) * scale, py))
+                        fail(type, form, seed, angle, "final chamber house outline blocked", i, y);
+                }
+            }
+            if (terminal) terminal_shells++;
+        }
+        if (terminal_shells != 2)
+            fail(type, form, seed, angle, "endpoint chamber house shells", terminal_shells, 2);
     }
 
     return (int)g_fails.size() - before;

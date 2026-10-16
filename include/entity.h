@@ -3,6 +3,9 @@
 
 #include "input.h"
 
+static const int INVENTORY_ITEM_CAPACITY = 128;
+static const int LEGACY_ITEM_COUNT = 30;
+
 // What a weapon or tool is made of. Mined in cave dungeons, one material per
 // enemy band -- see MATERIALS in src/dungeon.cpp for the floor and minimap
 // colours and the difficulty thresholds that gate them, tools/oreprof.cpp for
@@ -199,7 +202,7 @@ enum { INVENTORY_SLOTS = 6 };
 
 // Crafting materials enemies drop in battle -- a separate list from
 // ResourceType, which is the kinds of node on the map.
-enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_VINE, PART_FEATHER, PART_FUR, PART_COUNT };
+enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_VINE, PART_FEATHER, PART_FUR, PART_WING, PART_COUNT };
 
 // Display name, e.g. "HIDE": one list for the battle panel and the menus.
 const char* part_name(int part);
@@ -240,15 +243,25 @@ typedef struct {
     int   books[3];
     // The sleeping bag: the uses left in it (0 = none; one bag at a time).
     int   sleeping_bag;
+    // The boat's sail and the book that teaches it (the lighthouse keeper's,
+    // src/story.cpp): one of each is all there is.
+    int   sail_book;
+    int   sail;
+    // Aboard the boat (src/story.cpp story_boat_*): the sea is the floor and
+    // the land a wall, until the boy docks at the wharf's tip again.
+    int   at_sea;
     // Every item ever held, a bit per Item (include/crafting.h): what makes a
     // drop NEW on the victory panel. See items_note_gains().
-    unsigned items_found;
+    unsigned items_found; // legacy low 32 discovery bits
 
     // Every weapon the player could own, one per shape; owned[] says which
     // they have. equipped is the one in hand -- read it via equipped_weapon().
     Weapon     arsenal[WEAPON_COUNT];
     bool       owned[WEAPON_COUNT];
     WeaponType equipped;
+    // Appended storage preserves the complete V2 player prefix.
+    int extra_items[98];
+    unsigned long long found_extra[2];
 } Player;
 
 // The one way EXP is added: every level it crosses gives an HP bar

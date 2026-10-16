@@ -8,7 +8,7 @@
 // its order is the column order of the icon sheet (assets/items.png), so an
 // item's icon is just its index. Stone is the ore of a stone weapon and the
 // ROCK resource at once (see ore_count in resource_node.h).
-// (items_found in Player keeps a bit per item: no more than 32 of them.)
+// Existing IDs are stable; new items are appended and discovery spans multiple words.
 enum Item {
     ITEM_WOOD, ITEM_STONE, ITEM_GOLD, ITEM_FLOWER, ITEM_GRAVESTONE, ITEM_OILBLOOM,
     ITEM_HIDE, ITEM_BONE, ITEM_ESSENCE,
@@ -17,9 +17,55 @@ enum Item {
     ITEM_OLD_SPEARHEAD, ITEM_MOON_STEEL, ITEM_REAPERS_EDGE,   // found once: every dungeon of its kind holds it until one is taken
     ITEM_AXE_BOOK, ITEM_KATANA_BOOK, ITEM_SCYTHE_BOOK,          // teach a weapon, kept
     ITEM_FEATHER, ITEM_WHITE_FUR,                               // dropped: Qique; the bears
-    ITEM_SLEEPING_BAG,                                          // its count is the uses left
+    ITEM_SLEEPING_BAG,                                          // retired; retained only for old save IDs
+    ITEM_WING_SKIN, ITEM_SAIL_BOOK, ITEM_SAIL,                  // the boat's sail: Ebigane's wing, the keeper's book, the sail itself (kept)
+    ITEM_EYE_LENS,
+    ITEM_HORN,
+    ITEM_EVERLASTING_EMBER,
+    ITEM_WATER_RING,
+    ITEM_GILLS,
+    ITEM_REGENERATIVE_TISSUE,
+    ITEM_POISON_GLAND,
+    ITEM_PLAGUE_RESIDUE,
+    ITEM_LAVA_CHARM,
+    ITEM_WIND_SINEW,
+    ITEM_GRIP_SCALES,
+    ITEM_ENCHANTED_WOOD,
+    ITEM_BAND_AID,
+    ITEM_ANTIDOTE,
+    ITEM_CAMPFIRE,
+    ITEM_MEDKIT,
+    ITEM_BOMB,
+    ITEM_SMOKE_BOMB,
+    ITEM_ESCAPE_CHARM,
+    ITEM_COLD_GEAR,
+    ITEM_SPYGLASS,
+    ITEM_DIVING_FINS,
+    ITEM_SWIFT_BOOTS,
+    ITEM_COMPASS,
+    ITEM_O2_CHARM,
+    ITEM_BINOCULARS,
+    ITEM_KNIFE_BOOK,
+    ITEM_DAGGER_BOOK,
+    ITEM_CLUB_BOOK,
+    ITEM_BAND_AID_BOOK,
+    ITEM_ANTIDOTE_BOOK,
+    ITEM_CAMPFIRE_BOOK,
+    ITEM_MEDKIT_BOOK,
+    ITEM_BOMB_BOOK,
+    ITEM_SMOKE_BOMB_BOOK,
+    ITEM_ESCAPE_CHARM_BOOK,
+    ITEM_COLD_GEAR_BOOK,
+    ITEM_HALBERD_BOOK,
+    ITEM_SPYGLASS_BOOK,
+    ITEM_DIVING_FINS_BOOK,
+    ITEM_SWIFT_BOOTS_BOOK,
+    ITEM_COMPASS_BOOK,
+    ITEM_O2_CHARM_BOOK,
+    ITEM_BINOCULARS_BOOK,
     ITEM_COUNT   // keep last -- number of items, not an item
 };
+static_assert(ITEM_COUNT <= INVENTORY_ITEM_CAPACITY, "inventory capacity");
 
 int&        item_slot(Player* p, Item it);    // the counter itself
 int         item_count(const Player* p, Item it);
@@ -32,12 +78,19 @@ Item        part_item(int part);              // the item a MonsterPart is
 // went up is found. `last` starts as a snapshot (items_note_gains with
 // prime = true), which marks nothing.
 void        items_note_gains(Player* p, int last[ITEM_COUNT], bool prime);
+// No count goes past this (the user, 2026-10-14): items_note_gains clamps
+// every item each frame, so every way of gaining one is covered at once.
+const int   ITEM_MAX = 999;
 void        item_mark_found(Player* p, Item it);
 bool        item_found(const Player* p, Item it);
 // A material -- something gathered, mined or dropped, of which there is
 // always more -- rather than a thing made, found once or learned (the raft,
 // the special parts, the books).
-inline bool item_is_material(Item it) { return it <= ITEM_VINE || it == ITEM_FEATHER || it == ITEM_WHITE_FUR; }
+bool item_is_material(Item it);
+bool item_is_book(Item it);
+int item_limit(Item it);
+const char* item_description(Item it);
+int item_icon(Item it);
 // Where a thing that is not a material comes from, for the menu to say: "FOUND
 // IN CATACOMBS", "SOLD IN A TOWN BOOK SHOP". Null for a material.
 const char* item_source(Item it);
@@ -57,14 +110,16 @@ struct Craft {
     WeaponType weapon;    // the result, if is_weapon
     Item       item;      // the result otherwise
     int        n;         // fixed ingredients
-    Cost       in[3];
+    Cost       in[4];
     int        ore;       // plus this many of an ore (0: none)
     Item       needs;     // held but not used up -- the book that teaches it; ITEM_COUNT for none
     int        max;       // the most of it there is any use having; 0 for no limit
-    Item       once;      // a weapon's special part, spent only the first time it is made; ITEM_COUNT for none
+    Item       once;      // first-craft dungeon part
+    int        price;     // reusable recipe book, in Gold
 };
 
 int          craft_count();
+bool craft_buy_book(Player* p, const Craft& c);
 const Craft& craft_at(int i);
 const char*  craft_name(const Craft& c);
 // The ore it would be made in now: the best one the player can pay for --
@@ -90,11 +145,7 @@ bool   craft_make(Player* p, const Craft& c);
 // it pays for. Returns how many were written to out.
 int item_uses(Item it, const char* out[], int max);
 
-// The sleeping bag: made with SLEEPING_BAG_USES uses in it; each sleep
-// restores all HP and spends one, and the last one wears it out. Not while
-// being chased. False (nothing spent) if there is no bag or HP is full.
-enum { SLEEPING_BAG_USES = 5 };
-bool craft_sleep(Player* p);
+
 
 // ── Weapon upgrades, and taking a weapon in hand ─────────────────────────────
 Recipe oil_recipe(const Weapon& w);           // its next oil level

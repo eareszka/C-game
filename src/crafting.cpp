@@ -23,7 +23,13 @@ int& item_slot(Player* p, Item it) {
         case ITEM_FEATHER:       return p->parts[PART_FEATHER];
         case ITEM_WHITE_FUR:     return p->parts[PART_FUR];
         case ITEM_SLEEPING_BAG:  return p->sleeping_bag;
-        default:              return ore_count(p, (Material)(MAT_BRONZE + (it - ITEM_BRONZE)));
+        case ITEM_WING_SKIN:     return p->parts[PART_WING];
+        case ITEM_SAIL_BOOK:     return p->sail_book;
+        case ITEM_SAIL:          return p->sail;
+        default:
+            if (it >= ITEM_BRONZE && it <= ITEM_REALITY_SHARD)
+                return ore_count(p, (Material)(MAT_BRONZE + (it - ITEM_BRONZE)));
+            return p->extra_items[(int)it - LEGACY_ITEM_COUNT];
     }
 }
 
@@ -31,44 +37,114 @@ int item_count(const Player* p, Item it) { return item_slot(const_cast<Player*>(
 
 const char* item_name(Item it) {
     static const char* NAMES[ITEM_COUNT] = {
-        "WOOD", "STONE", "GOLD", "FLOWER", "GRAVESTONE", "OILBLOOM",
-        "HIDE", "BONE", "ESSENCE",
-        "BRONZE", "EMERALD", "VEYRITE", "DRAVIUM", "KHARVITE", "REALITY SHARD",
-        "VINE", "RAFT BOOK", "RAFT",
-        "OLD SPEARHEAD", "MOON STEEL", "REAPER'S EDGE",
-        "AXE BOOK", "KATANA BOOK", "SCYTHE BOOK",
-        "FEATHER", "WHITE FUR", "SLEEPING BAG",
+        "WOOD",
+        "STONE",
+        "GOLD",
+        "FLOWER",
+        "GRAVESTONE",
+        "OILBLOOM",
+        "HIDE",
+        "BONE",
+        "SPIRIT ESSENCE",
+        "BRONZE",
+        "EMERALD",
+        "VEYRITE",
+        "DRAVIUM",
+        "KHARVITE",
+        "REALITY SHARD",
+        "VINE",
+        "RAFT BOOK",
+        "RAFT",
+        "OLD SPEARHEAD",
+        "MOON STEEL",
+        "REAPER'S EDGE",
+        "AXE BOOK",
+        "KATANA BOOK",
+        "SCYTHE BOOK",
+        "FEATHER",
+        "FUR",
+        "SLEEPING BAG",
+        "WING SKIN",
+        "SAIL BOOK",
+        "SAIL",
+        "EYE LENS",
+        "HORN",
+        "EVERLASTING EMBER",
+        "WATER RING",
+        "GILLS",
+        "REGENERATIVE TISSUE",
+        "POISON GLAND",
+        "PLAGUE RESIDUE",
+        "LAVA CHARM",
+        "WIND SINEW",
+        "GRIP SCALES",
+        "ENCHANTED WOOD",
+        "BAND-AID",
+        "ANTIDOTE",
+        "CAMPFIRE",
+        "MEDKIT",
+        "BOMB",
+        "SMOKE BOMB",
+        "ESCAPE CHARM",
+        "COLD-WEATHER GEAR",
+        "SPYGLASS",
+        "DIVING FINS",
+        "SWIFT BOOTS",
+        "COMPASS",
+        "O2 CHARM",
+        "BINOCULARS",
+        "KNIFE BOOK",
+        "DAGGER BOOK",
+        "CLUB BOOK",
+        "BAND-AID BOOK",
+        "ANTIDOTE BOOK",
+        "CAMPFIRE BOOK",
+        "MEDKIT BOOK",
+        "BOMB BOOK",
+        "SMOKE BOMB BOOK",
+        "ESCAPE CHARM BOOK",
+        "COLD-WEATHER GEAR BOOK",
+        "HALBERD BOOK",
+        "SPYGLASS BOOK",
+        "DIVING FINS BOOK",
+        "SWIFT BOOTS BOOK",
+        "COMPASS BOOK",
+        "O2 CHARM BOOK",
+        "BINOCULARS BOOK",
     };
     return (it >= 0 && it < ITEM_COUNT) ? NAMES[it] : "?";
 }
 
-static_assert(ITEM_COUNT <= 32, "Player::items_found has a bit per Item");
 
 const char* item_source(Item it) {
+    if (item_is_book(it)) return "SOLD IN A TOWN BOOK SHOP";
     switch (it) {
         case ITEM_OLD_SPEARHEAD: return "FOUND IN RUINS";
-        case ITEM_MOON_STEEL:    return "FOUND AT STONEHENGE";
-        case ITEM_REAPERS_EDGE:  return "FOUND IN CATACOMBS";
-        case ITEM_RAFT_BOOK:     return "FOUND IN THE FIRST TOWN";
-        case ITEM_AXE_BOOK: case ITEM_KATANA_BOOK: case ITEM_SCYTHE_BOOK:
-            return "SOLD IN A TOWN BOOK SHOP";
-        case ITEM_RAFT:          return "MADE";
-        case ITEM_SLEEPING_BAG:  return "MADE";
-        default:                 return nullptr;
+        case ITEM_MOON_STEEL: return "FOUND AT STONEHENGE";
+        case ITEM_REAPERS_EDGE: return "FOUND IN CATACOMBS";
+        default: return item_is_material(it) ? nullptr : "MADE";
     }
 }
 
 void items_note_gains(Player* p, int last[ITEM_COUNT], bool prime) {
     for (int it = 0; it < ITEM_COUNT; it++) {
+        if (item_count(p, (Item)it) > item_limit((Item)it)) item_slot(p, (Item)it) = item_limit((Item)it);
         int now = item_count(p, (Item)it);
         if (!prime && now > last[it]) item_mark_found(p, (Item)it);
         last[it] = now;
     }
 }
 
-void item_mark_found(Player* p, Item it) { p->items_found |= 1u << it; }
+void item_mark_found(Player* p, Item it) {
+    if (it < 0 || it >= ITEM_COUNT) return;
+    if (it < 32) p->items_found |= 1u << it;
+    else p->found_extra[(it - 32) / 64] |= 1ull << ((it - 32) % 64);
+}
 
-bool item_found(const Player* p, Item it) { return (p->items_found >> it) & 1u; }
+bool item_found(const Player* p, Item it) {
+    if (it < 0 || it >= ITEM_COUNT) return false;
+    return it < 32 ? (p->items_found >> it) & 1u : (p->found_extra[(it - 32) / 64] >> ((it - 32) % 64)) & 1ull;
+}
 
 Item part_item(int part) {
     switch (part) {
@@ -77,6 +153,7 @@ Item part_item(int part) {
         case PART_VINE:    return ITEM_VINE;
         case PART_FEATHER: return ITEM_FEATHER;
         case PART_FUR:     return ITEM_WHITE_FUR;
+        case PART_WING:    return ITEM_WING_SKIN;
         default:           return ITEM_HIDE;
     }
 }
@@ -105,22 +182,7 @@ static bool pay(Player* p, const Recipe& r) {
 // The axe, katana and scythe also need their book. The raft is the way off the
 // starting island: logs lashed with the vine a Treesqueak drops, made by
 // following the book in the town.
-#define NO ITEM_COUNT
-static const Craft CRAFTS[] = {
-    //       weapon          item       n  ingredients                            ore needs              max once
-    { true,  WEAPON_KNIFE,   NO,        1, { { ITEM_WOOD, 2 } },                    3, NO,                 0, NO },
-    { true,  WEAPON_CLUB,    NO,        1, { { ITEM_BONE, 3 } },                    3, NO,                 0, NO },
-    { true,  WEAPON_DAGGER,  NO,        1, { { ITEM_WOOD, 2 } },                    3, NO,                 0, NO },
-    { true,  WEAPON_AXE,     NO,        2, { { ITEM_WOOD, 2 }, { ITEM_VINE, 2 } },  3, ITEM_AXE_BOOK,      0, NO },
-    { true,  WEAPON_HALBERD, NO,        1, { { ITEM_WOOD, 2 } },                    3, NO,                 0, ITEM_OLD_SPEARHEAD },
-    { true,  WEAPON_KATANA,  NO,        1, { { ITEM_WOOD, 2 } },                    3, ITEM_KATANA_BOOK,   0, ITEM_MOON_STEEL },
-    { true,  WEAPON_SCYTHE,  NO,        1, { { ITEM_WOOD, 2 } },                    3, ITEM_SCYTHE_BOOK,   0, ITEM_REAPERS_EDGE },
-    { false, WEAPON_KNIFE,   ITEM_RAFT, 2, { { ITEM_WOOD, 10 }, { ITEM_VINE, 3 } }, 0, ITEM_RAFT_BOOK,     1, NO },
-    // The sleeping bag: hard to make on purpose -- a hide shell, Qique's
-    // feathers, and the white fur only the hard bears drop.
-    { false, WEAPON_KNIFE,   ITEM_SLEEPING_BAG, 3, { { ITEM_HIDE, 4 }, { ITEM_FEATHER, 6 }, { ITEM_WHITE_FUR, 3 } }, 0, NO, 1, NO },
-};
-#undef NO
+#include "craft_catalog.inc"
 static const int CRAFT_COUNT = (int)(sizeof(CRAFTS) / sizeof(CRAFTS[0]));
 
 int          craft_count()       { return CRAFT_COUNT; }
@@ -169,19 +231,14 @@ bool craft_make(Player* p, const Craft& c) {
         return ore >= 0 && craft_forge(p, c.weapon, (Material)ore);
     }
     if (!craft_ready(p, c) || !pay(p, craft_recipe(p, c, -1))) return false;
-    item_slot(p, c.item) += c.item == ITEM_SLEEPING_BAG ? SLEEPING_BAG_USES : 1;
-    return true;
-}
-
-bool craft_sleep(Player* p) {
-    if (p->sleeping_bag <= 0 || p->stats.hp >= p->stats.max_hp) return false;
-    p->stats.hp = p->stats.max_hp;
-    p->sleeping_bag--;
+    item_slot(p, c.item)++;
+    item_mark_found(p, c.item);
     return true;
 }
 
 int item_uses(Item it, const char* out[], int max) {
     int n = 0;
+    if (it == ITEM_GOLD && max > 0) out[n++] = "RECIPE BOOKS";
     bool ore = false;
     for (int m = 0; m < MAT_COUNT; m++) if (ore_item((Material)m) == it) ore = true;
     // What it goes into. Something most weapons take (wood, any ore) reads as
@@ -217,6 +274,7 @@ static const Craft& weapon_craft(WeaponType type) {
 }
 
 bool craft_forge(Player* p, WeaponType type, Material m) {
+    if (type < 0 || type >= WEAPON_COUNT || m < 0 || m >= MAT_COUNT) return false;
     Weapon& w = p->arsenal[type];
     const Craft& c = weapon_craft(type);
     if (!(p->owned[type] && w.material == m)) {
@@ -247,4 +305,52 @@ bool craft_echo(Player* p, WeaponType type) {
     if (!p->owned[type] || w.echo >= WEAPON_ECHO_MAX || !pay(p, echo_recipe(w))) return false;
     w.echo++;
     return true;
+}
+
+bool item_is_material(Item it) {
+    return (it >= ITEM_WOOD && it <= ITEM_VINE) || it == ITEM_FEATHER || it == ITEM_WHITE_FUR || it == ITEM_WING_SKIN || (it >= ITEM_EYE_LENS && it <= ITEM_ENCHANTED_WOOD);
+}
+bool item_is_book(Item it) {
+    for (const Craft& c : CRAFTS) if (c.needs == it) return true;
+    return false;
+}
+int item_limit(Item it) {
+    if (it == ITEM_SLEEPING_BAG) return 0;
+    if (item_is_book(it)) return 1;
+    for (const Craft& c : CRAFTS) if (!c.is_weapon && c.item == it) return c.max;
+    return ITEM_MAX;
+}
+bool craft_buy_book(Player* p, const Craft& c) {
+    if (item_count(p, c.needs) || item_count(p, ITEM_GOLD) < c.price) return false;
+    item_slot(p, ITEM_GOLD) -= c.price;
+    item_slot(p, c.needs) = 1;
+    item_mark_found(p, c.needs);
+    return true;
+}
+int item_icon(Item it) {
+    if (it < LEGACY_ITEM_COUNT) return it;
+    if (item_is_book(it)) return ITEM_RAFT_BOOK;
+    if (item_is_material(it)) return it == ITEM_EVERLASTING_EMBER ? ITEM_OILBLOOM : ITEM_ESSENCE;
+    return ITEM_RAFT;
+}
+const char* item_description(Item it) {
+    switch (it) {
+        case ITEM_BAND_AID: return "RESTORES SOME HEALTH";
+        case ITEM_MEDKIT: return "RESTORES FULL HEALTH";
+        case ITEM_ANTIDOTE: return "CURES POISON";
+        case ITEM_CAMPFIRE: return "PLACES A PERMANENT WARP POINT";
+        case ITEM_BOMB: return "AN EXPLOSIVE FOR BATTLES";
+        case ITEM_SMOKE_BOMB: return "BREAKS ENEMY PURSUIT";
+        case ITEM_ESCAPE_CHARM: return "RETURNS TO THE DUNGEON ENTRANCE";
+        case ITEM_COLD_GEAR: return "PROTECTS AGAINST COLD";
+        case ITEM_SWIFT_BOOTS: return "INCREASES WALK AND SPRINT SPEED";
+        case ITEM_DIVING_FINS: return "INCREASES UNDERWATER SPEED";
+        case ITEM_O2_CHARM: return "PREVENTS UNDERWATER OXYGEN LOSS";
+        case ITEM_SPYGLASS: return "SEE TIER 2 WHEN ZOOMED OUT";
+        case ITEM_BINOCULARS: return "SEE TIER 1 WHEN ZOOMED OUT";
+        case ITEM_COMPASS: return "REVEALS THE ENTIRE DUNGEON MAP";
+        case ITEM_LAVA_CHARM: return "RAFT PROTECTION AGAINST LAVA";
+        case ITEM_PLAGUE_RESIDUE: return "POISON COATING FOR A WEAPON";
+        default: return nullptr;
+    }
 }

@@ -244,7 +244,7 @@ static const EnemyTier ENEMY_TIERS[] = {
     T_UPPER,   T_UPPER,  T_BOSS1,  T_UPPER,  T_SEVERE, T_UPPER,  T_HARD,    // 21-27 desert
     T_UPPER,   T_ELITE,  T_BOSS1,  T_ELITE,  T_ELITE,  T_HARD,   T_BOSS2,   // 28-34 wasteland
     T_SEVERE,  T_SEVERE, T_SEVERE, T_SEVERE, T_HARD,   T_SEVERE, T_ELITE,   // 35-41 mountains
-    T_HARD,    T_HARD,   T_BOSS2,  T_SEVERE,  T_SEVERE, T_SEVERE, T_ELITE, T_BOSS2,   // 42-49 ocean
+    T_HARD,    T_HARD,   T_BOSS2,  T_SEVERE,  T_SEVERE, T_SEVERE, T_ELITE, T_BOSS1,   // 42-49 ocean (49 Physeter: tier 1, town 1 leads to it in act 1)
     // 50 on: cryptids added after the region blocks -- region in enemy_region.
     T_LOW,     T_ELITE,  T_BOSS2,                                            // 50 Teakettler, 51 Aspidochelone, 52 Sannaja
     // 53-64: fearsome critters (abookofcreatures.com), no sprites yet
@@ -257,13 +257,21 @@ static const EnemyTier ENEMY_TIERS[] = {
     T_UPPER, T_UPPER, T_UPPER, T_UPPER, T_UPPER, T_UPPER,   // 77-82
     T_HARD, T_HARD, T_HARD, T_HARD, T_HARD, T_HARD,   // 83-88
     T_HARD, T_SEVERE, T_SEVERE, T_SEVERE, T_SEVERE, T_SEVERE,   // 89-94
-    T_SEVERE, T_ELITE, T_ELITE, T_ELITE, T_ELITE,   // 95-99
+    T_SEVERE, T_ELITE, T_ELITE, T_BOSS2, T_ELITE,   // 95-99 (98 Boiuna: boss tier 2)
     T_BOSS3,                                        // 100 the flesh planet, the final boss
 };
 static const int ENEMY_COUNT = (int)(sizeof(ENEMY_TIERS) / sizeof(ENEMY_TIERS[0]));
 inline EnemyTier enemy_tier(int id) { return id >= 0 && id < ENEMY_COUNT ? ENEMY_TIERS[id] : T_UNSET; }
 inline bool enemy_is_boss(int id)  { return enemy_tier(id) >= T_BOSS1; }
 inline bool enemy_is_elite(int id) { return enemy_tier(id) == T_ELITE; }
+// Enemies that fly or float on the map: they cross walls, floors and chests.
+inline bool enemy_flies(int id) {
+    switch (id) {
+        case 7: case 10: case 12: case 16: case 56: case 57: case 67: case 68: case 69:
+        case 73: case 80: case 81: case 83: case 88: case 95: case 97: return true;
+    }
+    return false;
+}
 
 // Region: 0 grassland, 1 forest, 2 snow, 3 desert, 4 wasteland, 5 mountains,
 // 6 ocean. The original fifty are seven a region by id (ocean 42-49); every
@@ -285,7 +293,7 @@ inline int enemy_region(int id) {
 // so a tier still climbs in id order. UNSET: 50 + 25 per earlier unset.
 int enemy_defeat_exp(int enemy_id);
 
-// The monster part enemy_id drops when beaten.
+// Legacy single-part classification. Actual victory rewards are in loot.cpp.
 MonsterPart enemy_part(int enemy_id);
 
 // The colour enemy_id's bullets are drawn in.

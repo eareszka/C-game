@@ -106,9 +106,97 @@ The coastal town's, which is painted wood, not a material laid in units:
 
 A coastal house's chimney is the interiors' brick.
 
-The rest -- wasteland, lava, the trails, the town's pads, the sign, the
-player, the dead tree -- are not in the reference, so each has its own tones
-in the table until it is brought into line.
+The rest -- wasteland, lava, the town's pads, the sign, the player, the dead
+tree -- are not in the reference, so each has its own tones in the table
+until it is brought into line.
+
+**A road is the town's street carried out into the country** (the user,
+2026-10-13: "we need a new approach to overworld trails. they dont match the
+current artstyle and they dont connect to town trails well", then, of a first
+version 8 px wider than the street: "it needs to be thin enough to transition
+seemlessly"). It has no cells on the sheet. The game draws it
+(`draw_track` in `src/tilemap.cpp`) as the street's own band -- two tones,
+24 px deep across: three rows of edge, twenty of paving, one of edge --
+winding with the route and rounded at every bend, and it runs into a street's
+end with no join to see. So it keeps the ground rule without art: a flat fill,
+no speckle, no black. A wasteland trail is the same band.
+
+**A track is in the trail tones of the ground it lies on** (the user,
+2026-10-13: "trail colors need to match the biome they belong to"). Each
+ground names its two, paving and edge (`GroundBiome::track` in
+`src/tilemap.cpp`, cited here as materials); a road, a trail and a town's
+street are all the same band in them. Grass's are the start town's street,
+read off the sheet; the coastal town stands on meadow, so its streets are in
+meadow's. Where a track crosses from one ground to the next it changes tone
+with the grounds' own stippled fringe, pixel for pixel ("smooth trail
+transitions between biomes similar to how biome transitions currently are"),
+so there is no straight line across it anywhere.
+
+| Ground | Trail paving, edge |
+|---|---|
+| grass (`town pad`) | `d7a175` `8d6b4f` |
+| meadow | `b2966a` `967448` |
+| sand | `cebe82` `b29e5c` |
+| wasteland | `463422` `110000` |
+| snow | `c6ccda` `a4aaba` |
+
+**The desert's formations are objects, in materials already named** (the
+user, 2026-10-13: "we need many natural forming things in the desert since its
+pretty barren"). Ten of them, `art/structures/entrances/desert_design.py`, a
+column of one strip each, two cells tall: two saguaros, a barrel cactus and a
+prickly pear in foliage (plant green is the trees' green); a boulder, a pair
+of boulders and a rock spire in cliff rock (a spire is the rock the cliffs are,
+not the pyramid's cut sandstone); a dry shrub in bark; the Grootslang's skull and
+one coil of the Olgoi-Khorkhoi's spine in bone, the catacombs' two tones with
+the roster's bone white above them. Each keeps the objects' rule: one line round
+it, three colours and black, one ramp placed by form. What stands is solid on
+its bottom three rows and walked behind where it rises; the bones lie flat
+and are walked over.
+
+**A village is its ground's building set** (the user, 2026-10-13: "the
+buildings in the village and the architecture and 'vibe' must match the
+biome the village is in"). Five sets, `art/structures/villages/`, each three
+houses and a well in the houses' projection and parts (`tools/house_shapes.py`),
+every wall a material laid in units: grass, timber frames in bark with
+plaster panels in white paint under thatch (`c9a433`, eave shade `876a1f`),
+a brick chimney; meadow, a farm (the user, 2026-10-13: "meadow towns should
+be like farms", with "different house colors since the current approach
+looks like the lake town"): clapboard in yellow paint (`fae488`, `f0bc3c`)
+with white trim, the farmhouse under red paint and the cottage under green,
+a shed in red paint under slate, and a barn after the user's reference
+(2026-10-14): red boards, its gable end to the front, white corner boards
+and trim, X-braced double doors under a four-pane hayloft window, a gambrel
+roof running back in wood's `785830` lined black, its side in the red's
+shade under the eave as every house's is; sand, round houses (the
+user, 2026-10-14: "oblique projected but circular with the dome on top") in
+the pyramid's sandstone courses (`pyramid_tone`), the side turned away in
+its shade, under a dome on the rim -- the rim is an ellipse, so the dome
+shares the wall's cells and is the wall's own brick, a beehive -- and no
+windows (the user: "remove them"); snow, logs of wood, each lit along its top
+and dark beneath, under snow lying on the roof (white paint), a stone
+chimney; wasteland, ruined stone (the user: a "barracks settlement from Yume
+Nikki"): dark stone in the brick's courses weathered as the entrances are,
+under slate sheets, with a stovepipe of rust (`764c20`, `3e1c0e`). The wells
+are the landmark well itself -- the round drum (the user, 2026-10-14: "make
+sure wells are all round") -- in the set's stone, snow on its lit edges in
+snow.
+Thatch, rust and yellow paint are named here for the first time.
+
+**The wasteland ground is cracked earth** (the user, 2026-10-14, asked whether
+the grounds match and should be kept: the grass, meadow, snow, sand and
+water cells are the reference and stay; the wasteland, one near-black cell
+of single dots, was the odd one out and is redrawn to the ground rule).
+`art/ground/wasteland_design.py`, a block of six cells in the grass block's
+roles: a flat fill of `341e10`, cracks as short fissure strokes in the
+near-black `110000` drawn as the tufts' blades are, one long fissure across
+the clump pair, a pale clod of dirt's `583518` here and there, no black. Its
+track is bark's `463422` edged in the near-black. Sheet cols 27-29 rows 4-5,
+written by `gen_entrance_art.py --grounds`.
+
+**A town's ground is a biome**: its open ground, and what lies under its
+woods, its buildings and its streets. The starting town is grass; the coastal
+town is meadow (the user, 2026-10-13: "town 1's grass is meadow"), and its
+footprint fringes against the country round it as any two grounds do.
 
 **Rock that holds ore is in its ore's ramp** (`gen_cave_entrances.py`
 `TONES`): a cave's mouth, and a cliff with a cave in it. Stone's ramp there is
@@ -153,7 +241,12 @@ from the course above.
 - **A house's roof** is one tone in rows of shingles, black between them.
 - **Rock** (the cliffs) has no units and follows the interiors' rule whole:
   a base that is its lightest tone and most of it, a shade, black cracks. No
-  lit tone, no dither.
+  lit tone, no dither. The cliffs are painted so, from the very rows the
+  oasis cave's rock is (the user, 2026-10-13: "have cliff islands use the same
+  rock textures used in oasis caves so it fits the games artstyle more"):
+  every stone one flat tone, the mountain's base or its shade
+  (`art/cliffs/gen_cliff_texture.py` packs the drawing that way; the lit tone
+  of a mountain's ramp is not used on its rock).
 - **No noise.** Lone pixels are at most 1.4% of a piece (the church's 1.36%;
   the houses' are under 0.3%).
 
@@ -214,16 +307,16 @@ A pass is necessary, not sufficient. The checker cannot see a unit's size,
 where its lit row or its shade sits, which tone a plane takes, the projection,
 or whether an object is shaded by form. Those are read off the board. Where a
 piece has a source drawing it reads that, not the copy stamped into the sheet,
-and it reads the cliff's texture in the plain ramp, not as the game paints it
-per island. A new
+and it reads the cliffs' rock as the game paints it (the packed texture, in
+the plain ramp rather than each island's own). A new
 piece is checked once it is added to `PIECES`.
 
 ## Not covered
 
 Effects (steam, a weapon's swing). The menu's icons and a craftable placed in
 the world have their own bible, `ITEM_STYLE.md`. What has no art yet
-and still draws as a placeholder -- rocks, ore, bridges, flower and oilbloom
-nodes, villages -- is drawn to this bible when it is drawn.
+and still draws as a placeholder -- flower and oilbloom nodes -- is drawn
+to this bible when it is drawn.
 
 ## Rulings
 
@@ -280,6 +373,140 @@ projection is straight away from the viewer, and the wharf carries on along
 the same line; the wharf is one long deck, the lighthouse at its seaward tip
 (over a platform, and over a spur for the lighthouse).
 
+**A bridge is a boardwalk** (the user, 2026-10-13: "bridges should be like
+boardwalks. completely straight and using the oblique projection. the
+transition between trail and bridge should be seemless as well"). It is the
+wharf's deck, baked by the same script (`tools/town1_layout.py`
+`bridge_across`, `bridge_back`) into the same cells, a piece for every length
+of gap, and laid by the game (`lay_bridge` in `src/tilemap.cpp`). Over water
+or lava alike. One crossing east or west lies level, its ends slanted; one
+crossing north or south runs back at 45 degrees, up and to the right, as the
+north and south wharves do. Its floor is the track's own band -- 24 px, on
+the band's pixels -- so a track runs into it edge to edge. The posts stand in
+the gap only; a slanted deck's side face runs the whole way down to its lower
+corner (the user, 2026-10-13, of one that stopped at the bank's line). The
+feet cross on the floor's own pixels.
+
+**A trail comes to a bridge in line with it** (the user, 2026-10-13: "when a
+trail goes towards a bridge it must be the classic oblique projection style
+for a decent ammount of distance before joining with the bridge to make the
+transition not jnarring"; asked, they chose a slanted track in line and 6
+tiles). Six tiles of straight track on each bank (`BRIDGE_RUN`): level for a
+level bridge, and for a slanted one the band itself drawn slanted -- 24 px
+across, a pixel over for every row, three of edge on the far side and one on
+the near, the going-back street's make -- so trail and deck are one straight
+line and the bend into the winding trail is well away from the bridge. Where
+a place could not be reached with that much room, 2 tiles.
+
+**Landmarks** (the user, 2026-10-13: "we need something so whereever the
+player goes its fun and something new"): small places laid across the
+country, one kind to a ground, each with one cache that is struck open once
+and stays open. The place keeps its own kind's rules (the old well is built:
+stone in the entrances' courses and projection, its windlass in wood's mid
+tone). Every cache, a landmark's and a dungeon's alike, is one drawing, the
+chest (the user, 2026-10-14: "one sprite that more detailed and a flag is set
+once opened"): an object in wood's base and shade with iron (stone's base)
+for its bands, corner plates and lock strap, one black line round it, drawn
+shut and open (its lid thrown back, the inside dark). Drawn through the
+plugin from `art/structures/landmarks/<name>_design.py` (shared parts in
+`landmark_shapes.py`; the chest `chest_design.py`), laid at cells of its own
+on the sheet (`gen_entrance_art.py` `LANDMARKS`, `CHEST`, `--landmarks`), and
+listed in `PIECES`; a landmark's export leaves its cache's cell empty for
+the chest. The six places (2026-10-14): grass, the old well; forest, a
+woodshed of the snow villages' logs under bark, its open front stacked with
+log ends, and a ring of stones round a cold fire; sand, a stone head sunk to
+its lip (a flat bottom line is the sand closing over it); snow, a cairn of
+stones in base and shade with snow on what nothing sits on; wasteland, a cart
+burnt to its frame in the dead trees' bark; shore (sand or grass within five
+tiles of sea, river or pond), a rowing boat with planks stove in. Each cell
+keeps four colours; where a shed's lit log tops would make a fifth under the
+roof, they go first.
+
 The yard fence is in the interiors' wood, its shape as it was: two posts a
 cell, two rails (the user, 2026-10-12, over a stouter post a cell). Its tops
 take the lightest tone, its fronts the next, its sides the darkest.
+
+Trails take the tones of their ground, and change tone across a ground's
+edge with the same stipple the grounds do; the coastal town's ground is
+meadow, so its streets are in meadow's trail tones (the user, 2026-10-13).
+See "Materials". The four trail tones that are not grass's began as the
+user's earlier per-ground trail cells (since replaced by the drawn band) and
+are held to the image: a crossing shows two grounds and two bands, six
+colours in a cell, which is more than a sheet cell may hold; if that reads
+busy, the edge tone is shared between the two grounds.
+
+The desert is scattered with its formations (the user, 2026-10-13: "we need
+many natural forming things in the desert since its pretty barren"; see
+"Materials"). Worldgen's "Desert formations" lays them on bare sand after the
+entrances and before the roads, in stands -- cactus country and rock country,
+each a slow noise of its own -- with bones anywhere: about a tile in ten
+inside a stand and under one in fifty outside (the constants at the top of
+that pass). Never on a cliff, a trail, a bank, the oasis pond or the
+pyramid's court, and never two to a tile. The ten drawings were shown at 6x
+on sand beside the player before the install; which stay is the user's.
+
+The sprite board of 2026-10-13 -- every placeable thing but the houses, the
+cliffs and the roads -- brought these rulings (the user). Every dungeon
+entrance stays but the oasis and the cave. **The cave mouth is the interior's
+arch** ("have the cave entrance match the interior cave entrance ... the rim
+entrance"): the round-topped opening with its two-pixel rim cut in the
+cave's cobble, a ring of that cobble round it and the mountain's painted rock
+beyond (`cave_entrance_design.py`). **The oasis is redrawn whole**: new
+palms; the way in stays the cave's ladder hole and the pool is a circle
+("the oasis ladder should still be the default ladder sprite but the oasis
+water should be circular and correct"). **The green's furniture is built**
+("bench needs to be oblique projection, street lamp needs to be taller,
+fountain needs to be bigger"): the bench in the houses' projection, the lamp
+a cell taller, the fountain three cells wide. **The palm and the dead tree
+are redrawn with new shapes** to the trees' rule, three colours and black --
+so the palm's trunk is black with the dark green along its lit side, as the
+forest trees' trunks are, and the dead tree is in bark. The saguaro updated,
+the prickly pear larger, two large boulders for three small. **The desert's
+bones are its enemies'** ("the skull and bones should match random enemies
+sprites using the bible"): the Grootslang's skull, and one coil of the
+Olgoi-Khorkhoi's spine rising from the sand as the living worm's does; bone
+is three tones now, the roster's bone white over the catacombs' two.
+
+Villages are laid afresh for every seed, unlike the towns (the user,
+2026-10-13: "every layout of the villages are procgenerated for every seed
+unlike towns"; asked, they chose rural sets a biome, doors into the start
+town's rooms, a small hamlet, scenery only this round). A village is its
+ground's own ground made through its footprint, the towns' oblique street
+cells across it (the user, 2026-10-13: "villages should use the oblique
+projection road system for towns") in the ground's trail tones, flat to the
+gate's edge and capped at the other end, running on out of its gate to the
+road network, its ground's set of houses along the street's north side
+facing it, a well at the middle, a sign inside the gate, a fence at each end
+of the row where the set has wood, the ground's own trees on what is left,
+and now and then a second row behind a back street joined at the gate's far
+end (`stamp_village`). A farm always has its back row, and the barn stands
+first in it; its front row begins with the farmhouse; south of the street
+two fields side by side with a lane between, rows of earth with sprouts --
+ground, laid in the base as the streets are, never overlay art, or the
+fence takes the field for a building in its line and picks the wrong
+pieces -- each fenced as the graveyard's yard is (the user, 2026-10-14: "the oblique
+projection fence similar to the picture" -- `lay_yard`, one parallelogram
+for both), its two-tile gate opening on the street where the graveyard's
+opens south. The wasteland's huts stand shoulder to shoulder. Nothing else of the country is laid inside a footprint, and no dungeon entrance's surround reaches into one (the user, 2026-10-14: a catacombs' yard walled across a hamlet). Each door
+opens one of the start town's rooms, and the way out is the door walked in
+by.
+
+**The things to mine are objects in rock's ore ramp** (the user, 2026-10-15,
+over two veins and a cave crystal: "vein B, have cave rocks be the same shape
+but instead of gold vein its whatever material the cave offers").
+`art/structures/nodes/nodes_design.py`, two cells: the stone rock -- a broken
+boulder in stone's ore ramp, its top lit, a crack down its front -- and the
+vein, the same rock one flat grey cut by black cracks with nuggets of ore in
+it, lit and base. On the overworld the rock is `TILE_ROCK` and the vein, in
+gold (kharvite's tones, the gold icon's), `TILE_GOLD_ORE`, at sheet cells
+30-31 row 176 (`gen_entrance_art.py` `NODES`, `--landmarks`). In a cave the
+node is the vein with the cave's own ore in it (`tools/gen_cave_tiles.py`
+`lay_node`, cell 4 of row 0 of each ore's block); a stone cave's is the
+plain rock, stone in stone being no vein. The hand-painted crystal is gone.
+A vein twinkles (the user, 2026-10-15: "the specs or veins should twinkle
+similar to the parallax background used in cave systems"): one nugget at a
+time flares into a cross of its lit tone, as the cave's glints do, a step
+every 0.7 s, plain and then each of three nuggets, every vein on a clock of
+its own (`vein_frame`); the stone rock is still. A node is stood as the
+desert's things are -- solid on its bottom three rows, walked behind above
+them -- and shakes when struck, as everything farmable does.

@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "dungeon_wall_tiles.inc"   // tools/gen_dungeon_wall_tiles.py: where the interiors' wall pieces sit
 #include "cave_rock.inc"            // tools/gen_cave_tiles.py: the cave rock's pieces in a cave's block
+#include "landmarks.inc"            // gen_entrance_art.py: the chest's cells (CHEST_COL, CHEST_ROW)
 
 // ── Color palettes per dungeon type ───────────────────────────────────────
 struct DngPalette { SDL_Color wall, floor, entry, exit_; };
@@ -254,6 +255,18 @@ static bool terraced(const DungeonMap* dmap) {
 static const int CAVE_HATCH_UP = 4;                       // cells from the floor to the hatch's top
 static bool cave_ladder_out(const DungeonMap* d, int p) {
     return d->type == DUNGEON_ENT_CAVE && d->want_hole[p];
+}
+// Portal ladders end at a hatch, rather than connecting two terrace floors.
+// Coordinates match the baked cave picture and the terrace ladder helpers.
+static int cave_exit_ladder_at(const DungeonMap* d, float x, float y, float reach = 0) {
+    for (int p = 0; p < d->num_portals; p++) {
+        if (!cave_ladder_out(d, p)) continue;
+        float lx = d->portals[p].tx * 16 - d->tree_ox;
+        float foot = d->portals[p].ty * 16 - d->tree_oy;
+        if (x >= lx && x < lx + 16 && y >= foot - CAVE_HATCH_UP * 16 && y < foot + reach)
+            return p;
+    }
+    return -1;
 }
 
 // A way out's wall stands across the back of its landing, GYW_FOOT deep: its
@@ -949,6 +962,25 @@ static inline uint8_t pyr_flight_p(int row, int kind, int dir, int ipar) {
     return (uint8_t)(row | kind << 4 | dir << 6 | ipar << 7);
 }
 
+// Match rim_floor_side() and strip_u() in gen_dungeon_wall_tiles.py.
+// A diagonal tile contains both wall and floor; flight floor edges also
+// cross tile boundaries, so neither can use the coarse navigation tiles.
+static bool pyramid_solid(const DungeonMap* d, int x, int y) {
+    int tx = x / 16, ty = y / 16, lx = x % 16, ly = y % 16;
+    if (x < 0 || y < 0 || tx >= DMAP_W || ty >= DMAP_H) return true;
+    switch (d->art[ty][tx]) {
+        case WA_FLOOR: return false;
+        case WA_DIAG_L: return lx + ly <= 15;
+        case WA_DIAG_R: return 15 - lx + ly <= 15;
+        case WA_FLIGHT: {
+            int p = d->art_p[ty][tx], row = p & 15, dir = (p >> 6) & 1;
+            int u = row * 16 + ly + (dir ? -lx : lx) - 9;
+            return u <= 71 || u >= 104;
+        }
+        default: return d->tiles[ty][tx] == DNG_WALL;
+    }
+}
+
 static const int PYR_BW = 7, PYR_H = 8, PYR_SW = PYR_H - 2;
 static const int PYR_HALF = PYR_BW / 2 + PYR_SW;          // centre to outer column
 static const int PYR_ROOM_W = 2 * PYR_HALF + 1;
@@ -967,23 +999,23 @@ static void pyr_cell_pos(int c, int r, int* cx, int* yb) {
     *yb = 40 + r * PYR_ROW_H;
 }
 
-static void pyr_room_tiles(int c, int r, std::vector<PyrTile>& t) {
+static void pyr_room_tiles(int c, int r, std::vector<PyrTile>& t, int slope = PYR_SW) {
     int cx, yb; pyr_cell_pos(c, r, &cx, &yb);
     int xl = cx - PYR_BW / 2, xr = cx + PYR_BW / 2;
     auto add = [&](int x, int y, uint8_t a, uint8_t p) { t.push_back({(int16_t)x, (int16_t)y, a, p}); };
-    for (int k = 0; k < PYR_SW; k++) {
+    for (int k = 0; k < slope; k++) {
         int y = yb + k;
         for (int x = xl - k; x <= xr + k; x++) add(x, y, WA_FLOOR, 0);
         add(xl - k - 1, y, WA_DIAG_L, 0); add(xr + k + 1, y, WA_DIAG_R, 0);
-        for (int x = xl - PYR_SW; x < xl - k - 1; x++) add(x, y, WA_SIDE_L, 0);
-        for (int x = xr + k + 2; x <= xr + PYR_SW; x++) add(x, y, WA_SIDE_R, 0);
+        for (int x = xl - slope; x < xl - k - 1; x++) add(x, y, WA_SIDE_L, 0);
+        for (int x = xr + k + 2; x <= xr + slope; x++) add(x, y, WA_SIDE_R, 0);
     }
-    for (int k = PYR_SW; k < PYR_H; k++)
-        for (int x = xl - PYR_SW; x <= xr + PYR_SW; x++) add(x, yb + k, WA_FLOOR, 0);
+    for (int k = slope; k < PYR_H; k++)
+        for (int x = xl - slope; x <= xr + slope; x++) add(x, yb + k, WA_FLOOR, 0);
     for (int y = yb - 3; y < yb; y++) {
         for (int x = xl; x <= xr; x++) add(x, y, WA_BACK, (uint8_t)(y - (yb - 3)));
-        for (int x = xl - PYR_SW; x < xl - 1; x++) add(x, y, WA_SIDE_L, 0);
-        for (int x = xr + 2; x <= xr + PYR_SW; x++) add(x, y, WA_SIDE_R, 0);
+        for (int x = xl - slope; x < xl - 1; x++) add(x, y, WA_SIDE_L, 0);
+        for (int x = xr + 2; x <= xr + slope; x++) add(x, y, WA_SIDE_R, 0);
         add(xl - 1, y, WA_END_L, 0); add(xr + 1, y, WA_END_R, 0);
     }
 }
@@ -1352,6 +1384,34 @@ static void carve_pyramid_layout(DungeonMap* dmap, uint32_t* rng) {
     int entry_i = lo + (int)(rng_next(rng) % (uint32_t)(hi - lo > 1 ? hi - lo : 1));
     int exit_i = (entry_i >= no - 1 - entry_i) ? 0 : no - 1;
     int alt_i = exit_i == 0 ? no - 1 : 0;
+    // Both endpoint chambers use the house-interior shell (interior_room.py):
+    // the diagonal wall feet continue all the way to the front corners,
+    // rather than ending in the two-row strip used by through chambers.
+    // Pair binding can enter from either end, so shaping only the initially
+    // selected exit leaves the other endpoint's last two edge tiles missing.
+    for (int last = 0; last < nrooms; last++) {
+        if (deg[last] > 1) continue;
+        int end_cx, end_yb;
+        pyr_cell_pos(rc[last], rr[last], &end_cx, &end_yb);
+        room.clear();
+        pyr_room_tiles(rc[last], rr[last], room, PYR_H);
+        pyr_commit(dmap, room);
+        // Keep the existing corridor as the opening in one side wall, like a
+        // house's side-wall entrance. Its landing remains at the original height.
+        if (deg[last]) {
+            int side = rc[nbr[last][0]] > rc[last] ? 1 : -1;
+            for (int k = PYR_SW; k < PYR_H; k++)
+                for (int off = PYR_HALF + 1; off <= PYR_BW / 2 + PYR_H; off++) {
+                    int x = end_cx + side * off, y = end_yb + k;
+                    dmap->art[y][x] = WA_FLOOR;
+                    dmap->art_p[y][x] = 0;
+                }
+        }
+        for (int y = end_yb - 3; y < end_yb + PYR_H; y++)
+            for (int x = end_cx - PYR_BW / 2 - PYR_H; x <= end_cx + PYR_BW / 2 + PYR_H; x++)
+                dmap->tiles[y][x] = dmap->art[y][x] == WA_FLOOR ? DNG_FLOOR : DNG_WALL;
+    }
+
     auto door = [&](int i, int* x, int* y) { pyr_cell_pos(rc[order[i]], rr[order[i]], x, y); };
     door(entry_i, &dmap->entry_x, &dmap->entry_y);
     door(exit_i, &dmap->exit_x, &dmap->exit_y);
@@ -1379,6 +1439,7 @@ static void carve_pyramid_layout(DungeonMap* dmap, uint32_t* rng) {
 // where it meets the ceiling; sections read off the shape; weed on the
 // seabed, its foot at the lowest of the seabed under it.
 #include "oasis.inc"
+#include "cliff_texture.inc"    // the rock, the overworld cliffs' own (CLIFF_TEX)
 static inline bool oasis_rock(const DungeonMap* d, int x, int y) {
     if (x < 0 || y < 0 || x >= d->oasis_w || y >= OASIS_PX_H) return true;
     return d->oasis_solid[y][x >> 3] >> (x & 7) & 1;
@@ -1874,6 +1935,7 @@ static const int TREE_U = 64, TREE_P = 3, TREE_TOP = 2, TREE_Z = 144;
 // Whether picture pixel (x, y) is ground the feet may stand on: a floor, or a ladder.
 static bool tree_walkable(const DungeonMap* d, int x, int y) {
     if (x < 0 || y < 0 || x >= d->tree_w || y >= d->tree_h) return false;
+    if (cave_exit_ladder_at(d, x, y) >= 0) return true;
     for (int t = 0; t < d->tree_n; t++)
         if (y >= d->tree_b[t][x] && y < d->tree_b[t + 1][x] - d->tree_z) return true;
     for (int i = 0; i < d->num_tree_ladders; i++) {
@@ -2281,7 +2343,7 @@ static void carve_cave_terraces(DungeonMap* d, uint32_t* rng) {
         d->tiles[d->portals[p].ty][d->portals[p].tx] = p ? DNG_EXIT : DNG_ENTRY;
 }
 
-// The crystals to mine: each a tile of a floor's open middle -- floor all
+// The ore veins to mine: each a tile of a floor's open middle -- floor all
 // round it, so none shuts a way -- marked in art[][] (a cave draws no tile
 // art) and solid until mined (tile_solid). Clear of the mouths and ladders.
 static void place_cave_nodes(DungeonMap* d, uint32_t* rng) {
@@ -2343,7 +2405,7 @@ static inline int dng_spawner_budget(DungeonEntranceType type) {
     return (type == DUNGEON_ENT_CATACOMBS) ? DMAP_MAX_SPAWNERS : DNG_SPAWNER_BUDGET;
 }
 static inline int dng_loot_budget(DungeonEntranceType type) {
-    return (type == DUNGEON_ENT_CATACOMBS) ? DMAP_MAX_LOOT : DNG_LOOT_BUDGET;
+    return (type == DUNGEON_ENT_CATACOMBS) ? DNG_LOOT_BUDGET_CAT : DNG_LOOT_BUDGET;
 }
 
 // Spread spawners across all floor tiles using a regular grid + local floor search.
@@ -2472,22 +2534,79 @@ static bool tile_in_the_open(const DungeonMap* dmap, int tx, int ty);   // besid
 // Spread loot across floor tiles using the same grid + local-search shape as
 // place_spawners, but biased away from the entrance and away from dead ends /
 // wall-hugging pockets, so it rewards exploring the dungeon's open rooms.
-// One loot tile: a gold square, or a treasure as its icon (assets/items.png,
-// the menu's own picture). Out of view either is a dim square -- the dark
-// keeps what it is to itself.
-static void draw_loot(SDL_Renderer* ren, const DungeonLoot& lo, int sx, int sy, int tsz) {
-    static SDL_Texture* icons = nullptr;
-    static bool tried = false;
-    if (!tried) { tried = true; icons = IMG_LoadTexture(ren, "assets/items.png"); }
-    if (lo.item >= 0 && icons) {
-        SDL_Rect src = { lo.item * 16, 0, 16, 16 }, dst = { sx, sy, tsz, tsz };
-        SDL_RenderCopy(ren, icons, &src, &dst);
-        return;
+// One chest, shut or open: the overworld caches' own drawing (the sheet's
+// CHEST cells, art/structures/landmarks/chest_design.py), shaking while it
+// is being struck as a struck node does.
+static void draw_loot(SDL_Renderer* ren, const DungeonMap* d, const DungeonLoot& lo, int sx, int sy, int tsz) {
+    if (lo.collected && lo.node >= 0 && !d->dungeon_rocks.nodes[lo.node].alive) return;
+    SDL_Texture* sheet = tilemap_get_town_tex();
+    if (!sheet) return;
+    int shake = lo.node >= 0 ? tilemap_shake_px(d->dungeon_rocks.nodes[lo.node].hit_at, tsz / (float)DMAP_TILE) : 0;
+    SDL_Rect src = { (CHEST_COL + (lo.collected ? 1 : 0)) * 16, CHEST_ROW * 16, 16, 16 }, dst = { sx + shake, sy, tsz, tsz };
+    SDL_RenderCopy(ren, sheet, &src, &dst);
+}
+
+// What of tile (tx, ty) a chest stands on, in world pixels: the bottom of its
+// drawing, a little in from the tile's sides (chest_design.py: the chest's
+// foot is its lowest rows, 2 to 14 across its 16).
+static bool chest_foot_at(const DungeonMap* d, float px, float py) {
+    for (int i = 0; i < d->num_loot; i++) {
+        if (d->loot[i].collected && d->loot[i].node >= 0 && !d->dungeon_rocks.nodes[d->loot[i].node].alive) continue;
+        float x0 = d->loot[i].tx * (float)DMAP_TILE, y0 = d->loot[i].ty * (float)DMAP_TILE;
+        if (px >= x0 + 4 && px < x0 + DMAP_TILE - 4 && py >= y0 + 16 && py < y0 + DMAP_TILE - 2) return true;
     }
-    int pad = tsz / 4;
-    SDL_Rect loot_rect = { sx + pad, sy + pad, tsz - 2*pad, tsz - 2*pad };
-    fc_draw_color(ren, 255, 215, 60, 255);
-    SDL_RenderFillRect(ren, &loot_rect);
+    return false;
+}
+
+// A cave's nodes to mine (place_cave_nodes) are the overworld's drawing in the
+// cave's ore (art/structures/nodes/nodes_design.py, one silhouette for all its
+// cells), so they take their feet from the overworld's cell: what of tile
+// (tx, ty) a node closes, and how far down its tile its foot begins.
+static const ArtCellDepth* node_depth() {
+    return tilemap_art_depth(TILE_TOWN0_BASE + NODE_ROW * TOWN0_SHEET_COLS + NODE_COL);
+}
+static bool node_foot_at(const DungeonMap* d, float px, float py) {
+    int tx = (int)(px / DMAP_TILE), ty = (int)(py / DMAP_TILE);
+    const ArtCellDepth* dep = node_depth();
+    if (d->type != DUNGEON_ENT_CAVE || !d->art[ty][tx] || !dep) return false;
+    int ax = (int)((px - tx * DMAP_TILE) * 16 / DMAP_TILE), ay = (int)((py - ty * DMAP_TILE) * 16 / DMAP_TILE);
+    return (dep->foot[ay & 15] >> (ax & 15)) & 1;
+}
+static float node_foot_top() {
+    const ArtCellDepth* dep = node_depth();
+    int ay = 0;
+    while (dep && ay < 15 && !dep->foot[ay]) ay++;
+    return ay * DMAP_TILE / 16.0f;
+}
+// Node n drawn: its frame (vein_frame: plain, or a nugget flared) from the
+// cave's block, shaking when struck.
+static void draw_cave_node(SDL_Renderer* ren, const DungeonMap* d, const ResourceNode& n, const Camera* cam, int tsz) {
+    SDL_Texture* sheet = tilemap_get_town_tex();
+    if (!sheet) return;
+    const int bx = cave_block_col(d) * 16;
+    int f = vein_frame((int)(n.x / DMAP_TILE), (int)(n.y / DMAP_TILE));
+    SDL_Rect src = f ? SDL_Rect{ bx + (f - 1) * 16, CAVE_FLARE_ROW * 16, 16, 16 } : SDL_Rect{ bx + 4 * 16, 0, 16, 16 };
+    SDL_Rect to = { cam_px(cam, n.x) + tilemap_shake_px(n.hit_at, tsz / (float)DMAP_TILE), cam_py(cam, n.y), tsz, tsz };
+    SDL_RenderCopy(ren, sheet, &src, &to);
+}
+
+bool dungeon_chest_tile(const DungeonMap* d, int tx, int ty) {
+    for (int i = 0; i < d->num_loot; i++)
+        if (d->loot[i].tx == tx && d->loot[i].ty == ty) return true;
+    return false;
+}
+
+static bool tile_solid(const void* map, float px, float py);
+
+// Room for a chest at (tx, ty): it and the eight tiles round it walkable all
+// over, by the dungeon's own rule (tile_solid, chests already placed
+// included). A chest with a ring of floor round it can block no way, however
+// narrow the paths of its dungeon are.
+static bool chest_room(const DungeonMap* d, int tx, int ty) {
+    for (float py = (ty - 1) * (float)DMAP_TILE + 2; py < (ty + 2) * DMAP_TILE; py += 4)
+        for (float px = (tx - 1) * (float)DMAP_TILE + 2; px < (tx + 2) * DMAP_TILE; px += 4)
+            if (tile_solid(d, px, py)) return false;
+    return true;
 }
 
 int dungeon_treasure_item(DungeonEntranceType type) {
@@ -2522,14 +2641,15 @@ static void place_treasure(DungeonMap* dmap) {
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.d2 > b.d2; });
     // farthest first; the pixel test runs only until one tile passes
     const Cand* pick = nullptr;
-    for (int pass = 0; pass < 3 && !pick; pass++)   // open room and uncovered; uncovered; any floor
+    for (int pass = 0; pass < 4 && !pick; pass++)   // open room, uncovered, a chest's room; uncovered, room; room; any floor
         for (const Cand& c : cands) {
             if (pass == 0 && !tile_open_interior(dmap, c.tx, c.ty)) continue;
             if (pass < 2 && !tile_in_the_open(dmap, c.tx, c.ty)) continue;
+            if (pass < 3 && !chest_room(dmap, c.tx, c.ty)) continue;
             pick = &c; break;
         }
     if (!pick) return;
-    // Room is always made for it: a full list gives up its last gold pile.
+    // Room is always made for it: a full list gives up its last gold chest.
     int slot = dmap->num_loot < DMAP_MAX_LOOT ? dmap->num_loot++ : DMAP_MAX_LOOT - 1;
     dmap->loot[slot] = { pick->tx, pick->ty, 0, false, item };
 }
@@ -2557,10 +2677,17 @@ static void place_loot(DungeonMap* dmap, uint32_t* rng) {
     int ox = (int)(rng_next(rng) % STEP);
     int oy = (int)(rng_next(rng) % STEP);
 
+    // A chest holds half again what a gold pile did: dungeons never filled
+    // the piles' old budget, and a chest, wanting floor all round it, finds
+    // a place three times for every four piles did (measured 2026-10-14), so
+    // a dungeon's gold is about what it was.
+    auto chest_gold = [&]() { return (10 + (int)(rng_next(rng) % 21) + (int)(dmap->difficulty * 15.0f)) * 3 / 2; };
+    struct Cand { int tx, ty, d2; };
+    std::vector<Cand> cands;
     int budget = dng_loot_budget(dmap->type);
     for (int gy = oy; gy < DMAP_H && dmap->num_loot < budget; gy += STEP) {
         for (int gx = ox; gx < DMAP_W && dmap->num_loot < budget; gx += STEP) {
-            int best_tx = -1, best_ty = -1, best_d2 = SEARCH * SEARCH + 1;
+            cands.clear();
             for (int dy = -SEARCH; dy <= SEARCH; dy++) {
                 for (int dx = -SEARCH; dx <= SEARCH; dx++) {
                     int tx = gx + dx, ty = gy + dy;
@@ -2571,50 +2698,47 @@ static void place_loot(DungeonMap* dmap, uint32_t* rng) {
                     if (dex*dex + dey*dey < entry_clear*entry_clear) continue;
 
                     if (!tile_open_interior(dmap, tx, ty)) continue;
-
-                    int d2 = dx*dx + dy*dy;
-                    if (d2 < best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+                    cands.push_back({ tx, ty, dx*dx + dy*dy });
                 }
             }
-            if (best_tx < 0) continue;
-            int gold = 10 + (int)(rng_next(rng) % 21) + (int)(dmap->difficulty * 15.0f);
-            dmap->loot[dmap->num_loot++] = { best_tx, best_ty, gold, false };
+            // nearest the grid point first; the dearer tests only until one passes: nothing
+            // drawn over it (tile_in_the_open: a chest behind a wall is never seen) and its room
+            std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.d2 < b.d2; });
+            for (const Cand& c : cands)
+                if (tile_in_the_open(dmap, c.tx, c.ty) && chest_room(dmap, c.tx, c.ty)) {
+                    dmap->loot[dmap->num_loot++] = { c.tx, c.ty, chest_gold(), false };
+                    break;
+                }
         }
     }
 
     // Fallback for tiny/cramped layouts where the grid search above found no
-    // candidate passing every filter — guarantee at least one loot item.
-    // Tier 1: farthest floor tile from the entrance that's still open
-    // interior (keeps the dead-end/wall-hugging rule). Tier 2: if the
-    // dungeon has no open-interior tile at all, fall back to any floor tile.
+    // candidate passing every filter -- at least one chest: the farthest floor
+    // tile from the entrance with a chest's room, in open interior and in the open
+    // if any is.
     if (dmap->num_loot == 0) {
-        int best_tx = -1, best_ty = -1, best_d2 = -1;
-        for (int ty = 1; ty < DMAP_H - 1; ty++) {
+        cands.clear();
+        for (int ty = 1; ty < DMAP_H - 1; ty++)
             for (int tx = 1; tx < DMAP_W - 1; tx++) {
                 if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
-                if (!tile_open_interior(dmap, tx, ty)) continue;
                 int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
-                int d2 = dex*dex + dey*dey;
-                if (d2 > best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
+                cands.push_back({ tx, ty, dex*dex + dey*dey });
             }
-        }
-        if (best_tx < 0) {
-            for (int ty = 1; ty < DMAP_H - 1; ty++) {
-                for (int tx = 1; tx < DMAP_W - 1; tx++) {
-                    if (dmap->tiles[ty][tx] != DNG_FLOOR) continue;
-                    int dex = tx - dmap->entry_x, dey = ty - dmap->entry_y;
-                    int d2 = dex*dex + dey*dey;
-                    if (d2 > best_d2) { best_d2 = d2; best_tx = tx; best_ty = ty; }
-                }
-            }
-        }
-        if (best_tx >= 0) {
-            int gold = 10 + (int)(rng_next(rng) % 21) + (int)(dmap->difficulty * 15.0f);
-            dmap->loot[dmap->num_loot++] = { best_tx, best_ty, gold, false };
-        }
+        std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.d2 > b.d2; });
+        const Cand* pick = nullptr;
+        for (int pass = 0; pass < 3 && !pick; pass++)   // open room, uncovered, room; uncovered, room; room
+            for (const Cand& c : cands)
+                if ((pass > 0 || tile_open_interior(dmap, c.tx, c.ty)) && (pass > 1 || tile_in_the_open(dmap, c.tx, c.ty))
+                    && chest_room(dmap, c.tx, c.ty)) { pick = &c; break; }
+        if (pick) dmap->loot[dmap->num_loot++] = { pick->tx, pick->ty, chest_gold(), false };
     }
 
     place_treasure(dmap);
+    for (int i = 0; i < dmap->num_loot; i++) {             // each takes its blows as a node
+        int n = dmap->dungeon_rocks.count;
+        resource_nodes_add_chest(&dmap->dungeon_rocks, (float)(dmap->loot[i].tx * DMAP_TILE), (float)(dmap->loot[i].ty * DMAP_TILE));
+        dmap->loot[i].node = dmap->dungeon_rocks.count > n ? n : -1;
+    }
 }
 
 // ── Public: generate ──────────────────────────────────────────────────────
@@ -3335,8 +3459,31 @@ void dungeon_update_sight(DungeonMap* d, int ptx, int pty) {
     d->num_lit = n;
 }
 
+static DungeonChestRecord s_chest_records[MAX_DUNGEON_CHEST_RECORDS];
+DungeonChestRecord* dungeon_chest_records(void) { return s_chest_records; }
+
+// Dungeon `seed`'s record, or -- make -- a free one taken for it; null when
+// it has none (or, past every record, none to be had).
+static DungeonChestRecord* chest_record(unsigned int seed, bool make) {
+    DungeonChestRecord* spare = nullptr;
+    for (DungeonChestRecord& r : s_chest_records) {
+        if (r.opened && r.seed == seed) return &r;
+        if (!r.opened && !spare) spare = &r;
+    }
+    if (!make || !spare) return nullptr;
+    spare->seed = seed;
+    return spare;
+}
+
 void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type, float difficulty, unsigned int seed) {
     generate_layout(dmap, type, difficulty, seed);
+    dmap->seed = seed;
+    if (const DungeonChestRecord* r = chest_record(seed, false))       // its chests opened before: open still
+        for (int li = 0; li < dmap->num_loot && li < 64; li++)
+            if ((r->opened >> li) & 1) {
+                dmap->loot[li].collected = true;
+                if (dmap->loot[li].node >= 0) { auto& node = dmap->dungeon_rocks.nodes[dmap->loot[li].node]; node.chest = 2; node.type = RESOURCE_TREE; node.hp = 3; }
+            }
     build_regions(dmap);
     // The box the floor fills, a wall ring round it (the ring is where
     // dungeon_seat_portals later stands the ways out): the minimap's frame.
@@ -3802,6 +3949,7 @@ static bool tile_solid(const void* map, float px, float py) {
     int tx = (int)(px / DMAP_TILE);
     int ty = (int)(py / DMAP_TILE);
     if (tx < 0 || tx >= DMAP_W || ty < 0 || ty >= DMAP_H) return true;
+    if (chest_foot_at(dmap, px, py)) return true;            // a chest, shut or open, in every kind of dungeon
     // the graveyard's walkways to the art pixel: their slanted edges block
     // where they are drawn, not on the tile grid
     if (gyw_walkways(dmap))
@@ -3813,8 +3961,10 @@ static bool tile_solid(const void* map, float px, float py) {
                              (int)floorf(py * 16 / DMAP_TILE) - dmap->oasis_y0);
     if (dmap->type == DUNGEON_ENT_CATACOMBS)                 // the feet taken back into the world
         return !cat_walkable(dmap, px * 16 / DMAP_TILE, py * 16 / DMAP_TILE);
+    if (dmap->type == DUNGEON_ENT_PYRAMID)
+        return pyramid_solid(dmap, (int)floorf(px * 16 / DMAP_TILE), (int)floorf(py * 16 / DMAP_TILE));
     if (terraced(dmap)) {                                    // floors and ladders to the art pixel
-        if (dmap->type == DUNGEON_ENT_CAVE && dmap->art[ty][tx]) return true;   // a crystal, the tile it stands on
+        if (node_foot_at(dmap, px, py)) return true;        // an ore vein, the foot it stands on
         return !tree_walkable(dmap, (int)floorf(px * 16 / DMAP_TILE) - dmap->tree_ox,
                               (int)floorf(py * 16 / DMAP_TILE) - dmap->tree_oy);
     }
@@ -3885,6 +4035,13 @@ int dungeon_way_at(const DungeonMap* dmap, float cx, float cy) {
     for (int p = 0; p < dmap->num_portals; p++) {
         float wx, wy, half;
         way_point(dmap, p, &wx, &wy, &half);
+        if (cave_ladder_out(dmap, p)) {
+            // Reach the bottom of the hatch with the player's feet before leaving.
+            float hatch = wy - (CAVE_HATCH_UP - 1) * DMAP_TILE;
+            if (fabsf(cx - wx) <= half && cy >= hatch - DMAP_TILE && cy <= hatch + 2)
+                return p;
+            continue;
+        }
         if (dmap->type == DUNGEON_ENT_OASIS) {
             // Surfaced under the ladder: the head up out of the water (as
             // dungeon_breathing has it), the body's middle under the ladder.
@@ -3913,6 +4070,12 @@ void dungeon_stand_before_way(const DungeonMap* dmap, DungeonPlayer* dp) {
     if (best < 0) return;
     float wx, wy, half;
     way_point(dmap, best, &wx, &wy, &half);
+    if (cave_ladder_out(dmap, best)) {
+        // Arrive on the floor, without descending or immediately taking the exit.
+        dp->x = wx - (HB_X1 + HB_X2) * 0.5f;
+        dp->y = wy + 8 + WAY_REACH + 1 - (HB_Y1 + HB_Y2) * 0.5f;
+        return;
+    }
     if (dmap->type == DUNGEON_ENT_OASIS) {
         // under the ladder, the head a pixel short of surfacing: one stroke up
         // and out (oasis_body: the head is 10 below the frame's top)
@@ -3953,16 +4116,15 @@ static bool tile_in_the_open(const DungeonMap* d, int tx, int ty) {
 
 // The check on it, from the other side: a baked picture (its origin on the
 // map and its pixels' rank, -1 where only the floor shows) must have nothing
-// on a treasure's tile. Says so on stderr if it has.
-static void warn_treasure_covered(const DungeonMap* d, int x0, int y0, int W, int H, const std::vector<int8_t>& rank) {
+// on a chest's tile. Says so on stderr if it has.
+static void warn_chest_covered(const DungeonMap* d, int x0, int y0, int W, int H, const std::vector<int8_t>& rank) {
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.item < 0) continue;
         int n = 0;
         for (int y = lo.ty * 16 - y0; y < lo.ty * 16 + 16 - y0; y++)
             for (int x = lo.tx * 16 - x0; x < lo.tx * 16 + 16 - x0; x++)
                 if (x >= 0 && y >= 0 && x < W && y < H && rank[y * W + x] >= 0) n++;
-        if (n) fprintf(stderr, "treasure under a wall: type %d tile %d,%d (%d px)\n", (int)d->type, lo.tx, lo.ty, n);
+        if (n) fprintf(stderr, "chest under a wall: type %d tile %d,%d (%d px)\n", (int)d->type, lo.tx, lo.ty, n);
     }
 }
 
@@ -4026,12 +4188,12 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     // the dungeon's equivalent of the gravestone-reveal tile write in
     // overworld_update() (src/overworld.cpp).
     for (int i = 0; i < h->count; i++) {
-        if (!h->hits[i].destroyed) continue;
+        if (!h->hits[i].destroyed || h->hits[i].resource != RESOURCE_ROCK) continue;
         int rtx = (int)(h->hits[i].x / DMAP_TILE);
         int rty = (int)(h->hits[i].y / DMAP_TILE);
         if (rtx < 0 || rtx >= DMAP_W || rty < 0 || rty >= DMAP_H) continue;
         dmap->tiles[rty][rtx] = DNG_FLOOR;
-        dmap->art[rty][rtx]   = 0;                     // a cave's crystal stood here (place_cave_nodes)
+        dmap->art[rty][rtx]   = 0;                     // a cave's ore vein stood here (place_cave_nodes)
     }
 
     float dx = 0.0f, dy = 0.0f;
@@ -4054,6 +4216,15 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         feet_art(&fx, &fy);
         bool on = tree_on_ladder(dmap, fx, fy);
         int lad = tree_ladder_at(dmap, fx, fy, dy);
+        int exit_lad = cave_exit_ladder_at(dmap, fx, fy, dy < 0 ? 4 : 0);
+        if (exit_lad >= 0 && (dy < 0 || cave_exit_ladder_at(dmap, fx, fy) >= 0)) {
+            float sx = (dmap->portals[exit_lad].tx + 0.5f) * DMAP_TILE - 1 / ART - (HB_X1 + HB_X2) * 0.5f;
+            float step = dp->speed * dt;
+            float nx = dp->x + std::max(-step, std::min(step, sx - dp->x));
+            if (can_occupy(dmap, nx, dp->y, tile_solid)) dp->x = nx;
+            dx = 0;
+            dy = dy < 0 ? -1.0f : dy > 0 ? 1.0f : 0;
+        }
         if (lad >= 0 && (dy != 0.0f || on)) {
             const float LADDER_LEAN = 1;
             float sx = (dmap->tree_ox + dmap->tree_ladders[lad].x0 + 8 - LADDER_LEAN) / ART - (HB_X1 + HB_X2) * 0.5f;
@@ -4106,7 +4277,8 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
             }
             dp->x = bx; dp->y = by;
         }
-        if (dp->x == px && dp->y == py && fixed_ways(dmap) && !iso && (dx == 0.0f) != (dy == 0.0f)) {
+        bool slide_walls = fixed_ways(dmap) || dmap->type == DUNGEON_ENT_PYRAMID;
+        if (dp->x == px && dp->y == py && slide_walls && !iso && (dx == 0.0f) != (dy == 0.0f)) {
             float step = (dx != 0.0f ? fabsf(dx) : fabsf(dy)) * dp->speed * dt;
             bool along = false;
             for (int sgn = -1; sgn <= 1 && !along; sgn += 2) {
@@ -4119,13 +4291,13 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
             if (!along) dp->slide = 0;                       // a flat wall: no way along it
             else player->is_moving = 1;                      // between steps, still walking
         }
-        if (dp->x == px && dp->y == py && !(fixed_ways(dmap) && player->is_moving && dp->slide > 0))
+        if (dp->x == px && dp->y == py && !(slide_walls && player->is_moving && dp->slide > 0))
             player->is_moving = 0;
     }
     if (terraced(dmap)) {                                  // facing the ladder, up it or down
         float fx, fy;
         feet_art(&fx, &fy);
-        if (tree_on_ladder(dmap, fx, fy)) player->facing = FACE_UP;
+        if (tree_on_ladder(dmap, fx, fy) || cave_exit_ladder_at(dmap, fx, fy) >= 0) player->facing = FACE_UP;
     }
 
     dp->at_link = dmap->type == DUNGEON_ENT_CATACOMBS ? cat_link_at(dmap, dp) : -1;
@@ -4141,20 +4313,23 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     dp->at_exit  = wt == DNG_EXIT;
     dp->at_entry = wt == DNG_ENTRY;
 
-    // Loot pickup: auto-collect when standing on an unclaimed loot tile --
-    // gold into the purse, a treasure into the inventory.
+    // A chest whose node the swing has broken is open: what it held, gold
+    // into the purse or its treasure into the pack, and its bit set for good.
     dp->picked_item = -1;
+    dp->picked_gold = 0;
     for (int li = 0; li < dmap->num_loot; li++) {
         DungeonLoot& lo = dmap->loot[li];
-        if (lo.collected) continue;
-        if (lo.tx == tx && lo.ty == ty) {
-            lo.collected = true;
-            if (lo.item >= 0) {
-                item_slot(player, (Item)lo.item) += 1;
-                dp->picked_item = lo.item;
-            } else {
-                player->inventory[(int)RESOURCE_GOLD] += lo.gold;
-            }
+        if (lo.collected || lo.node < 0 || dmap->dungeon_rocks.nodes[lo.node].alive) continue;
+        lo.collected = true;
+        auto& wood = dmap->dungeon_rocks.nodes[lo.node];
+        wood.alive = 1; wood.chest = 2; wood.type = RESOURCE_TREE; wood.hp = 3;
+        if (li < 64) chest_record(dmap->seed, true)->opened |= 1ull << li;
+        if (lo.item >= 0) {
+            item_slot(player, (Item)lo.item) += 1;
+            dp->picked_item = lo.item;
+        } else {
+            player->inventory[(int)RESOURCE_GOLD] += lo.gold;
+            dp->picked_gold += lo.gold;
         }
     }
 
@@ -4343,6 +4518,40 @@ template <class Ok, class Put> static void torch_run(int n, Ok ok, Put put) {
     }
 }
 
+// The ruins' floor (user, 2026-10-13: "black with brick outlines"): black, and
+// here and there the outline of a brick lying on it, seen from above ("not
+// oblique projection"; the sheet's one, WALL_FLOOR). All are on one bond, the
+// walls' -- brick k of course c has its top-left corner at (16k, 8c), every
+// other course half a brick along -- so bricks side by side share a line.
+// Which are there is a hash: they come
+// in bunches of three by two, one bunch in RUINS_BUNCH there, RUINS_KEPT in
+// eight of its bricks kept. Only a brick wholly on open floor is drawn.
+static const int RUINS_BUNCH = 4, RUINS_KEPT = 5;
+static void draw_ruins_floor(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex,
+                             int tx0, int ty0, int tx1, int ty1, int tsz) {
+    auto open = [&](int tx, int ty) {
+        return tx >= 0 && ty >= 0 && tx < DMAP_W && ty < DMAP_H && d->art[ty][tx] == WA_FLOOR;
+    };
+    SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+    for (int ty = ty0; ty < ty1; ty++)
+        for (int tx = tx0; tx < tx1; tx++)
+            if (d->art[ty][tx] == WA_FLOOR || d->art[ty][tx] == WA_DIAG_L || d->art[ty][tx] == WA_DIAG_R) {
+                SDL_Rect r = { cam_px(cam, tx * DMAP_TILE), cam_py(cam, ty * DMAP_TILE), tsz, tsz };
+                SDL_RenderFillRect(ren, &r);
+            }
+    SDL_Rect src = { (WALL_COL0[WALL_RUINS] + WALL_FLOOR[WALL_RUINS][0]) * 16, (WALL_ROW0[WALL_RUINS] + WALL_FLOOR[WALL_RUINS][1]) * 16, 17, 9 };
+    for (int c = 2 * ty0 - 1; c < 2 * ty1; c++)
+        for (int k = tx0; k <= tx1; k++) {
+            const int ty = c >> 1;                                  // a bunch is a tile row's two courses
+            if (pyr_hash((uint32_t)((k + (ty & 1)) / 3), (uint32_t)ty) % RUINS_BUNCH ||
+                pyr_hash((uint32_t)k, (uint32_t)c) % 8 >= RUINS_KEPT) continue;
+            if (!open(k, ty) || !open(k + 1, ty) || (c & 1 && (!open(k, ty + 1) || !open(k + 1, ty + 1)))) continue;   // an odd course's foot is the next tile's top row
+            SDL_Rect dst = { cam_px(cam, (float)((16 * k + 8 * (c & 1)) * DMAP_TILE / 16)), cam_py(cam, (float)(8 * c * DMAP_TILE / 16)),
+                             src.w * tsz / 16, src.h * tsz / 16 };
+            SDL_RenderCopy(ren, tex, &src, &dst);
+        }
+}
+
 static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex,
                          int tx0, int ty0, int tx1, int ty1, int tsz) {
     const int blk = d->type == DUNGEON_ENT_RUINS ? WALL_RUINS : d->step_pyramid ? WALL_MAYA : WALL_EGYPT;
@@ -4351,7 +4560,9 @@ static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* 
         SDL_Rect src = { (c0 + col) * 16, (r0 + row) * 16, 16, 16 }, dst = { sx, sy, tsz, tsz };
         SDL_RenderCopy(ren, tex, &src, &dst);
     };
+    if (blk == WALL_RUINS) draw_ruins_floor(d, cam, ren, tex, tx0, ty0, tx1, ty1, tsz);
     auto ground = [&](int tx, int ty, int sx, int sy) {       // the block's floor, laid by where the tile is (WALL_FLOOR)
+        if (blk == WALL_RUINS) return;                         // laid already, under everything
         const int* f = WALL_FLOOR[blk];
         piece(f[0] + tx % f[2], f[1] + ty % f[3], sx, sy);
     };
@@ -4400,8 +4611,8 @@ static void draw_tile_art(const DungeonMap* d, const Camera* cam, SDL_Renderer* 
             if (d->tiles[ty][tx] == DNG_FLOOR)
                 for (int li = 0; li < d->num_loot; li++) {
                     const DungeonLoot& lo = d->loot[li];
-                    if (!lo.collected && lo.tx == tx && lo.ty == ty)
-                        draw_loot(ren, lo, sx, sy, tsz);
+                    if (lo.tx == tx && lo.ty == ty)
+                        draw_loot(ren, d, lo, sx, sy, tsz);
                 }
         }
 
@@ -4646,7 +4857,7 @@ static void barrow_bake(const DungeonMap* d, SDL_Renderer* ren) {
             }
     }
 
-    warn_treasure_covered(d, X0, Y0, W, H, rank);
+    warn_chest_covered(d, X0, Y0, W, H, rank);
     SDL_Surface* lit = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     if (!lit) return;
     s_barrow.tw = W / 16 + 1; s_barrow.th = H / 16 + 1;
@@ -4734,7 +4945,7 @@ static void draw_barrow(const DungeonMap* d, const Camera* cam, SDL_Renderer* re
             if (d->tiles[ty][tx] == DNG_FLOOR)
                 for (int li = 0; li < d->num_loot; li++) {
                     const DungeonLoot& lo = d->loot[li];
-                    if (!lo.collected && lo.tx == tx && lo.ty == ty) draw_loot(ren, lo, sx, sy, tsz);
+                    if (lo.tx == tx && lo.ty == ty) draw_loot(ren, d, lo, sx, sy, tsz);
                 }
         }
 }
@@ -4923,6 +5134,11 @@ static void graveyard_bake(const DungeonMap* d, SDL_Renderer* ren) {
         int g = FL(sx + 32, sy + 4) && fm[(sy + 4) * W + sx + 32] == BOARD ? GY_WALL_BOARD : GY_WALL_BRICK;
         bool ladder = d->portals[p].ow_type == DUNGEON_ENT_GRAVEYARD_SM;
         s_gyw.walls.push_back({ g, X0 + sx, Y0 + sy, ladder });
+        for (int li = 0; li < d->num_loot; li++) {         // warn_chest_covered's check, on the wall's box
+            int cx = d->loot[li].tx * 16, cy = d->loot[li].ty * 16;
+            if (cx < X0 + sx + 72 && cx + 16 > X0 + sx && cy <= Y0 + sy && cy + 16 > Y0 + sy - 63)
+                fprintf(stderr, "chest under a wall: type %d tile %d,%d\n", (int)d->type, d->loot[li].tx, d->loot[li].ty);
+        }
         blit(g, 0, 0, sx, sy - 63, 72, 64);
         if (ladder) {                                    // a length, a length, its foot: to the wall's top
             blit(GY_LADDER, 0, 0, sx + 24, sy - 47, 16, 16);
@@ -5007,8 +5223,8 @@ static void draw_graveyard(const DungeonMap* d, const Camera* cam, SDL_Renderer*
     flush();
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
-        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+        if (lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, d, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
     }
 }
 
@@ -5135,8 +5351,8 @@ static void draw_tree(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren,
     }
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
-        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+        if (lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, d, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
     }
 }
 
@@ -5274,8 +5490,18 @@ static void cave_bake(const DungeonMap* d, SDL_Renderer* ren) {
         int t = 0;
         if (y >= d->tree_b[0][x])
             while (t < N && !(y >= d->tree_b[t][x] - Z && y < d->tree_b[t][x])) t++;
-        const int x0 = x - x % C, dy = d->tree_b[t][std::min(x0 + C - 1, W - 1)] - d->tree_b[t][x0];
-        return dy >= 12 ? 1 : dy <= -12 ? -1 : 0;
+        const int16_t* b = d->tree_b[t];
+        const int x0 = x - x % C, x1 = std::min(x0 + C - 1, W - 1), dy = b[x1] - b[x0];
+        if (dy >= 12 || dy <= -12) return dy > 0 ? 1 : -1;
+        // a cell the band turns in, its ends level but not the edge between
+        // (user: a pillar of facing stone stood where a slope turned): the
+        // slope of the longer of its two parts, so the corner line marks the turn
+        int k = x0;
+        for (int i = x0; i <= x1; i++)
+            if (std::abs(b[i] - b[x0]) > std::abs(b[k] - b[x0])) k = i;
+        if (std::abs(b[k] - b[x0]) < 6) return 0;
+        const int s = k - x0 >= x1 - k ? b[k] - b[x0] : b[x1] - b[k];
+        return s > 0 ? 1 : s < 0 ? -1 : 0;
     };
     const int cw = W / C, ch = H / C;
     std::vector<int8_t> kind((size_t)cw * ch, 2);          // each cell's cave_piece_lean
@@ -5455,8 +5681,6 @@ static void draw_cave(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren,
     cave_bake(d, ren);
     SDL_Rect dst = { cam_px(cam, (float)(d->tree_ox * DMAP_TILE / 16)), cam_py(cam, (float)(d->tree_oy * DMAP_TILE / 16)),
                      d->tree_w * tsz / 16, d->tree_h * tsz / 16 };
-    SDL_Texture* sheet = tilemap_get_town_tex();
-    const int bx = cave_block_col(d) * 16;
     // The dark below (user: not the game's sprites -- "just glints of the
     // material color"): glints in the cave's own ore, scattered and twinkling
     // as the barrow's stars are. Only under the cave's own width, and only
@@ -5471,17 +5695,14 @@ static void draw_cave(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren,
     if (SDL_Texture* torch = s_cave.torches.empty() ? nullptr : torch_tex(ren, cave_flame(d)))
         for (int i = 0; i < (int)s_cave.torches.size(); i++)
             draw_torch(cam, ren, torch, s_cave.glow, i, d->tree_ox + s_cave.torches[i].x, d->tree_oy + s_cave.torches[i].y, tsz);
-    if (sheet)                                             // the crystals to mine, each on its tile
-        for (int i = 0; i < d->dungeon_rocks.count; i++) {
-            const ResourceNode& n = d->dungeon_rocks.nodes[i];
-            if (!n.alive) continue;
-            SDL_Rect src = { bx + 4 * 16, 0, 16, 16 }, to = { cam_px(cam, n.x), cam_py(cam, n.y), tsz, tsz };
-            SDL_RenderCopy(ren, sheet, &src, &to);
-        }
+    for (int i = 0; i < d->dungeon_rocks.count; i++) {     // the ore veins to mine, each on its tile
+        const ResourceNode& n = d->dungeon_rocks.nodes[i];
+        if (n.alive && !n.chest) draw_cave_node(ren, d, n, cam, tsz);
+    }
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
-        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+        if (lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, d, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
     }
 }
 
@@ -5745,7 +5966,7 @@ static void cat_bake(const DungeonMap* d, int a, SDL_Renderer* ren) {
                      [&](int x, int y) { return sheet(LADDER_COL0 * 16 + x, (k ? LADDER_ROW : LADDER_ROW + 1) * 16 + y); }, cc - 1);
     }
 
-    warn_treasure_covered(d, A.x0, A.y0, W, H, rank);
+    warn_chest_covered(d, A.x0, A.y0, W, H, rank);
     SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormat(0, W, H, 32, SDL_PIXELFORMAT_RGBA32);
     if (!surf) return;
     for (int y = 0; y < H; y++)
@@ -5785,14 +6006,14 @@ static void draw_catacombs(const DungeonMap* d, const DungeonPlayer* dp, const C
     }
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
-        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+        if (lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, d, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
     }
 }
 
 // ── Oasis: the picture ───────────────────────────────────────────────────
 // Baked once: the rock filled with the overworld cliffs' texture, each stone
-// one flat tone (OASIS_ROCK, tools/gen_oasis.py), in the oasis's darker olive
+// one flat tone (CLIFF_TEX, the very rows the cliffs are painted from), in the oasis's darker olive
 // -- line, 2d230c, 5c4616 -- outlined black; the water's dot lattice; the air. Every frame,
 // behind it: the water, the far wall and its light at a quarter of the
 // camera's pace (brighter shafts over a cavern), the far leviathan at a sixth,
@@ -5840,7 +6061,7 @@ static void oasis_bake(const DungeonMap* d, SDL_Renderer* ren) {
             if (oasis_rock(d, x, y)) {
                 bool edge = !oasis_rock(d, x - 1, y) || !oasis_rock(d, x + 1, y) ||
                             !oasis_rock(d, x, y - 1) || !oasis_rock(d, x, y + 1);
-                c = edge ? BLACK : RAMP[OASIS_ROCK[y % OASIS_ROCK_N][x % OASIS_ROCK_N] - '0'];
+                c = edge ? BLACK : RAMP[CLIFF_TEX[y % CLIFF_TEX_N][x % CLIFF_TEX_N] - '0'];
             } else {
                 for (int i = 0; i < d->num_oasis_air; i++) {
                     const auto& a = d->oasis_air[i];
@@ -5981,8 +6202,8 @@ static void draw_oasis(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren
         }
     for (int li = 0; li < d->num_loot; li++) {
         const DungeonLoot& lo = d->loot[li];
-        if (lo.collected || lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
-        draw_loot(ren, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
+        if (lo.tx < tx0 || lo.tx >= tx1 || lo.ty < ty0 || lo.ty >= ty1) continue;
+        draw_loot(ren, d, lo, cam_px(cam, (float)(lo.tx * DMAP_TILE)), cam_py(cam, (float)(lo.ty * DMAP_TILE)), tsz);
     }
 }
 
@@ -6080,6 +6301,23 @@ static void draw_front_px(const std::vector<uint32_t>& px, const std::vector<int
 }
 
 void dungeon_draw_front(const DungeonMap* dmap, const DungeonPlayer* dp, const Camera* cam, SDL_Renderer* ren) {
+    {   // a chest the player stands behind (feet above its foot, chest_foot_at), drawn again over them
+        int tsz = (int)(DMAP_TILE * cam->zoom); if (tsz < 1) tsz = 1;
+        float fy = dp->y + HB_Y2;
+        for (int i = 0; i < dmap->num_loot; i++) {
+            const DungeonLoot& lo = dmap->loot[i];
+            float x0 = lo.tx * (float)DMAP_TILE, y0 = lo.ty * (float)DMAP_TILE;
+            if (fy <= y0 + 16 && fy > y0 - DMAP_TILE && dp->x > x0 - DMAP_TILE && dp->x < x0 + DMAP_TILE)
+                draw_loot(ren, dmap, lo, cam_px(cam, x0), cam_py(cam, y0), tsz);
+        }
+        // a cave's ore vein the player stands behind (feet above its foot), the same
+        for (int i = 0; dmap->type == DUNGEON_ENT_CAVE && i < dmap->dungeon_rocks.count; i++) {
+            const ResourceNode& n = dmap->dungeon_rocks.nodes[i];
+            if (!n.alive || n.chest) continue;
+            if (fy <= n.y + node_foot_top() && fy > n.y - DMAP_TILE && dp->x > n.x - DMAP_TILE && dp->x < n.x + DMAP_TILE)
+                draw_cave_node(ren, dmap, n, cam, tsz);
+        }
+    }
     if (dmap->type == DUNGEON_ENT_STONEHENGE) {
         int fy = (int)floorf((dp->y + HB_Y2) * 16 / DMAP_TILE) - 1;               // the feet's last row
         draw_front_px(s_barrow.px, s_barrow.dep, s_barrow.w, s_barrow.h, dmap->barrow_x0, dmap->barrow_y0,
@@ -6214,8 +6452,8 @@ void dungeon_draw(const DungeonMap* dmap, const DungeonPlayer* dplayer,
             if (tile == DNG_FLOOR) {
                 for (int li = 0; li < dmap->num_loot; li++) {
                     const DungeonLoot& lo = dmap->loot[li];
-                    if (lo.collected || lo.tx != tx || lo.ty != ty) continue;
-                    draw_loot(ren, lo, sx, sy, tsz);
+                    if (lo.tx != tx || lo.ty != ty) continue;
+                    draw_loot(ren, dmap, lo, sx, sy, tsz);
                     has_loot = true;
                     break;
                 }

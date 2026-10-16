@@ -9,6 +9,7 @@
 #include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include "tilemap.h"
 #include "camera.h"
 #include "towns.h"
@@ -16,6 +17,7 @@
 #include "collision.h"
 #include "interior.h"
 #include "combat.h"
+#include "story.h"
 
 static Tilemap g_map;
 
@@ -146,6 +148,25 @@ int main(int argc, char** argv)
                 printf("type %d at %d,%d size %d biome %d\n", (int)e.type, e.x, e.y, e.size, e.biome);
         }
         printf("entrances with art %d, whole %d\n", n, whole);
+        return 0;
+    }
+
+    // SHOT_VILLAGES=1 lists every village: where it stands, its building set
+    // (src/village_houses.inc VillageSet) and its gate, so one can be shot.
+    if (getenv("SHOT_VILLAGES")) {
+        SDL_Surface* m = SDL_CreateRGBSurfaceWithFormat(0, 64, 64, 32, SDL_PIXELFORMAT_RGBA32);
+        tilemap_init_tile_cache(SDL_CreateSoftwareRenderer(m));
+        tilemap_build_overworld_phase1(&g_map, seed);
+        tilemap_build_overworld_phase2(&g_map, seed);
+        for (int i = 0; i < g_map.num_villages; i++) {
+            const VillagePlacement& v = g_map.villages[i];
+            printf("village %d at %d,%d set %d ground %d gate %d,%d\n", i, v.x, v.y, v.set, v.ground, v.gx, v.gy);
+            for (int d = 0; d < g_map.num_doors; d++) {
+                const InteriorDoor& dr = g_map.doors[d];
+                if (dr.x >= v.x && dr.x < v.x + VILLAGE_W && dr.y >= v.y && dr.y < v.y + VILLAGE_H)
+                    printf("  door %d at %d,%d w %d room %d\n", d, dr.x, dr.y, dr.w, dr.interior_id);
+            }
+        }
         return 0;
     }
 
@@ -286,12 +307,32 @@ int main(int argc, char** argv)
     tilemap_build_overworld_phase1(&g_map, seed);
     tilemap_build_overworld_phase2(&g_map, seed);
 
+    // SHOT_STORY=TURN (a stage's name or number): the world as that far into
+    // the story -- the hole's wasteland, ring, portal and pages:
+    //   SHOT_STORY=TURN shot.exe 387 hole.png 1478 1560 40 25
+    if (const char* ss = getenv("SHOT_STORY")) {
+        int s = atoi(ss);
+        for (int i = 0; i < STORY_STAGE_COUNT; i++)
+            if (strcmp(ss, STORY_STAGE_NAMES[i]) == 0) s = i;
+        story_set_stage((StoryStage)(s < 0 ? 0 : s >= STORY_STAGE_COUNT ? STORY_STAGE_COUNT - 1 : s));
+        story_hole_apply(&g_map);
+        printf("story stage %s\n", STORY_STAGE_NAMES[story_stage()]);
+    }
+
     const char* kind = getenv("SHOT_KIND");
     if (want_x < 0 && kind && kind[0] == 't') {
         // The spawn town, whose houses are the building art.
         want_x = g_map.towns[0].x + TOWN_W / 2 - tw / 2;
         want_y = g_map.towns[0].y + TOWN_H / 2 - th / 2;
         printf("centred on town 0 at %d,%d\n", g_map.towns[0].x, g_map.towns[0].y);
+    }
+    if (want_x < 0 && kind && kind[0] == 'v') {
+        // Village n (SHOT_KIND=v3), its footprint in the middle of the window.
+        int n = atoi(kind + 1);
+        if (n < 0 || n >= g_map.num_villages) n = 0;
+        want_x = g_map.villages[n].x + VILLAGE_W / 2 - tw / 2;
+        want_y = g_map.villages[n].y + VILLAGE_H / 2 - th / 2;
+        printf("centred on village %d at %d,%d set %d\n", n, g_map.villages[n].x, g_map.villages[n].y, g_map.villages[n].set);
     }
     if (want_x < 0 && kind && (kind[0] == 'f' || kind[0] == 'F')) {
         // Densest block of trees; 'F' only counts trees standing on snow.
@@ -307,6 +348,20 @@ int main(int argc, char** argv)
         }
         want_x = bx; want_y = by;
         printf("centred on tile %d,%d (%d trees)\n", bx, by, best);
+    }
+    if (want_x < 0 && kind && kind[0] == 'o') {
+        // The things to mine: densest block of rocks, a gold ore vein worth ten.
+        int best = -1, bx = MAP_WIDTH / 2, by = MAP_HEIGHT / 2;
+        for (int y = 0; y + th < MAP_HEIGHT; y += th / 2)
+        for (int x = 0; x + tw < MAP_WIDTH;  x += tw / 2) {
+            int n = 0;
+            for (int j = y; j < y + th; j++)
+            for (int i = x; i < x + tw; i++)
+                n += g_map.overlay[j][i] == TILE_GOLD_ORE ? 10 : g_map.overlay[j][i] == TILE_ROCK;
+            if (n > best) { best = n; bx = x; by = y; }
+        }
+        want_x = bx; want_y = by;
+        printf("centred on tile %d,%d (score %d)\n", bx, by, best);
     }
     if (want_x < 0) {
         // Densest block of cliff top, on a coarse grid. `kind` picks which
@@ -498,6 +553,7 @@ int main(int argc, char** argv)
         SDL_RenderClear(ren);
         tilemap_draw_base(&g_map, &cam, ren, 0);
         resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
+        story_hole_draw(ren, &cam, &g_map, false);          // the hole's ring (nothing before the turn)
         for (int i = each ? pic : 0; i < (each ? pic + 1 : np); i++) {
             float ox = px[i] - (HB_X1 + HB_X2) * 0.5f, oy = py[i] - (HB_Y1 + HB_Y2) * 0.5f;
             int k = i < nsw ? i : nsw - 1;      // this player's swing, if any
@@ -537,6 +593,7 @@ int main(int argc, char** argv)
                    !door ? "" : tilemap_way_in(&g_map, px[i], py[i]) ? ", enters" : ", on the entrance tile, not its way in");
         }
         tilemap_draw_depth(&g_map, &cam, ren, 0);
+        story_hole_draw(ren, &cam, &g_map, true);           // its portal and pages
         SDL_RenderPresent(ren);
         char name[512];
         if (each && np) snprintf(name, sizeof name, "%s.%d.png", out, pic);

@@ -37,6 +37,9 @@ typedef struct Overworld {
 
 } Overworld;
 
+// Aboard the boat (Player::at_sea), how fast it goes: half again a walk.
+constexpr float BOAT_SPEED = PLAYER_WALK_SPEED * 1.5f;
+
 void overworld_init(Overworld* ow, Player* player, float x, float y);
 // out_harvest, if given, is filled with everything this frame's swing struck —
 // one entry per node or tile, since a scythe sweep hits several at once.
@@ -46,6 +49,9 @@ void overworld_init(Overworld* ow, Player* player, float x, float y);
 // interior_id, or of the way in of the entrance at tile (tx, ty), a pixel clear
 // of its hitbox and facing out (stand_clear, collision.h).
 void overworld_stand_before_door(Overworld* ow, Player* player, const Tilemap* map, int interior_id);
+// Before door `idx` of map->doors: the one walked into, whichever room it opens
+// (a village's doors open the start town's rooms, so the room says nothing).
+void overworld_stand_before_door_idx(Overworld* ow, Player* player, const Tilemap* map, int idx);
 void overworld_stand_before_entrance(Overworld* ow, Player* player, const Tilemap* map, int tx, int ty);
 // Whether feet centred at (feet_x, feet_y) are in a dungeon entrance's way in.
 bool overworld_entrance_at(const Tilemap* map, float feet_x, float feet_y);

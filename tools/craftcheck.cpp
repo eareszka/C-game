@@ -1,205 +1,126 @@
-// The crafting rules, checked: the recipe table, best-ore choice, re-forging
-// keeping upgrades, caps, the raft and its book, and what USED FOR says.
-// Exits non-zero on the first broken rule.  make craftcheck && ./craftcheck
+// Approved crafting, capped loot, save migration, and menu rendering checks.
+// Run from the repository root: build.bat craftcheck && craftcheck.exe
 #include "crafting.h"
-#include "battle.h"     // weapon_profile, faster_fire_rate, faster_damage
-#include <assert.h>
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include "loot.h"
+#include "battle.h"
+#include "game_menu.h"
+#include "legacy_player_v2.h"
+#include "save.h"
+#include "dungeon.h"
+#include "story.h"
+#include <SDL2/SDL_image.h>
+#include <cassert>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
+#include <filesystem>
+#include <set>
+#include <algorithm>
 
-static const Craft& craft_for(WeaponType w) {
-    for (int i = 0; i < craft_count(); i++)
-        if (craft_at(i).is_weapon && craft_at(i).weapon == w) return craft_at(i);
-    assert(!"no craft for that weapon");
-    return craft_at(0);
+static Player fresh_player(){
+ Player p={};p.stats.hp=p.stats.max_hp=1000;p.level=1;
+ for(int w=0;w<WEAPON_COUNT;w++)p.arsenal[w]=Weapon{(WeaponType)w,MAT_STONE};
+ return p;
+}
+static const Craft& result(Item item){for(int i=0;i<craft_count();i++)if(!craft_at(i).is_weapon&&craft_at(i).item==item)return craft_at(i);assert(false);return craft_at(0);}
+static const Craft& weapon(WeaponType w){for(int i=0;i<craft_count();i++)if(craft_at(i).is_weapon&&craft_at(i).weapon==w)return craft_at(i);assert(false);return craft_at(0);}
+static void fill(Player& p,const Recipe& r){for(int i=0;i<r.n;i++)item_slot(&p,r.c[i].item)=r.c[i].amount;}
+static void catalog_checks(){
+ assert(craft_count()==23);assert(ITEM_COUNT>64);std::set<int> books;
+ for(int i=0;i<craft_count();i++){
+  const Craft& c=craft_at(i);assert(c.n>0&&c.n<=4);assert(item_is_book(c.needs));assert(books.insert(c.needs).second);assert(c.price>0&&c.price<=500);
+  if(c.is_weapon&&c.weapon==WEAPON_SCYTHE)assert(c.price==500);else assert(c.price<500);
+  Player p=fresh_player();Recipe r=craft_recipe(&p,c,MAT_STONE);fill(p,r);
+  assert(!craft_ready(&p,c));assert(!craft_make(&p,c));
+  item_slot(&p,ITEM_GOLD)=c.price-1;assert(!craft_buy_book(&p,c));assert(item_count(&p,ITEM_GOLD)==c.price-1);
+  item_slot(&p,ITEM_GOLD)=c.price;assert(craft_buy_book(&p,c));assert(item_count(&p,ITEM_GOLD)==0);assert(item_found(&p,c.needs));
+  item_slot(&p,ITEM_GOLD)=999;assert(!craft_buy_book(&p,c));assert(item_count(&p,ITEM_GOLD)==999);
+  assert(craft_ready(&p,c));int hp=p.stats.hp;assert(craft_make(&p,c));assert(p.stats.hp==hp);assert(item_count(&p,c.needs)==1);
+  for(int j=0;j<r.n;j++)assert(item_count(&p,r.c[j].item)==0);
+  if(c.is_weapon)assert(p.owned[c.weapon]&&p.arsenal[c.weapon].material==MAT_STONE);
+  else {assert(item_count(&p,c.item)==1);item_slot(&p,c.item)=c.max;fill(p,r);assert(!craft_ready(&p,c));assert(!craft_make(&p,c));}
+ }
+ assert(result(ITEM_SWIFT_BOOTS).n==4);assert(result(ITEM_SAIL).in[0].amount==6);assert(result(ITEM_BINOCULARS).in[0].amount==2);
+ assert(item_limit(ITEM_MEDKIT)==999&&item_limit(ITEM_ESCAPE_CHARM)==1&&item_limit(ITEM_SLEEPING_BAG)==0);
+ assert(!strcmp(item_name(ITEM_ESSENCE),"SPIRIT ESSENCE"));assert(!strcmp(item_name(ITEM_WHITE_FUR),"FUR"));
+ Player p=fresh_player();const Craft& c=weapon(WEAPON_SCYTHE);item_slot(&p,c.needs)=1;fill(p,craft_recipe(&p,c,MAT_STONE));assert(craft_make(&p,c));
+ p.arsenal[c.weapon].oil=3;p.arsenal[c.weapon].echo=1;fill(p,craft_recipe(&p,c,MAT_BRONZE));assert(craft_make(&p,c));
+ assert(p.arsenal[c.weapon].material==MAT_BRONZE&&p.arsenal[c.weapon].oil==3&&p.arsenal[c.weapon].echo==1);assert(item_count(&p,ITEM_REAPERS_EDGE)==0);
+ assert(craft_best_ore(&p,c)==-1);item_slot(&p,ITEM_OILBLOOM)=99;while(p.arsenal[c.weapon].oil<WEAPON_OIL_MAX)assert(craft_oil(&p,c.weapon));assert(!craft_oil(&p,c.weapon));
+ item_slot(&p,ITEM_ESSENCE)=4;assert(craft_echo(&p,c.weapon));assert(!craft_echo(&p,c.weapon));
+ for(int i=0;i<ITEM_COUNT;i++){item_mark_found(&p,(Item)i);assert(item_found(&p,(Item)i));assert(item_icon((Item)i)>=0&&item_icon((Item)i)<LEGACY_ITEM_COUNT);}
+ puts("recipes/books: 23 recipes, caps, costs, upgrades and discovery checked");
+}
+static void loot_checks(){
+ LootRolls rolls={};for(int& r:rolls.ore)r=9999;int out[ITEM_COUNT];
+ const int unassigned[]={4,19,23,26,40,47,54,65,76,82,91,92,94,100};
+ for(int enemy:unassigned){battle_loot(enemy,0,rolls,out);for(int v:out)assert(v==0);}
+ for(int enemy=0;enemy<ENEMY_COUNT;enemy++)for(int count:{0,1,5,6,1024,100000}){
+  int base[ITEM_COUNT];battle_loot(enemy,0,rolls,base);battle_loot(enemy,count,rolls,out);
+  assert(out[ITEM_WOOD]-base[ITEM_WOOD]+out[ITEM_STONE]-base[ITEM_STONE]==std::min(6,count));
+  for(int i=0;i<ITEM_COUNT;i++)if(i!=ITEM_WOOD&&i!=ITEM_STONE)assert(out[i]==base[i]);
+ }
+ battle_loot(51,1024,rolls,out);assert(out[ITEM_FLOWER]==1&&out[ITEM_OILBLOOM]==1&&out[ITEM_WATER_RING]==1);
+ battle_loot(62,1024,rolls,out);assert(out[ITEM_WHITE_FUR]==1&&out[ITEM_BONE]==1&&out[ITEM_HIDE]==0);
+ for(int e:{7,97}){battle_loot(e,1024,rolls,out);assert(out[ITEM_EVERLASTING_EMBER]==1&&out[ITEM_LAVA_CHARM]==1);}
+ const int chance[]={10000,4000,2000,1000,500,200,50};
+ for(int e:{31,33}){
+  int totals[MAT_COUNT]={};for(int r=0;r<10000;r++){for(int& value:rolls.ore)value=r;battle_loot(e,0,rolls,out);for(int m=0;m<MAT_COUNT;m++)totals[m]+=out[ore_item((Material)m)];}
+  for(int m=0;m<MAT_COUNT;m++)assert(totals[m]==chance[m]);
+  for(int m=1;m<MAT_COUNT;m++){
+   for(int& v:rolls.ore)v=9999;rolls.ore[m]=chance[m]-1;battle_loot(e,0,rolls,out);assert(out[ore_item((Material)m)]==1);
+   rolls.ore[m]++;battle_loot(e,0,rolls,out);assert(out[ore_item((Material)m)]==0);
+  }
+ }
+ for(int& r:rolls.ore)r=0;for(int e=0;e<ENEMY_COUNT;e++)if(e!=31&&e!=33){battle_loot(e,100000,rolls,out);for(int m=1;m<MAT_COUNT;m++)assert(out[ore_item((Material)m)]==0);}
+ Player p=fresh_player();int actual[ITEM_COUNT];bool found[ITEM_COUNT];std::fill(out,out+ITEM_COUNT,0);
+ item_slot(&p,ITEM_HIDE)=998;out[ITEM_HIDE]=6;item_slot(&p,ITEM_LAVA_CHARM)=999;out[ITEM_LAVA_CHARM]=1;out[ITEM_EYE_LENS]=1;
+ credit_loot(&p,out,actual,found);assert(actual[ITEM_HIDE]==1&&actual[ITEM_LAVA_CHARM]==0&&actual[ITEM_EYE_LENS]==1&&found[ITEM_EYE_LENS]);assert(!found[ITEM_LAVA_CHARM]);
+ Input in={};p=fresh_player();p.owned[WEAPON_KNIFE]=true;BattleScene scene(&p,7);const_cast<Enemy*>(scene.hud_enemy())->take_damage(1e9f);
+ for(int i=0;i<30&&scene.get_phase()!=BATTLE_PHASE_VICTORY;i++)scene.update(&in,0.1f);
+ assert(scene.get_phase()==BATTLE_PHASE_VICTORY);assert(item_count(&p,ITEM_LAVA_CHARM)==1&&item_count(&p,ITEM_EVERLASTING_EMBER)==1);
+ for(int i=0;i<30;i++)scene.update(&in,0.1f);assert(item_count(&p,ITEM_LAVA_CHARM)==1);
+ puts("loot: all 101 enemies, cancellation caps, ore thresholds, saturation and victory integration checked");
 }
 
-static const Craft& craft_for(Item it) {
-    for (int i = 0; i < craft_count(); i++)
-        if (!craft_at(i).is_weapon && craft_at(i).item == it) return craft_at(i);
-    assert(!"no craft for that item");
-    return craft_at(0);
+template<class P>struct SaveFixture{char magic[4];unsigned version,player_size,seed;float x,y;P player;uint8_t explored[EXPLORE_H][EXPLORE_W];uint8_t landmarks[MAX_LANDMARKS/8];DungeonChestRecord chests[MAX_DUNGEON_CHEST_RECORDS];StoryFlags story;};
+static void save_checks(){
+ namespace fs=std::filesystem;fs::path original=fs::current_path();fs::create_directories("build_tmp/crafting_qa/saves");fs::current_path("build_tmp/crafting_qa/saves");
+ static uint8_t explored[EXPLORE_H][EXPLORE_W]={};Player p=fresh_player();item_slot(&p,ITEM_BINOCULARS)=1;item_mark_found(&p,ITEM_BINOCULARS);item_slot(&p,ITEM_ENCHANTED_WOOD)=17;explored[1][2]=1;
+ assert(save_write(42,12,34,p,explored));Player got={};unsigned seed;float x,y;assert(save_read(&seed,&x,&y,&got,explored));assert(seed==42&&x==12&&y==34&&item_count(&got,ITEM_ENCHANTED_WOOD)==17&&item_found(&got,ITEM_BINOCULARS));
+ static SaveFixture<LegacyPlayerV2> old={};memcpy(old.magic,"FCC1",4);old.version=2;old.player_size=sizeof(LegacyPlayerV2);old.seed=123;old.x=7;old.y=9;
+ memcpy(&old.player,&p,sizeof(LegacyPlayerV2));old.player.parts[PART_FUR]=6;old.player.sail=1;old.player.books[2]=1;old.explored[3][4]=1;old.landmarks[0]=5;old.story=*story_flags();
+ const size_t sizes[]={sizeof(old),offsetof(SaveFixture<LegacyPlayerV2>,story),(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+MAX_LANDMARKS/8+3)&~(size_t)3,(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+3)&~(size_t)3};
+ for(size_t size:sizes){FILE* f=fopen("save.dat","wb");assert(f);assert(fwrite(&old,1,size,f)==size);fclose(f);memset(&got,0,sizeof(got));assert(save_read(&seed,&x,&y,&got,explored));assert(seed==123&&x==7&&y==9&&got.sail==1&&got.books[2]==1&&item_count(&got,ITEM_WHITE_FUR)==6&&explored[3][4]);assert(item_count(&got,ITEM_BINOCULARS)==0&&got.found_extra[0]==0);}
+ FILE* f=fopen("save.dat","wb");fwrite(&old,1,12,f);fclose(f);assert(!save_read(&seed,&x,&y,&got,explored));fs::current_path(original);
+ puts("saves: V3 round trip, all four V2 lengths, expanded inventory and truncation rejection checked");
 }
-
-int main() {
-    Player p = {};
-    for (int w = 0; w < WEAPON_COUNT; w++) p.arsenal[w] = Weapon{ (WeaponType)w, MAT_STONE };
-    p.owned[WEAPON_KNIFE] = true;
-    p.equipped = WEAPON_KNIFE;
-    const Craft& axe = craft_for(WEAPON_AXE);
-
-    // Holding nothing: no ore on offer, nothing ready.
-    assert(craft_best_ore(&p, axe) == -1 && !craft_ready(&p, axe));
-
-    // A bronze axe takes 3 bronze, 2 wood and 2 vine, and its book; the best
-    // affordable ore wins over stone.
-    item_slot(&p, ITEM_BRONZE) = 3;
-    item_slot(&p, ITEM_WOOD)   = 2;
-    item_slot(&p, ITEM_VINE)   = 2;
-    item_slot(&p, ITEM_STONE)  = 3;
-    assert(!craft_ready(&p, axe) && craft_missing(&p, axe) == ITEM_AXE_BOOK);   // no book yet
-    assert(!craft_make(&p, axe));
-    item_slot(&p, ITEM_AXE_BOOK) = 1;
-    assert(craft_best_ore(&p, axe) == MAT_BRONZE);
-    assert(craft_make(&p, axe));
-    assert(p.owned[WEAPON_AXE] && p.equipped == WEAPON_AXE && p.arsenal[WEAPON_AXE].material == MAT_BRONZE);
-    assert(item_count(&p, ITEM_BRONZE) == 0 && item_count(&p, ITEM_WOOD) == 0 && item_count(&p, ITEM_VINE) == 0);
-    assert(item_count(&p, ITEM_AXE_BOOK) == 1);   // kept
-
-    // The club is bone, not wood.
-    const Craft& club = craft_for(WEAPON_CLUB);
-    item_slot(&p, ITEM_STONE) = 3;
-    item_slot(&p, ITEM_WOOD)  = 9;
-    assert(!craft_ready(&p, club));
-    item_slot(&p, ITEM_BONE)  = 3;
-    assert(craft_make(&p, club) && item_count(&p, ITEM_BONE) == 0 && item_count(&p, ITEM_WOOD) == 9);
-    assert(craft_equip(&p, WEAPON_AXE));
-
-    // The scythe: its book, then its special part, used up the first time only.
-    const Craft& scythe = craft_for(WEAPON_SCYTHE);
-    item_slot(&p, ITEM_STONE) = 3;
-    item_slot(&p, ITEM_WOOD)  = 2;
-    assert(craft_missing(&p, scythe) == ITEM_SCYTHE_BOOK);
-    item_slot(&p, ITEM_SCYTHE_BOOK) = 1;
-    assert(craft_missing(&p, scythe) == ITEM_REAPERS_EDGE && !craft_make(&p, scythe));
-    item_slot(&p, ITEM_REAPERS_EDGE) = 1;
-    assert(craft_make(&p, scythe) && item_count(&p, ITEM_REAPERS_EDGE) == 0 && item_count(&p, ITEM_SCYTHE_BOOK) == 1);
-    // Re-made in a better ore, no edge is wanted again.
-    item_slot(&p, ITEM_BRONZE) = 3;
-    item_slot(&p, ITEM_WOOD)   = 2;
-    assert(craft_missing(&p, scythe) == ITEM_COUNT && craft_make(&p, scythe));
-    assert(p.arsenal[WEAPON_SCYTHE].material == MAT_BRONZE);
-    assert(craft_equip(&p, WEAPON_AXE));
-    item_slot(&p, ITEM_WOOD) = 0;
-
-    // Upgrades: oil costs a flower a level, and stops at the cap of 10.
-    item_slot(&p, ITEM_OILBLOOM) = WEAPON_OIL_MAX + 9;
-    assert(!craft_oil(&p, WEAPON_KATANA));          // not owned
-    for (int i = 0; i < WEAPON_OIL_MAX; i++) assert(craft_oil(&p, WEAPON_AXE));
-    assert(!craft_oil(&p, WEAPON_AXE));
-    assert(WEAPON_OIL_MAX == 10);
-    assert(p.arsenal[WEAPON_AXE].oil == WEAPON_OIL_MAX && item_count(&p, ITEM_OILBLOOM) == 9);
-
-    item_slot(&p, ITEM_ESSENCE) = 2;
-    assert(craft_echo(&p, WEAPON_AXE) && p.arsenal[WEAPON_AXE].echo == 1);
-    assert(!craft_echo(&p, WEAPON_AXE));            // the next level wants 4
-
-    // A bronze axe is never offered stone, even with stone and wood to hand.
-    item_slot(&p, ITEM_WOOD) = 2;
-    assert(craft_best_ore(&p, axe) == -1);
-
-    // Re-making it in emerald keeps the levels.
-    item_slot(&p, ITEM_EMERALD) = 3;
-    item_slot(&p, ITEM_VINE)    = 2;
-    assert(craft_make(&p, axe));
-    assert(p.arsenal[WEAPON_AXE].material == MAT_EMERALD && p.arsenal[WEAPON_AXE].oil == WEAPON_OIL_MAX);
-    assert(craft_equip(&p, WEAPON_KNIFE) && p.equipped == WEAPON_KNIFE);
-    assert(!craft_equip(&p, WEAPON_KATANA));
-
-    // The raft: wood and vine are not enough without the book.
-    item_slot(&p, ITEM_RAFT_BOOK) = 0;
-    const Craft& raft = craft_for(ITEM_RAFT);
-    item_slot(&p, ITEM_WOOD) = 10;
-    item_slot(&p, ITEM_VINE) = 3;
-    assert(!craft_ready(&p, raft) && !craft_make(&p, raft));
-    // With the book it is made, the book kept and the materials spent ...
-    item_slot(&p, ITEM_RAFT_BOOK) = 1;
-    assert(craft_ready(&p, raft) && craft_make(&p, raft));
-    assert(item_count(&p, ITEM_RAFT) == 1 && item_count(&p, ITEM_RAFT_BOOK) == 1);
-    assert(item_count(&p, ITEM_WOOD) == 0 && item_count(&p, ITEM_VINE) == 0);
-    // ... and one is all there is any use for.
-    item_slot(&p, ITEM_WOOD) = 10;
-    item_slot(&p, ITEM_VINE) = 3;
-    assert(craft_at_max(&p, raft) && !craft_ready(&p, raft));
-
-    // USED FOR: wood goes into weapons and the raft; vine into the raft and
-    // the axe; bone into the club; each part and book into its weapon;
-    // oilbloom into faster weapons; gold into nothing yet.
-    const char* uses[8];
-    int n = item_uses(ITEM_WOOD, uses, 8);
-    assert(n == 2 && !strcmp(uses[0], "RAFT") && !strcmp(uses[1], "WEAPONS"));
-    n = item_uses(ITEM_VINE, uses, 8);
-    assert(n == 2 && !strcmp(uses[0], "RAFT") && !strcmp(uses[1], "AXE"));
-    n = item_uses(ITEM_BONE, uses, 8);
-    assert(n == 1 && !strcmp(uses[0], "CLUB"));
-    n = item_uses(ITEM_REAPERS_EDGE, uses, 8);
-    assert(n == 1 && !strcmp(uses[0], "SCYTHE"));
-    n = item_uses(ITEM_KATANA_BOOK, uses, 8);
-    assert(n == 1 && !strcmp(uses[0], "KATANA"));
-    n = item_uses(ITEM_RAFT_BOOK, uses, 8);
-    assert(n == 1 && !strcmp(uses[0], "RAFT"));
-    n = item_uses(ITEM_OILBLOOM, uses, 8);
-    assert(n == 1 && !strcmp(uses[0], "FASTER WEAPONS"));
-    assert(item_uses(ITEM_GOLD, uses, 8) == 0);
-
-    // Materials are what there is always more of; books and parts are not.
-    assert(item_is_material(ITEM_VINE) && !item_is_material(ITEM_RAFT) && !item_is_material(ITEM_RAFT_BOOK));
-    assert(!item_is_material(ITEM_REAPERS_EDGE) && !item_is_material(ITEM_SCYTHE_BOOK));
-    assert(!strcmp(item_source(ITEM_REAPERS_EDGE), "FOUND IN CATACOMBS"));
-
-    // Stone is the rock slot.
-    item_slot(&p, ITEM_STONE) = 7;
-    assert(p.inventory[1] == 7);
-
-    // FASTER's scaling: level 0 is the weapon as it is; at the top every
-    // weapon fires at Touhou's rate; damage per second grows by the same
-    // factor for all; and so the weapons keep their order at every level.
-    printf("FASTER   lvl0 rate/dmg/dps         lvl5 rate/dmg/dps         lvl10 rate/dmg/dps\n");
-    float prev[WEAPON_COUNT];
-    for (int lv = 0; lv <= WEAPON_OIL_MAX; lv++) {
-        float dps[WEAPON_COUNT];
-        for (int w = 0; w < WEAPON_COUNT; w++) {
-            ProjectileProfile pp = weapon_profile((WeaponType)w);
-            float r = faster_fire_rate(pp.fire_rate, lv), d = faster_damage(pp.fire_rate, pp.damage, lv);
-            dps[w] = r * d;
-            if (lv == 0) assert(fabsf(r - pp.fire_rate) < 1e-4f && fabsf(d - pp.damage) < 1e-4f);
-            if (lv == WEAPON_OIL_MAX) {
-                assert(fabsf(r - TOUHOU_FIRE_RATE) < 1e-3f);
-                assert(fabsf(dps[w] / (pp.fire_rate * pp.damage) - FASTER_DPS_AT_MAX) < 1e-3f);
-            }
-        }
-        if (lv > 0)   // same order as the level before, for every pair
-            for (int a = 0; a < WEAPON_COUNT; a++)
-                for (int b = 0; b < WEAPON_COUNT; b++)
-                    assert((prev[a] < prev[b]) == (dps[a] < dps[b]));
-        for (int w = 0; w < WEAPON_COUNT; w++) prev[w] = dps[w];
-    }
-    for (int w = 0; w < WEAPON_COUNT; w++) {
-        ProjectileProfile pp = weapon_profile((WeaponType)w);
-        printf("%-8s", weapon_name((WeaponType)w));
-        for (int lv = 0; lv <= WEAPON_OIL_MAX; lv += WEAPON_OIL_MAX / 2) {
-            float r = faster_fire_rate(pp.fire_rate, lv), d = faster_damage(pp.fire_rate, pp.damage, lv);
-            printf("  %5.2f/s %5.2f %6.1f   ", r, d, r * d);
-        }
-        printf("\n");
-    }
-
-    // The sleeping bag: hide, feathers and white fur, five uses, full HP each,
-    // one bag at a time, worn out after the last.
-    {
-        Player q = {};
-        q.stats.max_hp = 60; q.stats.hp = 10;
-        const Craft& bag = craft_for(ITEM_SLEEPING_BAG);
-        assert(!craft_ready(&q, bag));
-        item_slot(&q, ITEM_HIDE) = 4; item_slot(&q, ITEM_FEATHER) = 6; item_slot(&q, ITEM_WHITE_FUR) = 3;
-        assert(item_is_material(ITEM_FEATHER) && item_is_material(ITEM_WHITE_FUR));
-        assert(!item_is_material(ITEM_SLEEPING_BAG));
-        assert(craft_ready(&q, bag) && craft_make(&q, bag));
-        assert(item_count(&q, ITEM_SLEEPING_BAG) == SLEEPING_BAG_USES);
-        assert(item_count(&q, ITEM_HIDE) == 0 && item_count(&q, ITEM_WHITE_FUR) == 0);
-        item_slot(&q, ITEM_HIDE) = 4; item_slot(&q, ITEM_FEATHER) = 6; item_slot(&q, ITEM_WHITE_FUR) = 3;
-        assert(craft_at_max(&q, bag) && !craft_make(&q, bag));   // one at a time
-        for (int i = 0; i < SLEEPING_BAG_USES; i++) {
-            q.stats.hp = 1;
-            assert(craft_sleep(&q) && q.stats.hp == q.stats.max_hp);
-        }
-        assert(item_count(&q, ITEM_SLEEPING_BAG) == 0);
-        q.stats.hp = 1;
-        assert(!craft_sleep(&q));                                  // worn out
-        assert(part_item(PART_FEATHER) == ITEM_FEATHER && part_item(PART_FUR) == ITEM_WHITE_FUR);
-    }
-
-    puts("craftcheck: ok");
-    return 0;
+static void render_checks(){
+ namespace fs=std::filesystem;fs::create_directories("build_tmp/crafting_qa");
+ SDL_Surface* surface=SDL_CreateRGBSurfaceWithFormat(0,640,480,32,SDL_PIXELFORMAT_RGBA32);assert(surface);SDL_Renderer* renderer=SDL_CreateSoftwareRenderer(surface);assert(renderer);
+ Player p=fresh_player();p.owned[WEAPON_KNIFE]=true;for(int i=0;i<ITEM_COUNT;i++)item_slot(&p,(Item)i)=std::min(99,item_limit((Item)i));
+ GameMenu menu;game_menu_toggle(&menu);menu.cmd=1;menu.focus=FOCUS_ACTIONS;
+ auto capture=[&](const char* file){SDL_SetRenderDrawColor(renderer,24,32,24,255);SDL_RenderClear(renderer);game_menu_draw(&menu,&p,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,file)==0);};
+ for(int i=0;i<craft_count();i++){menu.sel=i;capture("build_tmp/crafting_qa/recipe.png");if(!craft_at(i).is_weapon&&craft_at(i).item==ITEM_SWIFT_BOOTS)capture("build_tmp/crafting_qa/swift_boots.png");}
+ game_menu_open_shop(&menu);menu.sel=craft_count()-1;capture("build_tmp/crafting_qa/scythe_shop.png");
+ int gold=item_count(&p,ITEM_GOLD);Input in={};in.keys[SDL_SCANCODE_Z]=KEY_PRESSED;game_menu_update(&menu,&p,&in,0.1f);assert(item_count(&p,ITEM_GOLD)==gold);
+ game_menu_toggle(&menu);game_menu_toggle(&menu);menu.cmd=0;menu.focus=FOCUS_LIST;menu.sel=WEAPON_COUNT+ITEM_COUNT-3;capture("build_tmp/crafting_qa/inventory.png");
+ Player unprepared=fresh_player();GameMenu locked;game_menu_toggle(&locked);locked.cmd=1;locked.focus=FOCUS_ACTIONS;locked.sel=craft_count()-1;SDL_RenderClear(renderer);game_menu_draw(&locked,&unprepared,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/locked_scythe.png")==0);
+ Player buyer=fresh_player();item_slot(&buyer,ITEM_GOLD)=999;GameMenu store;game_menu_open_shop(&store);store.sel=craft_count()-1;
+ Input buy={};game_menu_update(&store,&buyer,&buy,0.1f);assert(item_count(&buyer,ITEM_GOLD)==999);buy.keys[SDL_SCANCODE_Z]=KEY_PRESSED;
+ game_menu_update(&store,&buyer,&buy,0.1f);assert(item_count(&buyer,ITEM_GOLD)==499&&item_count(&buyer,ITEM_SCYTHE_BOOK)==1);
+ game_menu_update(&store,&buyer,&buy,0.1f);assert(item_count(&buyer,ITEM_GOLD)==499);
+ Player hero=fresh_player();hero.owned[WEAPON_KNIFE]=true;Input empty={};
+ {BattleScene victory(&hero,51);for(int i=0;i<40;i++)victory.update(&empty,0.1f);const_cast<Enemy*>(victory.hud_enemy())->take_damage(1e9f);
+  for(int i=0;i<30;i++)victory.update(&empty,0.1f);assert(victory.get_phase()==BATTLE_PHASE_VICTORY);victory.draw(renderer,nullptr);SDL_RenderPresent(renderer);
+  assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/victory.png")==0);
+ }
+ game_menu_free(&store);game_menu_free(&locked);game_menu_free(&menu);SDL_DestroyRenderer(renderer);SDL_FreeSurface(surface);
+ puts("menus: every recipe, four ingredients, book shop, full inventory and locked recipe rendered");
+}
+int main(){
+ setvbuf(stdout,nullptr,_IONBF,0);SDL_setenv("SDL_VIDEODRIVER","dummy",1);assert(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER)==0);
+ catalog_checks();loot_checks();save_checks();render_checks();
+ for(int w=0;w<WEAPON_COUNT;w++){ProjectileProfile p=weapon_profile((WeaponType)w);assert(fabsf(faster_fire_rate(p.fire_rate,0)-p.fire_rate)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)-TOUHOU_FIRE_RATE)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)*faster_damage(p.fire_rate,p.damage,WEAPON_OIL_MAX)/(p.fire_rate*p.damage)-FASTER_DPS_AT_MAX)<0.001f);}
+ SDL_Quit();puts("craftcheck: ok");return 0;
 }

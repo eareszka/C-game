@@ -63,7 +63,7 @@ PAL = {'K': '000000', 'M': '9797aa', 'D': '474751', 'S': '292931',     # line; r
        'F': '595965', 'G': 'dcf0ff'}                                   # floor; a gem (in the game its ore's lit tone)
 # Each piece is where the game's sheet has it in a cave's block (5 x 8 cells an
 # ore; tools/gen_cave_tiles.py lays this sheet into each, in the ore's tones).
-# (4, 0) and (3, 7) there are the crystal and the gem, hand-painted: left clear.
+# (4, 0) and (3, 7) there are the node to mine (nodes/nodes_design.py) and the gem: left clear.
 CELLS = {'face0': (0, 0), 'face1': (1, 0), 'face2': (2, 0), 'top_flat': (3, 0),
          'top_up': (0, 1), 'top_down': (1, 1), 'foot_flat': (2, 1), 'foot_up': (3, 1), 'foot_down': (4, 1),
          'hang_flat': (0, 2), 'hang_up': (1, 2), 'hang_down': (2, 2), 'tip_l': (3, 2), 'tip_r': (4, 2),

@@ -31,6 +31,15 @@ inline int& ore_count(Player* p, Material m) {
     return m == MAT_STONE ? p->inventory[RESOURCE_ROCK] : p->ore[m];
 }
 
+// Which frame an ore vein on tile (tx, ty) shows: 0 plain, 1-3 one of its
+// nuggets flared (art/structures/nodes/nodes_design.py) -- a step every 0.7 s,
+// as the cave's glints twinkle, each vein on a clock of its own.
+inline int vein_frame(int tx, int ty) {
+    unsigned h = (unsigned)tx * 0x9E3779B1u ^ (unsigned)ty * 0x85EBCA77u;
+    h ^= h >> 15;
+    return (int)((SDL_GetTicks() / 700u + h) % 4u);
+}
+
 typedef struct ResourceNode
 {
     ResourceType type;
@@ -48,6 +57,8 @@ typedef struct ResourceNode
     int hides_entrance;
     int reveal_tile_id;
     int reveal_tx, reveal_ty;
+
+    int chest;   // 0: ordinary node, 1: closed chest (interaction only), 2: opened chest yielding wood
 } ResourceNode;
 
 typedef struct ResourceNodeList 
@@ -62,6 +73,9 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
 void resource_nodes_add_gravestone(ResourceNodeList* list, float x, float y,
                                    int hides_entrance, int reveal_tile_id,
                                    int reveal_tx, int reveal_ty);
+// A dungeon chest's node: closed until interacted with; then harvestable wood
+// (two, no weapon's shortcut) and reports no resource; drawn by its owner.
+void resource_nodes_add_chest(ResourceNodeList* list, float x, float y);
 void resource_nodes_draw(const ResourceNodeList* list, const Camera* cam, SDL_Renderer* ren, SDL_Texture* tileset_tex);
 // After the player, as tilemap_draw_over_player: the pixels of gravestones that
 // stand in front of them.

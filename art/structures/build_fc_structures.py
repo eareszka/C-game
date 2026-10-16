@@ -36,8 +36,8 @@ FC World's tall tree -- a column of three stacked lobes, each mid green with
 dark chevrons, a doubled dark right edge and a crease at every waist, on a
 three-pixel trunk with flared roots, one light pixel per lobe to keep it off
 our darker grass -- and the stacked-clumps tree the game had before it
-(restored from commit 830f1e1). The dead tree (col 20) is left as it is: its
-maroons are already FC World's wasteland palette.
+(restored from commit 830f1e1). The dead tree (col 20) is drawn the same way
+in bark (trees/dead_tree_design.py), the wasteland's.
 
 The renderer picks cells as follows (src/tilemap.cpp, tilemap_draw_impl):
     (15,1)          the tree resource node (single tile)
@@ -188,7 +188,7 @@ kkkkMMMDMDDkkkkk
 # the thing to edit.
 TREES = [(SOLO, 15, 1),
          (HERE + "/trees/tree_three_lobe.png", 16, 0), (HERE + "/trees/tree_clumps.png", 17, 0),
-         (CONIFER_SMALL, 18, 0), (CONIFER_TALL, 19, 0)]
+         (CONIFER_SMALL, 18, 0), (CONIFER_TALL, 19, 0), (HERE + "/trees/dead_tree.png", 20, 0)]
 
 
 def parse(art):

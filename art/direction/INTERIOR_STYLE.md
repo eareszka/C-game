@@ -241,9 +241,16 @@ face or the face beside one, and a cell clear of a doorway, mouth or ladder.
 Floors (the user, 2026-10-12): the ruins and the two pyramids had one flat
 colour and now have tiles, laid by where a tile is in the world
 (`floor_tile` in `tools/gen_dungeon_wall_tiles.py`, `WALL_FLOOR` in the game).
-- The ruins: 16 x 8 brick in herringbone, in dark slate (`474751` / `34343e`,
-  black joints) -- over flagstones, great blocks, basket weave and three
-  other colours.
+- The ruins (the user, 2026-10-13, with a reference picture: "black with brick
+  outlines"): the floor is black, as the graveyard's is, and here and there
+  the outline of a 16 x 8 brick lies on it, seen from above ("C but not
+  oblique projection": the first version leaned), a line of the stone's dark
+  grey (`595965`) with a smaller broken outline inside it a tone under
+  (`474751`). Every brick is on the walls' bond, so bricks side by side share
+  a line; they come in small bunches by a hash of where they are, and only a
+  brick wholly on open floor is drawn (`draw_ruins_floor`; `RUINS_BUNCH` and
+  `RUINS_KEPT` set how many). It replaced a herringbone of dark slate brick
+  (2026-10-12), itself picked over flagstones, great blocks and basket weave.
 - The desert pyramid: its walls' own brick, in sandstone a step down
   (`b29e5c` / `967448`, joint `785830`): "the pyramid bricks should match the
   wall textures bricks".

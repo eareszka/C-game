@@ -3,6 +3,9 @@
 // sits in a cave's block of the sheet, in cells from the block's corner.
 enum CavePiece { CP_FACE0, CP_FACE1, CP_FACE2, CP_TOP_FLAT, CP_TOP_UP, CP_TOP_DOWN, CP_FOOT_FLAT, CP_FOOT_UP, CP_FOOT_DOWN, CP_HANG_FLAT, CP_HANG_UP, CP_HANG_DOWN, CP_TIP_L, CP_TIP_R, CP_VALLEY, CP_VAULT, CP_PEAK, CP_FANG, CP_FLOOR1, CP_ARCH, CP_HATCH, CP_LEAN_UP, CP_LEAN_DOWN, CP_COUNT };
 static const unsigned char CAVE_PIECE[CP_COUNT][2] = { {0, 0}, {1, 0}, {2, 0}, {3, 0}, {0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1}, {0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2}, {0, 3}, {1, 3}, {2, 3}, {3, 3}, {4, 3}, {0, 4}, {3, 4}, {4, 4}, {2, 5} };
+// The node to mine, in a cave's block: (4, 0) plain, then its twinkle's frames from
+// (0, CAVE_FLARE_ROW) across.
+enum { CAVE_FLARE_ROW = 6 };
 // Reality shard's floor (cave_rock_design.ground_cobbles): a bit a pixel, set on the lines
 // between its stones -- pixel (x, y) is bit x % 8 of CAVE_COBBLE[y][x / 8].
 enum { CAVE_COBBLE_W = 160, CAVE_COBBLE_H = 112 };

@@ -4,10 +4,13 @@
 #include <math.h>
 
 // float_ok: the player has a raft, so water is somewhere to be, not a wall.
-// Everything else that stops a walker still stops a raft.
-struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_ok; };
+// Everything else that stops a walker still stops a raft. boat: aboard the
+// boat, the other way round -- only water will do, and every shore is a wall
+// (the wharf's tip takes the boy off it: main.cpp).
+struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_ok; bool boat = false; };
 static bool ow_solid(const void* ctx, float px, float py) {
     const OWCollCtx* c = static_cast<const OWCollCtx*>(ctx);
+    if (c->boat) return !tilemap_pixel_water(c->map, px, py) || resource_node_solid(c->res, px, py);
     if (c->float_ok && tilemap_pixel_water(c->map, px, py))
         return resource_node_solid(c->res, px, py);
     return tilemap_pixel_solid(c->map, px, py)
@@ -77,6 +80,13 @@ void overworld_stand_before_door(Overworld* ow, Player* player, const Tilemap* m
     }
 }
 
+void overworld_stand_before_door_idx(Overworld* ow, Player* player, const Tilemap* map, int idx)
+{
+    if (idx < 0 || idx >= map->num_doors) return;
+    const InteriorDoor& d = map->doors[idx];
+    stand_before(ow, player, map, (d.x + d.w * 0.5f) * TILE_SIZE, (d.y + 1) * (float)TILE_SIZE);
+}
+
 void overworld_stand_before_entrance(Overworld* ow, Player* player, const Tilemap* map, int tx, int ty)
 {
     // The entrance's stamp, and the middle and the foot of its way in: every
@@ -132,7 +142,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     player_gait(in, &ow->speed, &anim_speed);
 
     auto feet_on_water = [&]() {
-        return player->raft > 0 &&
+        return player->raft > 0 && !player->at_sea &&
                tilemap_pixel_water(map, ow->x + (HB_X1 + HB_X2) * 0.5f, ow->y + (HB_Y1 + HB_Y2) * 0.5f);
     };
 
@@ -155,17 +165,18 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         if (!feet_on_water()) ow->sailing = false;   // landed
         player->is_moving = 0;
     } else if (dx != 0.0f || dy != 0.0f) {
-        OWCollCtx ctx = { map, resources, player->raft > 0 };
+        OWCollCtx ctx = { map, resources, player->raft > 0 || player->at_sea != 0, player->at_sea != 0 };
+        float speed = player->at_sea ? BOAT_SPEED : ow->speed;   // the boat is quicker than a walk
         if (noclip) {
-            ow->x += dx * ow->speed * dt;
-            ow->y += dy * ow->speed * dt;
+            ow->x += dx * speed * dt;
+            ow->y += dy * speed * dt;
         } else {
             // Asked before the move rather than after it, so that a player who
             // is somewhere they cannot be gets out by walking, which is the
             // only thing they will think to try.
             unwedge_feet(&ctx, &ow->x, &ow->y, ow_solid);
             if (!move_feet(&ctx, &ow->x, &ow->y,
-                           dx * ow->speed * dt, dy * ow->speed * dt, ow_solid))
+                           dx * speed * dt, dy * speed * dt, ow_solid))
                 player->is_moving = 0;
         }
         // Kept canonical on the wrap axis. Beyond the seam is the same world,

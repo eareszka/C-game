@@ -23,7 +23,8 @@
 #define DMAP_MAX_SPAWNERS   64
 #define DMAP_MAX_LOOT       64
 #define DNG_SPAWNER_BUDGET  24   // every archetype except catacombs
-#define DNG_LOOT_BUDGET     32
+#define DNG_LOOT_BUDGET     8    // chests (place_loot); few dungeons have room for this many
+#define DNG_LOOT_BUDGET_CAT 12
 
 enum DungeonTile : uint8_t {
     DNG_WALL  = 0,
@@ -38,15 +39,28 @@ struct DungeonSpawner {
     bool dead;
 };
 
-// Fixed loot pickup placed deterministically at generation time. Rewards
-// exploration rather than combat: only reachable by walking to (tx,ty),
-// and only rendered once that tile has been explored.
+// A chest, placed deterministically at generation time: struck open with the
+// weapon (two blows, its node in dungeon_rocks), stood on its tile for good,
+// shut or open, and only drawn once that tile has been explored. Its index is
+// its bit in the dungeon's DungeonChestRecord, so an opened one stays open.
 struct DungeonLoot {
     int  tx, ty;
     int  gold;
-    bool collected;
-    int  item = -1;   // -1: a gold pile; otherwise the treasure it is, an Item (crafting.h)
+    bool collected;   // opened
+    int  item = -1;   // -1: it holds gold; otherwise the treasure it holds, an Item (crafting.h)
+    int  node = -1;   // its node in dungeon_rocks, which takes the blows
 };
+
+// Which chests of one dungeon have been opened, a bit each by loot index; the
+// dungeon is its interior's seed (DungeonWiring::seed), so every way into one
+// interior shares one record. A record with no bit set is free. The game
+// saves the whole table (src/save.cpp).
+#define MAX_DUNGEON_CHEST_RECORDS 2048
+struct DungeonChestRecord { uint32_t seed, pad; uint64_t opened; };
+DungeonChestRecord* dungeon_chest_records(void);
+struct DungeonMap;
+// Whether a chest stands on tile (tx, ty): what the chasers walk round.
+bool dungeon_chest_tile(const DungeonMap* d, int tx, int ty);
 
 // A cave under a mountain has one mouth in the south wall and one on the top of
 // each storey, so it needs more ways out than the two a paired dungeon wants.
@@ -227,6 +241,7 @@ struct DungeonMap {
     int floor_x0, floor_y0, floor_x1, floor_y1;
     DungeonEntranceType type;
     float difficulty;
+    unsigned int seed;     // what dungeon_generate grew it from: its chests' record
     // Which material this cave's rock is, derived from difficulty by
     // dungeon_generate(). Every mouth of one cave system already shares a
     // difficulty (tilemap.cpp's cave_diff), so this agrees across mouths and
@@ -253,9 +268,10 @@ struct DungeonPlayer {
     // the overworld (Overworld, include/overworld.h).
     WeaponSwingState swing;
 
-    // The treasure picked up this frame, an Item; -1 for none. The caller
-    // says so.
+    // What a chest struck open this frame held: a treasure, an Item (-1 for
+    // none), or gold (0 for none). The caller says so.
     int picked_item = -1;
+    int picked_gold = 0;
 };
 
 // The special part a dungeon of this kind keeps as its one treasure (an Item,

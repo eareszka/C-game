@@ -1,7 +1,7 @@
 """Town 1's blueprint, laid out from the road pieces town_0 uses and the
 coastal town's buildings on the sheet.
 
-    python tools/town1_layout.py . <preview.png> [--write]
+    python tools/town1_layout.py . <preview.png> [--write | --write-wharf]
 
 Roads are the start town's own cells, joined the way town_0 joins them: a
 street runs across (two rows) or back at 45 degrees, up and to the right
@@ -11,7 +11,8 @@ result in include/towns.h as town_1 and its wharves (the lighthouse and the
 fishing sheds on a boardwalk, which the game lays toward the sea), and the
 boardwalk's skirt cells on the sheet; without it only the previews are drawn.
 The town is edited by hand in the tile editor after this (tile_editor town_1):
---write lays it out afresh and throws those edits away.
+--write lays it out afresh and throws those edits away. --write-wharf writes
+the wharves and their deck only, and leaves town_1 as it is in the file.
 """
 import math, re, runpy, sys
 from PIL import Image
@@ -20,7 +21,7 @@ sys.path.insert(0, ROOT + '/tools')
 import overworld_style as ow
 
 N = 156
-GRASS, TREE = 1, 5
+GRASS, TREE = 1, 5          # 1 is the town's own ground, whatever biome that is (TOWN_GROUND in src/tilemap.cpp: meadow for this town)
 cell = lambda code: int(code[0], 16) + int(code[1], 16) * 256 + 6     # 'cr' in hex: sheet col, row
 g = [[GRASS] * N for _ in range(N)]
 
@@ -190,7 +191,7 @@ HALL = (81, 80)
 lane = HALL[0] + DOOR['townhall'] + HALL[1]
 tee(lane, MAIN); back(lane, HALL[1] + 1, MAIN - 1)
 PLACED += [('townhall', *HALL), ('gazebo', 66, 90), ('fountain', 79, 92),
-           ('street lamp', 79, 82), ('street lamp', 91, 82), ('street lamp', 56, 94), ('street lamp', 86, 94),
+           ('street lamp', 79, 82), ('street lamp', 91, 82), ('street lamp', 57, 94), ('street lamp', 86, 94),
            ('bench', 64, 90), ('bench', 72, 90), ('bench', 77, 92), ('bench', 82, 92),
            ('flower bed', 63, 87), ('flower bed', 73, 87), ('flower bed', 76, 94), ('flower bed', 84, 91)]
 PLACED += [('picket fence', x, 94) for x in list(range(58, 68)) + list(range(78, 85))]
@@ -257,14 +258,14 @@ KEY, BLACK = (255, 0, 0, 255), (0, 0, 0, 255)
 assert all(p != KEY for r in TOP for p in r), 'the boardwalk is not where it was on the sheet'
 
 
-def bake(rects):
-    """The floor [(u0, u1, v0, v1)] in tiles -> (rows of pixels, rows of
-    floor or not), v 0 on the bottom row of floor, 32 px of skirt under it."""
-    W = max(u1 + v1 for u0, u1, v0, v1 in rects) * T
-    V = max(r[3] for r in rects) * T
-    H = V + 32
-    fl = [[any(u0 * T <= x - (V - 1 - y) < u1 * T and v0 * T <= V - 1 - y < v1 * T for u0, u1, v0, v1 in rects)
-           for x in range(W)] for y in range(H)]
+def skin(fl, wet=None, oy=0, face=None):
+    """Rows of floor or not -> rows of pixels: the planks, the line round
+    them, and under every edge the face and the posts -- where `wet` (rows of
+    yes or no) lets the posts stand and `face` lets the planks' face hang
+    (as `wet` if it is not given; everywhere if neither is). `oy` slides the
+    planks' pattern down, for a piece measured from its bottom."""
+    face = face or wet
+    H, W = len(fl), len(fl[0])
     FL = lambda x, y: 0 <= x < W and 0 <= y < H and fl[y][x]
     out = [[KEY] * W for _ in range(H)]
     side = [[None] * W for _ in range(H)]
@@ -275,10 +276,12 @@ def bake(rects):
                 last = y
                 continue
             k = y - last
+            if (face and not face[y][x]) if k <= 8 else (wet and not wet[y][x]):
+                continue
             if k <= 8:
                 south = not FL(x - 1, last + 1)
                 side[y][x] = south
-                out[y][x] = FACE_S[k - 1][x & 63] if south else FACE_E[k - 1][(62 - last) & 63]
+                out[y][x] = FACE_S[k - 1][x & 63] if south else FACE_E[k - 1][(62 - last - oy) & 63]
             elif k <= 32 and UNDER[k - 9][x & 63] != KEY:
                 out[y][x] = UNDER[k - 9][x & 63]
     for y in range(H):
@@ -287,8 +290,19 @@ def bake(rects):
                 out[y][x] = BLACK                              # a south face turning east: its edge
             if fl[y][x]:
                 edge = not (FL(x - 1, y) and FL(x + 1, y) and FL(x, y - 1) and FL(x, y + 1))
-                out[y][x] = BLACK if edge else TOP[y & 63][(x + y) & 63]
-    return out, fl
+                out[y][x] = BLACK if edge else TOP[(y + oy) & 63][(x + y + oy) & 63]
+    return out
+
+
+def bake(rects):
+    """The floor [(u0, u1, v0, v1)] in tiles -> (rows of pixels, rows of
+    floor or not), v 0 on the bottom row of floor, 32 px of skirt under it."""
+    W = max(u1 + v1 for u0, u1, v0, v1 in rects) * T
+    V = max(r[3] for r in rects) * T
+    H = V + 32
+    fl = [[any(u0 * T <= x - (V - 1 - y) < u1 * T and v0 * T <= V - 1 - y < v1 * T for u0, u1, v0, v1 in rects)
+           for x in range(W)] for y in range(H)]
+    return skin(fl), fl
 
 
 CELLS = {}                                                    # a cell's pixels -> its place in the deck's rows of the sheet
@@ -300,7 +314,7 @@ def wharf(rects, placed, join):
     each standing on the two rows of floor from v, a tile in from u -- and
     the floor cell (u, v) that meets the way out. -> its grids, which have
     the buildings' height above the floor and two rows of skirt below it:
-    cell (the deck's sheet cell), kind (1 floor, 2 floor the feet go round,
+    cell (the deck's sheet cell), kind (1 floor, 2 a sliver of it the feet go round,
     3 skirt only), art (the buildings' sheet cells), and the join's cell."""
     px, fl = bake(rects)
     vmax = max(r[3] for r in rects)
@@ -328,38 +342,47 @@ def wharf(rects, placed, join):
                     x, y = u + v + i, row(v) - (bh - 1 - j)
                     assert art[y][x] == 0, '%s lies on another building' % name     # over a skirt behind it, it hides it
                     art[y][x] = c0 + i + (r0 + j) * 256 + 6
-                    if j >= bh - 2:                           # its foot: the two rows it stands on
+                    if j >= bh - 2:                           # its foot: the two rows it stands on. Floor
+                        # still: the feet meet the building itself, to the pixel (gen_entrance_art.py COAST)
                         assert kind[y][x] in (1, 2), '%s stands off the deck at %d,%d' % (name, x, y)
-                        kind[y][x] = 2
     return cell, kind, art, (join[0] + join[1], row(join[1]))
 
 
 def across_wharf(seaward_west):
-    """Lying across, four tiles deep: the sheds on its back two rows, the walk
-    along the front two, a clear landing at the landward end. It joins the
-    street by the row Main Street's top row runs into."""
+    """Lying across: a walk two rows deep, the two Main Street arrives on, and
+    behind it a bay of floor under each shed, a clear landing at the landward
+    end. It joins the street by the row Main Street's top row runs into.
+    (It was one slab four rows deep; the user, 2026-10-13: "when the boardwalk
+    is horizontal make the walkway thinner ... unless their is a building,
+    then a boardwalk must be underneath it".)"""
     long_, u, placed = 39, 6, []
     for n in SHEDS:
         placed.append((n, u, 2))
         u += size(n)[0] + 2
     if seaward_west:                                          # the same row, the other way round
         placed = [(n, long_ - u0 - size(n)[0], v) for n, u0, v in placed]
-    return wharf([(0, long_, 0, 4)], placed, (long_ if seaward_west else 0, 2))
+    rects = [(0, long_, 0, 2)] + [(u0 - 1, u0 + size(n)[0], 2, 4) for n, u0, v in placed]
+    return wharf(rects, placed, (long_ if seaward_west else 0, 1))
 
 
 def along_wharf(seaward_north):
     """Running back: a walk two tiles across, as wide as the road it carries
     on from, and off its east side a bay of floor for each shed."""
+    # A bay is four rows deep, the shed on its back two: the front two are the
+    # room before its door, as the walk is along the front of a wharf lying
+    # across (the user, 2026-10-13, of sheds whose front wall stood on the
+    # deck's edge: "their should be space in front of the buildings to enter").
+    FRONT = 2
     # (name, the row it stands from), from the near end: four rows of landing
     # first when that is the landward end (the sea to the north), last when
     # the sea is toward the viewer. Each stands clear of the one before it and
     # of the posts under the next one's bay.
-    v, at = (4 if seaward_north else 0), []
+    v, at = (4 if seaward_north else 0) + FRONT, []
     for n in (SHEDS if seaward_north else SHEDS[::-1]):
         at.append((n, v))
-        v += size(n)[1] + 2
+        v += size(n)[1] + 2 + FRONT
     long_ = at[-1][1] + 2 + (0 if seaward_north else 4)
-    rects = [(0, 2, 0, long_)] + [(2, 3 + size(n)[0], v0, v0 + 2) for n, v0 in at]
+    rects = [(0, 2, 0, long_)] + [(2, 3 + size(n)[0], v0 - FRONT, v0 + 2) for n, v0 in at]
     return wharf(rects, [(n, 3, v0) for n, v0 in at], (0, 0 if seaward_north else long_ - 1))
 
 
@@ -368,10 +391,105 @@ WHARVES = [across_wharf(True), across_wharf(False), along_wharf(True), along_wha
 # The ways out. West and east: Main Street's end caps. North: North Street,
 # carried on west of its cap and turned up a street going back (its x + y).
 # South: the mill lane, carried on over South Street.
-PIER = {'TOWN1_MAIN_Y': MAIN, 'TOWN1_MAIN_W': 6, 'TOWN1_MAIN_E': 148,
+HALL_DOOR = runpy.run_path(ROOT + '/art/structures/coast/townhall_design.py')['design']()['door']   # (cell across, cell down, cells wide)
+PIER = {'TOWN1_HALL_DOOR_X': HALL[0] + HALL_DOOR[0], 'TOWN1_HALL_DOOR_Y': HALL[1], 'TOWN1_HALL_DOOR_W': HALL_DOOR[2],   # its door's foot: the story's keeper's room opens here
+        'TOWN1_MAIN_Y': MAIN, 'TOWN1_MAIN_W': 6, 'TOWN1_MAIN_E': 148,
         'TOWN1_NORTH_Y': NORTH, 'TOWN1_NORTH_CAP': 64, 'TOWN1_NORTH_K': 97,
         'TOWN1_SOUTH_Y': SOUTH, 'TOWN1_SOUTH_K': MILL}
-DECK_ROWS = (len(CELLS) + DECK_COLS - 1) // DECK_COLS
+
+# The country's bridges are boardwalks too (the user, 2026-10-13: "bridges
+# should be like boardwalks. completely straight and using the oblique
+# projection. the transition between trail and bridge should be seemless as
+# well"). A deck's floor is the track's own band carried over the gap -- 24
+# px, 4 px in from each side of the stroke's two tiles and 4 px lower than
+# them (draw_track in src/tilemap.cpp) -- so a track runs into it edge to
+# edge. Its face and posts hang over the gap only, never over the bank.
+# A piece is a grid of deck cell numbers + 1, SKIRT added where the cell has
+# no floor in it (laid on the gap's tiles only); the game's lay_bridge
+# places it.
+#
+# A trail comes to a bridge in line with it (the user, 2026-10-13: "when a
+# trail goes towards a bridge it must be the classic oblique projection style
+# for a decent ammount of distance before joining with the bridge to make the
+# transition not jnarring"): RUN tiles of straight track on each bank. Level,
+# that is plain track and the game lays it. Running back it is the band drawn
+# slanted, and is part of the piece: RUN rows above the gap and RUN below,
+# whose cells are markers -- nothing drawn (MARK, three blank cells at the end
+# of the deck's row), but TRACK says which part of the slanted band the game
+# is to draw in that tile: -1 its left sliver, 0 its middle, 1 its right part.
+BRIDGE_MAX, SKIRT, RUN = 24, 0x4000, 6
+FLOOR = {}                                                    # a bridge cell's number -> its floor, a row of bits a row
+MARK = {-1: 253, 0: 254, 1: 255}
+TRACK = dict((n, j) for j, n in MARK.items())                 # a cell's number -> its part of the slanted band
+
+
+def bridge(fl, wet, oy=0, walk=None, face=None, part=None):
+    """`part`: (column, row) of a cell -> its part of the slanted band, where
+    the cell is on a bank (None over the gap or off the band)."""
+    px = skin(fl, wet, oy, face)
+    grid = []
+    for cy in range(len(px) // T):
+        grid.append([])
+        for cx in range(len(px[0]) // T):
+            block = tuple(tuple(px[cy * T + j][cx * T:cx * T + T]) for j in range(T))
+            band = part(cx, cy) if part else None
+            if all(p == KEY for r in block for p in r):
+                grid[-1].append(0 if band is None else MARK[band] + 1)
+                continue
+            n = CELLS.setdefault(block, len(CELLS))
+            bits = tuple(sum((walk or fl)[cy * T + j][cx * T + i] << i for i in range(T)) for j in range(T))
+            assert FLOOR.setdefault(n, bits) == bits, 'two bridge cells drawn alike with different floors'
+            assert TRACK.setdefault(n, band) == band, 'two bridge cells drawn alike, one of them on a bank'
+            floor = any(fl[cy * T + j][cx * T + i] for j in range(T) for i in range(T))
+            # face and posts alone: over the gap only -- but a face that hangs
+            # over the bank (a slanted deck's side, down to its corner) is laid there
+            grid[-1].append(n + 1 + (0 if floor or (part and part(cx, cy, True)) else SKIRT))
+    return grid
+
+
+def bridge_across(n):
+    """Lying across n tiles of gap, which are its columns 2..n+1: the floor
+    on rows 8..31 of its top two rows of tiles, its slanted ends over the
+    banks (the track runs level under them), two rows of skirt below."""
+    W, H = (n + 4) * T, 4 * T
+    fl = [[8 <= y < 32 and 8 <= x - (31 - y) < (n + 2) * T for x in range(W)] for y in range(H)]
+    wet = [[2 * T <= x < (n + 2) * T for x in range(W)] for y in range(H)]
+    return bridge(fl, wet)
+
+
+def bridge_back(n):
+    """Running back over n rows of gap, which are its rows RUN..RUN+n-1, with
+    RUN rows of slanted track above them and RUN below. The band, deck and
+    track alike, is 24 px across and a pixel over to the right for every row
+    up: in the tile `part` columns right of the band's middle tile in its
+    row, the pixels with 7 <= 16 * part + x + y < 31 (as drawn; the game
+    draws a track 4 px lower than its tiles, which is in those numbers). The
+    deck is the band over the gap -- from 4 px into the gap's top row to 4 px
+    into the bank's below. Its side's face runs down to its lower corner (it
+    stopped at the bank's line, short of it); the posts stand in the gap."""
+    rows = 2 * RUN + n
+    W, H, K = (rows + 2) * T, rows * T, rows * T
+    top, bot = RUN * T + 4, (RUN + n) * T + 4
+    band = lambda x, y: 7 <= x + y - K < 31
+    fl = [[top <= y < bot and band(x, y) for x in range(W)] for y in range(H)]
+    wet = [[y < (RUN + n) * T for x in range(W)] for y in range(H)]
+    face = [[y < bot for x in range(W)] for y in range(H)]
+    # The track's last 4 rows at the north bank lie in the gap's top row,
+    # over the deck's top edge: the feet cross those too.
+    walk = [[fl[y][x] or (RUN * T <= y < top and band(x, y)) for x in range(W)] for y in range(H)]
+
+    def part(cx, cy, bank=False):
+        if RUN <= cy < RUN + n:
+            return None
+        j = cx - (rows - cy)
+        return True if bank else j if -1 <= j <= 1 else None
+    return bridge(fl, wet, -H % 64, walk, face, part)
+
+
+BRIDGES = {'EW': [bridge_across(n) for n in range(1, BRIDGE_MAX + 1)],
+           'NS': [bridge_back(n) for n in range(1, BRIDGE_MAX + 1)]}
+assert len(CELLS) <= min(MARK.values()), 'the deck cells have reached the track markers'
+DECK_ROWS = 1
 for block in CELLS:
     assert len({p for r in block for p in r} - {KEY}) <= 4, 'a deck cell has over four colours'
 
@@ -410,9 +528,41 @@ picture(g, OUT).convert('RGB').resize((N * 8, N * 8), Image.BILINEAR).save(OUT.r
 for side, (cell, kind, art, join) in zip('wens', WHARVES):
     picture(art, OUT.replace('.png', '_wharf_%s.png' % side), under=cell)
     print('wharf %s: %d x %d, joins at %s' % (side, len(cell[0]), len(cell), join))
+
+def bridge_picture(out, shown=(('EW', 1), ('EW', 4), ('EW', 9), ('NS', 1), ('NS', 4), ('NS', 9))):
+    """A few of the bridges' pieces over water, side by side."""
+    by_n = {n: b for b, n in CELLS.items()}
+    grids = [BRIDGES[way][n - 1] for way, n in shown]
+    im = Image.new('RGBA', (sum(len(gr[0]) + 1 for gr in grids) * T + T, (max(len(gr) for gr in grids) + 2) * T), (78, 220, 74, 255))
+    x0 = T
+    for (way, n), gr in zip(shown, grids):                     # the gap
+        box = (x0 + 2 * T, 0, x0 + (n + 2) * T, im.height) if way == 'EW' else (x0, (RUN + 1) * T, x0 + len(gr[0]) * T, (RUN + 1 + n) * T)
+        im.paste((92, 148, 252, 255), box)
+        x0 += (len(gr[0]) + 1) * T
+    x0 = T
+    for gr in grids:
+        for y, r in enumerate(gr):
+            for x, v in enumerate(r):
+                n = (v & ~SKIRT) - 1
+                if v and TRACK.get(n) is not None:           # the slanted track the game draws there
+                    for i in range(T * T):
+                        k = 16 * TRACK[n] + i % T + i // T
+                        if 7 <= k < 31:
+                            im.putpixel((x0 + x * T + i % T, (y + 1) * T + i // T),
+                                        (0xd7, 0xa1, 0x75, 255) if 10 <= k < 30 else (0x8d, 0x6b, 0x4f, 255))
+                if v and n in by_n:
+                    t = Image.new('RGBA', (T, T))
+                    t.putdata([p for row in by_n[n] for p in row])
+                    im.alpha_composite(unkey(t), (x0 + x * T, (y + 1) * T))
+        x0 += (len(gr[0]) + 1) * T
+    im.convert('RGB').resize((im.width * 3, im.height * 3), Image.NEAREST).save(out)
+
+
+bridge_picture(OUT.replace('.png', '_bridges.png'))
 print('deck cells: %d, in %d rows of the sheet from row %d' % (len(CELLS), DECK_ROWS, DECK_ROW0))
 
-if '--write' in sys.argv:
+WHARF_ONLY = '--write-wharf' in sys.argv                      # the wharves and their deck; town_1 left as it is in the file
+if '--write' in sys.argv or WHARF_ONLY:
     # the deck's rows of the sheet are this script's own: cleared, then laid afresh
     sheet.paste(KEY, (0, DECK_ROW0 * 16, DECK_COLS * 16, (DECK_ROW0 + max(DECK_ROWS, 2)) * 16))
     for block, n in CELLS.items():
@@ -425,11 +575,13 @@ if '--write' in sys.argv:
     nl = '\r\n' if '\r\n' in s else '\n'
     rows = lambda grid: ''.join('    {' + ','.join(map(str, r)) + '},' + nl for r in grid)
     flat = lambda grid: ''.join('    ' + ','.join(map(str, r)) + ',' + nl for r in grid)
-    body = 'static const int town_1[%d][%d] = {%s' % (N, N, nl) + rows(g) + '};' + nl + nl
+    TOWN = r'static const int town_1\[[^\]]*\]\[[^\]]*\] = \{.*?\};'
+    body = (re.search(TOWN, s, re.S).group(0) if WHARF_ONLY else
+            'static const int town_1[%d][%d] = {%s' % (N, N, nl) + rows(g) + '};') + nl + nl
     body += ('// Town 1\'s wharf: the lighthouse, the boathouse and the fishing shacks on a' + nl +
              '// boardwalk over the sea, one for each border the ocean can be on (ocean_side:' + nl +
              '// west, east, north, south), each running out toward it. cell: the deck\'s sheet' + nl +
-             '// cell, as a blueprint\'s; kind: 1 floor, 2 floor the feet go round, 3 the skirt' + nl +
+             '// cell, as a blueprint\'s; kind: 1 floor, 2 a sliver the feet go round, 3 the skirt' + nl +
              '// under an edge; art: the buildings\' sheet cells. join is the floor cell that' + nl +
              '// meets the way out from the town (stamp_town_pier), which the TOWN1_ values' + nl +
              '// below place. The deck\'s cells are rows TOWN1_DECK_ROW0.. of the sheet.' + nl +
@@ -443,8 +595,34 @@ if '--write' in sys.argv:
         '    { %d, %d, %d, %d, town_1_wharf_%s_cell, town_1_wharf_%s_kind, town_1_wharf_%s_art },%s' % (
             len(c[0]), len(c), j[0], j[1], side, side, side, nl) for side, (c, k, a, j) in zip('wens', WHARVES)) + '};' + nl
     body += ''.join('#define %s %d%s' % (k, v, nl) for k, v in PIER.items())
-    body += '#define TOWN1_DECK_ROW0 %d%s#define TOWN1_DECK_ROWS %d%s// end of town 1\'s wharf' % (DECK_ROW0, nl, DECK_ROWS, nl)
-    m = re.search(r'static const int town_1\[[^\]]*\]\[[^\]]*\] = \{.*?\};'
-                  r'(\s*// Town 1\'s wharf.*?// end of town 1\'s wharf)?', s, re.S)
+    body += '#define TOWN1_DECK_ROW0 %d%s#define TOWN1_DECK_ROWS %d%s' % (DECK_ROW0, nl, DECK_ROWS, nl)
+    body += ('// The country\'s bridges, in the same deck cells: a piece for every length of' + nl +
+             '// gap up to BRIDGE_ART_MAX, lying across (EW: 4 rows of n + 4, the gap its' + nl +
+             '// columns 2..n+1 and its top two rows) or running back (NS: 2 * BRIDGE_RUN + n' + nl +
+             '// rows of 2 * BRIDGE_RUN + n + 2, the gap its rows BRIDGE_RUN.., the rows above' + nl +
+             '// and below it the slanted track that runs up to the deck). A value is a deck' + nl +
+             '// cell\'s number + 1, with BRIDGE_SKIRT on a cell laid over the gap only. Length' + nl +
+             '// n begins at BRIDGE_xx_AT[n]. Laid by lay_bridge (src/tilemap.cpp).' + nl +
+             '#define BRIDGE_ART_MAX %d%s#define BRIDGE_SKIRT 0x%x%s#define BRIDGE_RUN %d%s' % (BRIDGE_MAX, nl, SKIRT, nl, RUN, nl))
+    for way, pieces in BRIDGES.items():
+        at, flat_ = [0], []
+        for gr in pieces:
+            at.append(len(flat_))
+            flat_ += [v for r in gr for v in r]
+        body += 'static const unsigned short BRIDGE_%s_AT[] = {%s};%s' % (way, ','.join(map(str, at)), nl)
+        body += 'static const unsigned short BRIDGE_%s[] = {%s' % (way, nl) + ''.join(
+            '    ' + ','.join(map(str, flat_[i:i + 32])) + ',' + nl for i in range(0, len(flat_), 32)) + '};' + nl
+    body += ('// Where a bridge cell is floor, to the pixel: a row of bits a row, bit x for' + nl +
+             '// column x. The feet cross a bridge on these (tilemap_pixel_solid).' + nl +
+             'static const unsigned short DECK_FLOOR[%d][16] = {%s' % (len(CELLS), nl) + ''.join(
+                 '    {' + ','.join(map(str, FLOOR.get(n, (0,) * 16))) + '},' + nl for n in range(len(CELLS))) + '};' + nl)
+    body += ('// The part of the slanted track a deck cell stands for on a bank, + 2: 1 its' + nl +
+             '// left sliver, 2 its middle, 3 its right part; 0 for a cell that is none.' + nl +
+             '// The last three cells of the row are blank and are nothing else. The game' + nl +
+             '// draws the band there (track_part, draw_track).' + nl +
+             'static const unsigned char DECK_TRACK[%d] = {%s    ' % (DECK_COLS, nl) +
+             ','.join(str(TRACK[n] + 2 if TRACK.get(n) is not None else 0) for n in range(DECK_COLS)) + nl + '};' + nl)
+    body += '// end of town 1\'s wharf'
+    m = re.search(TOWN + r'(\s*// Town 1\'s wharf.*?// end of town 1\'s wharf)?', s, re.S)
     open(p, 'w', encoding='utf-8', newline='').write(s[:m.start()] + body + s[m.end():])
-    print('wrote town_1 and its wharves to', p, 'and the deck\'s cells to the sheet')
+    print('wrote', 'the wharves' if WHARF_ONLY else 'town_1 and its wharves', 'to', p, 'and the deck\'s cells to the sheet')

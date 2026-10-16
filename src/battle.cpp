@@ -1,3 +1,4 @@
+#include "loot.h"
 #include "fc_palette.h"
 #include "battle.h"
 #include "core.h"
@@ -101,7 +102,7 @@ static void export_if_edited(const char* png) {
 // Load a sheet, and the same sheet as a solid white silhouette in *white:
 // every opaque pixel turned the palette's white, alpha kept. SDL can only
 // darken a texture with a colour mod, so the flash needs its own copy.
-static SDL_Texture* load_with_white(SDL_Renderer* ren, const char* path, SDL_Texture** white) {
+SDL_Texture* load_with_white(SDL_Renderer* ren, const char* path, SDL_Texture** white) {
     *white = nullptr;
     export_if_edited(path);
     SDL_Surface* s = load_rgba(path);
@@ -205,7 +206,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/20_sermilik.png",               {}, 5 },
     { "assets/enemies/21_asp.png",                    {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 42x35), 4 dirs (front, side, back; left mirrored): coiled serpent; 10 frames in the old 1.3 s loop -- it sways, bounces and breathes, its tail in its ear on 3-5, its tongue out on 8-9 (the hiss)
     { "assets/enemies/22_cactus_cat.png",             {}, 8, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 170 },   // medium (frame 50x35), 3/4 only: sitting, its cactus tail swaying a pixel a frame, the breath a frame behind; 8 frames in a 1.36 s loop
-    { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 8 },
+    { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 12, true, nullptr, "assets/enemies/23_olgoi_khorkhoi_spin.png", nullptr, 1, 1, nullptr, 170 },   // giant (frame 152x124), one view, one row per direction: the arch heaves and leans, the head dips and the maw's lobes spread, feelers whip, acid drops; alt = the head and blades spinning with the body pumping, shown while enraged; 12 frames in a 2.04 s loop
     { "assets/enemies/24_zoureg.png",                 {}, 6, false, "assets/enemies/24_zoureg_dash.png", "assets/enemies/24_zoureg_windup.png", nullptr, 1, 1, nullptr, 170 },  // medium (frame 44x29), 4 dirs (front, side, back; left mirrored): 6-frame idle; flap = the dash, uncoiled and thrown like a knife; alt = drawn back and glowing hotter, shown while it aims
     { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
     { "assets/enemies/26_akhekh.png",                 {0, 1, 0, 2} },
@@ -281,11 +282,21 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/95_witkes.png",                        {}, 5 },  // big, 8 dirs: half-shaped water spirit rising from a whirlpool, offering tea; frame 2 arms spread, pool surging
     { "assets/enemies/96_bregdi.png",                        {}, 8, true },  // giant, 8 dirs: dark sea beast surfacing, two huge wing-fins; frames 3-4 fins wrap round in front, jaws open
     { "assets/enemies/97_ro.png",                            {}, 8, true },  // giant, 8 dirs: reared dark-red dragon, great wings, long tail; frames 3-4 wings high, howling
-    { "assets/enemies/98_boiuna.png",                        {}, 8, true },  // giant, 8 dirs: colossal black river snake, searchlight eyes, horn fangs, V wake; frames 3-4 reared, jaws gaping
+    { "assets/enemies/98_boiuna.png",                        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },  // giant (frame 192x176, drawn 163x162), front view only: great green river snake, its winding body laid out behind, its front reared and arched over, head hanging open-mouthed, yellow slit eyes; 12 frames in a 1.56 s loop -- a wave runs back along it to the tail's tip (the back moves more than the front), it breathes, the head lifts a pixel on 4-8; one row per direction
     { "assets/enemies/99_fad_felen.png", {}, 10, true, nullptr, "assets/enemies/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 180 },  // approved crouched idle; alt = standing on hind legs, ten frames at 180ms
     { "assets/enemies/100_flesh_planet.png",          {}, 8, true },   // giant: the final boss's ball (final_boss_views, one row a direction, all alike) -- the rest of its fight later
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
+
+// The idle sheet of an enemy and its layout, for anything that draws one
+// outside a fight (the story's boss sites on the map): the path, frames a
+// row, and whether it is one row a direction. Null for an enemy not drawn.
+const char* enemy_sheet_info(int id, int* frames, bool* rows) {
+    if (id < 0 || id >= ENEMY_SHEET_COUNT || !ENEMY_SHEETS[id].path) return nullptr;
+    if (frames) *frames = ENEMY_SHEETS[id].frames;
+    if (rows)   *rows   = ENEMY_SHEETS[id].rows;
+    return ENEMY_SHEETS[id].path;
+}
 
 // A log whose sheet has tilt rows rocks by stepping them -- flat, right end
 // up, flat, right end down -- ROCK_STEP s each, from its own age; its hitbox
@@ -330,6 +341,8 @@ static int sheet_dir(int facing) {
 static const float FADE_T  = BATTLE_FADE_T;
 // A pack's next fight: the player's glide back and the enemy's drop, in seconds.
 static const float CHAIN_T = 0.6f;
+// A win: VICTORY in colour this long, then the rewards in the speech box.
+static const float VICTORY_T = 1.2f;
 
 BattleScene::BattleScene(Player* player, int enemy_id, bool chained, float from_x, float from_y) {
     _chained = chained;
@@ -514,8 +527,16 @@ void BattleScene::update(const Input* in, float dt) {
             return;
         case BATTLE_PHASE_VICTORY:
             _update_pickups(dt);
-            // The wait keeps a held fire key (Z) from skipping the panel.
-            if (confirm && _t > 0.6f) _confirmed = true;
+            // VICTORY, then the rewards in the speech box: Z shows a part
+            // whole, goes on at a stop, and at the end closes it.
+            if (_t > VICTORY_T && !_confirmed) {
+                _dlg_t += dt;
+                if (confirm) {
+                    if (_dlg_state == SPEECH_TYPING)    _dlg_t = 1e9f;
+                    else if (_dlg_state == SPEECH_WAIT) { _dlg_part++; _dlg_t = 0.0f; _dlg_state = SPEECH_TYPING; }
+                    else                                _confirmed = true;
+                }
+            }
             if (_confirmed && (_more_after || (_outro_t += dt) >= FADE_T)) _done = true;
             return;
         case BATTLE_PHASE_DEFEAT:
@@ -562,15 +583,9 @@ void BattleScene::update(const Input* in, float dt) {
     }
 }
 
-// Bullet cancel: every enemy bullet still in the air becomes a pickup that
-// flies to the player, and a denser screen pays more of the enemy's part.
-// What a cancelled bullet turns into: mostly the common stuff of the world,
-// and one in PART_SHARE the part this enemy drops -- the vine off a
-// Treesqueak, the hide off a hare. The enemy itself always gives one part,
-// so even a clean win with nothing in the air pays it.
+// Cancelled projectiles are cosmetic apart from a capped Wood/Stone bonus.
+// Special rewards are computed once in loot.cpp.
 static const Item COMMON_DROPS[] = { ITEM_WOOD, ITEM_STONE };
-static const int  PART_SHARE     = 4;
-static_assert(ITEM_COUNT <= 32, "BattleScene::_won holds a count per Item");
 
 // Anything not from the common pool is rare: the part an enemy is hunted for.
 static bool is_common_drop(int it) {
@@ -579,57 +594,49 @@ static bool is_common_drop(int it) {
 }
 
 void BattleScene::_win() {
+    if (_phase == BATTLE_PHASE_VICTORY) return;
     _player_ref->stats.hp = (int)_bp.hp;
     _phase = BATTLE_PHASE_VICTORY;
     _t = 0.0f;
     for (int& n : _won) n = 0;
 
-    Item part = part_item(enemy_part(_enemy_id));
+    // Cancellation is visual. A separate ledger limits actual materials.
     unsigned rng = SDL_GetTicks() * 2654435761u + (unsigned)_enemy_id;
-    int n = 0;
-    // The enemy's own part, from where it stood.
-    _pickups[n++] = { _enemy->x, _enemy->y, 0.0f, -120.0f, true, part };
-    for (int i = 0; i < MAX_ENEMY_BULLETS && n < MAX_ENEMY_BULLETS; i++) {
-        Bullet& bl = _enemy_bullets[i];
+    auto random = [&]() { rng = rng * 1664525u + 1013904223u; return rng; };
+    LootRolls rolls = {};
+    for (int m = 0; m < MAT_COUNT; m++) rolls.ore[m] = (int)((random() >> 8) % 10000);
+    rolls.common_start = (int)(random() & 1);
+    int n = 0, cancelled = 0;
+    // Reserve room for all actual rewards, including an entire ore bundle.
+    auto sparkle = [&](float x, float y, float vx, float vy) {
+        cancelled++;
+        if (n < MAX_ENEMY_BULLETS - 16) _pickups[n++] = {x,y,vx,vy,true,-1};
+    };
+    for (Bullet& bl : _enemy_bullets) {
         if (!bl.active) continue;
         bl.active = false;
-        rng = rng * 1664525u + 1013904223u;
-        int roll = (int)((rng >> 16) % (PART_SHARE * 64));
-        Item it = roll < 64 ? part : COMMON_DROPS[roll % (int)(sizeof(COMMON_DROPS) / sizeof(COMMON_DROPS[0]))];
-        // Pop back the way it came, then get pulled in.
-        _pickups[n++] = { bl.x, bl.y, -bl.vx * 0.4f, -bl.vy * 0.4f, true, it };
+        sparkle(bl.x, bl.y, -bl.vx * 0.4f, -bl.vy * 0.4f);
     }
-    // Its lasers too (the user): each breaks into a string of pickups along
-    // the part of it that's on screen, a step apart, popping out sideways.
-    // Its warning marks and its glowing balls aren't lasers: left out.
-    Enemy::TeleLine tl[64];
-    int nt = _enemy->telegraphs(tl, 64);
+    Enemy::TeleLine lines[64];
+    int nt = _enemy->telegraphs(lines, 64);
     for (int k = 0; k < nt; k++) {
-        const Enemy::TeleLine& L = tl[k];
+        const Enemy::TeleLine& L = lines[k];
         if (L.stage == 3 || L.orb > 0.0f) continue;
-        float dx = L.x1 - L.x0, dy = L.y1 - L.y0, len = sqrtf(dx * dx + dy * dy);
+        float dx = L.x1 - L.x0, dy = L.y1 - L.y0, len = sqrtf(dx*dx + dy*dy);
         if (len < 1.0f) continue;
-        float ux = dx / len, uy = dy / len;
-        for (float d = 12.0f; d < len && n < MAX_ENEMY_BULLETS; d += 24.0f) {
-            float x = L.x0 + ux * d, y = L.y0 + uy * d;
-            if (x < 0.0f || x > ARENA_W || y < ARENA_TOP || y > ARENA_H) continue;
-            rng = rng * 1664525u + 1013904223u;
-            int roll = (int)((rng >> 16) % (PART_SHARE * 64));
-            Item it = roll < 64 ? part : COMMON_DROPS[roll % (int)(sizeof(COMMON_DROPS) / sizeof(COMMON_DROPS[0]))];
-            float side = (rng >> 8) & 1 ? 1.0f : -1.0f;
-            _pickups[n++] = { x, y, -uy * side * 40.0f, ux * side * 40.0f, true, it };
+        float ux = dx/len, uy = dy/len;
+        for (float d = 12.0f; d < len; d += 24.0f) {
+            float x = L.x0 + ux*d, y = L.y0 + uy*d;
+            if (x < 0 || x > ARENA_W || y < ARENA_TOP || y > ARENA_H) continue;
+            sparkle(x,y,-uy*40.0f,ux*40.0f);
         }
     }
-    // ponytail: credited now, not as pickups land -- the scene can be dismissed
-    // before they arrive, so the flight is only for show.
-    _won_new = 0;
-    for (int i = 0; i < n; i++)
-        if (!item_found(_player_ref, (Item)_pickups[i].item)) _won_new |= 1u << _pickups[i].item;
-    for (int i = 0; i < n; i++) item_mark_found(_player_ref, (Item)_pickups[i].item);
-    for (int i = 0; i < n; i++) {
-        item_slot(_player_ref, (Item)_pickups[i].item) += 1;
-        _won[_pickups[i].item]++;
-    }
+    int rolled[ITEM_COUNT];
+    battle_loot(_enemy_id, cancelled, rolls, rolled);
+    credit_loot(_player_ref, rolled, _won, _won_new);
+    for (int it = 0; it < ITEM_COUNT; it++)
+        for (int j = 0; j < _won[it] && n < MAX_ENEMY_BULLETS; j++)
+            _pickups[n++] = { _enemy->x, _enemy->y, (float)((j%3)-1)*60.0f, -120.0f, true, it };
     // The score: hits + grazes + the defeat bonus (enemy_defeat_exp: a
     // common's grows with its rank, a boss pays far more). A level-up heals:
     // the battle's own HP follows.
@@ -639,6 +646,28 @@ void BattleScene::_win() {
         _bp.max_hp = (float)_player_ref->stats.max_hp;
         _bp.hp     = (float)_player_ref->stats.hp;
     }
+
+    // What the speech box will say: the EXP, then everything it paid -- the
+    // rare things first, then the common stuff -- each its own line with its
+    // icon, then a level-up.
+    SDL_snprintf(_reward_text, sizeof(_reward_text), "Got %d exp.", _exp_gain);
+    _reward_n = 0;
+    for (int pass = 0; pass < 2; pass++)
+        for (int it = 0; it < ITEM_COUNT; it++) {
+            if (!_won[it] || is_common_drop(it) != (pass == 1)) continue;
+            char ln[48];
+            SDL_snprintf(ln, sizeof(ln), "\n%s x%d", item_name((Item)it), _won[it]);
+            SDL_strlcat(_reward_text, ln, sizeof(_reward_text));
+            _reward_icons[_reward_n++] = it;
+        }
+    if (_levels > 0) {
+        char ln[32];
+        SDL_snprintf(ln, sizeof(ln), "\nLevel up! LV %d", _player_ref->level);
+        SDL_strlcat(_reward_text, ln, sizeof(_reward_text));
+    }
+    _dlg_part = 0;
+    _dlg_t    = 0.0f;
+    _dlg_state = SPEECH_TYPING;
 }
 
 void BattleScene::_update_pickups(float dt) {
@@ -1722,13 +1751,11 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
         _item_icons_tried = true;
         _item_icons = IMG_LoadTexture(ren, "assets/items.png");
     }
-    bool flying = false;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Pickup& p = _pickups[i];
         if (!p.active) continue;
-        flying = true;
-        if (_item_icons) {
-            SDL_Rect src = { p.item * 16, 0, 16, 16 }, dst = { (int)p.x - 8, (int)p.y - 8, 16, 16 };
+        if (_item_icons && p.item >= 0) {
+            SDL_Rect src = { item_icon((Item)p.item) * 16, 0, 16, 16 }, dst = { (int)p.x - 8, (int)p.y - 8, 16, 16 };
             SDL_RenderCopy(ren, _item_icons, &src, &dst);
         } else {
             _fill_rect(ren, (int)p.x - 2, (int)p.y - 2, 4, 4, 252, 252, 252, 255);
@@ -1751,51 +1778,32 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     }
 
     // Victory / defeat overlay
-    // The win panel waits for the pickups to land and goes as the fade out starts.
-    if (_phase == BATTLE_PHASE_VICTORY && !_confirmed && (!flying || _t > 1.2f)) {
-        draw_nes_panel(ren, 160, 172, 320, 148);
-        draw_text(ren, "VICTORY",
-                  160 + (320 - text_width("VICTORY", 2)) / 2, 186, 2, 255, 255, 255);
-        // Everything it paid, as the item's picture and how many, side by
-        // side: the rare ones first, their count in gold, then the common
-        // stuff in white. Under anything never held before, NEW, flashing
-        // gently.
-        int order[ITEM_COUNT], no = 0;
-        for (int pass = 0; pass < 2; pass++)
-            for (int it = 0; it < ITEM_COUNT; it++)
-                if (_won[it] && is_common_drop(it) == (pass == 1)) order[no++] = it;
-        const int GAP = 20;
-        int total = 0;
-        char cnt[ITEM_COUNT][8];
-        for (int i = 0; i < no; i++) {
-            SDL_snprintf(cnt[i], sizeof(cnt[i]), "%d", _won[order[i]]);
-            total += 32 + 6 + text_width(cnt[i], 2) + (i ? GAP : 0);
+    // A win: VICTORY, each letter stepping through bright colours in a
+    // rolling wave; then what it paid, typed in the speech box with each
+    // item's icon, like a chest. Both go as the fade out starts.
+    if (_phase == BATTLE_PHASE_VICTORY && !_confirmed && _t < VICTORY_T) {
+        static const SDL_Color RAINBOW[7] = {
+            { 248,  56,   0 }, { 252, 160,  68 }, { 248, 184,   0 }, {  88, 216,  84 },
+            {  60, 188, 252 }, { 104, 136, 252 }, { 248, 120, 248 },
+        };
+        const char* word = "VICTORY";
+        int x = 320 - text_width(word, 3) / 2;
+        for (int i = 0; word[i]; i++) {
+            char ch[2] = { word[i], 0 };
+            const SDL_Color& c = RAINBOW[(i + (int)(_t * 10.0f)) % 7];
+            draw_text(ren, ch, x, 200, 3, c.r, c.g, c.b);
+            x += text_width(ch, 3);
         }
-        int x = 320 - total / 2;
-        for (int i = 0; i < no; i++) {
-            bool rare = !is_common_drop(order[i]);
-            if (_item_icons) {
-                SDL_Rect src = { order[i] * 16, 0, 16, 16 }, dst = { x, 214, 32, 32 };
-                SDL_RenderCopy(ren, _item_icons, &src, &dst);
-            }
-            int w = text_width(cnt[i], 2);
-            draw_text(ren, cnt[i], x + 38, 222, 2, 255, rare ? 220 : 255, rare ? 40 : 255);
-            if (((_won_new >> order[i]) & 1u) && (SDL_GetTicks() / 400) % 2 == 0)
-                draw_text(ren, "NEW", x + (38 + w - text_width("NEW", 1)) / 2, 252, 1, 255, 220, 40);
-            x += 32 + 6 + w + GAP;
-        }
-        // The score under the haul: what earned it, the total, and a level-up.
-        {
-            char line[48];
-            SDL_snprintf(line, sizeof(line), "HITS %d  GRAZE %d  DEFEAT %d", _hits, _grazes, enemy_defeat_exp(_enemy_id));
-            draw_text(ren, line, 320 - text_width(line, 1) / 2, 266, 1, 200, 200, 200);
-            SDL_snprintf(line, sizeof(line), "+%d EXP", _exp_gain);
-            draw_text(ren, line, 320 - text_width(line, 2) / 2, 280, 2, 252, 252, 252);
-            if (_levels > 0 && (SDL_GetTicks() / 400) % 2 == 0) {
-                SDL_snprintf(line, sizeof(line), "LEVEL UP!  LV %d", _player_ref->level);
-                draw_text(ren, line, 320 - text_width(line, 1) / 2, 302, 1, 255, 255, 80);
-            }
-        }
+    } else if (_phase == BATTLE_PHASE_VICTORY && !_confirmed) {
+        draw_speech(ren, _reward_text, _dlg_part, _dlg_t, &_dlg_state, false, 0,
+                    [&](int line, int x, int y) {
+                        if (line < 1 || line > _reward_n) return 0;
+                        if (_item_icons) {
+                            SDL_Rect src = { item_icon((Item)_reward_icons[line - 1]) * 16, 0, 16, 16 }, dst = { x, y - 4, 24, 24 };
+                            SDL_RenderCopy(ren, _item_icons, &src, &dst);
+                        }
+                        return 32;
+                    });
     } else if (_phase == BATTLE_PHASE_DEFEAT && !_confirmed) {
         draw_nes_panel(ren, 160, 180, 320, 70);
         draw_text(ren, "GAME OVER",

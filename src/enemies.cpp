@@ -2173,21 +2173,37 @@ public:
     }
 };
 
+// Redrawn 2026-10-14 to the user's reference (one front view, frame 152x124):
+// the ringed body arches up behind and the head lunges at us, a maw of four
+// toothed lobes round a mouth, whip feelers, a barbed blade out of each side.
+// Its idle heaves, leans, dips the head with the lobes spreading; its `alt`
+// sheet, shown while ENRAGED, has the head and blades spinning and the body
+// pumping. Its rings leave the mouth (the user: shots from the part that
+// makes them), not the sprite's middle.
 class OlgoiKhorkhoi : public Enemy {
+    // The mouth's middle on the sheet: frame pixel (62, 62) of 152x124, drawn 2x
+    // about the frame's middle (76, 62) -- 28 px left of the enemy's middle.
+    void mouth(BulletSpawn& b) const { b.from = true; b.ox = x + (62.0f - 76.0f) * 2.0f; b.oy = y + (62.0f - 62.0f) * 2.0f; }
 public:
     OlgoiKhorkhoi() : Enemy(320, 160, 165, {0.4f,1.0f,0.4f,0.75f,1.0f,1.0f,1.5f}) {}
     const char* name()          const override { return "OLGOI-KHORKHOI"; }
     float       fire_interval() const override { return ENRAGED ? 1.4f : 2.0f; }
+    int   move_facing() const override { return FACE_DOWN; }      // one view
+    bool  alt_pose()    const override { return ENRAGED; }        // the spinning head
     int fire(float px, float py, BulletSpawn out[], int) override {
         if (ENRAGED) {
             float off = ernd() * TAU;
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < 16; i++) {
                 out[i] = mk(off + i * TAU/16.0f, 115.0f, 4.5f, 1.4f);
+                mouth(out[i]);
+            }
             return 16;
         }
         float off = ernd() * TAU;
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < 10; i++) {
             out[i] = mk(off + i * TAU/10.0f, 95.0f, 4.5f, 1.2f);
+            mouth(out[i]);
+        }
         return 10;
     }
 };
@@ -4821,12 +4837,29 @@ public:
           shots(tier == T_LOW ? 2 : tier == T_MEDIUM ? 3 : 5) {}
     const char* name()          const override { return nm; }
     float       fire_interval() const override { return 0.9f; }
+    // Where its shots leave: its middle, until its sprite gives it a mouth.
+    virtual void muzzle(float* ox, float* oy) const { *ox = x; *oy = y; }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
-        for (int i = 0; i < shots; i++)
+        float mx, my;
+        muzzle(&mx, &my);
+        float a = aim_at(mx,my,px,py);
+        for (int i = 0; i < shots; i++) {
             out[i] = mk(a + (i - (shots - 1) * 0.5f) * 0.25f, 150.0f, 2.5f, 5.0f);
+            if (mx != x || my != y) { out[i].from = true; out[i].ox = mx; out[i].oy = my; }
+        }
         return shots;
     }
+};
+
+// Boiuna keeps the roster placeholder attack until its pattern round. One
+// front view (frame 192x176, drawn 2x about its middle): its winding body laid
+// out behind, its front reared. It stands lower than the other placeholders so
+// the top of its arch clears the HUD bar, and its shots leave its open mouth.
+class Boiuna : public Unfinished {
+public:
+    Boiuna() : Unfinished("BOIUNA", 980, T_BOSS2) { y = 190.0f; }
+    int  move_facing() const override { return FACE_DOWN; }
+    void muzzle(float* ox, float* oy) const override { *ox = x + (121.5f - 96.0f) * 2.0f; *oy = y + (81.0f - 88.0f) * 2.0f; }
 };
 
 // Fad Felen keeps the roster placeholder attacks until its pattern round.
@@ -8155,7 +8188,7 @@ Enemy* enemy_create(int id) {
         case 95: return new Unfinished("WITKES", 880, T_SEVERE);
         case 96: return new Unfinished("BREGDI", 920, T_ELITE);
         case 97: return new Unfinished("RO", 950, T_ELITE);
-        case 98: return new Unfinished("BOIUNA", 980, T_ELITE);
+        case 98: return new Boiuna();
         case 99: return new FadFelen();
         case 100: return new Unfinished("FLESH PLANET", 6000, T_BOSS3);   // final boss: the ball only for now
         default: return new Skvader();
@@ -8171,7 +8204,7 @@ Enemy* enemy_create(int id) {
 static const MonsterPart ENEMY_PARTS[] = {
     PART_HIDE,    PART_HIDE,    PART_VINE,    PART_FEATHER, PART_HIDE,      //  0-4  (03 Qique: feathers)
     PART_BONE,    PART_HIDE,    PART_ESSENCE, PART_HIDE,    PART_BONE,      //  5-9
-    PART_BONE,    PART_HIDE,    PART_BONE,    PART_HIDE,    PART_BONE,      // 10-14
+    PART_BONE,    PART_HIDE,    PART_WING,    PART_HIDE,    PART_BONE,      // 10-14  (12 Ebigane: its wing, the boat's sailcloth)
     PART_BONE,    PART_ESSENCE, PART_ESSENCE, PART_BONE,    PART_BONE,      // 15-19
     PART_FUR,     PART_BONE,    PART_HIDE,    PART_BONE,    PART_BONE,      // 20-24  (20 Sermilik: white fur)
     PART_BONE,    PART_ESSENCE, PART_BONE,    PART_HIDE,    PART_HIDE,      // 25-29

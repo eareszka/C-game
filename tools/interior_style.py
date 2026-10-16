@@ -33,7 +33,7 @@ MATERIALS = {
     'bark':  {'tones': ('605028', '463422', '2d230c'), 'joint': '000000'},
     'rock':  {'tones': ('5c4616', '2d230c'), 'joint': '000000'},             # the oasis's, the cliffs' in a darker olive
     'dark stone': {'tones': ('34343e', '292931', '1e1e24'), 'joint': '000000'},   # the ruins' walls (user: almost surreal darkness)
-    'slate': {'tones': ('474751', '34343e'), 'joint': '000000'},             # the ruins' floor and the step pyramid's (user: "dark slate")
+    'slate': {'tones': ('474751', '34343e'), 'joint': '000000'},             # the step pyramid's floor (user: "dark slate"); the mark inside the brick outlines on the ruins' black one
     # the caves' rock as its sheet is drawn; in the game each ore's own tones (tools/gen_cave_tiles.py)
     'cave rock': {'tones': ('9797aa', '474751', '292931'), 'joint': '000000'},
     'cave gem': {'tones': ('dcf0ff',), 'joint': '000000'},   # a gem set in the rock: in the game its ore's lit tone

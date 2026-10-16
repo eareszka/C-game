@@ -5,32 +5,25 @@
 #include "entity.h"
 #include "input.h"
 
-// The TAB menu, laid out like Yume Nikki's: small windows over the world
-// rather than a screen of its own -- a command window (WEAPONS / ITEMS /
-// CLOSE), a preview of the selected thing's icon under it, and a list beside
-// them. On WEAPONS the list is the seven weapons, and under it whatever the
-// highlighted one can have done to it -- make, equip, upgrade -- each with
-// its cost, so the player only ever picks a weapon and then a plain action.
-// The rules (costs, forging, upgrades) are src/crafting.cpp's; this file is
-// only the windows and the keys.
-// The three windows (logical 640x480): command, preview under it, list
-// beside them. The debug menus (F2, F3) use the same places.
-static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 150, CMD_H = 116;
-static const int PRE_X = 20,  PRE_Y = 160, PRE_W = 150, PRE_H = 196;
-static const int LST_X = 184, LST_Y = 36,  LST_W = 436, LST_H = 380;
+// Three windows shared with the debug menus: commands, item preview, and a
+// scrolling item/recipe list. Recipe costs support four ingredients plus a
+// separately displayed, retained book. Shops reuse these panels.
+static const int CMD_X = 20,  CMD_Y = 36,  CMD_W = 112, CMD_H = 116;
+static const int PRE_X = 20,  PRE_Y = 160, PRE_W = 112, PRE_H = 196;
+static const int LST_X = CMD_X + CMD_W + 14, LST_Y = 36, LST_W = 620 - LST_X, LST_H = 380;
 
 enum MenuFocus { FOCUS_COMMANDS, FOCUS_LIST, FOCUS_ACTIONS };
 
 struct GameMenu {
     bool      open  = false;
+    bool      shop  = false;
     MenuFocus focus = FOCUS_COMMANDS;
     int       cmd   = 0;        // command row
     int       sel   = 0;        // list entry
     int       act   = 0;        // action row, on WEAPONS
     float     note_t = 0.0f;    // seconds left of the last action's message
     const char* note = nullptr;
-    // Set by the game each frame: something is chasing the player, so the
-    // sleeping bag can't be used.
+    // World chase state, reserved for future item activation restrictions.
     bool      chased = false;
     // SAVE: why it can't be done here (set by the game each frame; null when
     // it can), and the request the game answers by writing the file.
@@ -44,6 +37,7 @@ struct GameMenu {
 };
 
 void game_menu_toggle(GameMenu* m);
+void game_menu_open_shop(GameMenu* m);
 // A line in the menu's message place for a moment ("SAVED").
 void game_menu_say(GameMenu* m, const char* note);
 // Keys, while open. Reads the raw input: the game itself gets a blank one.

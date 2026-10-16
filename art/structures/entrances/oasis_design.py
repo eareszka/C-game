@@ -7,23 +7,25 @@
     x 80..159 in snow: a pair of snow-capped boulders either side
 
 Each is 80x32, five cells by two, over a 1x1 stamp in the bottom middle cell:
-the ladder down a hole every 1x1 way in has (entrance_shapes.ladder_hole).
+the ladder down a hole every 1x1 way in has (entrance_shapes.ladder_hole; the
+user, 2026-10-13: "the oasis ladder should still be the default ladder
+sprite"). The pool it stands at the shore of is a circle (stamp_dungeon_surround).
 
 The water is not here. Every oasis grows its own pool of real pond tiles,
 north of the stamp, in a shape of its own (stamp_dungeon_surround in
 src/tilemap.cpp), and the game's shoreline draws its edge. What stands beside
-it is: the user's palms (palm.aseprite) or the boulders, two cells out either
-side of the ladder -- crown or top walked behind, trunk or foot solid -- and
-in snow, steam off the water (steam.aseprite, drawn by the game).
+it is: the palms (palm_design.py) or the boulders, two cells out either side
+of the well -- crown or top walked behind, trunk or foot solid -- and in snow,
+steam off the water (steam.aseprite, drawn by the game).
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
 from entrance_shapes import Grid, check, outline, ladder_hole, read_sprite, LADDER_TONES, stand, depth_layers
+from overworld_style import MATERIALS
 
 W, H = 80, 32
-PALM = {'K': '000000', 'G': '235436', 'g': '058f3a', 'l': '4edc4a', 'T': 'd7a175', 't': '605028'}
+PALM = dict(zip('cgG', MATERIALS['foliage']['tones']), K='000000')
 PAL = dict({'D': '595965', 'M': '9797aa', 'S': 'fcfcfc'}, **LADDER_TONES, **PALM)
-
 
 def lay(g, rows, x0, y0):
     for y, row in enumerate(rows):

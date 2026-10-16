@@ -10,7 +10,7 @@ Measured from the pieces the user is happy with (REFERENCE). The interiors'
 half is tools/interior_style.py, and what the two share -- stone, sandstone,
 the palette and four-colour rules, the board -- is taken from there.
 """
-import functools, glob, os, runpy, sys
+import functools, glob, json, os, re, runpy, sys
 from collections import Counter
 import interior_style
 from interior_style import ROOT, crop
@@ -24,7 +24,7 @@ HOUSES = sorted(os.path.basename(f)[:-10] for f in glob.glob(os.path.join(ART, '
 # ground is its fill and then what is laid on it. Where the reference or the
 # interiors already draw a material, that is the one; the rest are a piece's
 # own tones, named here once.
-MATERIALS = {k: interior_style.MATERIALS[k] for k in ('stone', 'sandstone', 'wood', 'bark', 'brick')}
+MATERIALS = {k: interior_style.MATERIALS[k] for k in ('stone', 'sandstone', 'wood', 'bark', 'brick', 'dark stone', 'dirt')}
 MATERIALS.update({
     'grass':     {'tones': ('4edc4a', '00881b'), 'joint': '000000'},
     'meadow':    {'tones': ('a8f0bc', 'fc74b4', '00a800'), 'joint': '000000'},
@@ -33,20 +33,29 @@ MATERIALS.update({
     'water':     {'tones': ('5c94fc', 'fcfcfc'), 'joint': '000000'},
     'foliage':   {'tones': ('05c43a', '058f3a', '235436'), 'joint': '000000'},   # every tree's greens
     # not in the reference: each piece's own
-    'wasteland': {'tones': ('270800', '110000'), 'joint': '000000'},
+    'wasteland': {'tones': ('341e10', '110000', '583518'), 'joint': '000000'},   # cracked earth: fill, crack, clod (2026-10-14)
     'lava':      {'tones': ('b70000', '7c0a1b'), 'joint': '000000'},
-    'dead wood': {'tones': ('280000',), 'joint': '000000'},
-    'town pad':  {'tones': ('d7a175', '8d6b4f'), 'joint': '000000'},
+    # the interiors' bone (the catacombs' walls) with the roster's bone white above it: the desert's bones
+    'bone':      {'tones': ('e8e0c0', 'b2966a', '8d6b4f'), 'joint': '000000'},
+    # the villages' (art/structures/villages/): thatch on the grass cottages, rust on the wasteland huts' stovepipes
+    'thatch':    {'tones': ('c9a433', '876a1f'), 'joint': '000000'},
+    'rust':      {'tones': ('764c20', '3e1c0e'), 'joint': '000000'},
+    'yellow paint': {'tones': ('fae488', 'f0bc3c'), 'joint': '000000'},     # the meadow farms' boards
+    # A track -- a road, a trail, a town's street -- is in the trail tones of the
+    # ground it lies on (paving, edge; GroundBiome::track in src/tilemap.cpp).
+    # Grass's are the start town's street, read off the sheet; the rest are
+    # drawn, not on the sheet, and named here so the game's table cites a material.
+    'town pad':  {'tones': ('d7a175', '8d6b4f'), 'joint': '000000'},             # trail grass
+    'trail meadow':    {'tones': ('b2966a', '967448'), 'joint': '000000'},
+    'trail sand':      {'tones': ('cebe82', 'b29e5c'), 'joint': '000000'},
+    'trail wasteland': {'tones': ('463422', '110000'), 'joint': '000000'},
+    'trail snow':      {'tones': ('c6ccda', 'a4aaba'), 'joint': '000000'},
     'oasis water': {'tones': ('84a7e9', '3e91cc'), 'joint': '000000'},
-    'trail grass':     {'tones': ('967448', '785830', '341e10'), 'joint': '000000'},
-    'trail meadow':    {'tones': ('b2966a', '967448', '463422'), 'joint': '000000'},
-    'trail sand':      {'tones': ('cebe82', 'b29e5c', '605028'), 'joint': '000000'},
-    'trail wasteland': {'tones': ('3e1c0e', '270800', '110000'), 'joint': '000000'},
-    'trail snow':      {'tones': ('c6ccda', 'a4aaba', '595965'), 'joint': '000000'},
     # rock that holds ore is in its ore's ramp (gen_cave_entrances.py TONES);
     # this is stone's, and DEFAULT is the cliffs' with no cave in them
     'ore rock':   {'tones': ('bcbeca', '848694', '474751'), 'joint': '000000'},
     'cliff rock': {'tones': ('b29e5c', '887000', '493712'), 'joint': '000000'},
+    'gold':       {'tones': ('fae488', 'c9a433', '685018'), 'joint': '000000'},  # kharvite's: the gold ore vein's, the gold icon's
     'glass':  {'tones': ('5c94fc', 'b70000'), 'joint': '000000'},                # the church's windows
     'doorway': {'tones': ('241c0a',), 'joint': '000000'},                        # the pyramid's
     'sign':   {'tones': ('e8e0c0', '94703d', '633e1b'), 'joint': '000000'},
@@ -66,12 +75,14 @@ for h in HOUSES:        # brick (and side face), its shade (and door), mortar (a
     MATERIALS[h + ' brick'] = {'tones': (pal['B'], pal['S']), 'joint': pal['M']}
     MATERIALS[h + ' roof'] = {'tones': (pal['R'],), 'joint': '000000'}
 
-# The cliff texture is drawn in four grey values the game swaps for a ramp
-# (art/cliffs/gen_cliff_texture.py VALUES): here the cliffs' own.
-CLIFF = {'5c5c68': '493712', '8c8c98': '887000', 'c4c4cc': 'b29e5c'}
+# The rock texture is read as the game paints it: the packed rows of
+# src/cliff_texture.inc (art/cliffs/gen_cliff_texture.py, each stone one flat
+# tone), a digit a pixel -- crack, shade, base -- here in the cliffs' own ramp.
+CLIFF = ('000000', '493712', '887000')
 
-# piece: (its drawing -- a PNG, or (col, row, cols, rows) of the sheet's cells;
-# its kind; the materials it is made of; colours to swap as the game does).
+# piece: (its drawing -- a PNG, (col, row, cols, rows) of the sheet's cells, or
+# (png, x, y, w, h) a piece of a PNG in pixels; its kind; the materials it is
+# made of; colours to swap as the game does).
 PIECES = {
     'grass':     ((18, 2, 3, 2), 'ground', ('grass',)),
     'meadow':    ((21, 2, 3, 2), 'ground', ('meadow',)),
@@ -88,29 +99,66 @@ PIECES = {
 PIECES.update({h: ('art/structures/houses/%s.png' % h, 'built', (h + ' brick', h + ' roof')) for h in HOUSES})
 REFERENCE = tuple(PIECES)
 PIECES.update({
-    'wasteland':   ((25, 4, 1, 1), 'ground', ('wasteland',)),
+    'wasteland':   ('art/ground/wasteland.png', 'ground', ('wasteland',)),   # sheet cols 27-29 rows 4-5
     'lava':        ((15, 0, 1, 1), 'ground', ('lava',)),
     'town pads':   ((0, 6, 15, 5), 'ground', ('town pad',)),
     'oasis water': ('art/structures/entrances/oasis_water.png', 'ground', ('oasis water',)),
-    'trail grass':     ((68, 5, 3, 3), 'ground', ('trail grass',)),
-    'trail meadow':    ((71, 5, 3, 3), 'ground', ('trail meadow',)),
-    'trail sand':      ((74, 5, 3, 3), 'ground', ('trail sand',)),
-    'trail wasteland': ((77, 5, 3, 3), 'ground', ('trail wasteland',)),
-    'trail snow':      ((80, 5, 3, 3), 'ground', ('trail snow',)),
     'conifer a':   ((18, 0, 1, 2), 'object', ('foliage', 'snow')),
     'conifer b':   ((19, 0, 1, 2), 'object', ('foliage', 'snow')),
-    'dead tree':   ((20, 0, 1, 2), 'object', ('dead wood',)),
-    'palm':        ('art/structures/entrances/palm.png', 'object', ('foliage', 'bark')),
+    'dead tree':   ((20, 0, 1, 2), 'object', ('bark',)),
+    'palm':        ('art/structures/entrances/palm.png', 'object', ('foliage',)),
     'large tree':  ('art/structures/entrances/large_tree.png', 'object', ('bark',)),
     'sign':        ('art/structures/town/sign.png', 'object', ('sign',)),
     'player':      ('assets/player_small.png', 'object', ('player',)),
     'gravestones': ('art/structures/entrances/gravestones.png', 'built', ('stone',)),
     'pyramid':     ('art/structures/entrances/pyramid.png', 'built', ('sandstone', 'stone', 'doorway')),
-    'oasis':       ('art/structures/entrances/oasis.png', 'built', ('stone', 'foliage', 'bark', 'snow')),
+    'oasis':       ('art/structures/entrances/oasis.png', 'built', ('ore rock', 'stone', 'foliage', 'snow')),
     'yard walls':  ('art/structures/entrances/yard_walls.png', 'built', ('wood', 'stone')),
     'cave mouth':  ('art/structures/cave_entrance.png', 'built', ('ore rock',)),
-    'cliff rock':  ('art/cliffs/cliff_texture.png', 'built', ('cliff rock',), CLIFF),
+    'cliff rock':  ('src/cliff_texture.inc', 'built', ('cliff rock',)),
 })
+# the villages' sets (art/structures/villages/<set>_design.py): three houses and a well a strip,
+# each on its own cells, standing on the strip's bottom row
+VILLAGE_SETS = {
+    'grass':  ('white paint', 'bark', 'thatch', 'brick', 'stone', 'wood'),
+    'meadow': ('yellow paint', 'white paint', 'red paint', 'green paint', 'slate', 'brick', 'stone', 'wood', 'dirt', 'foliage'),
+    'sand':   ('sandstone', 'thatch', 'wood'),
+    'snow':   ('wood', 'white paint', 'stone'),
+    'waste':  ('dark stone', 'slate', 'rust', 'wood'),
+}
+VILLAGE_PIECES = {s: (('small', 0, 4), ('middle', 4, 5), ('large', 9, 6), ('well', 15, 2)) for s in VILLAGE_SETS}
+VILLAGE_PIECES['meadow'] = (('shed', 0, 4), ('cottage', 4, 5), ('farmhouse', 9, 6), ('barn', 15, 6), ('well', 21, 2), ('field', 23, 1))
+VILLAGE_ROWS = {'meadow': 7}                          # a strip's cells tall (5 unless its barn makes it more)
+for _set, _mats in VILLAGE_SETS.items():
+    _png = 'art/structures/villages/%s.png' % _set
+    for _name, _x, _w in VILLAGE_PIECES[_set]:
+        PIECES['%s %s' % (_set, _name)] = ((_png, _x * 16, 0, _w * 16, VILLAGE_ROWS.get(_set, 5) * 16), 'built', _mats)
+# the desert's formations (art/structures/entrances/desert_design.py), a column of the strip each
+DESERT = (('saguaro', 'foliage'), ('saguaro small', 'foliage'), ('barrel cactus', 'foliage'), ('prickly pear', 'foliage'),
+          ('boulder', 'cliff rock'), ('boulders', 'cliff rock'), ('spire', 'cliff rock'), ('shrub', 'bark'),
+          ('skull', 'bone'), ('ribs', 'bone'))
+PIECES.update({n: (('art/structures/entrances/desert.png', 16 * i, 0, 16, 32), 'object', (m,)) for i, (n, m) in enumerate(DESERT)})
+# The country's landmarks (art/structures/landmarks/*_design.py; gen_entrance_art.py
+# LANDMARKS): the place, built or an object; every cache is the one chest, shut and open.
+PIECES.update({
+    'old well':          (('art/structures/landmarks/well.png', 0, 0, 32, 32), 'built', ('stone', 'wood')),
+    'chest':             (('art/structures/landmarks/chest.png', 0, 0, 16, 16), 'object', ('wood', 'stone')),
+    'chest open':        (('art/structures/landmarks/chest.png', 16, 0, 16, 16), 'object', ('wood', 'stone')),
+    'woodshed':          (('art/structures/landmarks/camp.png', 0, 0, 48, 48), 'built', ('wood', 'bark')),
+    'camp fire':         (('art/structures/landmarks/camp.png', 48, 32, 16, 16), 'object', ('stone',)),
+    'statue head':       (('art/structures/landmarks/statue.png', 0, 0, 32, 32), 'object', ('stone',)),
+    'cairn':             (('art/structures/landmarks/cairn.png', 0, 0, 32, 32), 'object', ('stone', 'snow')),
+    'burnt wagon':       (('art/structures/landmarks/wagon.png', 0, 0, 48, 32), 'object', ('bark',)),
+    'wrecked boat':      (('art/structures/landmarks/boat.png', 0, 0, 48, 32), 'object', ('wood',)),
+})
+# The things to mine (art/structures/nodes/nodes_design.py): the stone rock, and the vein -- the
+# overworld's gold ore, and in a cave its ore's (tools/gen_cave_tiles.py; the gold read here).
+PIECES.update({
+    'stone node':  (('art/structures/nodes/nodes.png', 0, 0, 16, 16), 'object', ('ore rock',)),
+    'ore vein':    (('art/structures/nodes/nodes.png', 16, 0, 16, 16), 'object', ('ore rock', 'gold')),
+})
+PIECES.update({'ore vein ' + k: (('art/structures/nodes/nodes.png', 16 * i, 0, 16, 16), 'object', ('ore rock', 'gold'))
+               for i, k in ((2, 'a'), (3, 'b'), (4, 'c'))})     # its twinkle: a nugget flared
 # The coastal town's (art/structures/coast/*_design.py), read where they lie on
 # the sheet: the user edits them there (2026-10-12), so the sheet is the drawing.
 COAST = {
@@ -129,15 +177,21 @@ COAST = {
 PIECES.update({n: (at, 'built', ('white paint',) + made) for n, (at, made) in COAST.items()})
 PIECES.update({                                     # the green's things: art/structures/coast/park_design.py
     'bench':        ((93, 190, 1, 1), 'object', ('wood',)),
-    'street lamp':  ((94, 189, 1, 2), 'object', ('slate', 'lamplight')),
-    'fountain':     ((95, 189, 2, 2), 'object', ('stone', 'water')),
-    'picket fence': ((97, 190, 1, 1), 'object', ('white paint',)),
-    'flower bed':   ((98, 190, 1, 1), 'object', ('foliage', 'meadow')),
+    'street lamp':  ((94, 188, 1, 3), 'object', ('slate', 'lamplight')),
+    'fountain':     ((95, 188, 3, 3), 'object', ('stone', 'water')),
+    'picket fence': ((98, 190, 1, 1), 'object', ('white paint',)),
+    'flower bed':   ((99, 190, 1, 1), 'object', ('foliage', 'meadow')),
     # the wharf: the graveyard dungeon's boardwalk (its planks, and the face and posts under them), and
     # the cells tools/town1_layout.py bakes from it for the wharf's deck in the houses' projection
     'boardwalk':    ((232, 44, 4, 4), 'built', ('wood',)),
     'wharf deck':   ((0, 192, 96, 1), 'built', ('wood',)),
 })
+
+# The map minis (tools/minis.py): each enemy's chaser, an object in three of its own battle colours.
+for _f in sorted(glob.glob(os.path.join(ROOT, 'art', 'enemies', 'minis', '*_mini.json'))):
+    _n = 'mini ' + os.path.basename(_f)[:2]
+    MATERIALS[_n] = {'tones': tuple(v for v in json.load(open(_f))['pal'].values() if v != '000000'), 'joint': '000000'}
+    PIECES[_n] = (os.path.relpath(_f[:-5] + '.png', ROOT), 'object', (_n,))
 
 
 @functools.lru_cache(None)
@@ -149,11 +203,16 @@ def _open(path):
 def swatch(name):
     """A piece as rows of 'rrggbb' or None."""
     src = PIECES[name][0]
+    if isinstance(src, str) and src.endswith('.inc'):
+        return [[CLIFF[int(c)] for c in r] for r in re.findall(r'"(\d+)"', open(os.path.join(ROOT, src)).read())]
     swap = {KEY: None, **(PIECES[name][3] if len(PIECES[name]) > 3 else {})}
-    im = _open(SHEET if isinstance(src, tuple) else src)
-    if isinstance(src, tuple):
+    if isinstance(src, tuple) and len(src) == 5:
+        im = _open(src[0]).crop((src[1], src[2], src[1] + src[3], src[2] + src[4]))
+    elif isinstance(src, tuple):
         c, r, w, h = src
-        im = im.crop((c * 16, r * 16, (c + w) * 16, (r + h) * 16))
+        im = _open(SHEET).crop((c * 16, r * 16, (c + w) * 16, (r + h) * 16))
+    else:
+        im = _open(src)
     hexes = [('%02x%02x%02x' % p[:3]) if p[3] else None for p in im.get_flattened_data()]
     return [[swap.get(c, c) for c in hexes[y * im.width:(y + 1) * im.width]] for y in range(im.height)]
 
@@ -169,7 +228,7 @@ LINE = 0.012     # the most of a ground that is black: the grass's and the snow'
 SPECK = {'ground': 0.03,     # lone pixels a piece may hold: the sand's grains are 2.9% of it,
          'built': 0.014}     # the church's 1.36%; an object is too few pixels to count them in
 OUT = 0.99       # the least of a silhouette's edge that is black: every reference piece's is all of it
-JOINED = ('yard walls', 'picket fence', 'wharf deck')     # a deck cut into cells; its posts are 3 px, too thin to line     # drawn as pieces that join in the game: open where they meet, by design
+JOINED = ('yard walls', 'picket fence', 'wharf deck', 'meadow field')     # a deck cut into cells; its posts are 3 px, too thin to line     # drawn as pieces that join in the game: open where they meet, by design
 TONES = 3        # an object's colours besides black: the trees' three greens
 
 

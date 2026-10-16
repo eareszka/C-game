@@ -6,8 +6,12 @@
 // streaks through it -- is repainted here from one tileable rock texture
 // (art/cliffs/cliff_texture.aseprite -> cliff_texture.inc) read in world
 // pixels, so a face runs on across tile seams with no repeat at the tile, in
-// the four tones of the mountain's ore (ore_tones.inc, row 0 for a mountain
-// with no cave). Scree and the beaded line keep their own pixels, recoloured.
+// the tones of the mountain's ore (ore_tones.inc, row 0 for a mountain with
+// no cave). The texture is the oasis cave's rock, the same rows (the user,
+// 2026-10-13: "have cliff islands use the same rock textures used in oasis
+// caves"): every stone one flat tone, the ramp's base or its shade, black
+// between them -- no lit tone and no dither. Scree and the beaded line keep
+// their own pixels, recoloured.
 //
 // Painted a chunk of CP_CHUNK x CP_CHUNK tiles at a time, on the main thread,
 // when first drawn; the chunks are thrown away whenever the islands or their

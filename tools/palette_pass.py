@@ -39,7 +39,6 @@ sys.path.insert(0, os.path.join(ROOT, "art", "direction"))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import fcremap as fc
 import gen_cave_tiles as cave
-import gen_trail_tiles as trail
 
 SHEET = os.path.join(ROOT, "assets", "tileset.png")
 SPRITES = [os.path.join(ROOT, "assets", "player_small.png")]
@@ -57,8 +56,9 @@ def regions():
         return {(c, r) for c in range(c0, c0 + nc) for r in range(r0, r0 + nr)}
     return [
         ("master", "cave", block(cave.MASTER_COL0, 0, cave.BLOCK_COLS, cave.BLOCK_ROWS)),
-        ("master", "trail", block(trail.MASTER_COL0, trail.MASTER_ROW0,
-                                  trail.BANK_COLS, trail.BANK_ROWS)),
+        # the old trail's hand-cut block: no longer drawn (a track is the
+        # town street's two tones, src/tilemap.cpp draw_track), left as it is
+        ("master", "trail", block(24, 5, 3, 3)),
     ]
 
 

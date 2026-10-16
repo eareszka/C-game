@@ -61,6 +61,40 @@ def clapboard_tone(rx, ry):
     return 'S' if ry % COURSE_H == COURSE_H - 1 else 'B'
 
 
+# The villages' walls (art/structures/villages/): each a material laid in
+# units, as the brick is, in the house's four letters.
+def timber_tone(rx, ry):
+    """A timber frame: posts two wide every ten across and a beam two deep
+    every sixteen down, in the shade's letter (the timber), the panels
+    between them plaster, the base."""
+    return 'S' if rx % 10 < 2 or ry % 16 < 2 else 'B'
+
+
+def adobe_tone(rx, ry):
+    """Adobe blocks in wide plain courses, eight high: the lit top row of each
+    in the mortar's letter, its bottom row the shade, no joints."""
+    r = ry % 8
+    return 'M' if r == 0 else 'S' if r == 7 else 'B'
+
+
+def log_tone(rx, ry):
+    """Logs laid one on the next, four high: the lit line along the top of
+    each (the mortar's letter), the dark under it (the shade), the log between."""
+    r = ry % COURSE_H
+    return 'M' if r == 0 else 'S' if r == COURSE_H - 1 else 'B'
+
+
+def pyramid_tone(rx, ry):
+    """The pyramid's sandstone (entrances/pyramid_design.py stone()): blocks
+    eight along in courses four high, a bed of mortar under each course and a
+    joint between the blocks, half a block along from the course above; the
+    face lit, the base -- its shade is the side turned away."""
+    course = ry // COURSE_H
+    if ry % COURSE_H == COURSE_H - 1 or (rx + (course % 2) * 4) % 8 == 0:
+        return 'M'
+    return 'B'
+
+
 def triangle(put, a, b, c, tone):
     """A filled triangle a, b, c, black along its edge."""
     side = lambda p, q, r: (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
@@ -170,6 +204,115 @@ class House:
                 self.put(x, y, c, B - sx)
                 drawn.add((x, y))
         return drawn
+
+    def barn(self, x0, x1, depth, wall, h1, h2):
+        """A barn: its gable end to the front under a gambrel roof running
+        back. The wall `wall` high in the house's tone; above it the end in
+        the plain base tone, two pixels of trim up its raking edges and down
+        the corners; the roof `depth` back in the roof's tone, black along the
+        ridge, the two breaks (h1 up the steep lower slopes) and the eaves,
+        and a row line every six pixels back; under the right eave its side
+        in the shade, black on the ground line and the back corner, as a
+        wing's is. The ground under it is stood on."""
+        B = self.B
+        xm, half = (x0 + x1) / 2.0, (x1 - x0) / 2.0
+        def top(x):
+            t = abs(x - xm) / half                          # 0 at the ridge, 1 at the eave
+            return h1 + h2 * (1 - t / 0.5) if t <= 0.5 else h1 * (1 - (t - 0.5) / 0.5)
+        yt = B - wall + 1
+        for y in range(yt, B + 1):                           # the wall
+            for x in range(x0, x1 + 1):
+                c = 'K' if x in (x0, x1) or y == B else self.tone(x - x0, y - yt)
+                if x0 < x <= x0 + 2 or x1 - 2 <= x < x1:
+                    c = 'M'
+                self.put(x, y, c, B)
+        for x in range(x0, x1 + 1):                          # the end above it
+            zt = wall + top(x)
+            for z in range(wall, int(zt) + 1):
+                c = 'M' if zt - z < 2.5 else 'B'
+                if z == int(zt) or x in (x0, x1):
+                    c = 'K'
+                self.put(x, y := B - z, c, B)
+        for d in range(1, depth + 1):                        # the roof, back from the front edge
+            for i in range(2 * (x1 - x0) + 1):
+                x = x0 + i * 0.5
+                z = wall + top(x)
+                sx, sy = int(round(x + d)), int(round(B - z - d))
+                line = (x <= x0 or x >= x1 or abs(x - xm) < 1 or abs(abs(x - xm) - half * 0.5) < 1
+                        or d == depth or d % 6 == 0)
+                c = 'K' if line else 'R'
+                self.put(sx, sy, c, B - d)
+                self.put(sx, sy + 1, c, B - d)               # the sheet is solid: fill down to the step before
+            for x in (x0, x1):                               # the eaves' lower edge, so each step back is joined
+                self.put(x + d, B - wall - d + 1, 'K', B - d)
+            for z in range(wall):                            # the side, up to the eave
+                self.put(x1 + d, B - z - d, 'K' if z == 0 or d == depth else 'S', B - d)
+        self.foot |= {(x + d, B - d) for x in range(x0, x1 + 1) for d in range(depth + 1)}
+
+    def barn_door(self, x0, w, h=30):
+        """A barn door `w` wide and `h` high on the ground line: planks in the
+        shade with black between, a frame and an X brace in the trim."""
+        B = self.B
+        for y in range(B - h, B):
+            for x in range(x0, x0 + w):
+                lx, ly = x - x0, y - (B - h)
+                edge = lx in (0, w - 1) or ly in (0, h - 1)
+                cross = abs(lx * (h - 1) - ly * (w - 1)) < w - 1 or abs((w - 1 - lx) * (h - 1) - ly * (w - 1)) < w - 1
+                self.put(x, y, 'M' if edge or cross else 'K' if lx % 4 == 0 else 'S', B)
+
+    def round_wall(self, cx, cd, rx, rd, wall):
+        """A round wall in the oblique view: the rim of the ellipse cx, cd by
+        rx, rd in the plan, raised `wall` high where it is turned to the
+        viewer or to the right (the back-left of it is hidden by the rest),
+        laid in the wall's tone along the rim so its courses run round, the
+        part turned away to the right in the shade; black at its foot and
+        its top. The ground inside the rim is what it stands on."""
+        import math
+        B = self.B
+        n = int(2 * math.pi * max(rx, rd) * 3)
+        for i in range(n):
+            th = 2 * math.pi * i / n
+            x, d = cx + rx * math.cos(th), cd + rd * math.sin(th)        # d grows back
+            nx, nd = math.cos(th) / rx, math.sin(th) / rd                 # the outward normal
+            if nd > 0 and nx <= 0:
+                continue
+            sx, f = int(round(x + d)), B - int(round(d))
+            along = int(round(rx * th))
+            for z in range(wall + 1):
+                sy = int(round(B - z - d))
+                c = 'K' if z == 0 or z == wall else self.tone(along, wall - z)
+                if nx > 0.35 and c == 'B':
+                    c = 'S'
+                self.put(sx, sy, c, f)
+        for d in range(int(cd - rd), int(cd + rd) + 1):
+            for x in range(int(cx - rx), int(cx + rx) + 1):
+                if ((x - cx) / rx) ** 2 + ((d - cd) / rd) ** 2 <= 1:
+                    self.foot.add((x + d, B - d))
+
+    def dome(self, x0, x1, d0, depth, wall, rise, shade='T'):
+        """A dome over the wall's top, x0..x1 across and `depth` back from
+        d0, `rise` high at its crown: a half ball in the roof's tone, its
+        rows laid with a black line every six (hay, a dome of it), the side
+        turned from the light -- the right and the back -- in `shade`. The
+        surface is sampled finely and each point stands over the ground row
+        of its depth, so the nearer wins as everywhere."""
+        import math
+        B = self.B
+        cx, cd = (x0 + x1) / 2.0, d0 + depth / 2.0
+        rx, rd = (x1 - x0) / 2.0, depth / 2.0
+        n = int(2 * max(rx, rd) * 4)
+        for i in range(n + 1):
+            for j in range(n + 1):
+                u, v = -1 + 2.0 * i / n, -1 + 2.0 * j / n
+                q = u * u + v * v
+                if q > 1:
+                    continue
+                zf = math.sqrt(1 - q)
+                x, d, z = cx + u * rx, cd + v * rd, wall + rise * zf
+                sx, sy = int(round(x + d)), int(round(B - z - d))
+                lit = u - v * 0.6 - zf * 0.3 < 0.35      # away from the light: the right side, the back
+                c = 'K' if int(z - wall) % 6 == 0 and z - wall >= 1 else (shade if not lit else 'R')
+                self.put(sx, sy, c, B - int(round(d)))
 
     def door(self, x0):
         """The door, every house's alike, at x0 on the ground line: planks in
@@ -296,9 +439,10 @@ class House:
         triangle(lambda x, y, c: self.put(x, y, c, B - d - depth), p1, p2, apex, 'K')
         triangle(lambda x, y, c: self.put(x, y, c, B - d), p0, p1, apex, 'R')
 
-    def finish(self, name, pal, door, merge=()):
-        """The design for draw_views: the house, its layers, and its door --
-        (cell across, cell down, cells wide) of the door's foot."""
+    def grid(self, name, merge=()):
+        """The house as a drawing with its layers (entrance_shapes.Grid):
+        the pixels, a black line round the whole, each pixel's ground row
+        and the ground stood on."""
         g = Grid(self.w, self.h)
         for (x, y), c in self.c.items():
             g.put(x, y, c)
@@ -313,7 +457,17 @@ class House:
         f = dict(self.f)
         stand(g, lambda x, y: f.get((x, y), y), self.foot)
         check(g, name)
+        return g
+
+    def door_cells(self, door):
+        """(cell across, cell down, cells wide) of a door's foot, from what door() gave."""
         dx, dw = door
+        return [dx // 16, self.h // 16 - 1, max(1, (dx + dw - 1) // 16 - dx // 16 + 1)]
+
+    def finish(self, name, pal, door, merge=()):
+        """The design for draw_views: the house, its layers, and its door --
+        (cell across, cell down, cells wide) of the door's foot."""
+        g = self.grid(name, merge)
         return {'pal': pal, 'view_w': self.w, 'order': ['house'], 'views': {'house': g.rows()},
                 'depth': depth_layers(self.w, self.h, [(0, 0, g)]),
-                'door': [dx // 16, self.h // 16 - 1, max(1, (dx + dw - 1) // 16 - dx // 16 + 1)]}
+                'door': self.door_cells(door)}
