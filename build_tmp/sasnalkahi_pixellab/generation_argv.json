@@ -1,0 +1,15 @@
+[
+  "pixellab-cli",
+  "edit",
+  "build_tmp\\sasnalkahi_pixellab\\41_sasnalkahi_original_frame0.png",
+  "build_tmp\\sasnalkahi_pixellab\\bear_anatomy_reference.png",
+  "--prompt",
+  "Redraw only image 1, the current Sasnalkahi battle sprite, as a single cohesive flat 2D pixel-art enemy first frame. Preserve its original 98x65 canvas, front-facing low-headed quadruped stance, original placement and occupied footprint of approximately 35x51 pixels at x32..66, y13..63. Image 2 is ANATOMY ONLY: the user's Sasnalkahi illustration, a powerful dark brown bear with a pronounced shoulder hump, low heavy head, long broad snout, small round ears, slight jagged shoulder silhouette, large tapered paws and long ivory claws. Interpret this anatomy in the FRONT VIEW of image 1; do not copy the illustration's side view, white background, map, pink silhouette or painterly texture. Style reference contains all 42 approved enemy front sprites; it is technique reference, never a collage to copy. Follow the project Art Bible: crisp continuous one-pixel BLACK silhouette and shared separation outlines, deliberate chunky clusters, flat dark/mid/light brown fills shaded by form, light on viewer/up-facing surfaces and dark under chin, belly and far limbs. Use a restrained project-palette ramp #3c2412 #633e1b #b2966a, black #000000, ivory #e8e0c0 claws, and tiny red #b70000 eyes. No more than eight colors plus black. Readable large bear head, rounded powerful body, tapered limbs, grounded baseline. Keep the creature recognizable as a bear rather than a humanoid. No fur dots, hatching, scale patterns, repeating texture, gradients, dithering, antialiasing, 3D rendering, or assembled outlined cutout parts. Transparency throughout the empty canvas. No red outline or black dragon skin; those were RO-only exceptions. Produce exactly one front-facing enemy, first frame only.",
+  "--match",
+  "art/direction/approved_enemy_study/approved_42_fronts_native_512.png",
+  "--size",
+  "98x65",
+  "--transparent",
+  "--name",
+  "41_sasnalkahi_frame0_draft"
+]

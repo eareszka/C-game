@@ -1,4 +1,5 @@
 #include "crafting.h"
+#include <algorithm>
 #include "resource_node.h"   // ResourceType, ore_count
 #include "battle.h"          // weapon_name
 
@@ -333,18 +334,58 @@ int item_icon(Item it) {
     if (item_is_material(it)) return it == ITEM_EVERLASTING_EMBER ? ITEM_OILBLOOM : ITEM_ESSENCE;
     return ITEM_RAFT;
 }
+bool item_use_band_aid(Player* p) {
+    if (item_count(p, ITEM_BAND_AID) <= 0 || p->stats.hp <= 0 || p->stats.hp >= p->stats.max_hp) return false;
+    p->stats.hp += std::min(HP_PER_BAR, p->stats.max_hp - p->stats.hp);
+    item_slot(p, ITEM_BAND_AID)--;
+    return true;
+}
+
+bool item_use_medkit(Player* p) {
+    if (item_count(p, ITEM_MEDKIT) <= 0 || p->stats.hp <= 0 || p->stats.hp >= p->stats.max_hp) return false;
+    p->stats.hp = p->stats.max_hp;
+    item_slot(p, ITEM_MEDKIT)--;
+    return true;
+}
+
+bool item_use_antidote(Player* p) {
+    if (!p->poisoned || p->stats.hp <= 0 || item_count(p, ITEM_ANTIDOTE) <= 0) return false;
+    p->poisoned = 0;
+    p->poison_timer = 0;
+    item_slot(p, ITEM_ANTIDOTE)--;
+    return true;
+}
+
+static int footwear_kind(Item it) {
+    return it==ITEM_SWIFT_BOOTS?FOOTWEAR_SWIFT_BOOTS:it==ITEM_DIVING_FINS?FOOTWEAR_DIVING_FINS:FOOTWEAR_NONE;
+}
+bool item_footwear_equipped(const Player* p, Item it) {
+    int kind=footwear_kind(it);
+    return kind!=FOOTWEAR_NONE && p->footwear==kind && item_count(p,it)>0;
+}
+bool item_equip_footwear(Player* p, Item it, bool equip) {
+    int kind=footwear_kind(it);
+    if (kind==FOOTWEAR_NONE || (equip && item_count(p,it)<=0)) return false;
+    if (equip) p->footwear=kind;
+    else if (p->footwear==kind) p->footwear=FOOTWEAR_NONE;
+    return true;
+}
+bool item_equip_swift_boots(Player* p, bool equip) {
+    return item_equip_footwear(p,ITEM_SWIFT_BOOTS,equip);
+}
+
 const char* item_description(Item it) {
     switch (it) {
-        case ITEM_BAND_AID: return "RESTORES SOME HEALTH";
-        case ITEM_MEDKIT: return "RESTORES FULL HEALTH";
-        case ITEM_ANTIDOTE: return "CURES POISON";
+        case ITEM_BAND_AID: return "RESTORES 1 HEALTH BAR. EXPLORATION ONLY.";
+        case ITEM_MEDKIT: return "RESTORES FULL HEALTH. EXPLORATION ONLY.";
+        case ITEM_ANTIDOTE: return "CURES POISON. EXPLORATION ONLY.";
         case ITEM_CAMPFIRE: return "PLACES A PERMANENT WARP POINT";
         case ITEM_BOMB: return "AN EXPLOSIVE FOR BATTLES";
         case ITEM_SMOKE_BOMB: return "BREAKS ENEMY PURSUIT";
-        case ITEM_ESCAPE_CHARM: return "RETURNS TO THE DUNGEON ENTRANCE";
+        case ITEM_ESCAPE_CHARM: return "RETURNS INSIDE THE ENTRANCE YOU USED. REUSABLE.";
         case ITEM_COLD_GEAR: return "PROTECTS AGAINST COLD";
-        case ITEM_SWIFT_BOOTS: return "INCREASES WALK AND SPRINT SPEED";
-        case ITEM_DIVING_FINS: return "INCREASES UNDERWATER SPEED";
+        case ITEM_SWIFT_BOOTS: return "50% FASTER WALKING AND SPRINTING.";
+        case ITEM_DIVING_FINS: return "50% FASTER SWIMMING. SHARES THE FOOTWEAR SLOT.";
         case ITEM_O2_CHARM: return "PREVENTS UNDERWATER OXYGEN LOSS";
         case ITEM_SPYGLASS: return "SEE TIER 2 WHEN ZOOMED OUT";
         case ITEM_BINOCULARS: return "SEE TIER 1 WHEN ZOOMED OUT";

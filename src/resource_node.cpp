@@ -1,3 +1,4 @@
+#include "core.h"
 #include "fc_palette.h"
 #include "resource_node.h"
 #include "tilemap.h"   // wrap_dpx/wrap_dpy: a node is measured to through its nearest image
@@ -300,7 +301,7 @@ static HarvestTarget node_target(ResourceType t)
 static int node_hit(ResourceNode* n, Weapon weapon) {
     if (n->chest == 1) return 0;
     n->hp -= weapon_harvest_damage(weapon, node_target(n->type));
-    n->hit_at = SDL_GetPerformanceCounter();
+    n->hit_at = world_ms();
     if (n->hp <= 0) { n->alive = 0; return 1; }
     return 0;
 }

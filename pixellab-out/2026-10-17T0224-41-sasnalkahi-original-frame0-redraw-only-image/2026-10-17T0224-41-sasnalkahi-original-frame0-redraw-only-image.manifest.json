@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "run": "2026-10-17T0224-41-sasnalkahi-original-frame0-redraw-only-image",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1748 characters>",
+          "format": "png"
+        },
+        "width": 98,
+        "height": 65
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 314464 characters>",
+          "format": "png"
+        },
+        "width": 512,
+        "height": 389
+      }
+    ],
+    "image_size": {
+      "width": 98,
+      "height": 65
+    },
+    "description": "<elided 1689 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a53cf0ba-44c9-4894-b8d8-7218879abe63",
+    "generation_id": "6e2f783c-6f1f-4bd2-8b86-2625034ec866"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "41-sasnalkahi-frame0-draft-00.png",
+    "41-sasnalkahi-frame0-draft-01.png"
+  ]
+}

@@ -306,3 +306,21 @@ double time_delta_seconds(void) {
     prev = now;
     return dt;
 }
+
+static double s_world_ms = 0.0;
+void draw_speech_choices(SDL_Renderer* ren,const SDL_Rect& box,
+                         const char* const choices[],int count,int selected) {
+    if(count<=0)return;
+    int w=0;
+    for(int i=0;i<count;i++)w=SDL_max(w,text_width(choices[i],2));
+    w+=44;int h=count*24+20;
+    int x=box.x+box.w-w,y=box.y-h-4;
+    draw_nes_panel(ren,x,y,w,h);
+    for(int i=0;i<count;i++) {
+        bool here=i==selected;
+        draw_text(ren,choices[i],x+28,y+12+i*24,2,here?255:252,here?255:252,here?80:252);
+        if(here)draw_text(ren,GLYPH_CURSOR,x+10,y+12+i*24,2,255,255,80);
+    }
+}
+void   world_advance(float dt) { s_world_ms += dt * 1000.0; }
+Uint32 world_ms(void)          { return (Uint32)s_world_ms; }

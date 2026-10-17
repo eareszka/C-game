@@ -1,0 +1,94 @@
+{
+  "canvas": [
+    14,
+    20
+  ],
+  "pose": "front standing",
+  "protected_sha256": {
+    "assets\\player_small.png": "0623bc324e3eddafd800942070990983fc901ca529539fc5172c425935c6642d",
+    "assets\\player_small.aseprite": "b483000746dd88d4cbeb32c32513f6ebdd4ad546600e1ff635ee8fac5f0581c8"
+  },
+  "npcs": [
+    {
+      "name": "01_farmer",
+      "eyes": "single-pixel dot eyes",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "235436"
+      },
+      "occupied_bounds": [
+        2,
+        4,
+        13,
+        20
+      ],
+      "pixels": 130,
+      "export_mismatches": 0,
+      "reopened_export_identical": true,
+      "single_connected_silhouette": true
+    },
+    {
+      "name": "02_apron_villager",
+      "eyes": "two inward-slanting eyes",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "b6433d",
+        "C": "e8e0c0"
+      },
+      "occupied_bounds": [
+        2,
+        4,
+        13,
+        20
+      ],
+      "pixels": 138,
+      "export_mismatches": 0,
+      "reopened_export_identical": true,
+      "single_connected_silhouette": true
+    },
+    {
+      "name": "03_elder",
+      "eyes": "closed smiling arches",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "9797aa",
+        "C": "2850a0"
+      },
+      "occupied_bounds": [
+        2,
+        5,
+        13,
+        20
+      ],
+      "pixels": 121,
+      "export_mismatches": 0,
+      "reopened_export_identical": true,
+      "single_connected_silhouette": true
+    },
+    {
+      "name": "04_spectacled_villager",
+      "eyes": "round spectacle lenses joined by a bridge",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "fc74b4"
+      },
+      "occupied_bounds": [
+        2,
+        6,
+        13,
+        20
+      ],
+      "pixels": 116,
+      "export_mismatches": 0,
+      "reopened_export_identical": true,
+      "single_connected_silhouette": true
+    }
+  ],
+  "originals_unchanged": true
+}

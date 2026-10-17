@@ -59,6 +59,7 @@
 #include "dungeon.h"
 #include "collision.h"
 #include "interior.h"
+#include "crafting.h"
 
 static DungeonMap g_dmap;
 static uint8_t    g_seen[DMAP_H][DMAP_W];
@@ -212,6 +213,29 @@ static int audit(int type, Form form, unsigned seed, float angle) {
             fail(type, form, seed, angle, "arrives where the feet do not fit", (int)cx, (int)cy);
         if (dungeon_way_at(d, cx, cy) >= 0)
             fail(type, form, seed, angle, "arrives on the way out's hitbox", (int)cx, (int)cy);
+        // Escape returns to this visit's actual landing, including every
+        // connected end and cave mouth. Exercise the shipped reset function.
+        float arrival_x = dp.x, arrival_y = dp.y;
+        pl.stats.hp = 123;
+        item_slot(&pl, ITEM_ESCAPE_CHARM) = 1;
+        for (int repeat = 0; repeat < 2; repeat++) {
+            dp.x += 100; dp.y += 100;
+            dp.vx = 70; dp.vy = -50; dp.slide = 3;
+            dp.at_entry = dp.at_exit = 1; dp.at_way = p; dp.at_link = 0;
+            dp.swing.swing_t = 0.1f; dp.swing.thrown[0].live = true;
+            dp.picked_item = ITEM_GOLD; dp.picked_gold = 10;
+            if (!dungeon_escape_to(&dp, &pl, d, arrival_x, arrival_y) ||
+                dp.x != arrival_x || dp.y != arrival_y || dp.vx || dp.vy || dp.slide ||
+                dp.at_entry || dp.at_exit || dp.at_way != -1 || dp.at_link != -1 ||
+                dp.swing.swing_t != -1 || dp.swing.thrown[0].live ||
+                dp.picked_item != -1 || dp.picked_gold || pl.stats.hp != 123 ||
+                item_count(&pl, ITEM_ESCAPE_CHARM) != 1)
+                fail(type, form, seed, angle, "escape did not restore safe arrival", p, repeat);
+        }
+        float previous_x = dp.x, previous_y = dp.y;
+        if (dungeon_escape_to(&dp, &pl, d, -10000, -10000) ||
+            dp.x != previous_x || dp.y != previous_y)
+            fail(type, form, seed, angle, "invalid escape destination moved player", p, 0);
         int near = 1 << 30;
         for (int n = 1; n <= 3; n++)
             for (int k = -1; k <= 1; k++)

@@ -224,7 +224,7 @@ static float s_cliff_ref_x, s_cliff_ref_y;
 // Value is the SDL performance-counter timestamp when the jitter started.
 // Using absolute start time (not a countdown) makes shake immune to dt spikes.
 static const float JITTER_DUR = 0.22f; // seconds
-static std::unordered_map<uint32_t, Uint64> s_tile_jitter;
+static std::unordered_map<uint32_t, Uint64> s_tile_jitter;   // when struck, world_ms()
 static inline uint32_t tile_key(int x, int y) {
     return (uint32_t)y * MAP_WIDTH + (uint32_t)x;
 }
@@ -8446,10 +8446,10 @@ static void draw_street(SDL_Renderer* renderer, const Tilemap* map, int x, int y
 
 // depth_pass=false: draw all tiles except depth-marked ones.
 // depth_pass=true:  draw only depth-marked tiles (call after player_draw).
+void tilemap_jitter_tile(int tx, int ty) { s_tile_jitter[tile_key(tx, ty)] = world_ms(); }
 int tilemap_shake_px(Uint64 hit_at, float z) {
     if (!hit_at) return 0;
-    float elapsed = (float)((double)(SDL_GetPerformanceCounter() - hit_at)
-                            / SDL_GetPerformanceFrequency());
+    float elapsed = (world_ms() - hit_at) / 1000.0f;
     return elapsed < JITTER_DUR ? (int)(sinf(elapsed * 80.0f) * 4.0f * z) : 0;
 }
 // How far across a struck tile (tree, rock, yard wall) is drawn as it shakes.
@@ -8526,7 +8526,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // breathe in step.
                 if (is_steam_cell(map->overlay[y][x])) {
                     unsigned int phase = ((unsigned int)x * 2654435761u ^ (unsigned int)y * 40503u) >> 16;
-                    int frame = (int)((SDL_GetTicks() / 220u + phase) % STEAM_COUNT);
+                    int frame = (int)((world_ms() / 220u + phase) % STEAM_COUNT);
                     blit_tile(renderer, steam_cell(frame), screen_x, screen_y - draw_size, draw_size);   // rising off the water into the air
                 }
                 if (below && map->overlay[by][bx] == TILE_DEAD_TREE) {
@@ -9235,7 +9235,7 @@ static int tilemap_strike(Tilemap* map, int tx, int ty, Weapon weapon, HarvestRe
     }
 
     s_tile_hp[key] = hp;
-    s_tile_jitter[key] = SDL_GetPerformanceCounter();
+    s_tile_jitter[key] = world_ms();
     harvest_add(out, cx, cy, tile_award(t), 0);
     return 0;
 }
@@ -9361,10 +9361,8 @@ int tilemap_try_hit(Tilemap* map, float px, float py, int range,
 }
 
 void tilemap_update(float /*dt*/) {
-    Uint64 now  = SDL_GetPerformanceCounter();
-    double freq = (double)SDL_GetPerformanceFrequency();
     for (auto it = s_tile_jitter.begin(); it != s_tile_jitter.end(); ) {
-        float elapsed = (float)((double)(now - it->second) / freq);
+        float elapsed = (world_ms() - it->second) / 1000.0f;
         if (elapsed >= JITTER_DUR) it = s_tile_jitter.erase(it);
         else ++it;
     }

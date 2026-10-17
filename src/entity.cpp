@@ -1,4 +1,5 @@
 #include "entity.h"
+#include "crafting.h"
 #include <math.h>
 
 void player_read_input(Player* player, const Input* in, float* out_dx, float* out_dy)
@@ -92,11 +93,21 @@ bool player_sprinting(const Input* in)
     return input_down(in, SDL_SCANCODE_LSHIFT) && !player_crouching(in);
 }
 
-void player_gait(const Input* in, float* speed, float* anim_speed)
+void player_gait(const Input* in, float* speed, float* anim_speed, const Player* player)
 {
     if (player_crouching(in))      { *speed = PLAYER_CROUCH_SPEED; *anim_speed = 0.30f; }
     else if (player_sprinting(in)) { *speed = PLAYER_RUN_SPEED;    *anim_speed = 0.10f; }
     else                           { *speed = PLAYER_WALK_SPEED;   *anim_speed = 0.20f; }
+    if (player && item_footwear_equipped(player,ITEM_SWIFT_BOOTS) && !player_crouching(in)) {
+        *speed *= SWIFT_BOOTS_SPEED_MULT;
+        *anim_speed /= SWIFT_BOOTS_SPEED_MULT;
+    }
+}
+
+float player_swim_speed(const Player* player, const Input* in) {
+    float speed, anim;
+    player_gait(in,&speed,&anim);
+    return speed*0.75f*(item_footwear_equipped(player,ITEM_DIVING_FINS)?DIVING_FINS_SPEED_MULT:1.0f);
 }
 
 const char* part_name(int part)
@@ -132,4 +143,17 @@ int player_gain_exp(Player* p, int amount)
         gained++;
     }
     return gained;
+}
+
+void player_poison_tick(Player* player, float dt) {
+    if (!player->poisoned || player->stats.hp <= 1) {
+        player->poison_timer = 0;
+        return;
+    }
+    if (!isfinite(dt) || dt <= 0) return;
+    player->poison_timer += dt;
+    float ticks = floorf(player->poison_timer);
+    player->poison_timer -= ticks;
+    int damage = (int)fminf(ticks, (float)(player->stats.hp - 1));
+    player->stats.hp -= damage;
 }

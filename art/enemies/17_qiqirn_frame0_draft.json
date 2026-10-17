@@ -1,0 +1,49 @@
+{
+  "enemy": 17,
+  "direction": "DR",
+  "palette": {
+    "K": "000000",
+    "M": "d7a175",
+    "S": "f0b890",
+    "D": "8d6b4f",
+    "B": "633e1b",
+    "T": "341e10"
+  },
+  "info": {
+    "color_mode": "rgb",
+    "frame_count": 1,
+    "height": 34,
+    "layer_count": 1,
+    "layers": [
+      "Layer 1"
+    ],
+    "width": 42
+  },
+  "occupied_bounds": [
+    3,
+    3,
+    41,
+    34
+  ],
+  "plugin_pixels_drawn": 540,
+  "export_mismatches": 0,
+  "original_sha256": {
+    "assets\\enemies\\17_qiqirn.aseprite": "78c6c426595069ee1f0b3b6a50f60e099c783ee0024eb5d0593ccf493846886e",
+    "assets\\enemies\\17_qiqirn.png": "cf3a6a40e32a59577ec26c61632f3796de5930537c0f7fce2203f826efb465a8",
+    "assets\\enemies\\17_qiqirn_run.aseprite": "23f7efc132c493e727c33de6ee4b231b966cb7473a66c1dd2d2ed232d5fef700",
+    "assets\\enemies\\17_qiqirn_run.png": "a1456d0aa0df4d70eeb65061dca56ccc617cbcfb2827e5bc661d973965aaf78f",
+    "art\\enemies\\17_views.aseprite": "2a78c43bfbf1c1385a7750881fee16a58fd541a5364a6f7554ff67893ae8b3fd",
+    "art\\enemies\\17_views.png": "4c6ec0efe4903942e00068d905ef8834f3070428a88733d2e60c740eabd2014e",
+    "art\\enemies\\17_qiqirn.txt": "68a1a1d9a1ccb18c7a3c580dfe49de599e482b35e115df5e4582abb0821796c7"
+  },
+  "validation": {
+    "reopened_export_identical": true,
+    "binary_transparency": true,
+    "palette_colors": 6,
+    "max_colors_per_16px_cell": 4,
+    "opaque_components": [
+      540
+    ],
+    "originals_unchanged": true
+  }
+}

@@ -1,0 +1,15 @@
+[
+  "pixellab-cli",
+  "edit",
+  "build_tmp\\aspidochelone_pixellab\\51_aspidochelone_original_frame0.png",
+  "build_tmp\\aspidochelone_pixellab\\island_turtle_anatomy_reference.png",
+  "--prompt",
+  "Redraw image 1 ONLY as Aspidochelone's first battle frame. Image 2 is the user's ANATOMY reference, not another sprite to output. Preserve image 1's 130x81 transparent canvas, original footprint about (16,21)-(115,81), baseline, proportions and pose: island turtle half submerged in a small oval water ring, viewed slightly from above, head projecting toward the viewer/lower right, broad foreflippers to either side. Keep this perspective, not image 2's side view. Use image 2 for a convincing sea-turtle head and beak, short thick neck, broad tapered paddle flippers, small tail, and a low domed sandy shell carrying a lush grassy island with two distinct palms and small shrub. Retain the original tiny campfire only if it reads cleanly. Emphasize the creature supporting the island: recognizable turtle anatomy, visible head and flippers, smooth shell masses. No giant size increase. Ignore image 2's map, pink silhouette, ship and white background. The style board contains all 42 approved enemies for technique only, never copy a collage. Art Bible: one coherent flat 2D drawing; crisp 1px BLACK silhouette and shared part-separation lines; chunky deliberate clusters; three-tone form shading, lit toward viewer/up and dark under shell, chin and far flippers. Restrained exact project palette: skin #463422 #605028 #8d6b4f, sand #b2966a #d0c078 #f4ce80, leaves #235436 #058f3a #4fa667, trunks #633e1b, water #84a7e9 #dcf0ff, tiny black eye. Giant budget max 24 colors plus black; prefer 12-16. Flat fills: no scales, shell cell patterns, fur, leaf hatching, bark stripes, speckles, gradients, dithering, antialiasing, 3D rendering or outlined cutout assembly. Trees use a few bold frond silhouettes, not individual needles. Preserve transparent padding and native pixel density. One turtle, first frame only.",
+  "--match",
+  "art/direction/approved_enemy_study/approved_42_fronts_native_512.png",
+  "--size",
+  "130x81",
+  "--transparent",
+  "--name",
+  "51_aspidochelone_frame0_draft"
+]

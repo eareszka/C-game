@@ -1,0 +1,14 @@
+edit-images-v2 is a Pro Tools route: about 30 generations.
+Nothing has been sent. This would be a paid call:
+
+  provider         pixellab
+  route            edit-images-v2
+  cost             about 30 generations
+  description      <elided 1609 characters>
+  edit_images      1 item
+  image_size       {height=81, width=130}
+  method           edit_with_reference
+  no_background    True
+  reference_image  {height=943, image={base64=<elided 154048 characters>, format=png, type=base64}, width=1024}
+
+Show that to the person and run it again with --yes once they have agreed. --dry-run prints the whole request instead of a summary, and PIXELLAB_ASSUME_YES=1 stands in for --yes where nobody is there to give it.

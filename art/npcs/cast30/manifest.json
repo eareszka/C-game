@@ -1,0 +1,570 @@
+{
+  "npcs": 30,
+  "unique_cels": 360,
+  "frame_size": [
+    14,
+    20
+  ],
+  "sheet_size": [
+    42,
+    80
+  ],
+  "directions": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "poses": [
+    "standing",
+    "step_a",
+    "step_b"
+  ],
+  "all_saved_cels_reopened_and_verified": true,
+  "palette_max": 4,
+  "body_footprints_match_player": true,
+  "no_duplicate_indexed_designs": true,
+  "originals_unchanged": true,
+  "protected_sha256": {
+    "art\\npcs\\01_farmer_standing_detailed_draft.aseprite": "bd581bb1b546aa7a493da10e167dfc6b7c14eaa4a4728c5da2cca0e0407465dd",
+    "art\\npcs\\01_farmer_standing_draft.aseprite": "7486d9dbb744c858b625f351ca665bd5f4b4ef0aaa98b6cd8a6a03ea1d9879f4",
+    "art\\npcs\\01_farmer_walk_3frame.aseprite": "f44ae428c07cc116199bace4ac8fe0478d8c40d18680e1de264dfa5186998367",
+    "art\\npcs\\01_farmer_walk_4dir.aseprite": "c291d7130eba9ea100a102cee9f780855bb9bba887d606f2d0f37fdeee219fe4",
+    "art\\npcs\\01_farmer_walk_4dir_fullstep.aseprite": "96070632916d0ca78106145007a78304aee23f9066b628a1d569fa7ed1d19124",
+    "art\\npcs\\01_farmer_walk_4dir_matched.aseprite": "05adef4a1305977e02ff22251f878724a76b79526487713bcb8926e51c2332a6",
+    "art\\npcs\\01_farmer_walk_4dir_sidefix.aseprite": "ff47b70b4eea778fe16a3893b846b9692473b5d672a50fc79f2f4c30a72cc3c1",
+    "art\\npcs\\02_apron_villager_standing_detailed_draft.aseprite": "cd389294ba50fd13422e55ddb6287dbeb13434089da768f3c525228fb0d8f6d9",
+    "art\\npcs\\02_apron_villager_standing_draft.aseprite": "07f6bd524e304b588dc12de45427e2f7fb37e2247f2b43d011bf5a236d82af6d",
+    "art\\npcs\\02_apron_villager_walk_3frame.aseprite": "39d64947b6a1fb4c3842999e46f407ee1d740211d14838801c5daf5789c70e7e",
+    "art\\npcs\\02_apron_villager_walk_4dir.aseprite": "841c7be54c69fd39b59282397802380a7fe13d299e93be41b9ccc20deb6d3182",
+    "art\\npcs\\02_apron_villager_walk_4dir_fullstep.aseprite": "b530e5b06b70680d696997b610e09a4c2d9d418769e72eb4f8965013fad33fd4",
+    "art\\npcs\\02_apron_villager_walk_4dir_matched.aseprite": "c514a74abb64c438835380e3cbca058d69d2eaf8561f805593415a8c5a10f8c5",
+    "art\\npcs\\02_apron_villager_walk_4dir_sidefix.aseprite": "a5dcfd917d44de01af09051d58cefc6dff6d15854190c69a4b3718117c3a6bea",
+    "art\\npcs\\03_elder_standing_detailed_draft.aseprite": "42a923970ca8a7e226e9107d3a854eb0df6d1080945180db44fd12c8a86541d3",
+    "art\\npcs\\03_elder_standing_draft.aseprite": "ca481b0dbb7019e98dde67734c898d153496941ee229b15c90469049b19fa692",
+    "art\\npcs\\03_elder_walk_3frame.aseprite": "d735fec3c19090ef14a37e3e7817b180d702f1d6ba5acce73303dd9147cd97f1",
+    "art\\npcs\\03_elder_walk_4dir.aseprite": "bae2450edb6004f5abdae05f0b56a39bc7d40fd2b1bf0e815d24dea0f79aa3d0",
+    "art\\npcs\\03_elder_walk_4dir_fullstep.aseprite": "831d98311cea54f0e39565beae63d86eb36afc06af8c0d65dcef73a00ad4db4b",
+    "art\\npcs\\03_elder_walk_4dir_matched.aseprite": "efbfe1a22d40029914451c3ccf530717e23ffa2f7341d0e25f6a18c23f443e28",
+    "art\\npcs\\03_elder_walk_4dir_sidefix.aseprite": "1594dad481e4aca586fbfe0b63492edb30df9b729c5124ab0fb00197ddb6c574",
+    "art\\npcs\\04_spectacled_villager_standing_detailed_draft.aseprite": "ea54790fb4532478fbc93c841a2ade7f212d7d8f6247007f0f9b2ebde3c23acf",
+    "art\\npcs\\04_spectacled_villager_standing_draft.aseprite": "ff44d31498cffdea8cb9bbc990219bb5c6071ab9e54875dded1180ab431fbe93",
+    "art\\npcs\\04_spectacled_villager_walk_3frame.aseprite": "2c004015a70a2fcc19fd7fb4984509886bd0b9bd76ab3d21c4f434595b155d9e",
+    "art\\npcs\\04_spectacled_villager_walk_4dir.aseprite": "cae2b8d45cb53c321b9758c396d322e663625dcffb13d68c7862e6f7ff6c0569",
+    "art\\npcs\\04_spectacled_villager_walk_4dir_fullstep.aseprite": "464dd49b35e2f3acf6e6f93b27f125a4ea1c86f5fe7c3e68f55b3554a3dd46e6",
+    "art\\npcs\\04_spectacled_villager_walk_4dir_matched.aseprite": "49eb378502774a09d7342a930c3ff307bfa55b9b85e0169a660f46cd1506e523",
+    "art\\npcs\\04_spectacled_villager_walk_4dir_sidefix.aseprite": "465189acb298bbe1f3f97b4b189f85afaaf7cd8993037ffced7c2712c5f7403b",
+    "art\\npcs\\villagers_detailed_review.aseprite": "bff900ed7107c252d6695fc63785e64ba0b2a8fbd8f23bd3a079bf08f95aeb6d",
+    "art\\npcs\\villagers_player_cadence_review.aseprite": "001af1b4660ee4b8810b1bd675fc9e7549a47343fab523e03409d896b9174dda",
+    "art\\npcs\\villagers_standing_review.aseprite": "61b3b5bbfd23f4b2ace4d1d4a87552f82257ee2b0920ae965af0f6fc2866c0ee",
+    "art\\npcs\\villagers_walk_3frame_review.aseprite": "5404d168418793c76d936b96b5b4c432442c80a450cc0bb3196b701c533d01bf",
+    "art\\npcs\\villagers_walk_4dir_review.aseprite": "32b6d9cc67f2315de5a21387bdeeded9446f6ee52dc385bd761512f4fea64ac9",
+    "art\\npcs\\villagers_walk_fullstep_review.aseprite": "81cea749fd78ed2695560069e31cfc18745619d7084dd655dbbb3c2d0553566a",
+    "art\\npcs\\villagers_walk_matched_review.aseprite": "f3febd3f41ad329d9c6e6665318abaa9cf0030034215af85238774b46c86f973",
+    "art\\npcs\\villagers_walk_sidefix_review.aseprite": "cb7d9618ff9512549916627bc4c635de938d6729bb95591121e12a827143f5e2",
+    "assets\\npcs\\elder.json": "0336e79073aedc5cd452b4d7949dd2ae516d3235d22dc643c40ad78006fe25d0",
+    "assets\\npcs\\elder.png": "2dbd67ba5420f3b4bab12e9af1cf5c72ab260216951fc363dfcca96c0d991ef7",
+    "assets\\npcs\\girl.json": "841b205746b5f545196bce6fb65e74c004e7c7710cb5676110ab7f7fb21268b1",
+    "assets\\npcs\\girl.png": "6c9c78c3661eb510dd4aa921f648f18ccf3d8d9bd032a747bacc6471187d3006",
+    "assets\\npcs\\glasses.json": "8f9434714d506c377f258d987d890e6a2bc3f30ba49af2dcb12e602982b2df88",
+    "assets\\npcs\\glasses.png": "fa1cbbd31a0a4d6d9230692152b5802094559fe808cedc05e2764cc4e231f3ee",
+    "assets\\player_small.png": "0623bc324e3eddafd800942070990983fc901ca529539fc5172c425935c6642d",
+    "assets\\player_small.aseprite": "b483000746dd88d4cbeb32c32513f6ebdd4ad546600e1ff635ee8fac5f0581c8"
+  },
+  "designs": [
+    {
+      "name": "05_baker",
+      "label": "Baker",
+      "head": "chef",
+      "outfit": "apron",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "e8e0c0"
+      }
+    },
+    {
+      "name": "06_fisher",
+      "label": "Fisher",
+      "head": "bucket",
+      "outfit": "vest",
+      "face": "stubble",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "9797aa",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "07_postwoman",
+      "label": "Postwoman",
+      "head": "cap",
+      "outfit": "satchel",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "b6433d"
+      }
+    },
+    {
+      "name": "08_mechanic",
+      "label": "Mechanic",
+      "head": "bandana",
+      "outfit": "bib",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "9797aa"
+      }
+    },
+    {
+      "name": "09_librarian",
+      "label": "Librarian",
+      "head": "bun",
+      "outfit": "cardigan",
+      "face": "glasses",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "664b95"
+      }
+    },
+    {
+      "name": "10_gardener",
+      "label": "Gardener",
+      "head": "sunhat",
+      "outfit": "suspenders",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "94703d",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "11_sailor",
+      "label": "Sailor",
+      "head": "sailor",
+      "outfit": "striped",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "2850a0",
+        "C": "e8e0c0"
+      }
+    },
+    {
+      "name": "12_doctor",
+      "label": "Doctor",
+      "head": "sweep",
+      "outfit": "coat",
+      "face": "glasses",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "e8e0c0"
+      }
+    },
+    {
+      "name": "13_musician",
+      "label": "Musician",
+      "head": "beret",
+      "outfit": "scarf",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "b6433d"
+      }
+    },
+    {
+      "name": "14_carpenter",
+      "label": "Carpenter",
+      "head": "crop",
+      "outfit": "vest",
+      "face": "beard",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "94703d",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "15_flower_seller",
+      "label": "Flower seller",
+      "head": "twintails",
+      "outfit": "dress",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "fc74b4"
+      }
+    },
+    {
+      "name": "16_shopkeeper",
+      "label": "Shopkeeper",
+      "head": "flatcap",
+      "outfit": "waistcoat",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "17_student",
+      "label": "Student",
+      "head": "ponytail",
+      "outfit": "uniform",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "18_lamplighter",
+      "label": "Lamplighter",
+      "head": "beanie",
+      "outfit": "jacket",
+      "face": "beard",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "d89830"
+      }
+    },
+    {
+      "name": "19_grandmother",
+      "label": "Grandmother",
+      "head": "braid",
+      "outfit": "shawl",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "9797aa",
+        "C": "b6433d"
+      }
+    },
+    {
+      "name": "20_potter",
+      "label": "Potter",
+      "head": "headwrap",
+      "outfit": "apron",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "94703d",
+        "C": "b6433d"
+      }
+    },
+    {
+      "name": "21_cook",
+      "label": "Cook",
+      "head": "kerchief",
+      "outfit": "bib",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "e8e0c0"
+      }
+    },
+    {
+      "name": "22_courier",
+      "label": "Courier",
+      "head": "spiky",
+      "outfit": "sash",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "3e91cc"
+      }
+    },
+    {
+      "name": "23_tailor",
+      "label": "Tailor",
+      "head": "bob",
+      "outfit": "cardigan",
+      "face": "glasses",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "b6433d",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "24_miner",
+      "label": "Miner",
+      "head": "helmet",
+      "outfit": "workshirt",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "94703d",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "25_innkeeper",
+      "label": "Innkeeper",
+      "head": "curls",
+      "outfit": "waistcoat",
+      "face": "beard",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "b6433d"
+      }
+    },
+    {
+      "name": "26_shepherd",
+      "label": "Shepherd",
+      "head": "hood",
+      "outfit": "tunic",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "27_barber",
+      "label": "Barber",
+      "head": "part",
+      "outfit": "formal",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "e8e0c0"
+      }
+    },
+    {
+      "name": "28_weaver",
+      "label": "Weaver",
+      "head": "topknot",
+      "outfit": "sash",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "664b95"
+      }
+    },
+    {
+      "name": "29_artist",
+      "label": "Artist",
+      "head": "beret",
+      "outfit": "smock",
+      "face": "glasses",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "b6433d",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "30_naturalist",
+      "label": "Naturalist",
+      "head": "pith",
+      "outfit": "pockets",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "94703d",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "31_dancer",
+      "label": "Dancer",
+      "head": "bun",
+      "outfit": "dress",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "664b95"
+      }
+    },
+    {
+      "name": "32_watchman",
+      "label": "Watchman",
+      "head": "peak",
+      "outfit": "uniform",
+      "face": "beard",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "2850a0"
+      }
+    },
+    {
+      "name": "33_traveller",
+      "label": "Traveller",
+      "head": "longhair",
+      "outfit": "satchel",
+      "face": "plain",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "b6433d",
+        "C": "235436"
+      }
+    },
+    {
+      "name": "34_woodcutter",
+      "label": "Woodcutter",
+      "head": "beanie",
+      "outfit": "suspenders",
+      "face": "moustache",
+      "palette": {
+        "K": "000000",
+        "S": "d7a175",
+        "H": "633e1b",
+        "C": "b6433d"
+      }
+    }
+  ],
+  "native_tags_player_cadence_verified": true,
+  "all_three_review_pages_independently_verified": true,
+  "output_sha256": {
+    "05_baker.aseprite": "389ae709ad0d5c6cf1b8352bcbd3f434fb7ff33fb555b7f89948e17adf210b3a",
+    "05_baker.json": "7ebe7a785172e9c7282f757456274ea5e19773868c49968b32f5616541038657",
+    "05_baker.png": "4f02f4fc4b38a3d14a26653731cd12e3d066762a9859760c9f62edea0080b360",
+    "06_fisher.aseprite": "1eaa50157830ef07d567cf66d8f4a31c1a0e04ed7371eb878c7e0413c2efd0c6",
+    "06_fisher.json": "60e336957080bb325defde127cd157d28cb0ebb5d18dcd7d4738f2a28e4b0209",
+    "06_fisher.png": "89a0c123b98fcaea2777c0081f098a4d6aec57d6e5ea766fe2616706f1c50e12",
+    "07_postwoman.aseprite": "93d182bd31bf182574d135d75d9b749c0abdbe8606bd9a4fc5c384e527085686",
+    "07_postwoman.json": "6e088ded80dfb4ca0bb63751357a99dbf92e0460b4d4c2bf0f216e96efe4116d",
+    "07_postwoman.png": "8a6238c2053c8aa0529d51657ba7f211137f7e86f1ad66e095d846aae5d7356c",
+    "08_mechanic.aseprite": "0d88355919a83c562049d8768a2a713420e4866ab7bbaa2232370a7fe62fc409",
+    "08_mechanic.json": "8a8cbf4784586db67750fc601122516c3de77159c5aa0a5ef675493d16f5b1f6",
+    "08_mechanic.png": "75ffde498c5b277d22959a3ed7e06502c4636b12e16e56226c544a83fe5fd456",
+    "09_librarian.aseprite": "14bdcccfa2a7cceeaabc55f9c2ef2b7bfe4d5f1f3b77cd2c548d5d114ba47869",
+    "09_librarian.json": "26decb849c72b1bcc6316f173ac73d2d0b6e9b43548f73d559b0dbcbe1b80f4f",
+    "09_librarian.png": "781bd120cab3497721e231773ad43ebe607e53f535dc67c5874b13f34fc287ba",
+    "10_gardener.aseprite": "e82ab3750728b6f32282eb716bf529bee7a72b749eee075a959803c85e64bffb",
+    "10_gardener.json": "7cbe41d57facc4347c88eb822736227a421780c2172bc34cb1edb4efb92b2e97",
+    "10_gardener.png": "62e67a52299004ff7aa0b07d8efde7a9962395014a1825c494fe787a30e333b4",
+    "11_sailor.aseprite": "2571cb0c90e8d2454ebefd6c74a12a7422db6592bad4cdf44c15c14c9ecf9ada",
+    "11_sailor.json": "6e07b14288666bed30b072e3f53a63305ae37219f55f0c5edd297db12882032b",
+    "11_sailor.png": "3d55b06bfe9f7b2f21f3dfbe6aa75abebee06bb9618eda0a82001b52d309921b",
+    "12_doctor.aseprite": "1f47cc2e4c2033d599eb5d4dd274808f30a81495560e7f2acddc57e5728afbd1",
+    "12_doctor.json": "e00b0d56a1122255744105201154c8db100a7152dfd184f961f392202f36da8e",
+    "12_doctor.png": "81392e806cc7ef6e69dce8b110e0b9db7e63c2591092a23d87fedff2ebe83107",
+    "13_musician.aseprite": "a48d96167ef25a975a70ad1e6b73562f811f76882ca403326b54bb1ddd0f02a7",
+    "13_musician.json": "2e6cc6fcd28ec4bfac5d695679f478df9575ff7a340e5e9813bbad1710cf08e2",
+    "13_musician.png": "b4d25f52d298f12914b2a85ef7079ff16df3bf98879746f7143f728b071f8863",
+    "14_carpenter.aseprite": "1620f858ab34cc326af6383ed14cb2fae3a40f22828c3e991d4743923a0cf206",
+    "14_carpenter.json": "b35124bc1356ffb19b5d0933ba8b880648fcef1dc4b9b0ced350ac4bce8783a3",
+    "14_carpenter.png": "ab3f9981a54fa8f5a46c0fdef4852c6991bcb652d81e79675766d103ebcde4c8",
+    "15_flower_seller.aseprite": "296720f9e529acb74c7786c54ce5758f7aeb4691b9e3287dff989d00586be79f",
+    "15_flower_seller.json": "61200c582d671405bd05b9a12137f032eeac5ccd8b5cb9449f08ef8418335077",
+    "15_flower_seller.png": "1d4d9b4966efa5b565ee4ac9e6f3cf710221312f3a0f91cd7d6c6bbfe9b3ecc0",
+    "16_shopkeeper.aseprite": "20b98a37da26b01cb2a48289fd26f99d2e1132ee137a221f3fdc7cfbe11c8ec7",
+    "16_shopkeeper.json": "4b7987d3ff5dbc1cffc49f45bbd9b742c238111ed3d4e3e4387aa5bf7ff4b9ee",
+    "16_shopkeeper.png": "c5b426d066058621c64d44e5d9727b4cfb04ecee29c7f0ede91f6ef4fe366120",
+    "17_student.aseprite": "e88737702c2bbeecf8c4455e3bb14f560e55b302dbf2bada1197c7f9f791c3ca",
+    "17_student.json": "84b3e2fbeb8ececf7b26e3390304839732922f3c0e78517360bba4bd48445a5c",
+    "17_student.png": "223af00d2280494b62112d2910c267c196ae5abcde1b51a98b609f3a275f5254",
+    "18_lamplighter.aseprite": "53d8e014f9ff68667d4f142c8c25ebe23da99c99b34bf36b95e23fa58f19a026",
+    "18_lamplighter.json": "8365054504a79de5e723c6bf4965bff3f09e956c0d9613a1eea7872b293e89b4",
+    "18_lamplighter.png": "961ce4b243a6917043e2bf13187131955a2bdbc35791d4e1aa6e64ba632f2a59",
+    "19_grandmother.aseprite": "c4cd560318fa85f50e35238cd25040aebe671c9c341b0289464009a94f763caa",
+    "19_grandmother.json": "08d77bd805935c707371e5e1db209990dd62c55b2dd3818f71c97f6c2c135331",
+    "19_grandmother.png": "0d4833b8368b0125ae88f674c38c35a168d1d0ef9f062338c0f44ebd80b6eb97",
+    "20_potter.aseprite": "a0b8bdf8790d3f3af8c2058d5336d922a3ed32f67dc8edeb928036bd8e0d92c7",
+    "20_potter.json": "fdde427f67105edfff4e6fbb96945fe7df2363fe9a6b14bf782f3205486a41ce",
+    "20_potter.png": "a32289e543382a7de4a0c5a70549e3ef8e7ab3f99ea957ebf3260f77abb20ba8",
+    "21_cook.aseprite": "b49537d4747cefc7d619d37dc63cb7d94ee9d48821f4bb0fee09204d90c1fd11",
+    "21_cook.json": "0f6ca63615d5b142adff8e686b79261d0764bf5797a437a7ed8af28ca2ad1582",
+    "21_cook.png": "06b25602c94d9852bff66580005304d7b16dda90a616ca77eb5cfefeb7a45058",
+    "22_courier.aseprite": "6c8e3511b62d58a4e7d4c1efa3142c566a456d233dd83fb09edf6a20579e445d",
+    "22_courier.json": "b283df7874a326380cc1c23db9729bb64e1a960d680ec17cc621d15291bad820",
+    "22_courier.png": "049caf73780c188b8f6bd7c45083d6d3a6e899d2f8dced778ddd3ad86a94ad65",
+    "23_tailor.aseprite": "5d9bc4e399c26f7ddcdeb5bbd712147140d2d7f3e42379e4d1266bbe3afe4016",
+    "23_tailor.json": "20956044fa21035f2221b24c565d8a108607f7f52212dc870f139eebfdf13925",
+    "23_tailor.png": "d558f8b59d70561f73a14c7c8323ccf5556a0e1c8becc85304493bccd2389dba",
+    "24_miner.aseprite": "9f02be8929dd6a360484bc383b4fd1f5e73c6a7289e171d6bfc9e0ac6a00d44d",
+    "24_miner.json": "b9576eb7821815ec2ff4a8e7a22bf90fc33d4eed1f7d51b439e5d77d29343dea",
+    "24_miner.png": "1607be9e752174191677230c0c86b7885ecc6fbaae48fba85cbf3aded738d7d4",
+    "25_innkeeper.aseprite": "3469ada418d7b989b2bf6f17429137a26f8d2f8a0ca2b94eda2e45b8ebf7c715",
+    "25_innkeeper.json": "101d210b882daa181f4e4b72b8e4049ac15de21fa38f7f943a961f5edc0832a5",
+    "25_innkeeper.png": "18171c5df9ffe22aa17d942cddfdb616dd481553f597093e43f8e45e4019e977",
+    "26_shepherd.aseprite": "f45c9a4bf61a9aefcbcfdd8946d967497b32738e862f097f65254e18ce15ff0c",
+    "26_shepherd.json": "e68ed7f470e6d41d37bab3b62b27e77db8755c4d194def4660d18af0445d4251",
+    "26_shepherd.png": "57f3c9cd3d6d1220a96ef8bfb7a8cf4d01d10eb8f0ea4b53fd56d2eb97602c82",
+    "27_barber.aseprite": "41ae3ae41b0756d9095c6d1c9bd3182b9f76116bcfbcebfe338d787a9d54f9a3",
+    "27_barber.json": "98feca7e4e037a9f4b7743ac7e60d4a3559b34c6932d78a147a0043c6e6c99ac",
+    "27_barber.png": "17f60d4f5f1e696a4ea3af9d01deffb3fada909d4796107cba4887588199956a",
+    "28_weaver.aseprite": "da087b214b14f6a634e9447596fef5e19e553dd5da837c5ec1e4506de2cbd7af",
+    "28_weaver.json": "0f4ea4fe18214ede3243351c897427d05a99ed46591d2a47551c22fa6e2d1226",
+    "28_weaver.png": "9d3168f801b457c7b37b9ed34dd5a3fc45dd34cbd6821348ebd9af65df1f861e",
+    "29_artist.aseprite": "67d3b6525039fb74f64355b14a53eda82ece2594afab14537255e0219fd8187a",
+    "29_artist.json": "bf7a16fcd49b81566b7fa9ad93a9242a2bd0f054ec92d2ef7d92893fb28da879",
+    "29_artist.png": "55386b03ea0e3a6601c9eed1b54a72f612c9262594906d2e26153479e321cb29",
+    "30_naturalist.aseprite": "7eed76ed6fbf16baa294a9deca55ddb6b9407a0eda9e11a70a3c13804df625ef",
+    "30_naturalist.json": "cb982dedfcd2c4d564d40e4cf1ad37a9d2690a3813f885f1fa6bd4d937195cd3",
+    "30_naturalist.png": "f9016d0587240b2d18be4fadd9d477eff06e6315986c4256986408c9ab1796b1",
+    "31_dancer.aseprite": "cbfe3de22778d8a71ab70c4c44bab38a250f114085febc36d9fdf1d216d780cb",
+    "31_dancer.json": "675a484e0e1a9cccc8d401d5aa3211dee9d61a98e70e5a10c7330bafc343537f",
+    "31_dancer.png": "0ceb20bab596d60433c437be2514dd35fcb925ee69be8846fd510b8390bd5a24",
+    "32_watchman.aseprite": "e06bc75c6c450ca4def8e63f4a87a1aa12fcbad33d8859c94e7961533e99a5d4",
+    "32_watchman.json": "6cf6796aac4d1df4c7e8a63587476b318978a3e99370e3190654bb2ed4fdd47b",
+    "32_watchman.png": "f92cbb8ff64926bee9a05b9be0fdf576c74c0b9391bf8a91c915601b1c695f6e",
+    "33_traveller.aseprite": "d200a9986d9a6076ff10f6288bc57a3c33a0e366afc43fa7c21e8786d126d7fd",
+    "33_traveller.json": "930663b1d4209f6613c1bfe434ee15376a81c196a596eb1822b84bffaad7a341",
+    "33_traveller.png": "20a95234386d98ecd3655cbbf6854524caeac38fabd698b4636ffc7a43fd96bd",
+    "34_woodcutter.aseprite": "98edf100dc95a3fff4beb0cde0ca4c21ca32b2b2f75e1075b385f058738150c1",
+    "34_woodcutter.json": "494f3736465b67d92e0e8a28dcff689b5bb0f3dd0468c211446a877ba1e11795",
+    "34_woodcutter.png": "d0a635b7cc79a6a740bd79bbe508a7d900a8b19629836f45a057a4b922f12a32",
+    "cast30_fronts_review.aseprite": "b3ca5b907a2fcec187d18e7efa5fd1eea652ade6a9787e246b62c77288c850d5",
+    "cast30_fronts_review.png": "9266f65c8c2c0d3469a1e8b62e8455553adbb251a1dd73a21ec313f1fa0bd276",
+    "cast30_labeled_overview.png": "72e0a4a5e670ae7cf43d4a2320a3e8cba71f659ca6912c7569a672cbe7a58563",
+    "cast30_page1_review.aseprite": "6bbb083118ba69134d62f5df583aafbe33bcacb1c727161515a405b5d38a5060",
+    "cast30_page1_review.png": "3cae423b149770927d49024a41dcad28d8ab2f20473d9920ae7b3bb1d5dffca6",
+    "cast30_page2_review.aseprite": "3ef5f3e8febd69851294c716c5ce9ee8451fc9e157f4a2c3a93026f4ac36bb4e",
+    "cast30_page2_review.png": "568a1982541d0a099192d0168f7ecf25f0864adb887557fe53c388151888dd6a",
+    "cast30_page3_review.aseprite": "4ca8705dd66bde911b7d5471a9f77378f2ed3c30bc43232e57d975fef7474cc8",
+    "cast30_page3_review.png": "b40145fcc7605faa1c7a030120802fc11dfa7cd5ee8a944e07837769925f9466",
+    "cast35_reference_comparison.png": "107ec161d48c88736711f32707a78bf631b0a345cf8eba5fdd82f33c0bc1a0db"
+  }
+}

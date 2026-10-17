@@ -139,12 +139,14 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         player_read_input(player, in, &dx, &dy);
 
     float anim_speed;
-    player_gait(in, &ow->speed, &anim_speed);
 
     auto feet_on_water = [&]() {
         return player->raft > 0 && !player->at_sea &&
                tilemap_pixel_water(map, ow->x + (HB_X1 + HB_X2) * 0.5f, ow->y + (HB_Y1 + HB_Y2) * 0.5f);
     };
+
+    player_gait(in, &ow->speed, &anim_speed,
+                !ow->sailing && !player->at_sea && !feet_on_water() ? player : nullptr);
 
     if (ow->sailing) {
         // Afloat and under way: straight on along the course, no sliding

@@ -1,0 +1,22 @@
+{
+  "generated_source": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\pixellab-out\\2026-10-17T0220-97-ro-frame0-draft-redraw-the-existing-ro-first\\97-ro-demonic-frame0.png",
+  "aseprite": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_demonic_frame0_draft.aseprite",
+  "png": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_demonic_frame0_draft.png",
+  "mapping": {
+    "05060a": "000000",
+    "131419": "1e1e24",
+    "131317": "1e1e24",
+    "9c1928": "b70000",
+    "a01b2a": "b70000",
+    "3b393b": "34343e",
+    "402224": "1e1e24",
+    "040307": "000000",
+    "941726": "b70000",
+    "130d13": "000000",
+    "531419": "421618",
+    "e70304": "b70000",
+    "b03d37": "b70000",
+    "fefefd": "e8e0c0"
+  },
+  "method": "Pixel plugin draw_pixels; geometry and alpha unchanged"
+}

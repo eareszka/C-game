@@ -1,0 +1,52 @@
+{
+  "enemy": "97 RO",
+  "canvas": [
+    130,
+    81
+  ],
+  "occupied_bounds": [
+    5,
+    2,
+    126,
+    81
+  ],
+  "reference_bounds": [
+    5,
+    2,
+    126,
+    81
+  ],
+  "colors": {
+    "#000000": 2799,
+    "#b70000": 770,
+    "#1e1e24": 1606,
+    "#34343e": 286,
+    "#421618": 29,
+    "#e8e0c0": 3
+  },
+  "off_palette_pixels": 0,
+  "alpha_counts": {
+    "0": 5037,
+    "255": 5493
+  },
+  "soft_alpha_pixels": 0,
+  "connected_components_8way": [
+    5493
+  ],
+  "generation_alpha_preserved": true,
+  "original_assets_hashes_unchanged": true,
+  "aseprite_frames": 1,
+  "aseprite_color_depth": 32,
+  "reported_generation_cost": 10,
+  "generation_id": "d6776120-52c5-4a44-b310-3af870e89e23",
+  "source": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\pixellab-out\\2026-10-17T0220-97-ro-frame0-draft-redraw-the-existing-ro-first\\97-ro-demonic-frame0.png",
+  "output": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_demonic_frame0_draft.aseprite",
+  "export": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_demonic_frame0_draft.png",
+  "review": "Native and nearest-neighbor 6x inspected; flat clusters, black hide, crimson silhouette, charcoal form shading; user review pending.",
+  "aseprite_review": {
+    "opened": true,
+    "verified_window_title": "97_ro_demonic_frame0_draft.aseprite - Aseprite v1.3.18.2",
+    "screenshot": "build_tmp/ro_pixellab_preflight/aseprite_review.png"
+  },
+  "remaining_generations": 30
+}

@@ -1,0 +1,76 @@
+{
+  "canvas": [
+    14,
+    20
+  ],
+  "source": "art\\npcs\\villagers_standing_review.aseprite",
+  "npcs": [
+    {
+      "name": "01_farmer",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "235436"
+      },
+      "changed_pixels": 24,
+      "edited_face_preserved": true,
+      "edited_arm_outlines_preserved": true,
+      "silhouette_and_baseline_preserved": true,
+      "export_mismatches": 0
+    },
+    {
+      "name": "02_apron_villager",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "b6433d",
+        "C": "e8e0c0"
+      },
+      "changed_pixels": 11,
+      "edited_face_preserved": true,
+      "edited_arm_outlines_preserved": true,
+      "silhouette_and_baseline_preserved": true,
+      "export_mismatches": 0
+    },
+    {
+      "name": "03_elder",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "9797aa",
+        "C": "2850a0"
+      },
+      "changed_pixels": 10,
+      "edited_face_preserved": true,
+      "edited_arm_outlines_preserved": true,
+      "silhouette_and_baseline_preserved": true,
+      "export_mismatches": 0
+    },
+    {
+      "name": "04_spectacled_villager",
+      "palette": {
+        "K": "000000",
+        "S": "f0b890",
+        "H": "633e1b",
+        "C": "fc74b4"
+      },
+      "changed_pixels": 15,
+      "edited_face_preserved": true,
+      "edited_arm_outlines_preserved": true,
+      "silhouette_and_baseline_preserved": true,
+      "export_mismatches": 0
+    }
+  ],
+  "original_sha256": {
+    "art\\npcs\\01_farmer_standing_draft.aseprite": "7486d9dbb744c858b625f351ca665bd5f4b4ef0aaa98b6cd8a6a03ea1d9879f4",
+    "art\\npcs\\02_apron_villager_standing_draft.aseprite": "07f6bd524e304b588dc12de45427e2f7fb37e2247f2b43d011bf5a236d82af6d",
+    "art\\npcs\\03_elder_standing_draft.aseprite": "ca481b0dbb7019e98dde67734c898d153496941ee229b15c90469049b19fa692",
+    "art\\npcs\\04_spectacled_villager_standing_draft.aseprite": "ff44d31498cffdea8cb9bbc990219bb5c6071ab9e54875dded1180ab431fbe93",
+    "art\\npcs\\villagers_standing_review.aseprite": "61b3b5bbfd23f4b2ace4d1d4a87552f82257ee2b0920ae965af0f6fc2866c0ee",
+    "assets\\player_small.png": "0623bc324e3eddafd800942070990983fc901ca529539fc5172c425935c6642d",
+    "assets\\player_small.aseprite": "b483000746dd88d4cbeb32c32513f6ebdd4ad546600e1ff635ee8fac5f0581c8"
+  },
+  "reopened_exports_identical": true,
+  "prior_drafts_and_player_unchanged": true
+}

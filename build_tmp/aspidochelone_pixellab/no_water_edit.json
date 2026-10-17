@@ -1,0 +1,17 @@
+{
+  "output": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/51_aspidochelone_frame0_no_water.aseprite",
+  "removed_pixels": 762,
+  "water_pixels": 633,
+  "body_color_pixels_unchanged": true,
+  "canvas": [
+    130,
+    81
+  ],
+  "occupied_bounds": [
+    22,
+    21,
+    111,
+    80
+  ],
+  "paid_calls": 0
+}

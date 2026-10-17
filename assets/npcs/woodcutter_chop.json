@@ -1,0 +1,25 @@
+{
+  "frame_width": 40,
+  "frame_height": 40,
+  "frames_per_direction": 4,
+  "directions": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "duration_ms": 200,
+  "impact_frame": 2,
+  "sprite_offset": {
+    "x": -12,
+    "y": -12
+  },
+  "palette": {
+    "K": "000000",
+    "W": "633e1b",
+    "R": "b6433d",
+    "S": "d7a175"
+  },
+  "source": "art/npcs/woodcutter_chop_v2.aseprite",
+  "plugin_pixel_verified": true
+}

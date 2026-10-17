@@ -1,0 +1,59 @@
+{
+  "enemy": "97 RO",
+  "status": "Generated and palette-cleaned; validated and opened in Aseprite; awaiting visual approval",
+  "installed_cli_version": "0.7.0",
+  "original_sheet": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\assets\\enemies\\97_ro.png",
+  "current_frame_reference": "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_frame0_draft.png",
+  "frame_size": [
+    130,
+    81
+  ],
+  "current_occupied_bounds": [
+    5,
+    2,
+    126,
+    81
+  ],
+  "original_sheet_sha256": "94cf7b3c7ef6ce74ea5a3e36c67d392dd596788405e99c6cef1e574a1897f993",
+  "current_frame_sha256": "5c79bf9d2ef37b173f55d75841775fb0aef39321480b092fadefa0e57a255a28",
+  "art_bible": [
+    "art/direction/ART_DIRECTION.md",
+    "C:/Users/emery/.herdr/worktrees/C-game/sprites/art/direction/SPRITE_STYLE.md"
+  ],
+  "approved_references": [
+    "00 Skvader",
+    "01 Wolpertinger",
+    "03 Qique",
+    "08 Snawfus",
+    "48 Bjarndyrakongur",
+    "57 Dingbat",
+    "98 Boiuna"
+  ],
+  "requested_changes": [
+    "black skin",
+    "one-pixel red outline",
+    "demonic appearance"
+  ],
+  "preserve": [
+    "current frontal upright roaring pose",
+    "spread bat wings",
+    "tail curving to the right",
+    "native canvas dimensions",
+    "transparent background",
+    "original sprite files and neighboring frames"
+  ],
+  "paid_generation_calls_made": 2,
+  "proposed_prompt": "Redraw the existing RO first frame as a demonic black-skinned winged dragon. Preserve its front-facing upright roaring stance, broad spread bat wings, short thick legs, large wolfish dragon head with a mane, and long tail curled to the right. Preserve the current scale, proportions, placement, and 130x81 transparent canvas. Replace black outlines with crisp one-pixel crimson red outlines on the silhouette and between overlapping body parts. Use black hide with only two dark charcoal form-shading tones, menacing red eyes, angular horns, sharp fangs and claws. Draw as one coherent flat retro pixel-art silhouette with chunky deliberate clusters, three-tone form-based shading, and a restrained palette from the project. No scale textures, hatching, dithering, gradients, antialiasing, or 3D rendering. Keep the silhouette readable at native resolution. Style reference is a board of the entire approved enemy roster, provided to establish pixel-art technique only: produce one RO, never a collage or multiple enemies. The Art Bible remains authoritative over individual reference exceptions. Use a single-pixel outline, flat fills, three tones placed by form with the light on viewer/up-facing surfaces and dark under overhangs, tapered limbs, chunky readable clusters, chibi proportions, and at most three accent features. No patterns on skin, scales, fur, or wing membranes. Tiny legible eyes, no iris or highlight dots. RO-specific user exceptions: bright red silhouette and separation outlines, black hide with restrained charcoal tones, and a demonic appearance. Preserve all other game style rules.",
+  "style_reference": "art\\direction\\approved_enemy_study\\approved_style_native.png",
+  "approved_style_study": "art\\direction\\approved_enemy_study\\analysis.json",
+  "account_balance_at_verification": {
+    "generations_remaining": 40,
+    "allowance": 40
+  },
+  "submission_results": [
+    "First submission rejected HTTP 422 because reference exceeded API 512px limit; balance unchanged at 40.",
+    "Corrected submission succeeded; reported and verified cost 10 generations; balance 30."
+  ],
+  "sent_style_reference": "art/direction/approved_enemy_study/approved_42_fronts_native_512.png",
+  "output": "art/enemies/97_ro_demonic_frame0_draft.aseprite"
+}

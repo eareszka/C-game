@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "2026-10-17T0220-97-ro-frame0-draft-redraw-the-existing-ro-first",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 3548 characters>",
+          "format": "png"
+        },
+        "width": 130,
+        "height": 81
+      }
+    ],
+    "image_size": {
+      "width": 130,
+      "height": 81
+    },
+    "description": "<elided 1609 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b4c46f11-821a-4e5c-9791-26b40e73e06b",
+    "generation_id": "d6776120-52c5-4a44-b310-3af870e89e23"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "97-ro-demonic-frame0.png"
+  ]
+}

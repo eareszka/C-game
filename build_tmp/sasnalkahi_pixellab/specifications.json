@@ -1,0 +1,26 @@
+{
+  "enemy": "41 Sasnalkahi",
+  "canvas": [
+    98,
+    65
+  ],
+  "original_bounds": [
+    32,
+    13,
+    67,
+    64
+  ],
+  "sheet_size": [
+    3920,
+    65
+  ],
+  "sheet_layout": "8 direction groups D DR R UR U UL L DL; five frames per direction in one horizontal row",
+  "sources": {
+    "assets/enemies/41_sasnalkahi.png": "9280e66a173327022c5f380c4c1d5f95445bd41fa890ae0f7b2355ccd50fcdf6",
+    "assets/enemies/41_sasnalkahi.aseprite": "f619ea4137dde7aad5bf6fece4f622aa5d82de74ee569e06044557ff51861480",
+    "art/enemies/41_views.png": "e349da496ff69d491f081bb64b0015aafeb23268905765f56a83ff5158d3624e"
+  },
+  "user_reference": "C:/Users/emery/OneDrive/Desktop/cliff fix/1.webp",
+  "size_and_conversion": "User confirmed original 98x65, direct illustration, front facing; paid request explicitly approved",
+  "status": "Generated, pixel-plugin cleanup completed, saved-file validation passed"
+}

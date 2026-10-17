@@ -1,0 +1,6 @@
+route: edit-images-v2
+C:\Users\emery\OneDrive\Desktop\projects\C-game\pixellab-out\2026-10-17T0239-51-aspidochelone-original-frame0-redraw-the-sour\51-aspidochelone-frame0-draft.png
+cost: 10 generations (reported)
+background_job_id: 4308b322-578b-4abd-911c-be2b1a023724
+generation_id: 237c0d55-771c-4a6c-8f38-cf33d93f36d5
+edit-images-v2 is a Pro Tools route: about 30 generations.

@@ -1,0 +1,99 @@
+{
+  "frame_size": [
+    14,
+    20
+  ],
+  "sheet_size": [
+    28,
+    80
+  ],
+  "directions": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "frames_per_direction": 2,
+  "player_base_indices": {
+    "down": [
+      0,
+      1
+    ],
+    "up": [
+      3,
+      4
+    ],
+    "left": [
+      6,
+      7
+    ],
+    "right": [
+      8,
+      9
+    ]
+  },
+  "player_base_poses": [
+    "passing",
+    "stride"
+  ],
+  "npcs": [
+    {
+      "name": "01_farmer",
+      "left_right_pixel_identical": true,
+      "player_front_back_body_masks_preserved": true,
+      "frames": 8,
+      "palette_colors": 4,
+      "baseline": 19
+    },
+    {
+      "name": "02_apron_villager",
+      "left_right_pixel_identical": true,
+      "player_front_back_body_masks_preserved": true,
+      "frames": 8,
+      "palette_colors": 4,
+      "baseline": 19
+    },
+    {
+      "name": "03_elder",
+      "left_right_pixel_identical": true,
+      "player_front_back_body_masks_preserved": true,
+      "frames": 8,
+      "palette_colors": 4,
+      "baseline": 19
+    },
+    {
+      "name": "04_spectacled_villager",
+      "left_right_pixel_identical": true,
+      "player_front_back_body_masks_preserved": true,
+      "frames": 8,
+      "palette_colors": 4,
+      "baseline": 19
+    }
+  ],
+  "protected_sha256": {
+    "art\\npcs\\01_farmer_standing_detailed_draft.aseprite": "bd581bb1b546aa7a493da10e167dfc6b7c14eaa4a4728c5da2cca0e0407465dd",
+    "art\\npcs\\01_farmer_standing_draft.aseprite": "7486d9dbb744c858b625f351ca665bd5f4b4ef0aaa98b6cd8a6a03ea1d9879f4",
+    "art\\npcs\\01_farmer_walk_4dir.aseprite": "c291d7130eba9ea100a102cee9f780855bb9bba887d606f2d0f37fdeee219fe4",
+    "art\\npcs\\01_farmer_walk_4dir_sidefix.aseprite": "ff47b70b4eea778fe16a3893b846b9692473b5d672a50fc79f2f4c30a72cc3c1",
+    "art\\npcs\\02_apron_villager_standing_detailed_draft.aseprite": "cd389294ba50fd13422e55ddb6287dbeb13434089da768f3c525228fb0d8f6d9",
+    "art\\npcs\\02_apron_villager_standing_draft.aseprite": "07f6bd524e304b588dc12de45427e2f7fb37e2247f2b43d011bf5a236d82af6d",
+    "art\\npcs\\02_apron_villager_walk_4dir.aseprite": "841c7be54c69fd39b59282397802380a7fe13d299e93be41b9ccc20deb6d3182",
+    "art\\npcs\\02_apron_villager_walk_4dir_sidefix.aseprite": "a5dcfd917d44de01af09051d58cefc6dff6d15854190c69a4b3718117c3a6bea",
+    "art\\npcs\\03_elder_standing_detailed_draft.aseprite": "42a923970ca8a7e226e9107d3a854eb0df6d1080945180db44fd12c8a86541d3",
+    "art\\npcs\\03_elder_standing_draft.aseprite": "ca481b0dbb7019e98dde67734c898d153496941ee229b15c90469049b19fa692",
+    "art\\npcs\\03_elder_walk_4dir.aseprite": "bae2450edb6004f5abdae05f0b56a39bc7d40fd2b1bf0e815d24dea0f79aa3d0",
+    "art\\npcs\\03_elder_walk_4dir_sidefix.aseprite": "1594dad481e4aca586fbfe0b63492edb30df9b729c5124ab0fb00197ddb6c574",
+    "art\\npcs\\04_spectacled_villager_standing_detailed_draft.aseprite": "ea54790fb4532478fbc93c841a2ade7f212d7d8f6247007f0f9b2ebde3c23acf",
+    "art\\npcs\\04_spectacled_villager_standing_draft.aseprite": "ff44d31498cffdea8cb9bbc990219bb5c6071ab9e54875dded1180ab431fbe93",
+    "art\\npcs\\04_spectacled_villager_walk_4dir.aseprite": "cae2b8d45cb53c321b9758c396d322e663625dcffb13d68c7862e6f7ff6c0569",
+    "art\\npcs\\04_spectacled_villager_walk_4dir_sidefix.aseprite": "465189acb298bbe1f3f97b4b189f85afaaf7cd8993037ffced7c2712c5f7403b",
+    "art\\npcs\\villagers_detailed_review.aseprite": "bff900ed7107c252d6695fc63785e64ba0b2a8fbd8f23bd3a079bf08f95aeb6d",
+    "art\\npcs\\villagers_standing_review.aseprite": "61b3b5bbfd23f4b2ace4d1d4a87552f82257ee2b0920ae965af0f6fc2866c0ee",
+    "art\\npcs\\villagers_walk_4dir_review.aseprite": "32b6d9cc67f2315de5a21387bdeeded9446f6ee52dc385bd761512f4fea64ac9",
+    "art\\npcs\\villagers_walk_sidefix_review.aseprite": "cb7d9618ff9512549916627bc4c635de938d6729bb95591121e12a827143f5e2",
+    "assets\\player_small.png": "0623bc324e3eddafd800942070990983fc901ca529539fc5172c425935c6642d",
+    "assets\\player_small.aseprite": "b483000746dd88d4cbeb32c32513f6ebdd4ad546600e1ff635ee8fac5f0581c8"
+  },
+  "approved_and_previous_files_unchanged": true,
+  "independent_reopen_all_frames_tags_durations_verified": true
+}

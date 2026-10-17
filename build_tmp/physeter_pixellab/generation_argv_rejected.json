@@ -1,0 +1,14 @@
+[
+  "pixellab-cli",
+  "edit",
+  "build_tmp\\physeter_pixellab\\49_physeter_original_frame0.png",
+  "--prompt",
+  "Redraw the provided Physeter first frame as a mutant SPERM WHALE monster, a deliberate hybrid of the current sea monster and a recognizable sperm whale. Preserve the original 302x166 transparent canvas, approximate occupied bounds x16..293 y8..163, scale, baseline, and current perspective: enormous head facing the viewer, body sweeping away to the right with a raised tail at the right. This is one composed battle sprite, first frame only. Transform the rounded fishlike head into the massive blunt rectangular box-shaped forehead and heavy smooth bulbous melon of a sperm whale. Give it a much narrower underslung lower jaw, still gaping with a frightening row of large readable teeth. Keep the source's menacing paired eyes and recognizable twin curved water plumes, restrained small horn-like brow protrusions, and monstrous character. Make its body a bulky smooth whale torso tapering into a caudal peduncle and broad horizontal whale tail flukes; replace spiny ray fins with thick rounded paddle flippers. Whale first, grotesque mutant second: no fish scales, gills, fin rays, segmented serpent tail or dorsal sail. Retain the original front view rather than a conventional side-profile whale illustration. Use the provided approved roster as pixel-art technique reference only; output one Physeter, no collage or extra enemies. Art Bible: one cohesive flat 2D silhouette, crisp one-pixel BLACK outlines and shared overlap separation lines, deliberate chunky pixel clusters, flat fills, three-tone form-based shading lit toward viewer/up and dark under forehead, chin and far body. Use project-palette slate skin ramp #34343e #595965 #848694, ivory teeth #e8e0c0, dark red mouth #421618 and #792727, small gold eyes #d89830, and water #84a7e9 and #dcf0ff. Keep within giant-tier budget of 24 colors plus black, preferably around 10 colors. No hatching, engraved stripes, fur or scale texture, repeated dots, lattice, dithering, gradients, antialiasing, 3D rendering or separately outlined cutout parts. Eyes use simple tiny dark pupils, no irises or highlight dots. No red silhouette outline: RO's red outline was a character-specific exception. Preserve transparency, native pixel density, canvas dimensions and sprite positioning.",
+  "--match",
+  "art/direction/approved_enemy_study/approved_42_fronts_native_512.png",
+  "--size",
+  "302x166",
+  "--transparent",
+  "--name",
+  "49_physeter_frame0_draft"
+]

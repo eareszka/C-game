@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include "entity.h"
 #include "input.h"
+#include "crafting.h"
 
 // Three windows shared with the debug menus: commands, item preview, and a
 // scrolling item/recipe list. Recipe costs support four ingredients plus a
@@ -17,6 +18,9 @@ enum MenuFocus { FOCUS_COMMANDS, FOCUS_LIST, FOCUS_ACTIONS };
 struct GameMenu {
     bool      open  = false;
     bool      shop  = false;
+    const Item* stock = nullptr; // the shop's books (game_menu_open_shop)
+    int       stock_n  = 0;
+    int       shop_cmd = 0;      // BUY / LEAVE
     MenuFocus focus = FOCUS_COMMANDS;
     int       cmd   = 0;        // command row
     int       sel   = 0;        // list entry
@@ -29,6 +33,10 @@ struct GameMenu {
     // it can), and the request the game answers by writing the file.
     const char* save_block   = nullptr;
     bool        save_request = false;
+    // Null only when dungeon exploration permits using the Escape Charm.
+    const char* escape_block = "ONLY IN A DUNGEON";
+    bool escape_request = false;
+    const char* healing_block = nullptr; // exploration only, outside transitions
 
     // Icon sheets, loaded on the first draw (they need the renderer).
     SDL_Texture* items   = nullptr;   // assets/items.png, one 16px cell per Item
@@ -37,7 +45,8 @@ struct GameMenu {
 };
 
 void game_menu_toggle(GameMenu* m);
-void game_menu_open_shop(GameMenu* m);
+// A shop selling these books: BUY / LEAVE on the left, the stock on the right.
+void game_menu_open_shop(GameMenu* m, const Item* stock, int n);
 // A line in the menu's message place for a moment ("SAVED").
 void game_menu_say(GameMenu* m, const char* note);
 // Keys, while open. Reads the raw input: the game itself gets a blank one.

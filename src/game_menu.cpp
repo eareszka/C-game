@@ -27,7 +27,7 @@ namespace {
         char label[48];
     };
     enum {
-        MAKE_ACTION,EQUIP_ACTION,OIL_ACTION,ECHO_ACTION
+        MAKE_ACTION,EQUIP_ACTION,OIL_ACTION,ECHO_ACTION,ESCAPE_ACTION,HEAL_ACTION,CURE_ACTION,FOOTWEAR_ACTION
     };
     const int rows=6,row_height=25,divider=205,col_w=(LST_W-24)/2,cost_y=LST_Y+LST_H-42;
     void text(SDL_Renderer* r,const char* s,int x,int y,int scale,SDL_Color c=white){
@@ -92,41 +92,90 @@ namespace {
     // MAKE and the shop in two columns: what is made once, then what is used
     // up (a recipe the player may hold 999 of). out: craft indices by group,
     // each group in the catalog's (unlock) order.
-    int column(int col,int out[]){
+    // A shop lists the recipes whose books it sells; MAKE, what the player
+    // can make (the knife always, the rest once their book is held).
+    bool visible(const GameMenu* m,const Player* p,const Craft& c){
+        if(m->shop)return std::find(m->stock,m->stock+m->stock_n,c.needs)!=m->stock+m->stock_n;
+        return (c.is_weapon && c.weapon==WEAPON_KNIFE) || item_count(p,c.needs)>0;
+    }
+    // The recipe that makes an item, if any.
+    const Craft* made_by(Item it){
+        for(int i=0;i<craft_count();i++)if(!craft_at(i).is_weapon&&craft_at(i).item==it)return &craft_at(i);
+        return nullptr;
+    }
+    // Something to use, not to craft with: a recipe's result, or an item
+    // with a use written for it.
+    bool uses(Item it){
+        return made_by(it)||item_description(it);
+    }
+    // Where an item stands in ITEMS: the things used by their MAKE group;
+    // what is crafted with as gold, nature, ores, creature drops, dungeon
+    // parts, then the books.
+    int item_group(Item it){
+        if(const Craft* c=made_by(it))return group(*c);
+        if(it==ITEM_LAVA_CHARM)return 2;
+        if(item_description(it))return 9;
+        if(it==ITEM_GOLD)return 10;
+        if(it==ITEM_WOOD||it==ITEM_STONE||it==ITEM_VINE||it==ITEM_FLOWER||it==ITEM_OILBLOOM)return 11;
+        if(it>=ITEM_BRONZE&&it<=ITEM_REALITY_SHARD)return 12;
+        if(it>=ITEM_OLD_SPEARHEAD&&it<=ITEM_REAPERS_EDGE)return 14;
+        if(item_is_book(it))return 15;
+        return 13;
+    }
+    // ITEMS: the weapons and the things used, then -- from *split -- what is
+    // crafted with, each half by group.
+    int inventory(const Player* p,Entry out[],int* split=nullptr){
         int n=0;
-        for(int i=0;i<craft_count();i++)if((craft_at(i).max==999)==(col==1))out[n++]=i;
+        for(int w=0;w<WEAPON_COUNT;w++)if(p->owned[w])out[n++] = { true,w };
+        for(int pass=0;pass<2;pass++){
+            int from=n;
+            for(int i=0;i<ITEM_COUNT;i++)if(i!=ITEM_SLEEPING_BAG&&item_count(p,(Item)i)>0&&uses((Item)i)==(pass==0))out[n++] = { false,i };
+            std::stable_sort(out+from,out+n,[](Entry a,Entry b){ return item_group((Item)a.id)<item_group((Item)b.id); });
+            if(pass==0&&split)*split=n;
+        }
+        return n;
+    }
+    const int most=ITEM_COUNT+WEAPON_COUNT;
+    // A page's two columns. MAKE and the shop: what is made once, then what
+    // is used up (a recipe the player may hold 999 of), as craft indices by
+    // group, each group in the catalog's (unlock) order. ITEMS: what is used,
+    // then what is crafted with, as inventory indices.
+    int column(int col,int out[],const GameMenu* m,const Player* p,bool items=false){
+        int n=0;
+        if(items){
+            Entry e[most];
+            int split,all=inventory(p,e,&split);
+            for(int i=col?split:0;i<(col?all:split);i++)out[n++]=i;
+            return n;
+        }
+        for(int i=0;i<craft_count();i++)if(visible(m,p,craft_at(i))&&(craft_at(i).max==999)==(col==1))out[n++]=i;
         std::stable_sort(out,out+n,[](int a,int b){ return group(craft_at(a))<group(craft_at(b)); });
         return n;
     }
-    // Craft sel's column and its row there.
-    void place(int sel,int* col,int* row){
-        int list[64];
-        *col=craft_at(sel).max==999;
-        int n=column(*col,list);
+    // sel's column and its row there.
+    void place(int sel,int* col,int* row,const GameMenu* m,const Player* p,bool items=false){
+        int list[most];
+        int n=column(*col=0,list,m,p,items);
+        *row=int(std::find(list,list+n,sel)-list);
+        if(*row<n)return;
+        n=column(*col=1,list,m,p,items);
         *row=int(std::find(list,list+n,sel)-list);
     }
-    // The arrows: MAKE/shop up and down a column, left and right across to
-    // the other at the same row; ITEMS a grid read left to right.
-    void move(GameMenu* m,int count,bool grouped,bool up,bool down,bool left,bool right){
-        if(grouped){
-            int col,row,list[64];
-            place(m->sel,&col,&row);
-            if(((left&&col==1)||(right&&col==0))&&column(!col,list))col=!col;
-            int n=column(col,list);
-            row+=down-up;
-            m->sel=list[std::max(0,std::min(row,n-1))];
-            return;
-        }
-        if(left&&m->sel%2)m->sel--;
-        if(right&&m->sel%2==0&&m->sel+1<count)m->sel++;
-        if(up&&m->sel>=2)m->sel-=2;
-        if(down)m->sel=m->sel+2<count?m->sel+2:(m->sel/2+1)*2<count?count-1:m->sel;
+    // The arrows: up and down a column, left and right across to the other
+    // at the same row.
+    void move(GameMenu* m,bool up,bool down,bool left,bool right,const Player* p,bool items=false){
+        int col,row,list[most];
+        place(m->sel,&col,&row,m,p,items);
+        if(((left&&col==1)||(right&&col==0))&&column(!col,list,m,p,items))col=!col;
+        int n=column(col,list,m,p,items);
+        row+=down-up;
+        m->sel=list[std::max(0,std::min(row,n-1))];
     }
-    int inventory(const Player* p,Entry out[]){
-        int n=0;
-        for(int w=0;w<WEAPON_COUNT;w++)if(p->owned[w])out[n++] = { true,w };
-        for(int i=0;i<ITEM_COUNT;i++)if(i!=ITEM_SLEEPING_BAG&&item_count(p,(Item)i)>0)out[n++] = { false,i };
-        return n;
+    const char* medical_block(const GameMenu* m,const Player* p,Item it){
+        if(m->healing_block)return m->healing_block;
+        if(p->stats.hp<=0)return "CANNOT USE WHILE DEFEATED";
+        if(it==ITEM_ANTIDOTE)return p->poisoned?nullptr:"NOT POISONED";
+        return p->stats.hp>=p->stats.max_hp?"HEALTH IS FULL":nullptr;
     }
     int actions(const GameMenu* m,const Player* p,const Entry* entries,Action out[]){
         int n=0;
@@ -159,6 +208,17 @@ namespace {
             }
         }
         else if(m->cmd==ITEMS&&entries[m->sel].weapon&&p->equipped!=entries[m->sel].id)out[n++] = { EQUIP_ACTION,true,"",-1,"EQUIP" };
+        else if(m->cmd==ITEMS&&!entries[m->sel].weapon&&entries[m->sel].id==ITEM_ESCAPE_CHARM)
+            out[n++] = { ESCAPE_ACTION,!m->escape_block,m->escape_block,-1,"USE" };
+        else if(m->cmd==ITEMS&&!entries[m->sel].weapon&&(entries[m->sel].id==ITEM_BAND_AID||entries[m->sel].id==ITEM_MEDKIT||entries[m->sel].id==ITEM_ANTIDOTE)){
+            Item it=(Item)entries[m->sel].id;
+            const char* why=medical_block(m,p,it);
+            out[n++] = { it==ITEM_ANTIDOTE?CURE_ACTION:HEAL_ACTION,!why,why,-1,"USE" };
+        }
+        else if(m->cmd==ITEMS&&!entries[m->sel].weapon&&(entries[m->sel].id==ITEM_SWIFT_BOOTS||entries[m->sel].id==ITEM_DIVING_FINS)){
+            out[n] = { FOOTWEAR_ACTION,true,"",-1,"" };
+            SDL_strlcpy(out[n++].label,item_footwear_equipped(p,(Item)entries[m->sel].id)?"UNEQUIP":"EQUIP",sizeof(out[0].label));
+        }
         return n;
     }
     // What it costs, along the foot of the box: each thing's picture with
@@ -192,24 +252,37 @@ void game_menu_toggle(GameMenu* m){
     m->sel=0;
     m->note_t=0;
 }
-void game_menu_open_shop(GameMenu* m){
+void game_menu_open_shop(GameMenu* m,const Item* stock,int n){
     m->open=true;
     m->shop=true;
-    m->focus=FOCUS_LIST;
-    m->sel=0;
+    m->stock=stock;
+    m->stock_n=n;
+    m->shop_cmd=0;
+    m->focus=FOCUS_COMMANDS;
     m->note_t=0;
+    // The first book on the shelf: the left column's top, else the right's.
+    int list[most];
+    m->sel=column(0,list,m,nullptr)||column(1,list,m,nullptr)?list[0]:0;
 }
 void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
     if(!m->open)return;
     m->note_t=std::max(0.0f,m->note_t-dt);
     bool up=input_pressed(in,SDL_SCANCODE_UP),down=input_pressed(in,SDL_SCANCODE_DOWN),left=input_pressed(in,SDL_SCANCODE_LEFT),right=input_pressed(in,SDL_SCANCODE_RIGHT),ok=input_pressed(in,SDL_SCANCODE_Z)||input_pressed(in,SDL_SCANCODE_RETURN),back=input_pressed(in,SDL_SCANCODE_X);
     if(m->shop){
-        if(back){
-            m->open=false;
-            m->shop=false;
+        if(m->focus==FOCUS_COMMANDS){
+            if(up||down)m->shop_cmd=!m->shop_cmd;
+            if(back||(ok&&m->shop_cmd==1)){
+                m->open=false;
+                m->shop=false;
+            }
+            else if(ok)m->focus=FOCUS_LIST;
             return;
         }
-        move(m,craft_count(),true,up,down,left,right);
+        if(back){
+            m->focus=FOCUS_COMMANDS;
+            return;
+        }
+        move(m,up,down,left,right,nullptr);
         if(ok){
             const Craft& c=craft_at(m->sel);
             game_menu_say(m,craft_buy_book(p,c)?"BOOK PURCHASED":item_count(p,c.needs)?"ALREADY OWNED":"NOT ENOUGH GOLD");
@@ -240,13 +313,14 @@ void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
         if(back)m->focus=FOCUS_COMMANDS;
         return;
     }
-    m->sel=std::min(m->sel,count-1);
+    m->sel=std::max(0,std::min(m->sel,count-1));
+    if(m->cmd==MAKE&&!visible(m,p,craft_at(m->sel)))m->sel=0;
     if(m->focus==FOCUS_LIST){
         if(back){
             m->focus=FOCUS_COMMANDS;
             return;
         }
-        move(m,count,m->cmd==MAKE,up,down,left,right);
+        move(m,up,down,left,right,p,m->cmd==ITEMS);
         Action a[3];
         if(ok&&actions(m,p,entries,a)){
             m->focus=FOCUS_ACTIONS;
@@ -272,22 +346,34 @@ void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
     bool done=false;
     if(chosen.ready){
         if(chosen.kind==EQUIP_ACTION)done=craft_equip(p,(WeaponType)entries[m->sel].id);
+        else if(chosen.kind==FOOTWEAR_ACTION)done=item_equip_footwear(p,(Item)entries[m->sel].id,!item_footwear_equipped(p,(Item)entries[m->sel].id));
+        else if(chosen.kind==CURE_ACTION)done=item_use_antidote(p);
+        else if(chosen.kind==HEAL_ACTION)done=entries[m->sel].id==ITEM_MEDKIT?item_use_medkit(p):item_use_band_aid(p);
+        else if(chosen.kind==ESCAPE_ACTION){
+            m->escape_request=true;
+            done=true;
+        }
         else{
             const Craft& c=craft_at(m->sel);
             done=chosen.kind==MAKE_ACTION?craft_make(p,c):chosen.kind==OIL_ACTION?craft_oil(p,c.weapon):craft_echo(p,c.weapon);
         }
     }
-    game_menu_say(m,done?"DONE":chosen.why);
+    game_menu_say(m,done?(chosen.kind==HEAL_ACTION?"HEALTH RESTORED":chosen.kind==CURE_ACTION?"POISON CURED":"DONE"):chosen.why);
 }
 void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
     if(!m->open)return;
     sheets(m,r);
     draw_nes_panel(r,CMD_X,CMD_Y,CMD_W,CMD_H);
     if(m->shop){
-        text(r,"BOOKS",CMD_X+12,CMD_Y+12,2,yellow);
+        static const char* const shop_commands[] = { "BUY","LEAVE" };
+        for(int i=0;i<2;i++){
+            bool here=i==m->shop_cmd&&m->focus==FOCUS_COMMANDS;
+            text(r,shop_commands[i],CMD_X+28,CMD_Y+12+i*24,2,here?yellow:white);
+            if(i==m->shop_cmd)text(r,GLYPH_CURSOR,CMD_X+10,CMD_Y+12+i*24,2,here?yellow:grey);
+        }
         char b[32];
         SDL_snprintf(b,sizeof(b),"GOLD %d",item_count(p,ITEM_GOLD));
-        text(r,b,CMD_X+12,CMD_Y+42,2);
+        text(r,b,CMD_X+12,CMD_Y+CMD_H-32,2);
     }
     else for(int i=0;i<COMMANDS;i++){
         // Yellow where the player is, grey where they were.
@@ -312,7 +398,9 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
         text(r,"NOTHING YET",LST_X+16,LST_Y+16,2,grey);
         return;
     }
-    int selected=std::min(m->sel,n-1);
+    int selected=std::max(0,std::min(m->sel,n-1));
+    if(!m->shop&&m->cmd==MAKE&&!visible(m,p,craft_at(selected)))selected=0;
+    if(m->cmd==MAKE&&!m->shop)m->sel=selected;
     bool grouped=m->shop||m->cmd==MAKE;
     // One entry of the list in its cell: x is the column's left edge.
     auto cell=[&](int i,int x,int y){
@@ -329,11 +417,15 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
             if(p->equipped==entries[i].id)SDL_strlcpy(quantity,"IN HAND",sizeof(quantity));
         }
         else{
-            SDL_strlcpy(line,item_name((Item)entries[i].id),sizeof(line));
-            SDL_snprintf(quantity,sizeof(quantity),"x%d",item_count(p,(Item)entries[i].id));
+            Item it=(Item)entries[i].id;
+            SDL_strlcpy(line,item_name(it),sizeof(line));
+            if(item_footwear_equipped(p,it))SDL_strlcpy(quantity,"WORN",sizeof(quantity));
+            const Craft* recipe=made_by(it);
+            if(item_is_material(it)||(recipe&&recipe->max==999))
+                SDL_snprintf(quantity,sizeof(quantity),"x%d",item_count(p,it));
         }
-        bool here=i==selected&&(m->shop||m->focus==FOCUS_LIST);
-        if(i==selected&&(m->shop||m->focus!=FOCUS_COMMANDS))text(r,GLYPH_CURSOR,x,y+4,2,here?yellow:grey);
+        bool here=i==selected&&m->focus==FOCUS_LIST;
+        if(i==selected&&m->focus!=FOCUS_COMMANDS)text(r,GLYPH_CURSOR,x,y+4,2,here?yellow:grey);
         int qw=text_width(quantity,2);
         fitted(r,line,x+16,y+4,col_w-28-qw,2,here?yellow:c);
         text(r,quantity,x+col_w-8-qw,y+4,2,c);
@@ -344,21 +436,16 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
         if(longer&&(SDL_GetTicks()/300)%2==0)
             text(r,GLYPH_MORE,x+col_w-8-text_width(GLYPH_MORE,2),divider-16,2);
     };
-    if(grouped){
+    {
+        const Player* who=m->shop?nullptr:p;
         int sel_col,sel_row;
-        place(selected,&sel_col,&sel_row);
+        place(selected,&sel_col,&sel_row,m,who,!grouped);
         for(int col=0;col<2;col++){
-            int list[64],len=column(col,list),x=LST_X+12+col*col_w;
+            int list[most],len=column(col,list,m,who,!grouped),x=LST_X+12+col*col_w;
             int top=col==sel_col?std::max(0,sel_row-rows+1):0;
             for(int k=top;k<len&&k<top+rows;k++)cell(list[k],x,LST_Y+12+(k-top)*row_height);
             more(x,col==sel_col&&len>rows);
         }
-    }
-    else{
-        int top=std::max(0,selected/2-rows+1);
-        for(int i=top*2;i<n&&i<(top+rows)*2;i++)cell(i,LST_X+12+(i%2)*col_w,LST_Y+12+(i/2-top)*row_height);
-        int col=selected%2;
-        more(LST_X+12+col*col_w,(n+1-col)/2>rows);
     }
     fc_draw_color(r,252,252,252,255);
     SDL_Rect rule = { LST_X+8,divider,LST_W-16,2 };
@@ -406,7 +493,7 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
             fitted(r,item_name(it),LST_X+14,218,LST_W-28,2,white);
             if(const char* desc=item_description(it)){
                 wrapped(r,desc,LST_X+14,250,LST_W-28,3);
-                if((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_LAVA_CHARM||it==ITEM_PLAGUE_RESIDUE)text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
+                if(it!=ITEM_ESCAPE_CHARM&&it!=ITEM_BAND_AID&&it!=ITEM_MEDKIT&&it!=ITEM_ANTIDOTE&&it!=ITEM_SWIFT_BOOTS&&it!=ITEM_DIVING_FINS&&((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_LAVA_CHARM||it==ITEM_PLAGUE_RESIDUE))text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
             }
             else{
                 text(r,"USED FOR:",LST_X+14,250,2,grey);
@@ -418,6 +505,19 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
                     SDL_strlcat(b,uses[i],sizeof(b));
                 }
                 wrapped(r,nu?b:"NOTHING YET",LST_X+14,273,LST_W-28,3);
+            }
+            if(it==ITEM_SWIFT_BOOTS||it==ITEM_DIVING_FINS){
+                bool worn=item_footwear_equipped(p,it);
+                const char* action=worn?"UNEQUIP":"EQUIP";
+                if(m->focus==FOCUS_ACTIONS)text(r,GLYPH_CURSOR,LST_X+12,314,2,yellow);
+                text(r,m->focus==FOCUS_ACTIONS?action:worn?"Z: CHOOSE, THEN UNEQUIP":"Z: CHOOSE, THEN EQUIP",LST_X+28,314,2,white);
+                text(r,worn?"EQUIPPED":"NOT EQUIPPED",LST_X+14,338,2,grey);
+            }
+            if(it==ITEM_ESCAPE_CHARM||it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE){
+                const char* block=it==ITEM_ESCAPE_CHARM?m->escape_block:medical_block(m,p,it);
+                if(m->focus==FOCUS_ACTIONS)text(r,GLYPH_CURSOR,LST_X+12,314,2,yellow);
+                text(r,m->focus==FOCUS_ACTIONS?"USE":"Z: CHOOSE, THEN USE",LST_X+28,314,2,block?grey:white);
+                if(block)fitted(r,block,LST_X+14,338,LST_W-28,2,grey);
             }
             // Gives way to the answer to Z, which takes its place.
             const char* src=item_source(it);

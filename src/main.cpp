@@ -25,6 +25,7 @@
 #include "game_menu.h"
 #include "save.h"
 #include "story.h"
+#include "resident.h"
 #include "towns.h"      // TOWN1_HALL_DOOR_*: the debug warp to the hall
 
 
@@ -212,6 +213,14 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    if (!story_people_init(plat.renderer)) {
+        SDL_DestroyTexture(player_sprite);
+        tilemap_free_tile_cache();
+        IMG_Quit();
+        platform_shutdown(&plat);
+        return 1;
+    }
+
     GameState state = STATE_OVERWORLD;
 
     // The player a new game starts with.
@@ -225,6 +234,17 @@ int main(int argc, char *argv[])
         player.stats.max_mag     = 12;  player.stats.mag     = 12;
         player.stats.max_luck    = 30;  player.stats.luck    = 30;
         player.stats.max_iq      = 8;   player.stats.iq      = 8;
+        // Keep items whose functionality is being tested ready in debug runs.
+        if (debug) {
+            player.stats.hp = 1; // Start injured for healing-item tests.
+            player.poisoned = 1; // Debug-only status for testing poison and Antidotes.
+            const Item test_items[] = { ITEM_ESCAPE_CHARM, ITEM_BAND_AID, ITEM_MEDKIT, ITEM_ANTIDOTE, ITEM_SWIFT_BOOTS, ITEM_DIVING_FINS };
+            for (Item it : test_items) {
+                item_slot(&player, it) = (it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE)?5:1;
+                item_mark_found(&player, it);
+            }
+            item_equip_swift_boots(&player, true);
+        }
     };
     fresh_player();
 
@@ -440,7 +460,7 @@ int main(int argc, char *argv[])
 
     bool dbg_open     = false;
     float ow_swap_t   = 99.0f;   // seconds since Q / E swapped weapons outside battle, for the weapon box
-    bool dbg_readout  = false;   // F1: the FPS and position readout, off in normal play
+    bool dbg_readout  = false;   // F1: FPS, current-area coordinates and game time
     // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam
     static const int DBG_ROW_COUNT = 13;
     // The rows in two columns: the world (0-4, 6, 7) on the left, the player
@@ -467,9 +487,38 @@ int main(int argc, char *argv[])
     bool        dlg_strike = false;
     Item        dlg_icons[CHEST_ICON_MAX] = {};   // a chest's: the icon on speech line i + 1
     int         dlg_icon_n = 0;
+    // Choices under a line (ask): once it has typed out, up/down pick one and
+    // Z takes it -- dlg_pick(i) after the box closes; X is the last (LEAVE).
+    const char* dlg_choices[4] = {};
+    int         dlg_choice_n = 0, dlg_choice = 0;
+    std::function<void(int)> dlg_pick;
+    std::function<void()> dlg_after;
     auto say = [&](const char* text, bool strike = false) {
         dlg_text = text; dlg_part = 0; dlg_t = 0.0f; dlg_state = SPEECH_TYPING; dlg_strike = strike;
         dlg_icon_n = 0;   // chests set dlg_icons after say
+        dlg_choice_n = 0;
+        dlg_after = nullptr;
+    };
+    auto ask = [&](const char* text, std::initializer_list<const char*> choices, std::function<void(int)> pick) {
+        say(text);
+        for (const char* c : choices) if (dlg_choice_n < 4) dlg_choices[dlg_choice_n++] = c;
+        dlg_choice = 0;
+        dlg_pick = pick;
+    };
+    bool topic_active=false;
+    StoryNpcPos topic_npc={};
+    StoryWhere topic_where={};
+    std::function<void(const char*)> topic_menu;
+    topic_menu=[&](const char* prompt) {
+        const auto* conversation=story_npc_conversation(topic_npc);
+        if(!conversation)return;
+        ask(prompt,{conversation->choices[0],conversation->choices[1],conversation->choices[2]},[&](int choice) {
+            if(choice==2) {
+                topic_active=false;story_npc_resume(topic_npc);return;
+            }
+            say(story_npc_answer(topic_npc,topic_where,choice));
+            dlg_after=[&](){topic_menu("Need anything?");};
+        });
     };
     // The debug speaker's list of every line (story_dialogue): -1 closed,
     // else the cursor. Each shows in the speech box; the list is back when
@@ -653,6 +702,8 @@ int main(int argc, char *argv[])
         for (int i = 0; i < n; i++) dlg_icons[i] = items[i];
     };
     uint32_t current_dng_seed = 0;
+    float dng_arrival_x = 0, dng_arrival_y = 0;
+    bool dng_arrival_valid = false;
 
     // Portal state: which overworld tiles DNG_ENTRY / DNG_EXIT map back to.
     // Set when entering a dungeon; both default to the entrance tile if there
@@ -665,6 +716,7 @@ int main(int argc, char *argv[])
     // Throw the world away and grow another from seed: the debug menu's REGEN
     // MAP, and a new game started over a save's world.
     auto rebuild_world = [&](unsigned int seed) {
+        dng_arrival_valid = false;
         tilemap_cancel_gen();
         gen_thread.join();
         tilemap_reset_gen_cancel();
@@ -676,6 +728,7 @@ int main(int argc, char *argv[])
         memset(tilemap_landmarks_opened(), 0, MAX_LANDMARKS / 8);   // another world: none of its landmarks opened
         memset(dungeon_chest_records(), 0, sizeof(DungeonChestRecord) * MAX_DUNGEON_CHEST_RECORDS);   // nor its dungeons' chests
         memset(story_flags(), 0, sizeof(StoryFlags));   // and its story not begun
+        resident_reset();
         tilemap_build_overworld_phase1(map, map_seed);
         gen_thread = std::thread(tilemap_build_overworld_phase2, map, map_seed);
         resource_nodes_init(&resources);
@@ -698,7 +751,6 @@ int main(int argc, char *argv[])
     auto actors_paused = [&]() {
         return dbg_open || menu.open || map_open || battle_list_open || dlg_text || dlg_list >= 0;
     };
-    double actor_time_ms = 0.0;   // animations resume at the same phase after a menu
 
     // Manual 60 fps frame cap — more consistent than SDL_RENDERER_PRESENTVSYNC on WSL2
     const Uint64 PERF_FREQ      = SDL_GetPerformanceFrequency();
@@ -709,8 +761,8 @@ int main(int argc, char *argv[])
     // Each queued enemy flashes once in fight order, the screen blinks white,
     // and black stripes wipe the map away; the battle then fades up with
     // everyone in place. c is the map's camera.
-    static const float FLASH_STEP = 0.25f; // total time per enemy
-    static const float FLASH_ON   = 0.16f; // how long it's visible within that window
+    static const float FLASH_STEP = ACTOR_FLASH_STEP;
+    static const float FLASH_ON   = ACTOR_FLASH_ON;
     static const float HOLD       = 0.24f; // the screen flashes, after the enemy flashes
     static const float FADE       = 0.24f; // stripe wipe to black
     auto pre_battle_tick = [&](float step, GameState back) {
@@ -745,7 +797,7 @@ int main(int argc, char *argv[])
     auto draw_chaser = [&](const Camera* c, const DungeonChaser& ch, bool white = false) {
         int id = ch.enemy_id, face = ch.face;
         static const int SPIN[4] = { 0, 3, 1, 2 };                  // D R U L
-        if (id == 16) face = SPIN[(Uint32)actor_time_ms / 120 % 4];        // the Kamaitachi spins, whichever way it goes
+        if (id == 16) face = SPIN[world_ms() / 120 % 4];        // the Kamaitachi spins, whichever way it goes
         float wx = ch.x, wy = ch.y;
         bool running = ch.chasing && ch.aggro_timer <= 0.0f;
         bool moving = ch.chasing ? running && chase_speed(id, ch.t) != 0.0f : ch.pause <= 0.0f;
@@ -759,7 +811,7 @@ int main(int argc, char *argv[])
             return;
         }
         float s = 2.0f * c->zoom;
-        int step = moving && ((Uint32)actor_time_ms / 150) % 2;
+        int step = moving && (world_ms() / 150) % 2;
         if (mini_two[id] && frame >= 0) step = frame;               // its chase picks the frame
         int hop = step && !mini_two[id] ? (int)s : 0;
         int cell = face * 2 + (step && mini_two[id]), cw = 40, chh = 28;
@@ -889,7 +941,6 @@ int main(int argc, char *argv[])
         double dt_d = time_delta_seconds();
         if (dt_d > 0.05) dt_d = 0.05; // cap at 50 ms — prevents big jumps on stalled frames
         float dt = (float)dt_d;
-        if (post_battle_t > 0.0f) post_battle_t -= dt;
         room_swap = false;
         if (room_t >= 0.0f) {
             room_swap = room_t < BATTLE_FADE_T && room_t + dt >= BATTLE_FADE_T;
@@ -932,7 +983,7 @@ int main(int argc, char *argv[])
             SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
         }
 
-        if (debug && input_pressed(&in, SDL_SCANCODE_F1))
+        if (input_pressed(&in, SDL_SCANCODE_F1))
             dbg_readout = !dbg_readout;
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
@@ -1132,16 +1183,41 @@ int main(int argc, char *argv[])
         // battle list) checks menu.open itself.
         {
             bool menu_ok  = state != STATE_TITLE && !dlg_text && dlg_list < 0;   // nor under the speech box
-            // Being chased -- a dungeon enemy has seen the player and is
-            // coming, or a fight -- rules out the sleeping bag.
+            // Pursuit remains available to future item restrictions.
             menu.chased = state == STATE_BATTLE;
             menu.save_block = debug ? "NOT IN DEBUG" : state == STATE_BATTLE ? "NOT IN A FIGHT" : nullptr;
             if (state == STATE_DUNGEON)
                 for (int ci = 0; ci < num_chasers; ci++)
                     if (chasers[ci].active && chasers[ci].chasing) menu.chased = true;
+            menu.escape_block = state == STATE_BATTLE ? "NOT IN A FIGHT"
+                : state != STATE_DUNGEON || !dng_arrival_valid ? "ONLY IN A DUNGEON"
+                : pre_battle_timer >= 0.0f ? "BATTLE IS STARTING"
+                : room_t >= 0.0f ? "TRANSITION IN PROGRESS" : nullptr;
+            menu.healing_block = state == STATE_BATTLE ? "EXPLORATION ONLY"
+                : pre_battle_timer >= 0.0f ? "BATTLE IS STARTING"
+                : room_t >= 0.0f ? "TRANSITION IN PROGRESS" : nullptr;
             bool was_open = menu.open;
             if (input_pressed(&in, SDL_SCANCODE_TAB) && !dbg_open && menu_ok) game_menu_toggle(&menu);
             else if (menu.open && menu_ok) game_menu_update(&menu, &player, &in, dt);
+            if (menu.escape_request) {
+                menu.escape_request = false;
+                if (!menu.escape_block && item_count(&player, ITEM_ESCAPE_CHARM) > 0 &&
+                    dungeon_escape_to(&dplayer, &player, &dmap, dng_arrival_x, dng_arrival_y)) {
+                    menu.open = false;
+                    map_open = false;
+                    room_armed = false;
+                    post_battle_t = 1.0f;
+                    for (int ci = 0; ci < num_chasers; ci++) {
+                        auto& ch = chasers[ci];
+                        ch.chasing = false;
+                        ch.aggro_timer = 0;
+                        ch.ax = ch.x; ch.ay = ch.y;
+                        ch.hx = ch.hy = ch.poll = 0;
+                    }
+                    camera_follow(&cam, dplayer.x, dplayer.y, (float)player.width, (float)player.height);
+                    dungeon_frame_camera(&dmap, &cam);
+                } else game_menu_say(&menu, menu.escape_block ? menu.escape_block : "CANNOT RETURN HERE");
+            }
             // SAVE. The overworld spot is right wherever the player is: it
             // does not move while they are in a house or a dungeon, so a save
             // made inside loads outside that door, or at that dungeon's mouth.
@@ -1166,11 +1242,35 @@ int main(int argc, char *argv[])
         // end, Z closes it. The key is spent so nothing below acts on it (the
         // prompt that opened it would reopen it).
         if (dlg_text) dlg_t += dt;
-        if (dlg_text && (input_pressed(&in, SDL_SCANCODE_Z) || input_pressed(&in, SDL_SCANCODE_RETURN) ||
-                         input_pressed(&in, SDL_SCANCODE_SPACE))) {
+        bool dlg_ok = input_pressed(&in, SDL_SCANCODE_Z) || input_pressed(&in, SDL_SCANCODE_RETURN) ||
+                      input_pressed(&in, SDL_SCANCODE_SPACE);
+        if(topic_active && (input_pressed(&in,SDL_SCANCODE_ESCAPE)||input_pressed(&in,SDL_SCANCODE_X))) {
+            topic_active=false;dlg_text=nullptr;dlg_choice_n=0;dlg_after=nullptr;
+            story_npc_resume(topic_npc);
+            input_consume(&in,SDL_SCANCODE_ESCAPE);input_consume(&in,SDL_SCANCODE_X);
+        }
+        else if (dlg_text && dlg_choice_n && dlg_state == SPEECH_END) {
+            if (input_pressed(&in, SDL_SCANCODE_UP)   || input_pressed(&in, SDL_SCANCODE_W)) dlg_choice = (dlg_choice + dlg_choice_n - 1) % dlg_choice_n;
+            if (input_pressed(&in, SDL_SCANCODE_DOWN) || input_pressed(&in, SDL_SCANCODE_S)) dlg_choice = (dlg_choice + 1) % dlg_choice_n;
+            bool leave = input_pressed(&in, SDL_SCANCODE_X);
+            if (dlg_ok || leave) {
+                int pick = leave ? dlg_choice_n - 1 : dlg_choice;
+                dlg_text = nullptr; dlg_choice_n = 0;
+                dlg_pick(pick);   // may say() or open the shop
+            }
+            input_consume(&in, SDL_SCANCODE_Z);
+            input_consume(&in, SDL_SCANCODE_RETURN);
+            input_consume(&in, SDL_SCANCODE_SPACE);
+            input_consume(&in, SDL_SCANCODE_X);
+        }
+        else if (dlg_text && dlg_ok) {
             if (dlg_state == SPEECH_TYPING)    dlg_t = 1e9f;
             else if (dlg_state == SPEECH_WAIT) { dlg_part++; dlg_t = 0.0f; dlg_state = SPEECH_TYPING; }
-            else { dlg_text = nullptr; dlg_icon_n = 0; }
+            else {
+                dlg_text = nullptr; dlg_icon_n = 0;
+                auto after=std::move(dlg_after);dlg_after=nullptr;
+                if(after)after();
+            }
             input_consume(&in, SDL_SCANCODE_Z);
             input_consume(&in, SDL_SCANCODE_RETURN);
             input_consume(&in, SDL_SCANCODE_SPACE);
@@ -1265,7 +1365,11 @@ int main(int argc, char *argv[])
         // Advance simulation only while no modal UI is open. UI animations
         // and dialogue typing continue to use dt independently.
         if (!actors_paused()) {
-            actor_time_ms += dt * 1000.0;
+            if ((state == STATE_OVERWORLD || state == STATE_DUNGEON || state == STATE_INTERIOR) &&
+                room_t < 0.0f && pre_battle_timer < 0.0f && post_battle_t <= 0.0f)
+                player_poison_tick(&player, dt);
+            world_advance(dt);
+            if (post_battle_t > 0.0f) post_battle_t -= dt;
             drown_t += dt;
             if (state == STATE_DUNGEON && dmap.type == DUNGEON_ENT_OASIS) {
                 if (dungeon_breathing(&dmap, &dplayer)) oxygen = SDL_min(1.0f, oxygen + dt * 1.5f);
@@ -1385,9 +1489,14 @@ int main(int argc, char *argv[])
             };
             int town = state == STATE_INTERIOR ? entered_door : -1;
             StoryWhere where = { state, map, state == STATE_INTERIOR ? imap.id : -1, town, &player, debug };
-            StoryNpcPos np[16]; int nn = story_npcs_here(where, np, 16);
+            StoryNpcPos np[32]; int nn = story_npcs_here(where, np, 32);
             for (int i = 0; i < nn; i++)
-                interaction_near |= near(np[i].x + player.width * 0.5f, np[i].y + player.height, 40);
+            {
+                if (!story_npc_can_talk(np[i])) continue;
+                float tx, ty;
+                story_npc_talk_point(np[i], &tx, &ty);
+                interaction_near |= near(tx, ty, 40);
+            }
             StoryNotePos ns[16]; int count = story_notes_here(where, state == STATE_DUNGEON ? &dmap : nullptr, ns, 16);
             for (int i = 0; i < count; i++) interaction_near |= near(ns[i].x, ns[i].y, 40);
             bool confirm = input_pressed(game_in, SDL_SCANCODE_Z) || input_pressed(game_in, SDL_SCANCODE_RETURN) || input_pressed(game_in, SDL_SCANCODE_SPACE);
@@ -1427,6 +1536,20 @@ int main(int argc, char *argv[])
         }
 
         GameState state_before = state;
+
+        // One persistent 30-minute world day, on the world clock: it stops
+        // whenever the world does (actors_paused), and only the maps run it --
+        // a battle freezes the day.
+        if (!actors_paused() &&
+            (state == STATE_OVERWORLD || state == STATE_DUNGEON || state == STATE_INTERIOR)) {
+            if (state == STATE_OVERWORLD && post_battle_t <= 0.0f && input_pressed(&in, SDL_SCANCODE_T)) {
+                resident_advance_hour(map);
+                pickup_note = "1 HOUR LATER";
+                pickup_note_t = 1.5f;
+                input_consume(&in, SDL_SCANCODE_T);
+            }
+            resident_tick(map, dt);
+        }
 
         switch (state) {
             case STATE_TITLE:
@@ -1469,7 +1592,7 @@ int main(int argc, char *argv[])
                 HarvestResult harvest = {};
                 story_hole_apply(map);   // the ground round the island's cave, once the turn has come
                 StoryWhere  ow_where = { STATE_OVERWORLD, map, -1, -1, &player };
-                StoryNpcPos ow_npcs[16];
+                StoryNpcPos ow_npcs[32];
                 int         ow_nn = 0, ow_talk = -1;   // who stands out here, and the one in reach
                 const char* ow_prompt = nullptr;      // the boat's word, when beside it
                 if (pre_battle_timer >= 0.0f) {
@@ -1477,17 +1600,25 @@ int main(int argc, char *argv[])
                 } else {
                     if (!actors_paused()) overworld_update(&ow, &player, &world_input, dt, &resources, map, &cam, dbg_noclip, &harvest);
                     // The story's people out of doors: standing by one, TALK.
-                    ow_nn = story_npcs_here(ow_where, ow_npcs, 16);
+                    ow_nn = story_npcs_here(ow_where, ow_npcs, 32);
                     {
                         float fcx = ow.x + (HB_X1 + HB_X2) * 0.5f, fcy = ow.y + (HB_Y1 + HB_Y2) * 0.5f;
                         for (int i = 0; i < ow_nn && !dlg_text; i++) {
-                            float ndx = wrap_dpx(fcx - (ow_npcs[i].x + player.width * 0.5f)), ndy = wrap_dpy(fcy - (ow_npcs[i].y + player.height));
+                            if (!story_npc_can_talk(ow_npcs[i])) continue;
+                            float tx, ty;
+                            story_npc_talk_point(ow_npcs[i], &tx, &ty);
+                            float ndx = wrap_dpx(fcx - tx), ndy = wrap_dpy(fcy - ty);
                             if (ndx * ndx + ndy * ndy >= 40.0f * 40.0f) continue;
                             ow_talk = i;
                             if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                                 input_pressed(game_in, SDL_SCANCODE_Z)      ||
                                 input_pressed(game_in, SDL_SCANCODE_SPACE)) {
-                                say(story_npc_line(ow_npcs[i], ow_where));
+                                player.facing = facing_toward(-ndx, -ndy);   // the two turn to each other
+                                story_npc_face(ow_npcs[i], ndx, ndy);
+                                if(const auto* conversation=story_npc_conversation(ow_npcs[i])) {
+                                    topic_active=true;topic_npc=ow_npcs[i];topic_where=ow_where;
+                                    topic_menu(conversation->prompt);
+                                } else say(story_npc_line(ow_npcs[i], ow_where));
                                 input_consume(&in, SDL_SCANCODE_Z);
                                 input_consume(&in, SDL_SCANCODE_RETURN);
                                 input_consume(&in, SDL_SCANCODE_SPACE);
@@ -1587,13 +1718,24 @@ int main(int argc, char *argv[])
                 story_sites_draw(plat.renderer, &cam, map);   // the story's bosses, where they were put
                 notes_tick(ow_where, nullptr, &cam, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + (HB_Y1 + HB_Y2) * 0.5f,
                            ow_talk < 0 && !ow_prompt && pre_battle_timer < 0.0f, game_in);
-                // and its people out of doors (villagers by their wells), the
-                // player's own sprite in another colour until they have faces
-                SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
-                for (int i = 0; i < ow_nn; i++)
-                    player_draw(&player, ow_npcs[i].x, ow_npcs[i].y, &cam, plat.renderer, player_sprite, 0);
-                SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                // Town 0's approved residents; village speakers keep their placeholder.
+                // The player walks through everyone: whoever's feet are lower is in front.
+                auto draw_ow_npcs = [&](bool in_front) {
+                    SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
+                    for (int i = 0; i < ow_nn; i++) {
+                        if ((ow_npcs[i].y > ow.y) != in_front) continue;
+                        if (!story_npc_draw(ow_npcs[i], plat.renderer, &cam))
+                            player_draw(&player, ow_npcs[i].x, ow_npcs[i].y, &cam, plat.renderer, player_sprite,
+                                        story_npc_facing(ow_npcs[i]));
+                    }
+                    SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                };
+                draw_ow_npcs(false);
                 player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite, ow.swing.body_frame);
+                draw_ow_npcs(true);
+                for (int i = 0; i < ow_nn; i++)
+                    tilemap_draw_over_player(map, &cam, plat.renderer, ow_npcs[i].x, ow_npcs[i].y,
+                                             28, 40, ow_npcs[i].y + HB_Y2);
                 overworld_draw_swing(&ow, &cam, plat.renderer);
                 tilemap_draw_over_player(map, &cam, plat.renderer, ow.x, ow.y,
                                          (float)player.width, (float)player.height, ow.y + HB_Y2);
@@ -1740,6 +1882,8 @@ int main(int argc, char *argv[])
                                                 + DMAP_TILE / 2 - 24);
                         }
                         dungeon_stand_before_way(&dmap, &dplayer);
+                        dng_arrival_x = dplayer.x; dng_arrival_y = dplayer.y;
+                        dng_arrival_valid = dungeon_player_fits(&dmap, &dplayer);
                         num_chasers = 0;
                         for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
                             DungeonSpawner& sp = dmap.spawners[si];
@@ -2232,33 +2376,41 @@ int main(int argc, char *argv[])
                 }
 
 
-                // The reusable recipe-book shop counter.
-                int btx = 0, bty = 0;
-                bool book_here = interior_book_spot(imap.id, &btx, &bty);
-                if (book_here)
-                    game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT_BOOK,
-                                        btx * IMAP_TILE, bty * IMAP_TILE, IMAP_TILE);
                 // The story's people in this room (src/story.cpp): the player's
                 // own sprite in another colour until they have faces of their own.
                 StoryWhere  where = { STATE_INTERIOR, map, imap.id, entered_door, &player, debug };
                 StoryNpcPos npcs[4];
                 int         nn = story_npcs_here(where, npcs, 4);
-                SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
-                for (int i = 0; i < nn; i++)
-                    player_draw(&player, npcs[i].x, npcs[i].y, &icam, plat.renderer, player_sprite, 0);
-                SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                // The player walks through everyone: whoever's feet are lower is in front.
+                auto draw_npcs = [&](bool in_front) {
+                    SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
+                    for (int i = 0; i < nn; i++) {
+                        if ((npcs[i].y > iplayer.y) != in_front) continue;
+                        if (!story_npc_draw(npcs[i], plat.renderer, &icam))
+                            player_draw(&player, npcs[i].x, npcs[i].y, &icam, plat.renderer, player_sprite,
+                                        story_npc_facing(npcs[i]));
+                        interior_draw_over_player(&imap, plat.renderer, npcs[i].x, npcs[i].y,
+                                                  28, 40, npcs[i].y + HB_Y2);
+                    }
+                    SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                };
+                draw_npcs(false);
                 {
                     float nfx = iplayer.x + (HB_X1 + HB_X2) * 0.5f, nfy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
                     bool near_person = false;
                     for (int i = 0; i < nn; i++) {
-                        float ndx = nfx - (npcs[i].x + player.width * 0.5f), ndy = nfy - (npcs[i].y + player.height);
+                        if (!story_npc_can_talk(npcs[i])) continue;
+                        float tx, ty;
+                        story_npc_talk_point(npcs[i], &tx, &ty);
+                        float ndx = nfx - tx, ndy = nfy - ty;
                         if (ndx * ndx + ndy * ndy < 40.0f * 40.0f) near_person = true;
                     }
-                    notes_tick(where, nullptr, &icam, nfx, nfy, !near_person && !book_here && !iplayer.at_exit && pre_battle_timer < 0.0f, game_in);
+                    notes_tick(where, nullptr, &icam, nfx, nfy, !near_person && !iplayer.at_exit && pre_battle_timer < 0.0f, game_in);
                 }
                 for (int i = 0; i < TEST_N && pre_battle_timer < 0.0f && imap.id == 0; i++)   // the flashes draw them; the starting house only
                     draw_chaser(&icam, test_ch[i]);
                 player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
+                draw_npcs(true);
                 interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
                                           (float)player.width, (float)player.height, iplayer.y + HB_Y2);
                 if (dbg_grid) {
@@ -2280,32 +2432,33 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                // Standing by the counter opens the Gold-funded book catalog.
                 float fcx = iplayer.x + (HB_X1 + HB_X2) * 0.5f;
                 float fcy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f;
-                float bdx = fcx - (btx + 0.5f) * IMAP_TILE, bdy = fcy - (bty + 0.5f) * IMAP_TILE;
-                if (book_here && !iplayer.at_exit && bdx * bdx + bdy * bdy < 40.0f * 40.0f) {
-                    const char* lbl = "BOOK SHOP";
-                    draw_textbox(plat.renderer, lbl, 255, 255, 255);
-                    if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
-                        input_pressed(game_in, SDL_SCANCODE_Z)      ||
-                        input_pressed(game_in, SDL_SCANCODE_SPACE)) {
-                        game_menu_open_shop(&menu);
-                        input_consume(&in, SDL_SCANCODE_Z);
-                        input_consume(&in, SDL_SCANCODE_RETURN);
-                        input_consume(&in, SDL_SCANCODE_SPACE);
-                    }
-                }
                 // Standing by one of the story's people: TALK, and what they say
                 // for the stage goes up in the speech box.
                 for (int i = 0; i < nn && !dlg_text && !iplayer.at_exit; i++) {
-                    float ndx = fcx - (npcs[i].x + player.width * 0.5f), ndy = fcy - (npcs[i].y + player.height);
+                    if (!story_npc_can_talk(npcs[i])) continue;
+                    float tx, ty;
+                    story_npc_talk_point(npcs[i], &tx, &ty);
+                    float ndx = fcx - tx, ndy = fcy - ty;
                     if (ndx * ndx + ndy * ndy >= 40.0f * 40.0f) continue;
                     draw_textbox(plat.renderer, "TALK", 255, 255, 255);
                     if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                         input_pressed(game_in, SDL_SCANCODE_Z)      ||
                         input_pressed(game_in, SDL_SCANCODE_SPACE)) {
-                        if (const char* t = story_npc_line(npcs[i], where)) say(t);
+                        player.facing = facing_toward(-ndx, -ndy);   // the two turn to each other
+                        story_npc_face(npcs[i], ndx, ndy);
+                        const char* t = story_npc_line(npcs[i], where);
+                        if(const auto* conversation=story_npc_conversation(npcs[i])) {
+                            topic_active=true;topic_npc=npcs[i];topic_where=where;
+                            topic_menu(conversation->prompt);
+                        }
+                        else if (const Shop* shop = story_npc_shop(npcs[i]))   // a shopkeeper: what will it be
+                            ask(t, { "SHOP", "TALK", "LEAVE" }, [&, shop](int pick) {
+                                if (pick == 0) game_menu_open_shop(&menu, shop->stock, shop->n);
+                                if (pick == 1) say(shop->chat);
+                            });
+                        else if (t) say(t);
                         else { dlg_list = 0; dlg_where = where; }   // the debug speaker
                         input_consume(&in, SDL_SCANCODE_Z);
                         input_consume(&in, SDL_SCANCODE_RETURN);
@@ -2328,13 +2481,19 @@ int main(int argc, char *argv[])
             draw_textbox(plat.renderer, pickup_note, 255, 255, 80,
                          state == STATE_BATTLE && battle_scene && battle_scene->textbox_low());
         }
+        SDL_Rect dlg_box = {};
         if (dlg_text)
-            draw_speech(plat.renderer, dlg_text, dlg_part, dlg_t, &dlg_state, dlg_strike, 0,
+            dlg_box = draw_speech(plat.renderer, dlg_text, dlg_part, dlg_t, &dlg_state, dlg_strike, 0,
                         [&](int line, int x, int y) {
                             if (line < 1 || line > dlg_icon_n) return 0;
                             game_menu_draw_item(&menu, plat.renderer, dlg_icons[line - 1], x, y - 4, 24);
                             return 32;
                         });
+        // Its choices, once it has typed out: a panel on the box's top right,
+        // the main menu's cursor and yellow.
+        if (dlg_text && dlg_choice_n && dlg_state == SPEECH_END) {
+            draw_speech_choices(plat.renderer,dlg_box,dlg_choices,dlg_choice_n,dlg_choice);
+        }
 
         // A scene change consumes the key that caused it. The prompts confirm on
         // input_pressed, but the overworld tool swings on input_down, so without
@@ -2388,13 +2547,17 @@ int main(int argc, char *argv[])
                 SDL_Rect box = { 27, 5, bars * 9 + 3, 10 };
                 SDL_RenderDrawRect(plat.renderer, &box);
                 for (int b = 0; b < bars; b++) {
-                    if (b < full) fc_draw_color(plat.renderer, 78, 220, 74, 255);
+                    if (b < full) {
+                        if (player.poisoned) fc_draw_color(plat.renderer, 183, 74, 220, 255);
+                        else fc_draw_color(plat.renderer, 78, 220, 74, 255);
+                    }
                     else          fc_draw_color(plat.renderer, 0, 0, 0, 255);
                     SDL_Rect seg = { 29 + b * 9, 7, 8, 6 };
                     SDL_RenderFillRect(plat.renderer, &seg);
                 }
             }
             draw_bar(plat.renderer, 28, 17, 110, 5, stamina, 1.0f, 255, 220, 0);
+            if (player.poisoned) draw_text(plat.renderer, "POISON", 144, 20, 1, 183, 74, 220);
             char buf[24];
             // Level and EXP, just right of the HP box (it grows a bar a level).
             // In battle the score climbs live with this fight's hits and
@@ -2501,6 +2664,7 @@ int main(int argc, char *argv[])
             // world it first grows a new one, a frame after LOADING is drawn.
             auto begin_new = [&]() {
                 fresh_player();
+                resident_reset();
                 memset(explored, 0, sizeof(explored));
                 place_at_start();
                 wake_at_home();
@@ -2790,9 +2954,14 @@ int main(int argc, char *argv[])
         }
 
         if (dbg_readout) {
-            float dbg_px = (state == STATE_DUNGEON) ? dplayer.x : ow.x;
-            float dbg_py = (state == STATE_DUNGEON) ? dplayer.y : ow.y;
+            float dbg_px = state == STATE_INTERIOR ? iplayer.x : state == STATE_DUNGEON ? dplayer.x : ow.x;
+            float dbg_py = state == STATE_INTERIOR ? iplayer.y : state == STATE_DUNGEON ? dplayer.y : ow.y;
             draw_fps(plat.renderer, dt, dbg_px, dbg_py);
+            const unsigned long long seconds = (unsigned long long)resident_save().world_seconds;
+            char clock[64];
+            SDL_snprintf(clock, sizeof(clock), "DAY %llu %02d:%02d:%02d", seconds / 86400 + 1,
+                         (int)(seconds / 3600 % 24), (int)(seconds / 60 % 60), (int)(seconds % 60));
+            draw_text(plat.renderer, clock, 4, 40, 2, 255, 220, 0);
         }
 
         if (esc_hold_time > 0.f) {
@@ -2844,6 +3013,7 @@ int main(int argc, char *argv[])
     delete map;
 
     //cleanups textures
+    story_people_free();
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
     for (SDL_Texture* t : { minis_tex, minis_white }) if (t) SDL_DestroyTexture(t);

@@ -1,0 +1,13 @@
+# Yellow-house fisher
+
+The fisher uses `assets/npcs/fisher.png`, starts in the northeast yellow/tan house (Town 0 interior 2), and sleeps in its green bed for one game hour. The sprite origin at the fishing destination is **50267, 46903** on the current Town 0 map, matching the F1 coordinates. The stored destination is town-relative so it remains the same place on other seeds.
+
+Returning home, including the walk from the doorway to bed, the fisher says: "No bites again today, those damn beast across the river keep eating everything." Sleeping interaction says "zzzz". Outbound dialogue is "Early start. The fish won't wait." Fishing dialogue is "Keep your voice down. You'll scare them." Doorway effects remain silent. Dialogue pauses the shared world clock and actors together, preserving the hour-12 return deadline; fishing keeps its eastward facing.
+
+After waking, the fisher walks through the house and doorway and takes a smooth, collision-checked route to the water. Leaving the trail to reach this spot is approved. The fisher faces east and plays `assets/npcs/fisher_fishing.png`, two 600 ms frames. The editable source is `art/npcs/fisher_fishing.aseprite`; both frames were drawn and exported through the existing local pixel-plugin and checked pixel for pixel. The walking sheet is unchanged.
+
+The cycle lasts exactly **12 game hours (15 real minutes of unpaused world time)**. It repeats continuously. The fishing hold is calculated as 12 hours minus the initial one-hour sleep, both walks, and all four doorway dissolve/appearance effects. Route lengths determine the exact fishing start and departure; `fishercheck` prints both for the selected seed. Return walking reaches the bed at the 12-hour boundary, without teleporting or waiting outside it.
+
+Timing derives from the shared saved world clock and the measured route lengths, rather than accumulating frame-by-frame delays. T skips and offscreen updates use the same timeline. Doorway transitions share the battle appearance renderer and freeze their facing/frame across the handoff. The new save footer (version 13) stores the cycle epoch; older saves start this NPC's first sleep on load while preserving their previous residents.
+
+Validation: `fishercheck` samples two complete cycles, checks every location against collision, confirms east-facing two-frame fishing and activity-specific dialogue availability, checks both sides of every doorway, saves/loads each phase, tests the exact 12-hour boundary and repeats, and advances twelve T-style hourly skips. Runtime preview images are `build_tmp/npc_review/fisher_phase_*.png`.

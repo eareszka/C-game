@@ -1,0 +1,305 @@
+{
+  "frames": [
+    {
+      "filename": "03_elder_down_0",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_down_1",
+      "frame": {
+        "x": 14,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_down_2",
+      "frame": {
+        "x": 28,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_up_0",
+      "frame": {
+        "x": 0,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_up_1",
+      "frame": {
+        "x": 14,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_up_2",
+      "frame": {
+        "x": 28,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_left_0",
+      "frame": {
+        "x": 0,
+        "y": 40,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_left_1",
+      "frame": {
+        "x": 14,
+        "y": 40,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_right_0",
+      "frame": {
+        "x": 0,
+        "y": 60,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "03_elder_right_1",
+      "frame": {
+        "x": 14,
+        "y": 60,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    }
+  ],
+  "meta": {
+    "image": "03_elder_walk_3frame.png",
+    "size": {
+      "w": 42,
+      "h": 80
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "down",
+        "from": 0,
+        "to": 2,
+        "direction": "forward"
+      },
+      {
+        "name": "up",
+        "from": 3,
+        "to": 5,
+        "direction": "forward"
+      },
+      {
+        "name": "left",
+        "from": 6,
+        "to": 7,
+        "direction": "forward"
+      },
+      {
+        "name": "right",
+        "from": 8,
+        "to": 9,
+        "direction": "forward"
+      }
+    ]
+  },
+  "poses": {
+    "down": [
+      "standing",
+      "left_step",
+      "right_step"
+    ],
+    "up": [
+      "standing",
+      "left_step",
+      "right_step"
+    ],
+    "left": [
+      "standing",
+      "step"
+    ],
+    "right": [
+      "standing",
+      "step"
+    ]
+  },
+  "origin": {
+    "x": 7,
+    "y": 19
+  },
+  "playback": {
+    "frame_duration_ms": 200,
+    "down": {
+      "idle_frame": 0,
+      "walk_sequence": [
+        1,
+        0,
+        2,
+        0
+      ]
+    },
+    "up": {
+      "idle_frame": 3,
+      "walk_sequence": [
+        4,
+        3,
+        5,
+        3
+      ]
+    },
+    "stop_behavior": "standing",
+    "source": "src/entity.cpp player_frame"
+  }
+}

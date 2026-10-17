@@ -1,5 +1,10 @@
 // The story's state, people and boss sites. See include/story.h.
+#include "core.h"
 #include "story.h"
+#include "fisher.h"
+#include "resident.h"
+#include "grandmother.h"
+#include "woodcutter.h"
 #include "tilemap.h"
 #include "towns.h"      // TOWN_W/H: is a door in a town's footprint
 #include "interior.h"   // IMAP_TILE
@@ -235,7 +240,7 @@ static void keeper_line(const StoryWhere& w, char* buf, int n) {
 // Where a person stands: a room (arg = interior id, tx/ty its tile), or every
 // village at once (by the well; one row, one speaker a village).
 // SP_DEBUG: as SP_INTERIOR, in test mode only.
-enum { SP_INTERIOR, SP_VILLAGE, SP_DEBUG };
+enum { SP_INTERIOR, SP_VILLAGE, SP_DEBUG, SP_TOWN };
 struct StoryNpc {
     int place, arg;
     int town;             // the town whose door the player must have come in by, -1 any
@@ -246,7 +251,16 @@ struct StoryNpc {
     // its boss is beaten, 2 after the turn, 3 the descent and after, 4 after
     // the swarm (amnesia).
     const char* lines[5];
+    int skin = -1;              // story_npc_sprite
+    const Shop* shop = nullptr; // a shopkeeper's stock (story_npc_shop)
+    float px = -1, py = -1;     // in a room: the sprite's top left in pixels, in place of the tile
+    int pace_ms = 0;            // walks on the spot, a beat this long; 0 stands
 };
+// Town 0's book shop: the books the boy starts out needing.
+static const Item TOWN0_BOOK_STOCK[] = { ITEM_RAFT_BOOK, ITEM_KNIFE_BOOK, ITEM_BAND_AID_BOOK };
+static const Shop TOWN0_BOOKS = {
+    "Every craft starts with a book. Read one and your hands will know the rest.",
+    TOWN0_BOOK_STOCK, 3 };
 static const StoryNpc NPCS[] = {
     // The debug speaker, in the spawn house: a line long enough to page, for
     // working on the speech box
@@ -275,16 +289,162 @@ static const StoryNpc NPCS[] = {
         "You dug it up and killed it. It was meant to be there. The goats were meant to go.",
         "What comes is meant to come. It is written. There is nothing for you here.",
         "Goats? We never kept goats. Who are you?" } },
+    { SP_TOWN, 1, 0, 80, 74, -1, "FARMER", {
+        "I like watching everyone pass through town.",
+        "", "It has been awfully quiet today.", "Are you going out again?", "Hello! Are you new here?" }, 1 },
+    { SP_TOWN, 2, 0, 87, 74, -1, "GLASSES", {
+        "There is always something new to notice around here.",
+        "", "Something about this place has changed.", "Look after yourself.", "I do not think we have met." }, 2 },
+    // The book shop's owner (the elder), town 0, just behind his
+    // counter, pacing on the spot slowly: talked to across it, he offers
+    // SHOP / TALK / LEAVE.
+    { SP_INTERIOR, 1, 0, 9, 7, -1, "BOOK SHOP", {
+        "Welcome to the book shop! What can I do for you?",
+        "", "Books. What is written is written. Buy, if you must.", "Still here? Buy something or go.",
+        "Have we met? Welcome!" }, 0, &TOWN0_BOOKS, 293, 237, 400 },
 };
 static const int NPC_COUNT = (int)(sizeof(NPCS) / sizeof(NPCS[0]));
 
+int story_npc_sprite(const StoryNpcPos& p) {
+    return p.idx >= 0 && p.idx < NPC_COUNT ? NPCS[p.idx].skin : -1;
+}
+
+const Shop* story_npc_shop(const StoryNpcPos& p) {
+    return p.idx >= 0 && p.idx < NPC_COUNT ? NPCS[p.idx].shop : nullptr;
+}
+static const StoryNpcConversation CLERK_CONVERSATION = {
+    "Just restocking shelfs, need anything?",
+    {"Why do I need books?", "Where am I?", "No"}
+};
+static const StoryNpcConversation GRANDMA_CONVERSATION = {
+    "Good day deer, what do you need?",{"What's there to do in town?","Where am I?","No"}
+};
+const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p) {
+    if(p.idx==GRANDMOTHER_ID)return &GRANDMA_CONVERSATION;
+    return p.idx==BOOKSHOP_CLERK_ID ? &CLERK_CONVERSATION : nullptr;
+}
+const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,int choice) {
+    if(!story_npc_conversation(p))return nullptr;
+    if(choice==0) {
+        if(p.idx==GRANDMOTHER_ID)return "I usually pick out a good book from the library and go back home and read. But for a young one like yourself, there's a small cave south of town and a graveyard to the northwest, if you're looking for a little adventure.";
+        return "Without these books you wouldn't be able to build anything or go anywhere. What's the point of these books is like asking what's the purpose of life.";
+    }
+    if(choice==1)return story_where_am_i(p,w);
+    return nullptr;
+}
+void story_npc_resume(const StoryNpcPos& p) {
+    if(p.idx==BOOKSHOP_CLERK_ID)bookshop_clerk_resume();
+    if(p.idx==GRANDMOTHER_ID)grandmother_resume();
+}
+// Not while fading through a door.
+bool story_npc_can_talk(const StoryNpcPos& p) {
+    if(p.idx==FISHER_ID)return fisher_line()!=nullptr;
+    if(p.idx==GRANDMOTHER_ID)return grandmother_save().flash==0;
+    if(p.idx==WOODCUTTER_ID)return woodcutter_save().flash==0;
+    return true;
+}
+
+void story_npc_talk_point(const StoryNpcPos& p, float* x, float* y) {
+    *x = p.x + 14.0f;
+    *y = p.y + 40.0f + (story_npc_shop(p) ? (float)IMAP_TILE : 0.0f);
+}
+
+static SDL_Texture* resident_art[3];
+
+void story_people_free() {
+    resident_art_free();
+    for (SDL_Texture*& texture : resident_art) {
+        SDL_DestroyTexture(texture);
+        texture = nullptr;
+    }
+}
+
+bool story_people_init(SDL_Renderer* renderer) {
+    story_people_free();
+    if (!resident_art_init(renderer)) return false;
+    static const char* const paths[] = {
+        "assets/npcs/elder.png", "assets/npcs/farmer.png", "assets/npcs/glasses.png"
+    };
+    for (int i = 0; i < 3; i++) {
+        resident_art[i] = IMG_LoadTexture(renderer, paths[i]);
+        if (!resident_art[i]) {
+            fprintf(stderr, "Failed to load %s: %s\n", paths[i], IMG_GetError());
+            story_people_free();
+            return false;
+        }
+        SDL_SetTextureScaleMode(resident_art[i], SDL_ScaleModeNearest);
+    }
+    return true;
+}
+
+bool story_npc_draw(const StoryNpcPos& p, SDL_Renderer* renderer, const Camera* cam) {
+    if (resident_draw(p, renderer, cam)) return true;
+    int skin = story_npc_sprite(p);
+    if (skin < 0 || !resident_art[skin]) return false;
+    // Column 0 is standing; one who paces steps through the walk on the
+    // world clock, so it stops when the world does.
+    int facing = story_npc_facing(p), pace = p.idx >= 0 && p.idx < NPC_COUNT ? NPCS[p.idx].pace_ms : 0;
+    int col = pace ? npc_walk_col(facing, (int)(world_ms() / (Uint32)pace)) : 0;
+    SDL_Rect src = { col * 14, npc_sheet_row(facing) * 20, 14, 20 };
+    SDL_Rect dst = { cam_screen_x(cam, p.x), cam_screen_y(cam, p.y),
+                     (int)(28 * cam->zoom), (int)(40 * cam->zoom) };
+    SDL_RenderCopy(renderer, resident_art[skin], &src, &dst);
+    return true;
+}
+
+static int npc_facing[NPC_COUNT];   // 0 = FACE_DOWN, until spoken to
+
+void story_npc_face(const StoryNpcPos& p, float dx, float dy) {
+    int f = fabsf(dx) > fabsf(dy) ? (dx < 0 ? FACE_LEFT : FACE_RIGHT) : (dy < 0 ? FACE_UP : FACE_DOWN);
+    if (p.idx == RESIDENT_STORY_ID) resident_face(f);
+    else if (p.idx == BOOKSHOP_CLERK_ID) bookshop_clerk_face(f);
+    else if (p.idx == GRANDMOTHER_ID) grandmother_face(f);
+    else if (p.idx == WOODCUTTER_ID) woodcutter_face(f);
+    else if (p.idx >= 0 && p.idx < NPC_COUNT) npc_facing[p.idx] = f;
+}
+
+int story_npc_facing(const StoryNpcPos& p) {
+    if(p.idx==FISHER_ID)return fisher_view().facing;
+    if(p.idx==BOOKSHOP_CLERK_ID)return bookshop_clerk_facing();
+    if(p.idx==GRANDMOTHER_ID)return grandmother_facing();
+    if(p.idx==WOODCUTTER_ID)return woodcutter_facing();
+    return p.idx >= 0 && p.idx < NPC_COUNT ? npc_facing[p.idx] : FACE_DOWN;
+}
+
 // Is door d (map->doors) inside town t's footprint.
 static bool door_in_town(const Tilemap* map, int d, int t) {
-    if (d < 0 || d >= map->num_doors || t < 0 || t > 2 || map->towns[t].x < 0) return false;
+    if (!map || d < 0 || d >= map->num_doors || t < 0 || t > 2 || map->towns[t].x < 0) return false;
     if (t == 1 && d == map->lighthouse_door) return true;   // on the wharf, outside the footprint
     const InteriorDoor& dr = map->doors[d];
     const TownPlacement& tp = map->towns[t];
     return dr.x >= tp.x && dr.x < tp.x + TOWN_W && dr.y >= tp.y && dr.y < tp.y + TOWN_H;
+}
+
+const char* story_world_name(){return "Vaalbara";}
+const char* story_town_name(int town) {
+    static const char* names[]={"Bloom",nullptr,nullptr};
+    return town>=0&&town<3?names[town]:nullptr;
+}
+const char* story_where_am_i(const StoryNpcPos& p,const StoryWhere& w) {
+    int town=-1;
+    if(w.map)for(int i=0;i<3;i++) {
+        if(w.state==STATE_INTERIOR) {
+            if(door_in_town(w.map,w.door,i)){town=i;break;}
+        } else if(w.state==STATE_OVERWORLD && w.map->towns[i].x>=0) {
+            // NPC origins are world pixels outdoors. Normalize wrap at the map edge.
+            int tx=((int)floorf((p.x+14)/TILE_SIZE)%MAP_WIDTH+MAP_WIDTH)%MAP_WIDTH;
+            int ty=((int)floorf((p.y+40)/TILE_SIZE)%MAP_HEIGHT+MAP_HEIGHT)%MAP_HEIGHT;
+            const auto& t=w.map->towns[i];
+            if(tx>=t.x&&tx<t.x+TOWN_W&&ty>=t.y&&ty<t.y+TOWN_H){town=i;break;}
+        }
+    }
+    static char line[256];
+    const char* name=story_town_name(town);
+    if(name)snprintf(line,sizeof(line),town==0 ?
+        "You're in the town of %s, right in the heart of our world we call %s." :
+        "You're in the town of %s, in our world, %s.",name,story_world_name());
+    else snprintf(line,sizeof(line),"You're in our world, %s.",story_world_name());
+    return line;
 }
 
 void story_village_npc_tile(const Tilemap* map, int village, int* tx, int* ty) {
@@ -296,6 +456,11 @@ void story_village_npc_tile(const Tilemap* map, int village, int* tx, int* ty) {
 
 int story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max) {
     int n = 0;
+    if (max > 0 && resident_here(w, &out[n])) ++n;
+    if (n < max && fisher_here(w, &out[n])) ++n;
+    if (n < max && bookshop_clerk_here(w, &out[n])) ++n;
+    if (n < max && grandmother_here(w, &out[n])) ++n;
+    if (n < max && woodcutter_here(w, &out[n])) ++n;
     for (int i = 0; i < NPC_COUNT && n < max; i++) {
         const StoryNpc& p = NPCS[i];
         if (p.place == SP_INTERIOR || p.place == SP_DEBUG) {
@@ -303,7 +468,13 @@ int story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max) {
             if (w.state != STATE_INTERIOR || w.room != p.arg) continue;
             if (p.town >= 0 && !door_in_town(w.map, w.door, p.town)) continue;
             // a player-sized frame (28x40) standing on the tile: feet on its bottom
-            out[n++] = { i, p.tx * (float)IMAP_TILE + 2.0f, (p.ty + 1) * (float)IMAP_TILE - 40.0f, -1 };
+            if (p.px >= 0) out[n++] = { i, p.px, p.py, -1 };
+            else out[n++] = { i, p.tx * (float)IMAP_TILE + 2.0f, (p.ty + 1) * (float)IMAP_TILE - 40.0f, -1 };
+        } else if (p.place == SP_TOWN) {
+            if (w.state != STATE_OVERWORLD || w.map->towns[p.town].x < 0) continue;
+            const TownPlacement& town = w.map->towns[p.town];
+            int tx = town.x + p.tx, ty = town.y + p.ty;
+            out[n++] = { i, tx * (float)TILE_SIZE + 2.0f, (ty + 1) * (float)TILE_SIZE - 40.0f, -1 };
         } else if (p.place == SP_VILLAGE) {
             if (w.state != STATE_OVERWORLD) continue;
             for (int v = 0; v < w.map->num_villages && n < max; v++) {
@@ -370,7 +541,7 @@ void story_hole_draw(SDL_Renderer* ren, const Camera* cam, const Tilemap* map, b
         return;
     }
     if (!story_hole_blocked()) return;
-    uint32_t ms = SDL_GetTicks();
+    uint32_t ms = world_ms();
     float px = mx, py = my - HOLE_PORTAL_UP * TILE_SIZE;        // the portal's middle
     if (SDL_Texture* t = hole_tex(ren, 1)) {
         int f = (int)((ms / 120) % HOLE_PORTAL_FRAMES);
@@ -498,6 +669,10 @@ const char* story_note_take(int idx, const StoryWhere& w) {
 }
 
 const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
+    if(pos.idx==FISHER_ID)return fisher_line();
+    if (pos.idx == RESIDENT_STORY_ID) return resident_line();
+    if (pos.idx == WOODCUTTER_ID) return woodcutter_line();
+    if (const auto* conversation=story_npc_conversation(pos))return conversation->prompt;
     static char buf[512];
     const StoryNpc& p = NPCS[pos.idx];
     StoryStage st = story_stage();

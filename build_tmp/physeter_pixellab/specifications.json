@@ -1,0 +1,30 @@
+{
+  "enemy": "49 Physeter",
+  "canvas": [
+    302,
+    166
+  ],
+  "original_bounds": [
+    16,
+    8,
+    294,
+    164
+  ],
+  "sheet_size": [
+    2416,
+    1328
+  ],
+  "layout": "8 rows D DR R UR U UL L DL, eight frames per row",
+  "original_colors": 17,
+  "original_alpha": "binary 0 or 255",
+  "sources": {
+    "assets/enemies/49_physeter.png": "87a1a079d3df62865bbef0b72dc921ff449a91b05efe57581d0a3ff43cd59c28",
+    "assets/enemies/49_physeter.aseprite": "d230dd7debb7ea59242bf123bf4ab80831b191df63b4124c0aaed0b372dbe4a5",
+    "art/enemies/49_views.png": "8540786ff31454e9475e3f1523b168a186ab5b54d0994e14355d51444fcc54cd"
+  },
+  "status": "Generated, locally cleaned through pixel plugin, validated and open in Aseprite; user visual approval pending",
+  "last_known_balance": 20,
+  "user_approved_generation": true,
+  "actual_generation_cost": 10,
+  "remaining_generations": 10
+}

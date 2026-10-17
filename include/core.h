@@ -6,6 +6,12 @@
 
 double time_delta_seconds(void);
 
+// The world's clock: advanced only while nothing is open (main.cpp's
+// actors_paused), so everything in the world stops and resumes together.
+// Menus, speech boxes and other UI keep SDL_GetTicks.
+void   world_advance(float dt);
+Uint32 world_ms(void);
+
 void draw_fps(SDL_Renderer* renderer, float dt, float player_x, float player_y);
 
 // Draw a string at (x, y) in the game's font (Pixuf, src/font.inc): printable
@@ -50,6 +56,9 @@ static const int NES_PAD = 4;
 static const int DIALOGUE_W = 504;
 static const int DIALOGUE_H = 96;
 static const int DIALOGUE_BOTTOM = 40;
+// The same choice panel is used by shops and multi-topic NPC conversations.
+void draw_speech_choices(SDL_Renderer* ren,const SDL_Rect& speech_box,
+                         const char* const choices[],int count,int selected);
 
 enum SpeechState { SPEECH_TYPING, SPEECH_WAIT, SPEECH_END };
 // left_pad: empty strip on the left of the text for a caller-drawn icon.

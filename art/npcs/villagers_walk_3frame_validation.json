@@ -1,0 +1,19 @@
+{
+  "canvas": [
+    14,
+    20
+  ],
+  "sheet": [
+    42,
+    80
+  ],
+  "frame_counts": {
+    "down": 3,
+    "up": 3,
+    "left": 2,
+    "right": 2
+  },
+  "all_40_saved_cels_reopened_and_pixel_verified": true,
+  "source_files_unchanged": true,
+  "side_cels_unchanged": true
+}

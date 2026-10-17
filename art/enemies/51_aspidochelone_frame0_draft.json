@@ -1,0 +1,75 @@
+{
+  "enemy": "51 Aspidochelone",
+  "output": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/51_aspidochelone_frame0_draft.aseprite",
+  "png": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/51_aspidochelone_frame0_draft.png",
+  "canvas": [
+    130,
+    81
+  ],
+  "occupied_bounds": [
+    16,
+    21,
+    115,
+    81
+  ],
+  "original_bounds": [
+    16,
+    21,
+    115,
+    81
+  ],
+  "view": "Elevated front view, head toward lower right",
+  "frames": 1,
+  "color_mode": "rgb",
+  "opaque_colors": {
+    "#000000": 658,
+    "#235436": 272,
+    "#633e1b": 52,
+    "#4fa667": 217,
+    "#058f3a": 274,
+    "#dcf0ff": 27,
+    "#d0c078": 175,
+    "#605028": 420,
+    "#fc9838": 4,
+    "#f4ce80": 270,
+    "#84a7e9": 465,
+    "#8d6b4f": 171,
+    "#463422": 299,
+    "#3e91cc": 141
+  },
+  "off_palette_pixels": 0,
+  "soft_alpha_pixels": 0,
+  "alpha_counts": {
+    "0": 7085,
+    "255": 3445
+  },
+  "black_silhouette_edge_pixels_below_canopy": 157,
+  "thin_parts": "One-sided black palm-frond outline preserves narrow tips, following Bible thin-part exception",
+  "components_8way": [
+    {
+      "size": 3445,
+      "pixels": []
+    }
+  ],
+  "saved_file_reloaded_and_export_verified": true,
+  "generated_geometry_preserved": true,
+  "original_source_hashes_unchanged": true,
+  "pixel_cleanup": "PixelLab source; pixel plugin replaces generated speckle with flat material regions and form shading, normalizes project palette and black outlines.",
+  "references": [
+    "assets/enemies/51_aspidochelone.png",
+    "C:/Users/emery/OneDrive/Desktop/cliff fix/artworks-000329553537-9rlkxz-t500x500.jpg",
+    "art/direction/ART_DIRECTION.md",
+    "C:/Users/emery/.herdr/worktrees/C-game/sprites/art/direction/SPRITE_STYLE.md",
+    "build_tmp/aspidochelone_pixellab/approved_roster_and_turtle_reference.png"
+  ],
+  "style_board": "All 42 approved enemies; 40 native-sized and the two largest giants at half-size with nearest-neighbor sampling, plus user illustration",
+  "reported_cost_generations": 10,
+  "generation_id": "237c0d55-771c-4a6c-8f38-cf33d93f36d5",
+  "visual_review": "Native and enlarged views inspected; turtle, paddles, island shell, two palms, shrub, tiny campfire and water ring; pending user approval.",
+  "aseprite_review": {
+    "opened": true,
+    "verified_window_title": "51_aspidochelone_frame0_draft.aseprite - Aseprite v1.3.18.2",
+    "screenshot": "build_tmp/aspidochelone_pixellab/aseprite_review.png"
+  },
+  "remaining_generations": 0
+}

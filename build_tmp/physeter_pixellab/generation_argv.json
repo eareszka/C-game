@@ -1,0 +1,14 @@
+[
+  "pixellab-cli",
+  "edit",
+  "build_tmp\\physeter_pixellab\\49_physeter_original_frame0.png",
+  "--prompt",
+  "Redraw Physeter's first frame as a mutant SPERM WHALE, mixing the current monster with recognizable whale anatomy. Preserve the 302x166 transparent canvas, occupied bounds approximately (16,8)-(294,164), scale, baseline and perspective: huge head facing the viewer, bulky body sweeping away right to the raised tail. One battle sprite, first frame only. Give it a massive blunt rectangular sperm-whale forehead, heavy melon and narrower underslung lower jaw, gaping with large readable teeth. Retain menacing paired eyes, twin curved water plumes and restrained horn-like brow protrusions from the original. Smooth thick whale torso, tapered tail stock, broad horizontal flukes and rounded paddle flippers replace the scaled serpent tail and spiny ray fins. Whale first, grotesque mutant second. No scales, gills, fin rays or dorsal sail. Keep the source's front-facing view, not a conventional side-profile whale. The reference board shows all 42 approved enemies for technique only; never reproduce a collage. Follow the Art Bible: one cohesive flat 2D silhouette; crisp 1px BLACK outer and shared separation outlines; chunky deliberate clusters; flat dark/mid/light tones shaded by form, lit toward viewer/up, dark beneath forehead, chin and far body. Use project palette: slate skin #34343e #595965 #848694, ivory teeth #e8e0c0, dark red mouth #421618 #792727, tiny gold eyes #d89830, water #84a7e9 #dcf0ff. Prefer about 10 colors, maximum 24 plus black for this giant. Simple dark pupils, no iris or glints. No hatching, engraving stripes, repeated texture, dots, dithering, gradients, antialiasing, 3D rendering or assembled cutout parts. No red silhouette outline. Preserve transparency, native pixel density, canvas and placement.",
+  "--match",
+  "art/direction/approved_enemy_study/approved_42_fronts_native_512.png",
+  "--size",
+  "302x166",
+  "--transparent",
+  "--name",
+  "49_physeter_frame0_draft"
+]

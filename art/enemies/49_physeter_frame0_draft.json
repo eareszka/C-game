@@ -1,0 +1,73 @@
+{
+  "enemy": "49 Physeter",
+  "output": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/49_physeter_frame0_draft.aseprite",
+  "png": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/49_physeter_frame0_draft.png",
+  "canvas": [
+    302,
+    166
+  ],
+  "occupied_bounds": [
+    16,
+    8,
+    281,
+    163
+  ],
+  "original_bounds": [
+    16,
+    8,
+    294,
+    164
+  ],
+  "view": "Front-facing head, body curling to right, raised whale flukes",
+  "frames": 1,
+  "color_mode": "rgb",
+  "opaque_colors": {
+    "#000000": 2043,
+    "#84a7e9": 544,
+    "#dcf0ff": 282,
+    "#848694": 5685,
+    "#595965": 7705,
+    "#e8e0c0": 1080,
+    "#b2966a": 163,
+    "#34343e": 2935,
+    "#421618": 2489,
+    "#d89830": 78,
+    "#792727": 308
+  },
+  "off_palette_pixels": 0,
+  "soft_alpha_pixels": 0,
+  "alpha_counts": {
+    "0": 26820,
+    "255": 23312
+  },
+  "black_silhouette_edge_pixels": 1132,
+  "all_silhouette_edges_black": true,
+  "components_8way": [
+    23272,
+    10,
+    10,
+    10,
+    10
+  ],
+  "detached_parts": "Four intentional 10-pixel spray droplets beside water plumes; no isolated single-pixel components",
+  "saved_file_reloaded_and_export_verified": true,
+  "generated_geometry_preserved": true,
+  "original_source_hashes_unchanged": true,
+  "pixel_cleanup": "PixelLab generated first frame; pixel plugin normalized palette, enforced one-pixel black silhouette and preserved dark-red mouth material. No scale or texture overlay.",
+  "references": [
+    "assets/enemies/49_physeter.png",
+    "art/direction/ART_DIRECTION.md",
+    "C:/Users/emery/.herdr/worktrees/C-game/sprites/art/direction/SPRITE_STYLE.md",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png"
+  ],
+  "reported_cost_generations": 10,
+  "generation_id": "45243429-281c-4daf-9ef7-0a9b4df55cd8",
+  "visual_review": "Native and enlarged inspection completed; blunt whale forehead, underslung toothed jaw, thick whale body, paddle flippers, horizontal flukes, original eyes, small horns and twin water plumes; pending user approval.",
+  "aseprite_review": {
+    "opened": true,
+    "verified_window_title": "49_physeter_frame0_draft.aseprite - Aseprite v1.3.18.2",
+    "screenshot": "build_tmp/physeter_pixellab/aseprite_review.png"
+  },
+  "remaining_generations": 10,
+  "user_approved": true
+}

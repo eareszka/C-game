@@ -1,0 +1,28 @@
+{
+  "enemy": "51 Aspidochelone",
+  "canvas": [
+    130,
+    81
+  ],
+  "original_bounds": [
+    16,
+    21,
+    115,
+    81
+  ],
+  "sheet_size": [
+    1040,
+    648
+  ],
+  "layout": "8 rows of directions D DR R UR U UL L DL, eight frames per row",
+  "sources": {
+    "assets/enemies/51_aspidochelone.png": "46e7711c6e459732d327038fb31e5ff9e06dcb2cbc936afc7b4ed4e83d6d1f4f",
+    "assets/enemies/51_aspidochelone.aseprite": "1fe23fe69fffa10dcc18180720a6e416b89ae7ec886780939f458c1fec69b243"
+  },
+  "user_reference": "C:/Users/emery/OneDrive/Desktop/cliff fix/artworks-000329553537-9rlkxz-t500x500.jpg",
+  "last_known_balance": 10,
+  "status": "Generated, pixel-plugin cleanup completed, validated and open in Aseprite; awaiting user visual approval",
+  "actual_generation_cost": 10,
+  "remaining_generations": 0,
+  "generation_id": "237c0d55-771c-4a6c-8f38-cf33d93f36d5"
+}

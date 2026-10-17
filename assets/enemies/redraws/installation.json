@@ -1,0 +1,204 @@
+{
+  "enemies": [
+    {
+      "id": 17,
+      "source": "art/enemies/17_qiqirn_frame0_draft.png",
+      "png": "assets/enemies/redraws/17_qiqirn.png",
+      "aseprite": "assets/enemies/redraws/17_qiqirn.aseprite",
+      "frame_size": [
+        42,
+        34
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 23,
+      "frame_zero_exact": true,
+      "png_sha256": "4bb24243019442f0ae99cc51964b555842da7dc800c08685a6eff86fba605151",
+      "aseprite_sha256": "f4f4407130df6a886df7379f2c4fd129fe8ad5ad834618562948b160f7624331",
+      "run_png": "assets/enemies/redraws/17_qiqirn_run.png"
+    },
+    {
+      "id": 41,
+      "source": "art/enemies/41_sasnalkahi_frame0_draft.png",
+      "png": "assets/enemies/redraws/41_sasnalkahi.png",
+      "aseprite": "assets/enemies/redraws/41_sasnalkahi.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 43,
+      "frame_zero_exact": true,
+      "png_sha256": "791167139bd1940469083aa66efb3d8d88b0c4016eb27a314e75bf0eb34f630e",
+      "aseprite_sha256": "9321544892b19d7713581ad79c868e221e94a0f03dc78176f18fb48afc3b66b5"
+    },
+    {
+      "id": 49,
+      "source": "art/enemies/49_physeter_frame0_draft.png",
+      "png": "assets/enemies/redraws/49_physeter.png",
+      "aseprite": "assets/enemies/redraws/49_physeter.aseprite",
+      "frame_size": [
+        302,
+        166
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 105,
+      "frame_zero_exact": true,
+      "png_sha256": "1e5fb568a41a5f1a29fcbb500e7ec3c153a3a492324bd45b8267efe649266ed0",
+      "aseprite_sha256": "7a4566d4a7586368a4e25bbe408f8f2d9ff2a34f5494110696640b7a968346e7"
+    },
+    {
+      "id": 51,
+      "source": "art/enemies/51_aspidochelone_frame0_no_water.png",
+      "png": "assets/enemies/redraws/51_aspidochelone.png",
+      "aseprite": "assets/enemies/redraws/51_aspidochelone.aseprite",
+      "frame_size": [
+        130,
+        81
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 57,
+      "frame_zero_exact": true,
+      "png_sha256": "a2682bb6d305624c7aa813d04234d649c4329b88dfbaf2804e35252f2a9e0ab2",
+      "aseprite_sha256": "c33caf1706277f6238c1edec6cfc3aeba93b97e16322c0879a01a21678be491b"
+    },
+    {
+      "id": 64,
+      "source": "art/enemies/64_dungavenhooter_frame0_draft.png",
+      "png": "assets/enemies/redraws/64_dungavenhooter.png",
+      "aseprite": "assets/enemies/redraws/64_dungavenhooter.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 8,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 46,
+      "frame_zero_exact": true,
+      "png_sha256": "09a94c6229bb5c3bef49f848e8ed2f0ccc9cf5ac0fd1454aaedcb6b9622a0afc",
+      "aseprite_sha256": "b37aff7db7c1b96e705ad966567e1ed3258b321be40c369fcdefd15b46bf5c08"
+    },
+    {
+      "id": 76,
+      "source": "art/enemies/76_loch_oich_frame0_draft.png",
+      "png": "assets/enemies/redraws/76_loch_oich_monster.png",
+      "aseprite": "assets/enemies/redraws/76_loch_oich_monster.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 41,
+      "frame_zero_exact": true,
+      "png_sha256": "816ae2f013577041d00c6a8d07dad0b9d571b8ac6b03439a38ca01562de79273",
+      "aseprite_sha256": "f79f3b1289a06c9de4d64f8643966204adec8ea26a815f1e2e65d6664b6102e6"
+    },
+    {
+      "id": 77,
+      "source": "art/enemies/77_hoga_frame0_draft.png",
+      "png": "assets/enemies/redraws/77_hoga.png",
+      "aseprite": "assets/enemies/redraws/77_hoga.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 43,
+      "frame_zero_exact": true,
+      "png_sha256": "7768fe7df853d7acf8bf67e21c6ff2af47039940098db651b9b709a765121f89",
+      "aseprite_sha256": "59d5f922e1dd9df292c4f4fc9311118f0d47f468581c28a958065823cdc0691e"
+    },
+    {
+      "id": 97,
+      "source": "art/enemies/97_ro_demonic_frame0_draft.png",
+      "png": "assets/enemies/redraws/97_ro.png",
+      "aseprite": "assets/enemies/redraws/97_ro.aseprite",
+      "frame_size": [
+        130,
+        81
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 56,
+      "frame_zero_exact": true,
+      "png_sha256": "63dcadcfa9591a3cce35f5db365dd5c969ffc0b35bc5015cb5c1c1041f5d8b0d",
+      "aseprite_sha256": "e749259265cb33b3c49173f456e003be7c1632776e2a443459b5417dcf01f80e"
+    }
+  ],
+  "backup": "art/_backup/enemy_redraw_install_20261016_224715",
+  "protected_sources": {
+    "assets/enemies/17_qiqirn.png": "cf3a6a40e32a59577ec26c61632f3796de5930537c0f7fce2203f826efb465a8",
+    "assets/enemies/17_qiqirn.aseprite": "78c6c426595069ee1f0b3b6a50f60e099c783ee0024eb5d0593ccf493846886e",
+    "art/enemies/17_qiqirn_frame0_draft.png": "147e355c198c1b5a92cbb250dce9baed85fe80aeaf89c1b4b5ffbcfb30dd9bfe",
+    "art/enemies/17_qiqirn_frame0_draft.aseprite": "c9450a572d0e5b589b15f498d34ec6d1de0f2b4a7648cfca690dc50eecbbd328",
+    "assets/enemies/41_sasnalkahi.png": "9280e66a173327022c5f380c4c1d5f95445bd41fa890ae0f7b2355ccd50fcdf6",
+    "assets/enemies/41_sasnalkahi.aseprite": "f619ea4137dde7aad5bf6fece4f622aa5d82de74ee569e06044557ff51861480",
+    "art/enemies/41_sasnalkahi_frame0_draft.png": "717558daef2b73e6c00433da4010956906669e08b4839ae7ed423f26494c92ff",
+    "art/enemies/41_sasnalkahi_frame0_draft.aseprite": "1996fb3b428c5b42f94461d1aec7b516dc29c0b10124cee897bd314989080aad",
+    "assets/enemies/49_physeter.png": "87a1a079d3df62865bbef0b72dc921ff449a91b05efe57581d0a3ff43cd59c28",
+    "assets/enemies/49_physeter.aseprite": "d230dd7debb7ea59242bf123bf4ab80831b191df63b4124c0aaed0b372dbe4a5",
+    "art/enemies/49_physeter_frame0_draft.png": "809acd2e4d8cdaa813d8802fd0a33a9489ab122a572d98985c9442e694a5a28b",
+    "art/enemies/49_physeter_frame0_draft.aseprite": "389f1fed19369f17244159d2f5e65f1d72ba95319864aa7c99cbfa68fa42c321",
+    "assets/enemies/51_aspidochelone.png": "46e7711c6e459732d327038fb31e5ff9e06dcb2cbc936afc7b4ed4e83d6d1f4f",
+    "assets/enemies/51_aspidochelone.aseprite": "1fe23fe69fffa10dcc18180720a6e416b89ae7ec886780939f458c1fec69b243",
+    "art/enemies/51_aspidochelone_frame0_no_water.png": "6d439796ee8845da958fc256757a4780287963838704344d335d4f62c955ac56",
+    "art/enemies/51_aspidochelone_frame0_no_water.aseprite": "7af4ad368ef256a4bcbce9998a62c8c28d033d3daf7a35ee7bf54ddfe386297e",
+    "assets/enemies/64_dungavenhooter.png": "bb5f057e74fb9987dff179a26fab5bf4231f93af22e9e9879309464459c5afa1",
+    "assets/enemies/64_dungavenhooter.aseprite": "acd4c8be66be7def6fdb2b46c8c974a37ffa4020cd6715c4328691ba53cbeecc",
+    "art/enemies/64_dungavenhooter_frame0_draft.png": "d6711459535277e7eab2e1ac1fa104eda7b7c51b083008d10afcbbd372a74ff1",
+    "art/enemies/64_dungavenhooter_frame0_draft.aseprite": "10df59608577c5b1445042449aa95518e114eea19615c48461bfc7b23eb01935",
+    "assets/enemies/76_loch_oich_monster.png": "76818f4d58ea1fa0750dd42f4586bc3cb1372fd4fc9fbe6d58d02355da7edce7",
+    "assets/enemies/76_loch_oich_monster.aseprite": "0e4fa73746180584ef3cf68a543f4cd9436943ab91ae7813d1bac38d222d5400",
+    "art/enemies/76_loch_oich_frame0_draft.png": "d2771a0c1ab6dda1a810397d0c5591bde4b5d842b2242db6802cd79393229835",
+    "art/enemies/76_loch_oich_frame0_draft.aseprite": "739f6d94e55f42021d0efb8f342bdff4e98d3a81906b95b88d60cc8267fa036f",
+    "assets/enemies/77_hoga.png": "59e9509f4634e01e99db89c524aab4b2029dee899fd68eff1aa796f73cbc8538",
+    "assets/enemies/77_hoga.aseprite": "4b93510a7fba6259c16df06c2b5bc880fbb4ba921b31f662618b6bc67d5b93f6",
+    "art/enemies/77_hoga_frame0_draft.png": "7cc4b1011b573e379e7700631f793e2eefbcc3c1094f31f3267a0131b25e8eaf",
+    "art/enemies/77_hoga_frame0_draft.aseprite": "4d450f1430230d733519413dbdb9fd7eb7680600776829934bde0f3c5d312af0",
+    "assets/enemies/97_ro.png": "94cf7b3c7ef6ce74ea5a3e36c67d392dd596788405e99c6cef1e574a1897f993",
+    "assets/enemies/97_ro.aseprite": "611a9a4954f8f9c5ea576f7f4835d71e4a3781541a9df3a30554d4ad3652c2ae",
+    "art/enemies/97_ro_demonic_frame0_draft.png": "5cebacc4d44ab41fb6e72f1742f7854ae6fafe4b8b61fbee1708a23c259f6133",
+    "art/enemies/97_ro_demonic_frame0_draft.aseprite": "49a3d9ea50686b4ff8fc3091397e498fa5b467e5ffffcd3b018ea3fc067a50e3",
+    "assets/enemies/17_qiqirn_run.png": "a1456d0aa0df4d70eeb65061dca56ccc617cbcfb2827e5bc661d973965aaf78f",
+    "assets/enemies/17_qiqirn_run.aseprite": "23f7efc132c493e727c33de6ee4b231b966cb7473a66c1dd2d2ed232d5fef700"
+  },
+  "rendering": "One drawn pose, project direction fallback (left views mirrored), three subtle breathing states resampled into existing frame counts",
+  "limitations": "Distinct directional, attack and Qiqirn gallop drawings have not been created; gameplay hooks/frame counts retained",
+  "paid_calls": 0,
+  "validation": {
+    "game_build": "passed",
+    "battlecensus_build": "passed",
+    "battle_smoke_tests": "All eight enemies, seed 3872026, three seconds each; three screenshots each; all exited successfully",
+    "review_board": "build_tmp/enemy_redraw_install_review/installed_battle_review.png",
+    "original_assets_and_artwork_hashes_preserved": true
+  }
+}

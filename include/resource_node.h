@@ -49,7 +49,7 @@ typedef struct ResourceNode
     int height;
     int hp;
     int alive;
-    Uint64 hit_at;   // when last struck (SDL_GetPerformanceCounter), for the shake; 0 never
+    Uint64 hit_at;   // when last struck (world_ms), for the shake; 0 never
 
     // Gravestone-specific: when hides_entrance=1 and this node is destroyed,
     // the dungeon entrance tile is stamped at (reveal_tx, reveal_ty).

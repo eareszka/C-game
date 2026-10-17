@@ -1,0 +1,97 @@
+{
+  "frame_size": [
+    14,
+    20
+  ],
+  "sheet_size": [
+    28,
+    80
+  ],
+  "direction_rows": [
+    "down",
+    "up",
+    "left",
+    "right"
+  ],
+  "frames_per_direction": 2,
+  "duration_ms": 200,
+  "npcs": [
+    {
+      "name": "01_farmer",
+      "frames": 8,
+      "tags": [
+        "down",
+        "up",
+        "left",
+        "right"
+      ],
+      "approved_front_head_preserved": true,
+      "palette_colors": 4,
+      "all_frames_pixel_verified": true,
+      "all_walk_pairs_differ": true,
+      "baseline": 19
+    },
+    {
+      "name": "02_apron_villager",
+      "frames": 8,
+      "tags": [
+        "down",
+        "up",
+        "left",
+        "right"
+      ],
+      "approved_front_head_preserved": true,
+      "palette_colors": 4,
+      "all_frames_pixel_verified": true,
+      "all_walk_pairs_differ": true,
+      "baseline": 19
+    },
+    {
+      "name": "03_elder",
+      "frames": 8,
+      "tags": [
+        "down",
+        "up",
+        "left",
+        "right"
+      ],
+      "approved_front_head_preserved": true,
+      "palette_colors": 4,
+      "all_frames_pixel_verified": true,
+      "all_walk_pairs_differ": true,
+      "baseline": 19
+    },
+    {
+      "name": "04_spectacled_villager",
+      "frames": 8,
+      "tags": [
+        "down",
+        "up",
+        "left",
+        "right"
+      ],
+      "approved_front_head_preserved": true,
+      "palette_colors": 4,
+      "all_frames_pixel_verified": true,
+      "all_walk_pairs_differ": true,
+      "baseline": 19
+    }
+  ],
+  "protected_sha256": {
+    "art\\npcs\\01_farmer_standing_detailed_draft.aseprite": "bd581bb1b546aa7a493da10e167dfc6b7c14eaa4a4728c5da2cca0e0407465dd",
+    "art\\npcs\\01_farmer_standing_draft.aseprite": "7486d9dbb744c858b625f351ca665bd5f4b4ef0aaa98b6cd8a6a03ea1d9879f4",
+    "art\\npcs\\02_apron_villager_standing_detailed_draft.aseprite": "cd389294ba50fd13422e55ddb6287dbeb13434089da768f3c525228fb0d8f6d9",
+    "art\\npcs\\02_apron_villager_standing_draft.aseprite": "07f6bd524e304b588dc12de45427e2f7fb37e2247f2b43d011bf5a236d82af6d",
+    "art\\npcs\\03_elder_standing_detailed_draft.aseprite": "42a923970ca8a7e226e9107d3a854eb0df6d1080945180db44fd12c8a86541d3",
+    "art\\npcs\\03_elder_standing_draft.aseprite": "ca481b0dbb7019e98dde67734c898d153496941ee229b15c90469049b19fa692",
+    "art\\npcs\\04_spectacled_villager_standing_detailed_draft.aseprite": "ea54790fb4532478fbc93c841a2ade7f212d7d8f6247007f0f9b2ebde3c23acf",
+    "art\\npcs\\04_spectacled_villager_standing_draft.aseprite": "ff44d31498cffdea8cb9bbc990219bb5c6071ab9e54875dded1180ab431fbe93",
+    "art\\npcs\\villagers_detailed_review.aseprite": "bff900ed7107c252d6695fc63785e64ba0b2a8fbd8f23bd3a079bf08f95aeb6d",
+    "art\\npcs\\villagers_standing_review.aseprite": "61b3b5bbfd23f4b2ace4d1d4a87552f82257ee2b0920ae965af0f6fc2866c0ee",
+    "assets\\player_small.png": "0623bc324e3eddafd800942070990983fc901ca529539fc5172c425935c6642d",
+    "assets\\player_small.aseprite": "b483000746dd88d4cbeb32c32513f6ebdd4ad546600e1ff635ee8fac5f0581c8"
+  },
+  "approved_sources_unchanged": true,
+  "independent_reopen_tags_timing_and_all_32_frames_verified": true,
+  "review_gif_frames": 2
+}

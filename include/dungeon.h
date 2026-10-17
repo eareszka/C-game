@@ -372,6 +372,9 @@ void dungeon_bind_pair(DungeonMap* dmap, float exit_angle,
 void dungeon_bind_cave_mouths(DungeonMap* dmap, const int* ow_x, const int* ow_y, int n);
 // from_exit=0: spawn at DNG_ENTRY; from_exit=1: spawn at DNG_EXIT (connected entrance)
 void dungeon_player_init(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, int from_exit);
+// Return to a recorded safe arrival without changing dungeon progress.
+// Fails without moving the player if that position is no longer clear.
+bool dungeon_escape_to(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, float x, float y);
 void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
                            float dt, DungeonMap* dmap, const Camera* cam,
                            bool noclip = false, HarvestResult* out_harvest = nullptr);

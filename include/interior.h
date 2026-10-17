@@ -38,9 +38,6 @@ struct InteriorPlayer {
 };
 
 void interior_load(InteriorMap* im, int interior_id);
-// Where a room keeps the raft book, as a tile: the book shop, on its counter.
-// False for a room without one.
-bool interior_book_spot(int interior_id, int* tx, int* ty);
 // Whether the player, their sprite's top-left at (x, y), can stand there.
 bool interior_feet_fit(const InteriorMap* im, float x, float y);
 // Whether feet centred at (feet_x, feet_y) are in the way out's hitbox: the

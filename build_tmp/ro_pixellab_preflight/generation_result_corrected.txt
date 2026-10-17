@@ -1,0 +1,6 @@
+route: edit-images-v2
+C:\Users\emery\OneDrive\Desktop\projects\C-game\pixellab-out\2026-10-17T0220-97-ro-frame0-draft-redraw-the-existing-ro-first\97-ro-demonic-frame0.png
+cost: 10 generations (reported)
+background_job_id: b4c46f11-821a-4e5c-9791-26b40e73e06b
+generation_id: d6776120-52c5-4a44-b310-3af870e89e23
+edit-images-v2 is a Pro Tools route: about 30 generations.

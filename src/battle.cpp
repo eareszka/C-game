@@ -118,6 +118,25 @@ SDL_Texture* load_with_white(SDL_Renderer* ren, const char* path, SDL_Texture** 
     return tex;
 }
 
+void draw_actor_appearance(SDL_Renderer* ren, SDL_Texture* texture,
+                           const SDL_Rect& src, const SDL_Rect& dst,
+                           float progress, bool mirror) {
+    progress = fminf(fmaxf(progress, 0.0f), 1.0f);
+    float fill = fminf(1.0f, (int)(progress * 8.0f) / 8.0f + 0.125f);
+    int sw = (int)(src.w * fill);
+    for (int row = 0, band = 0; row < src.h; row += 2, band++) {
+        int rh = src.h - row < 2 ? src.h - row : 2;
+        int sx = band % 2 ? src.w - sw : 0;
+        SDL_Rect bs = { src.x + sx, src.y + row, sw, rh };
+        int shown_x = mirror ? src.w - sx - sw : sx;
+        int x0 = shown_x * dst.w / src.w, x1 = (shown_x + sw) * dst.w / src.w;
+        int y0 = row * dst.h / src.h, y1 = (row + rh) * dst.h / src.h;
+        SDL_Rect bd = { dst.x + x0, dst.y + y0, x1 - x0, y1 - y0 };
+        SDL_RenderCopyEx(ren, texture, &bs, &bd, 0.0, nullptr,
+                         mirror ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+    }
+}
+
 // Load a sheet, and in fade[i] the same sheet keeping only the pixels whose
 // fc_bayer() rank is below 12, 8 and 4: a fade as an ordered dither, the way
 // the game does every fade, so no pixel is ever a blend off the palette.
@@ -200,7 +219,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/14_lodsilungur.png",            {0, 1, 0, 2} },
     { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2}, 3, false, "assets/enemies/15_ofuguggi_swim.png" },  // swim = backwards, tail first
     { "assets/enemies/16_kamaitachi.png",             {0, 1, 0, 2} },  // medium (45x47), 8 dirs: its old drawing half as big again
-    { "assets/enemies/17_qiqirn.png",                 {0, 1, 0, 2}, 3, false, "assets/enemies/17_qiqirn_run.png" },  // run = its frightened gallop round the edge
+    { "assets/enemies/redraws/17_qiqirn.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/17_qiqirn_run.png" },  // reviewed first pose; breathing fallback also used while running
     { "assets/enemies/18_vatnaormur.png",             {}, 5 },
     { "assets/enemies/19_skeljaskrimsli.png",         {}, 5 },
     { "assets/enemies/20_sermilik.png",               {}, 5 },
@@ -224,7 +243,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/38_igtuk.png",                  {0, 1, 0, 2} },
     { "assets/enemies/39_ajaju.png",                  {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 62x47), 4 dirs (front, side, back; left mirrored): its idle, 10 frames in the old 1.3 s loop -- breath on 2-4, tongues fanned on 3, a flick on 8, the tail flipping on 5-8
     { "assets/enemies/40_slide_rock_bolter.png",      {}, 5 },
-    { "assets/enemies/41_sasnalkahi.png",             {}, 5 },
+    { "assets/enemies/redraws/41_sasnalkahi.png",     {}, 5 },
     { "assets/enemies/42_nykur.png",                  {0, 1, 0, 2} },
     { "assets/enemies/43_sazae_oni.png",              {0, 1, 0, 2} },
     { "assets/enemies/44_itqiirpak.png",              {}, 8, true },   // giant: one row per direction
@@ -232,9 +251,9 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/46_lusca.png",                  {0, 1, 0, 2} },
     { "assets/enemies/47_moha_moha.png",              {}, 24, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 100 },  // approved side view: 24 frames at 100 ms, always facing right
     { "assets/enemies/48_bjarndyrakongur.png",        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on 5-9; 12 frames in a 1.94 s loop; one row per direction
-    { "assets/enemies/49_physeter.png",               {}, 8, true },   // fills the top of the arena: one row per direction
+    { "assets/enemies/redraws/49_physeter.png",       {}, 8, true },   // mutant sperm whale first pose, breathing; one row per direction
     { "assets/enemies/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
-    { "assets/enemies/51_aspidochelone.png",                 {}, 8, true },  // giant, 8 dirs: colossal island turtle, palms and a campfire on its back; frames 3-4 head raised, jaws wide
+    { "assets/enemies/redraws/51_aspidochelone.png",   {}, 8, true },  // island turtle first pose, no water beneath; breathing fallback
     { "assets/enemies/52_sannaja.png",                       {}, 8, true },  // biggest enemy (352x224 frames, too big to see whole), 8 dirs: colossal shelled six-legged beast, red spider head, two staring eyes; frames 3-4 the killing gaze
     { "assets/enemies/53_come_at_a_body.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/53_come_at_a_body_dash.png" },  // frame 1: it spits; dash = rush and flight
     { "assets/enemies/54_billdad.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/54_billdad_slap.png", "assets/enemies/54_billdad_jump.png" },  // medium, front only; frame 1: the spring; alt = the leap and the slam it lands on; flap = phase 2, its back to us: in the air, tail raised, tail down, standing
@@ -248,7 +267,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/61_roperite.png",               {}, 5 },         // big, 8 dirs: always dashing, rope-snout lasso, rattle tail; frame 2 the lasso flicked out
     { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png" },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
     { "assets/enemies/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
-    { "assets/enemies/64_dungavenhooter.png",         {}, 8 },         // big, 8 dirs, 8 frames: one tail slap looped; frame 6 the impact (dust crown at the club)
+    { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
     { nullptr },                                                       // 65 Mice That Eat Iron: skipped for now
     { "assets/enemies/66_ayotochtli.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/66_ayotochtli_roll.png" },  // frame 1: hunched into its shell; flap = curled in a ball, rolling
     { "assets/enemies/67_lagopus.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/67_lagopus_fly.png" },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
@@ -260,8 +279,8 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/73_liderc.png",                 {}, 5, false, nullptr, nullptr, nullptr, 1, 1, "assets/enemies/73_liderc_prints.png" },  // big, 8 dirs: creepy ghost hen of fire; frame 2 flare-up; fades in only as the player nears; prints: human + goose foot
     { "assets/enemies/74_bes_rap.png",                {}, 5 },         // big, front view only, always as drawn (the same in every direction, never mirrored): skinny pink pig ghoul squatting, head turned right; 1 winds up, 2 head lunged and jaw dropped (the spit), 3 jaw closing with spit off the chin, 4 breathes out
     { "assets/enemies/75_makalala.png",               {}, 5, false, "assets/enemies/75_makalala_fly.png" },  // big (frame 98x65): giant slate ground bird, ivory club on its head. Idle from the front only, 5 frames, frame 2 the scream (beak gaping, wings flung out); flap = flying, from the side only (left mirrored), the club glowing on (49, 15) in every frame
-    { "assets/enemies/76_loch_oich_monster.png",      {}, 5 },         // big, 8 dirs: dog-headed slippery lake serpent, two fins; frame 2 a bark
-    { "assets/enemies/77_hoga.png",                   {}, 5 },         // big, 8 dirs: ox-headed lake fish, curved horns; frame 2 a bellow
+    { "assets/enemies/redraws/76_loch_oich_monster.png", {}, 5 },       // reviewed first pose; breathing fallback
+    { "assets/enemies/redraws/77_hoga.png",           {}, 5 },         // reviewed first pose; breathing fallback
     { "assets/enemies/78_zankallala.png",             {}, 10, false, "assets/enemies/78_zankallala_run.png", nullptr, nullptr, 1, 1, nullptr, 130 },  // medium (frame 58x53), 4 dirs (front, side, back; left mirrored): hairy trickster in a beehive hat riding a jerboa; 10 frames in the old 1.3 s loop, frames 3-4 the boast, staff raised; flap = the dash, staff levelled ahead
     { "assets/enemies/79_ugjuknarpak.png",            {}, 5 },         // big, 8 dirs: giant tusked bearded seal reared on its hind legs, clawing the air; frame 2 widest roar
     { "assets/enemies/80_bes_kotak.png",              {}, 5 },         // big, 8 dirs: blocky floating box spirit; frame 2 lid lifts, mouth slot gapes
@@ -281,7 +300,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/94_trochus.png",                       {}, 5 },  // big, 8 dirs: great spined sea wheel half sunk in white water; frame 2 spins hard, spines drawn in
     { "assets/enemies/95_witkes.png",                        {}, 5 },  // big, 8 dirs: half-shaped water spirit rising from a whirlpool, offering tea; frame 2 arms spread, pool surging
     { "assets/enemies/96_bregdi.png",                        {}, 8, true },  // giant, 8 dirs: dark sea beast surfacing, two huge wing-fins; frames 3-4 fins wrap round in front, jaws open
-    { "assets/enemies/97_ro.png",                            {}, 8, true },  // giant, 8 dirs: reared dark-red dragon, great wings, long tail; frames 3-4 wings high, howling
+    { "assets/enemies/redraws/97_ro.png",             {}, 8, true },   // demonic black skin and red outline; reviewed first pose, breathing
     { "assets/enemies/98_boiuna.png",                        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },  // giant (frame 192x176, drawn 163x162), front view only: great green river snake, its winding body laid out behind, its front reared and arched over, head hanging open-mouthed, yellow slit eyes; 12 frames in a 1.56 s loop -- a wave runs back along it to the tail's tip (the back moves more than the front), it breathes, the head lifts a pixel on 4-8; one row per direction
     { "assets/enemies/99_fad_felen.png", {}, 10, true, nullptr, "assets/enemies/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 180 },  // approved crouched idle; alt = standing on hind legs, ten frames at 180ms
     { "assets/enemies/100_flesh_planet.png",          {}, 8, true },   // giant: the final boss's ball (final_boss_views, one row a direction, all alike) -- the rest of its fight later
@@ -340,7 +359,7 @@ static int sheet_dir(int facing) {
 // The fade up from black at the start and down to black at the end, in seconds.
 static const float FADE_T  = BATTLE_FADE_T;
 // A pack's next fight: the player's glide back and the enemy's drop, in seconds.
-static const float CHAIN_T = 0.6f;
+static const float CHAIN_T = ACTOR_APPEAR_T;
 // A win: VICTORY in colour this long, then the rewards in the speech box.
 static const float VICTORY_T = 1.2f;
 
@@ -546,6 +565,11 @@ void BattleScene::update(const Input* in, float dt) {
         default:
             break;
     }
+
+    // Poison follows the same status/timer as exploration; attacks do not apply it yet.
+    _player_ref->stats.hp = (int)_bp.hp;
+    player_poison_tick(_player_ref, dt);
+    _bp.hp = (float)_player_ref->stats.hp;
 
     // Swap weapons on the fly: Q back, E or X on.
     if (input_pressed(in, SDL_SCANCODE_Q)) _cycle(-1);
@@ -1091,7 +1115,7 @@ void BattleScene::_move_bullets(float dt) {
 // The axe and club tumble; everything else points the way it flies.
 double BattleScene::_shot_angle(const Bullet& bl) const {
     if (bl.weapon == WEAPON_AXE || bl.weapon == WEAPON_CLUB)
-        return SDL_GetTicks() * 1.03;   // ~1000 deg/sec, as the overworld throw
+        return world_ms() * 1.03;   // ~1000 deg/sec, as the overworld throw
     return atan2f(bl.vy, bl.vx) * (180.0 / PI);
 }
 
@@ -1448,16 +1472,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         } else {
             // Phasing in, the map's stripe wipe in reverse: bands two art
             // pixels tall fill in from alternate sides, in hard eighths.
-            float fill = (float)(int)((_t / CHAIN_T) * 8.0f) / 8.0f + 0.125f;
-            int sw = (int)(fw * (fill > 1.0f ? 1.0f : fill));
-            for (int row = 0, band = 0; row < fh; row += 2, band++) {
-                int rh = fh - row < 2 ? fh - row : 2;
-                int sx = band % 2 ? fw - sw : 0;
-                SDL_Rect bs = { src.x + sx, src.y + row, sw, rh };
-                int shown_x = mirror ? fw - sx - sw : sx;
-                SDL_Rect bd = { dst.x + shown_x * 2, dst.y + row * 2, sw * 2, rh * 2 };
-                SDL_RenderCopyEx(ren, tex, &bs, &bd, 0.0, NULL, sprite_flip);
-            }
+            draw_actor_appearance(ren, tex, src, dst, _t / CHAIN_T, mirror);
             SDL_SetTextureAlphaMod(tex, 255);
         }
         // Its own pieces, over it: each cell at its place and size.
@@ -1484,7 +1499,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
 // rest, over it.
 void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
     SDL_Color c = enemy_bullet_color(_enemy_id);
-    bool flash = (SDL_GetTicks() / 100) % 2 == 0;
+    bool flash = (world_ms() / 100) % 2 == 0;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         const Bullet& bl = _enemy_bullets[i];
         if (!bl.active || bl.behind != behind) continue;
@@ -1663,7 +1678,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     if (_phase != BATTLE_PHASE_VICTORY) {   // won: its lasers have broken up into pickups (_win)
         Enemy::TeleLine tl[64];
         int nt = _enemy->telegraphs(tl, 64);
-        Uint32 now = SDL_GetTicks();
+        Uint32 now = world_ms();
         // bands: a darker shade of the enemy's colour outside (contrast --
         // a pale colour lightened again just snapped back to itself), its
         // own colour inside that, a white core always lit

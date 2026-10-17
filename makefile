@@ -169,6 +169,21 @@ storycheck: storycheck$(EXE)
 storycheck$(EXE): tools/storycheck.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/storycheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+residentcheck: residentcheck$(EXE)
+
+residentcheck$(EXE): tools/residentcheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/residentcheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+fishercheck: fishercheck$(EXE)
+
+fishercheck$(EXE): tools/fishercheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/fishercheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+chopcheck: chopcheck$(EXE)
+
+chopcheck$(EXE): tools/chopcheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/chopcheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 craftcheck: craftcheck$(EXE)
 
 craftcheck$(EXE): tools/craftcheck.cpp $(HEADLESS_OBJ)

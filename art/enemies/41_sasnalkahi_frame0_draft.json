@@ -1,0 +1,56 @@
+{
+  "enemy": "41 Sasnalkahi",
+  "output": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/41_sasnalkahi_frame0_draft.aseprite",
+  "png": "C:/Users/emery/OneDrive/Desktop/projects/C-game/art/enemies/41_sasnalkahi_frame0_draft.png",
+  "canvas": [
+    98,
+    65
+  ],
+  "occupied_bounds": [
+    32,
+    13,
+    67,
+    64
+  ],
+  "view": "front facing",
+  "frames": 1,
+  "color_mode": "rgb",
+  "opaque_colors": {
+    "#000000": 387,
+    "#633e1b": 422,
+    "#b2966a": 216,
+    "#3c2412": 381,
+    "#b70000": 4,
+    "#e8e0c0": 12
+  },
+  "off_palette_pixels": 0,
+  "soft_alpha_pixels": 0,
+  "alpha_counts": {
+    "0": 4948,
+    "255": 1422
+  },
+  "components_8way": [
+    1422
+  ],
+  "saved_file_reloaded_and_export_verified": true,
+  "original_geometry_preserved": true,
+  "original_source_hashes_unchanged": true,
+  "pixel_cleanup": "PixelLab source frame 00; pixel plugin removed fur speckles and replaced excess tones with six-color form shading. Source frame 01 was a second edit of the anatomy input and is not used.",
+  "references": [
+    "assets/enemies/41_sasnalkahi.png",
+    "C:/Users/emery/OneDrive/Desktop/cliff fix/1.webp",
+    "art/direction/ART_DIRECTION.md",
+    "C:/Users/emery/.herdr/worktrees/C-game/sprites/art/direction/SPRITE_STYLE.md",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png"
+  ],
+  "reported_cost_generations": 10,
+  "generation_id": "6e2f783c-6f1f-4bd2-8b86-2625034ec866",
+  "visual_review": "Native and nearest-neighbor 8x inspected; front pose, shoulder hump, black outlines, flat three-tone brown forms, red eyes, ivory claws; no fur texture.",
+  "aseprite_review": {
+    "opened": true,
+    "verified_window_title": "41_sasnalkahi_frame0_draft.aseprite - Aseprite v1.3.18.2",
+    "screenshot": "build_tmp/sasnalkahi_pixellab/aseprite_review.png"
+  },
+  "remaining_generations": 20,
+  "user_approved": true
+}

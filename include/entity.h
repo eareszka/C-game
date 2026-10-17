@@ -207,6 +207,8 @@ enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_VINE, PART_FEATHER, 
 // Display name, e.g. "HIDE": one list for the battle panel and the menus.
 const char* part_name(int part);
 
+enum Footwear { FOOTWEAR_NONE, FOOTWEAR_SWIFT_BOOTS, FOOTWEAR_DIVING_FINS };
+
 typedef struct {
     Stats stats;
     int level;
@@ -262,7 +264,13 @@ typedef struct {
     // Appended storage preserves the complete V2 player prefix.
     int extra_items[98];
     unsigned long long found_extra[2];
+    int poisoned;
+    float poison_timer;
+    int footwear; // Footwear: one pair worn, 0/1 retains the original boots save layout.
 } Player;
+
+// Active gameplay only: lose 1 HP per second while poisoned, never below 1.
+void player_poison_tick(Player* player, float dt);
 
 // The one way EXP is added: every level it crosses gives an HP bar
 // (HP_PER_BAR more max HP) and heals fully. Returns the levels gained.
@@ -328,6 +336,8 @@ void player_animate(Player* player, float dt, float anim_speed);
 constexpr float PLAYER_WALK_SPEED = 120.0f;
 constexpr float PLAYER_RUN_SPEED  = 240.0f;
 constexpr float PLAYER_CROUCH_SPEED = 60.0f;
+constexpr float SWIFT_BOOTS_SPEED_MULT = 1.5f;
+constexpr float DIVING_FINS_SPEED_MULT = 1.5f;
 // How fast the raft carries the player, a steady glide between walk and run.
 constexpr float RAFT_SPEED = 180.0f;
 constexpr float RAFT_RAMP_T = 10.0f;   // seconds afloat to reach 2x RAFT_SPEED
@@ -349,8 +359,11 @@ bool player_crouching(const Input* in);
 bool player_sprinting(const Input* in);
 
 // The speed and walk-frame duration for this frame: sprinting with shift,
-// crouching with ctrl.
-void player_gait(const Input* in, float* speed, float* anim_speed);
+// crouching with ctrl. Pass the player on foot for the equipped Swift Boots bonus.
+// A null player keeps base gait (swimming and vehicle travel).
+void player_gait(const Input* in, float* speed, float* anim_speed, const Player* player = nullptr);
+// Oasis swimming speed, including equipped fins; never applies boots.
+float player_swim_speed(const Player* player, const Input* in);
 
 typedef struct {
     Stats stats;

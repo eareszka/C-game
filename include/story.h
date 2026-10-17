@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include "game_state.h"
 #include "entity.h"   // Player: what the people ask of the boy and hand him
+#include "crafting.h" // Item: what a shop sells
 
 // The story (src/story.cpp): a civilization above writes this world's script
 // and feeds it through the swarm at the planet's centre; the boy, outside the
@@ -71,6 +72,40 @@ struct StoryNpcPos { int idx; float x, y; int village; };
 // Where a village's speaker stands: on the street beside the well.
 void        story_village_npc_tile(const Tilemap* map, int village, int* tx, int* ty);
 int         story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max);
+// Their sheet in assets/npcs: 0 elder, 1 farmer, 2 glasses;
+// -1 a legacy speaker (the player's sprite, tinted).
+int         story_npc_sprite(const StoryNpcPos& p);
+// What a shopkeeper sells and says when asked to TALK; the books in stock.
+struct Shop { const char* chat; const Item* stock; int n; };
+const Shop* story_npc_shop(const StoryNpcPos& p);   // nullptr: not a shopkeeper
+struct StoryNpcConversation { const char* prompt; const char* choices[3]; };
+const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p);
+const char* story_npc_answer(const StoryNpcPos& p, const StoryWhere& where, int choice);
+void story_npc_resume(const StoryNpcPos& p);
+bool story_npc_can_talk(const StoryNpcPos& p);
+// Location-aware topic shared by NPCs, including interiors identified by entrance.
+const char* story_world_name();
+const char* story_town_name(int town);
+const char* story_where_am_i(const StoryNpcPos& p, const StoryWhere& where);
+// Where they are spoken to from: their feet's bottom middle -- a
+// shopkeeper's a tile further down, across the counter.
+void        story_npc_talk_point(const StoryNpcPos& p, float* x, float* y);
+bool        story_people_init(SDL_Renderer* renderer);
+void        story_people_free();
+// Draw a resident with its own artwork; false for a legacy speaker.
+bool        story_npc_draw(const StoryNpcPos& p, SDL_Renderer* renderer, const Camera* cam);
+// Spoken to: turn toward (dx, dy) from it, the nearest of the four ways; it
+// stays that way (the walking resident turns again as she walks on).
+void        story_npc_face(const StoryNpcPos& p, float dx, float dy);
+int         story_npc_facing(const StoryNpcPos& p);   // FACE_*, FACE_DOWN until spoken to
+// The row of a 42x80 NPC sheet (assets/npcs) for a facing: down, up, left, right.
+inline int  npc_sheet_row(int facing) { return facing == FACE_UP ? 1 : facing == FACE_LEFT ? 2 : facing == FACE_RIGHT ? 3 : 0; }
+// Its column on walking beat `beat`, as player_frame steps: down and up go
+// step A, standing, step B, standing; the sides have their two drawings.
+inline int  npc_walk_col(int facing, int beat) {
+    static const int BEATS[4] = { 1, 0, 2, 0 };
+    return facing == FACE_UP || facing == FACE_DOWN ? BEATS[beat % 4] : beat % 2 ? 0 : 1;
+}
 // What this person says now, for the stage; a lead's direction is measured
 // from the door the player came in by, or from the villager's village. Asked
 // only when spoken to: a villager's first talk marks the first village. A

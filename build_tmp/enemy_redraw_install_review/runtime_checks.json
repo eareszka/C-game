@@ -1,0 +1,50 @@
+[
+  {
+    "id": 17,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 17 QIQIRN seed 3872026: 3.0s, hits 0, peak bullets 216/1024, frames at cap 0, spawns <40px 0 (closest 308.4), tightest pass 58.8px at t=2.98\n  enemy nearest 270 px, passes within 60 px: 0\n  enemy fast moves (>=200 px/s): 1, 0.2 s in all\n"
+  },
+  {
+    "id": 41,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 41 SASNALKAHI seed 3872026: 3.0s, hits 0, peak bullets 53/1024, frames at cap 0, spawns <40px 0 (closest 215.4), tightest pass 23.3px at t=1.72\n  enemy nearest 223 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 49,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 49 PHYSETER seed 3872026: 3.0s, hits 0, peak bullets 56/1024, frames at cap 0, spawns <40px 0 (closest 204.6), tightest pass 22.6px at t=1.48\n  enemy nearest 214 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 51,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 51 ASPIDOCHELONE seed 3872026: 3.0s, hits 0, peak bullets 35/1024, frames at cap 0, spawns <40px 0 (closest 226.4), tightest pass 23.8px at t=2.37\n  enemy nearest 228 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 64,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 64 DUNGAVENHOOTER seed 3872026: 3.0s, hits 0, peak bullets 291/1024, frames at cap 0, spawns <40px 0 (closest 202.2), tightest pass 25.2px at t=2.58\n  enemy nearest 254 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 76,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 76 LOCH OICH MONSTER seed 3872026: 3.0s, hits 0, peak bullets 469/1024, frames at cap 0, spawns <40px 0 (closest 224.1), tightest pass 29.9px at t=2.98\n  enemy nearest 259 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 77,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 77 HOGA seed 3872026: 3.0s, hits 0, peak bullets 282/1024, frames at cap 0, spawns <40px 0 (closest 246.5), tightest pass 37.2px at t=2.52\n  enemy nearest 259 px, passes within 60 px: 0\n"
+  },
+  {
+    "id": 97,
+    "exit_code": 0,
+    "screenshots": 3,
+    "log_tail": "enemy 97 RO seed 3872026: 3.0s, hits 0, peak bullets 15/1024, frames at cap 0, spawns <40px 0 (closest 222.2), tightest pass 22.8px at t=1.97\n  enemy nearest 225 px, passes within 60 px: 0\n"
+  }
+]

@@ -1,0 +1,14 @@
+[
+  "pixellab-cli",
+  "edit",
+  "C:\\Users\\emery\\OneDrive\\Desktop\\projects\\C-game\\art\\enemies\\97_ro_frame0_draft.png",
+  "--prompt",
+  "Redraw the existing RO first frame as a demonic black-skinned winged dragon. Preserve its front-facing upright roaring stance, broad spread bat wings, short thick legs, large wolfish dragon head with a mane, and long tail curled to the right. Preserve the current scale, proportions, placement, and 130x81 transparent canvas. Replace black outlines with crisp one-pixel crimson red outlines on the silhouette and between overlapping body parts. Use black hide with only two dark charcoal form-shading tones, menacing red eyes, angular horns, sharp fangs and claws. Draw as one coherent flat retro pixel-art silhouette with chunky deliberate clusters, three-tone form-based shading, and a restrained palette from the project. No scale textures, hatching, dithering, gradients, antialiasing, or 3D rendering. Keep the silhouette readable at native resolution. Style reference is a board of the entire approved enemy roster, provided to establish pixel-art technique only: produce one RO, never a collage or multiple enemies. The Art Bible remains authoritative over individual reference exceptions. Use a single-pixel outline, flat fills, three tones placed by form with the light on viewer/up-facing surfaces and dark under overhangs, tapered limbs, chunky readable clusters, chibi proportions, and at most three accent features. No patterns on skin, scales, fur, or wing membranes. Tiny legible eyes, no iris or highlight dots. RO-specific user exceptions: bright red silhouette and separation outlines, black hide with restrained charcoal tones, and a demonic appearance. Preserve all other game style rules.",
+  "--match",
+  "art\\direction\\approved_enemy_study\\approved_42_fronts_native_512.png",
+  "--size",
+  "130x81",
+  "--transparent",
+  "--name",
+  "97_ro_demonic_frame0"
+]

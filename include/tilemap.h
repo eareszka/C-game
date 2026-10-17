@@ -393,9 +393,11 @@ constexpr int DOOR_STEP = 12;
 // The house door (an index into map->doors) whose hitbox the feet box, centred
 // at world pixel (px, py), touches, or -1.
 int tilemap_door_at(const Tilemap* map, float px, float py);
-// How far across something struck at hit_at (SDL_GetPerformanceCounter) is
+// How far across something struck at hit_at (world_ms) is
 // drawn as it shakes, at this zoom; 0 once the shake has run out.
 int tilemap_shake_px(Uint64 hit_at, float zoom);
+// Shake a tile as if struck, without harming it (the woodcutter's swings).
+void tilemap_jitter_tile(int tx, int ty);
 // The sheet cell's, or null for a cell that has none.
 const ArtCellDepth* tilemap_art_depth(int sheet_id);
 // Lays over the player the pixels of sheet cell sheet_id that stand in front of

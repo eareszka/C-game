@@ -554,6 +554,16 @@ int main(int argc, char** argv)
         tilemap_draw_base(&g_map, &cam, ren, 0);
         resource_nodes_draw(&nodes, &cam, ren, tilemap_get_town_tex());
         story_hole_draw(ren, &cam, &g_map, false);          // the hole's ring (nothing before the turn)
+        // Optional resident integration review, using the game's placement and renderer.
+        if (getenv("SHOT_NPCS")) {
+            if (!story_people_init(ren)) return 1;
+            Player resident_viewer = {};
+            StoryWhere where = { STATE_OVERWORLD, &g_map, -1, -1, &resident_viewer, false };
+            StoryNpcPos people[32];
+            int count = story_npcs_here(where, people, 32);
+            for (int i = 0; i < count; i++) story_npc_draw(people[i], ren, &cam);
+            story_people_free();
+        }
         for (int i = each ? pic : 0; i < (each ? pic + 1 : np); i++) {
             float ox = px[i] - (HB_X1 + HB_X2) * 0.5f, oy = py[i] - (HB_Y1 + HB_Y2) * 0.5f;
             int k = i < nsw ? i : nsw - 1;      // this player's swing, if any

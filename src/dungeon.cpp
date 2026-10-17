@@ -4200,7 +4200,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     if (!weapon_swing_frozen_tick(&dp->swing, player, dt))
         player_read_input(player, in, &dx, &dy);
 
-    player_gait(in, &dp->speed, &anim_speed);
+    player_gait(in, &dp->speed, &anim_speed, dmap->type==DUNGEON_ENT_OASIS?nullptr:player);
 
     // The giant tree's ladders, climbed as EarthBound's are (user): pressing
     // up or down at one draws the player across onto it -- a slide at walking
@@ -4239,7 +4239,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         // Swimming (the oasis): the way pressed is where the swimmer heads, at
         // three quarters of walking pace, eased into and out of -- the drift --
         // each axis stopping where the rock does. It faces left or right only.
-        float k = std::min(1.0f, dt * 5.0f), sp = dp->speed * 0.75f;
+        float k = std::min(1.0f, dt * 5.0f), sp = player_swim_speed(player,in);
         dp->vx += (dx * sp - dp->vx) * k;
         dp->vy += (dy * sp - dp->vy) * k;
         float nx = dp->x + dp->vx * dt, ny = dp->y + dp->vy * dt;
@@ -4493,7 +4493,7 @@ template <class Wall> static SDL_Texture* torch_glow_tex(SDL_Renderer* ren, int 
 static void draw_torch(const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex, SDL_Texture* glow, int i, int ax, int ay, int tsz) {
     const int nf = (int)s_torch.glow.size();
     if (!nf) return;
-    const int f = (int)((SDL_GetTicks() / TORCH_MS + (Uint32)(ax / 16 + ay / 16) * 2u) % (Uint32)nf);
+    const int f = (int)((world_ms() / TORCH_MS + (Uint32)(ax / 16 + ay / 16) * 2u) % (Uint32)nf);
     auto at = [&](int x, int y, int w, int h) {
         return SDL_Rect{ cam_px(cam, (float)(x * DMAP_TILE / 16)), cam_py(cam, (float)(y * DMAP_TILE / 16)), w * tsz / 16, h * tsz / 16 };
     };
@@ -4887,7 +4887,7 @@ static inline int floordiv(int a, int b) { return a >= 0 ? a / b : -((-a + b - 1
 // barrow's stars, and the glints in a cave's dark.
 static void draw_twinkles(const Camera* cam, SDL_Renderer* ren, SDL_Texture* tex, int sx, int sy, int tsz, uint32_t one_in) {
     int offx = cam->ox / 2, offy = cam->oy / 2;
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = world_ms();
     for (int j = floordiv(offy, tsz); j * tsz - offy < cam->screen_h; j++)
         for (int i = floordiv(offx, tsz); i * tsz - offx < cam->screen_w; i++) {
             uint32_t h = pyr_hash((uint32_t)i * 92821u, (uint32_t)j * 68917u);
@@ -5168,7 +5168,7 @@ static void draw_graveyard_dark(const Camera* cam, SDL_Renderer* ren, SDL_Textur
     fc_draw_color(ren, 0, 0, 0, 255);
     SDL_Rect all = { 0, 0, cam->screen_w, cam->screen_h };
     SDL_RenderFillRect(ren, &all);
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = world_ms();
     for (int layer = 0; layer < 2; layer++) {
         int cell = (layer ? 64 : 96) * tsz / 16, scale = layer ? 2 : 1;
         int offx = layer ? cam->ox / 2 : cam->ox / 4, offy = layer ? cam->oy / 2 : cam->oy / 4;
@@ -5203,7 +5203,7 @@ static void draw_graveyard(const DungeonMap* d, const Camera* cam, SDL_Renderer*
     // (user: three frames, as the NES would); the top of each holds, its tip
     // swings 3; each pixel moved, never resampled, so none comes or goes
     // (user); hidden where it swings behind a nearer slab
-    float t = (float)(SDL_GetTicks() / 1000u % 3u) / 3.0f;
+    float t = (float)(world_ms() / 1000u % 3u) / 3.0f;
     int px = tsz / 16 > 0 ? tsz / 16 : 1;
     std::vector<SDL_Rect> rects;
     uint32_t colour = 0;
@@ -6096,7 +6096,7 @@ static void draw_oasis(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren
     const int s = tsz / 16 > 0 ? tsz / 16 : 1;
     const int bx = cam_px(cam, (float)(d->oasis_x0 * DMAP_TILE / 16)), by = cam_py(cam, (float)(d->oasis_y0 * DMAP_TILE / 16));
     const int W = d->oasis_w, H = OASIS_PX_H, camx = -bx / s;   // the level's pixel at the screen's left
-    const Uint32 now = SDL_GetTicks();
+    const Uint32 now = world_ms();
     fc_draw_color(ren, 0, 0, 0, 255);
     SDL_Rect all = { 0, 0, cam->screen_w, cam->screen_h };
     SDL_RenderFillRect(ren, &all);
@@ -6207,6 +6207,21 @@ static void draw_oasis(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren
     }
 }
 
+bool dungeon_escape_to(DungeonPlayer* dp, Player* player, const DungeonMap* dmap, float x, float y) {
+    DungeonPlayer landing = {};
+    landing.x = x; landing.y = y;
+    landing.speed = PLAYER_WALK_SPEED;
+    landing.at_way = -1;
+    if (!dungeon_player_fits(dmap, &landing)) return false;
+    *dp = landing;
+    player->facing = FACE_DOWN;
+    player->facing_locked = 0;
+    player->anim_step = 0;
+    player->anim_timer = 0;
+    player->is_moving = 0;
+    return true;
+}
+
 bool dungeon_player_fits(const DungeonMap* d, const DungeonPlayer* dp) {
     return d->type == DUNGEON_ENT_OASIS ? oasis_body_free(d, dp->x, dp->y) : can_occupy(d, dp->x, dp->y, tile_solid);
 }
@@ -6240,7 +6255,7 @@ bool dungeon_draw_swimmer(const DungeonMap* d, const DungeonPlayer* dp, const Pl
     if (d->type != DUNGEON_ENT_OASIS) return false;
     oasis_load(ren);
     if (!s_oasis.swim) return false;
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = world_ms();
     int f = player->is_moving ? (int)((now / 180) % 3) : (int)((now / 450) % 3);   // stroking, or treading water
     int col = (player->facing == FACE_LEFT ? 3 : 0) + f;
     SDL_Rect src = { col * 14, 0, 14, 20 };
@@ -6253,7 +6268,7 @@ void dungeon_draw_oxygen(SDL_Renderer* ren, float oxygen, int x, int y) {
     oasis_load(ren);
     if (!s_oasis.art) return;
     int full = (int)ceilf(oxygen * 8 - 0.001f);
-    bool flash = oxygen < 0.25f && (SDL_GetTicks() / 250) % 2;
+    bool flash = oxygen < 0.25f && (world_ms() / 250) % 2;
     const short* q = OASIS_PIECE[OP_HUD];
     for (int i = 0; i < 8; i++) {
         int frame = i < full ? 0 : 2;                         // a bubble, or where one was

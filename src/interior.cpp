@@ -30,15 +30,6 @@ static const PrebuiltInterior prebuilt_interiors[] = {
 
 static void interior_find_entry(InteriorMap* im);
 
-bool interior_book_spot(int interior_id, int* tx, int* ty)
-{
-    // On the book shop's counter (bookshop_design.py), taken from the floor
-    // before it.
-    if (interior_id != 1) return false;
-    *tx = 9; *ty = 8;
-    return true;
-}
-
 void interior_load(InteriorMap* im, int interior_id)
 {
     if (interior_id < 0 || interior_id >= NUM_INTERIORS) interior_id = 0;
@@ -168,7 +159,7 @@ void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
     player_read_input(player, in, &dx, &dy);
 
     float anim_speed;
-    player_gait(in, &ip->speed, &anim_speed);
+    player_gait(in, &ip->speed, &anim_speed, player);
 
     if (dx != 0.0f || dy != 0.0f) {
         float nx = ip->x + dx * ip->speed * dt;

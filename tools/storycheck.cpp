@@ -127,6 +127,32 @@ int main(int argc, char** argv) {
             assert(tilemap_is_walkable(&g_map, tx, ty) && village_at(&g_map, tx, ty) == v && "a villager stands on the street");
         }
         printf("  %d villages, every speaker on the street\n", g_map.num_villages);
+        // Town 0 has exactly its two standing residents, on clear ground,
+        // in addition to every village speaker even when all villages exist.
+        {
+            Player player = {};
+            StoryWhere where = { STATE_OVERWORLD, &g_map, -1, -1, &player, false };
+            StoryNpcPos people[32];
+            int count = story_npcs_here(where, people, 32), residents = 0, skins = 0;
+            for (int j = 0; j < count; j++) {
+                int skin = story_npc_sprite(people[j]);
+                if (skin < 0) continue;
+                residents++;
+                skins |= 1 << skin;
+                float fx = people[j].x + 14, fy = people[j].y + 39;
+                assert(!tilemap_pixel_solid(&g_map, fx - 6, fy));
+                assert(!tilemap_pixel_solid(&g_map, fx + 6, fy));
+                assert(fx >= g_map.towns[0].x * TILE_SIZE && fx < (g_map.towns[0].x + TOWN_W) * TILE_SIZE);
+                assert(fy >= g_map.towns[0].y * TILE_SIZE && fy < (g_map.towns[0].y + TOWN_H) * TILE_SIZE);
+                const char* line = story_npc_line(people[j], where);
+                assert(line && line[0]);
+            }
+            assert(residents == 2 && skins == 6 && count == g_map.num_villages + 2);
+            where.state = STATE_INTERIOR;
+            count = story_npcs_here(where, people, 32);
+            for (int j = 0; j < count; j++) assert(story_npc_sprite(people[j]) < 0);
+            printf("  town 0: farmer and glasses on clear ground; dialogue ready\n");
+        }
         for (int i = 0; i < STORY_BOSS_COUNT; i++) {
             BossSite s = g_map.boss_sites[i];
             if (i == STORY_SWARM) { assert(s.x < 0); continue; }

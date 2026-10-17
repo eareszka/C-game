@@ -182,6 +182,15 @@ void hurt_flash(SDL_Renderer* ren, float t, int w, int h);
 // enemy flashes when hit (the fights), and a chaser's mini as its fight starts.
 SDL_Texture* load_with_white(SDL_Renderer* ren, const char* path, SDL_Texture** white);
 
+// White encounter flashes, before the battle starts.
+constexpr float ACTOR_FLASH_STEP = 0.25f;
+constexpr float ACTOR_FLASH_ON = 0.16f;
+// The enemy's actual battle-start appearance: alternating horizontal strips.
+constexpr float ACTOR_APPEAR_T = 0.6f;
+void draw_actor_appearance(SDL_Renderer* ren, SDL_Texture* texture,
+                           const SDL_Rect& src, const SDL_Rect& dst,
+                           float progress, bool mirror = false);
+
 // The fade up from black and down to black, in seconds. Doors and stairs on
 // the map fade by the same clock (main.cpp).
 static const float BATTLE_FADE_T = 0.4f;

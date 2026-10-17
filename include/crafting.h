@@ -91,6 +91,14 @@ bool item_is_book(Item it);
 int item_limit(Item it);
 const char* item_description(Item it);
 int item_icon(Item it);
+// One health bar, capped at max HP; never spent at full health or on defeat.
+bool item_use_band_aid(Player* p);
+// Full recovery, with the same inventory and health guards as Band-Aids.
+bool item_use_medkit(Player* p);
+bool item_use_antidote(Player* p);
+bool item_equip_swift_boots(Player* p, bool equip);
+bool item_footwear_equipped(const Player* p, Item it);
+bool item_equip_footwear(Player* p, Item it, bool equip);
 // Where a thing that is not a material comes from, for the menu to say: "FOUND
 // IN CATACOMBS", "SOLD IN A TOWN BOOK SHOP". Null for a material.
 const char* item_source(Item it);

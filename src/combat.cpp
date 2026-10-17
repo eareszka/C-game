@@ -1,3 +1,4 @@
+#include "core.h"
 #include "fc_palette.h"
 #include "combat.h"
 #include "battle.h"     // weapon_profile
@@ -361,7 +362,7 @@ void weapon_swing_draw(const WeaponSwingState* ws, float px, float py,
     for (const ThrownObject& t : ws->thrown) {
         if (!t.live) continue;
         int step = weapon_throw_profile(t.weapon.type).pierces      ? pose_step(atan2f(t.dy, t.dx))
-                                                                    : (int)(SDL_GetTicks() / 60) & 7;
+                                                                    : (int)(world_ms() / 60) & 7;
         float half = HELD_LENGTH[t.weapon.type] * z;       // half its length at 2x
         draw_weapon_pose(ren, t.weapon, cam_screen_x(cam, t.x) - cosf(step * STEP) * half,
                          cam_screen_y(cam, t.y) - sinf(step * STEP) * half, step, z);
