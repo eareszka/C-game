@@ -1,5 +1,17 @@
 # Approved villagers
 
+Sleeping NPCs (girl, fisher, sailor fisher and woodcutter) now use exact edits
+of their approved side sprites, with the eyes hidden and two breathing cels
+per profile. `*_sleep_simple.aseprite` sources export to
+`assets/npcs/*_sleep_simple.png`; `tools/create_sleep_simple.lua` makes the
+local Aseprite edits without any paid generation, and
+`tools/verify_sleep_simple.py` checks both profiles against the original art.
+`include/npc_sleep.h` lays them face-up across the mattress at the same 2x
+pixel scale as standing NPCs. Only the chest moves, once every 900 ms; three
+staggered pixel Zs drift upward and fade. Both effects follow the saved world
+clock, so dialogue and other world pauses freeze them together. Walking sheets
+are unchanged. Earlier generated sleeping drafts are retained for reference.
+
 The northeast yellow-house fisher uses `fisher.png` and the new two-frame
 `fisher_fishing.png` while fishing east at the water ring. The animation's
 editable source is `art/npcs/fisher_fishing.aseprite`, created/exported with the

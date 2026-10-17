@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "girl-sleep_sprites_v7",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 316 characters>",
+      "format": "png"
+    },
+    "description": "<elided 385 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6944354b-d000-45d8-922b-45b132ec995e",
+    "generation_id": "f6b7bd45-6830-451c-b843-05c505635810"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "girl-sleep-side-pose.png"
+  ]
+}

@@ -1,5 +1,6 @@
 #ifndef CAMERA_H
 #define CAMERA_H
+#include <math.h>
 
 typedef struct Camera {
     float x;
@@ -36,5 +37,10 @@ int cam_py(const Camera* cam, float world_y);
 // rather than a world away. Everything that is not a tile is placed with these.
 int cam_screen_x(const Camera* cam, float world_x);
 int cam_screen_y(const Camera* cam, float world_y);
+
+// One art pixel is 2 world pixels (16 px cells drawn as 32). Sprites other
+// than the player stand on that grid, in world space, so they never sit half
+// an art pixel off the tiles however the camera scrolls.
+inline float art_snap(float world) { return floorf(world / 2) * 2; }
 
 #endif

@@ -1,5 +1,6 @@
 #include "woodcutter.h"
 #include "resident.h"
+#include "npc_sleep.h"
 #include "resident_path.h"
 #include "interior.h"
 #include "tilemap.h"
@@ -18,7 +19,6 @@ constexpr int HOME=6;                               // the tall red-brick house 
 constexpr int FIRST_TREE_X=80,FIRST_TREE_Y=66;      // town-0 tiles: right of the trail from the player's house
 constexpr float SPEED=90,HOURS2=2*3600.0f/48.0f;    // two game hours, in world-clock seconds
 constexpr float BEAT=.2f;                           // four chopping cels: ready, raised, impact, recovery
-constexpr int TREE_SEARCH=150,TREE_TRIES=8;         // tiles round the felled tree; paths tried, nearest first
 // Room 6 (house6_design.py): the floor before the sofa and before the bed.
 constexpr Point COUCH={251,218},BED={396,224};
 WoodcutterSave w={MAGIC,0,0,0,0,0,WC_CHOP,-1,FACE_RIGHT,0,0,-1,-1};
@@ -30,17 +30,18 @@ float retry=0;
 int last_beat=-1;
 SDL_Texture* art=nullptr;
 SDL_Texture* chop_art=nullptr;
+SDL_Texture* sleep_art=nullptr;
 
 bool outdoors(){return w.location<0;}
 bool tree_standing(const Tilemap* map,int tx,int ty) {
     return tx>=0&&ty>=0&&tx<MAP_WIDTH&&ty<MAP_HEIGHT&&map->overlay[ty][tx]==TILE_TREE;
 }
 // Where to stand to chop tree (tx, ty): left of it facing right (as at his
-// first tree), else right, below, above -- the first side the feet fit.
+// first tree), else right of it facing left -- the only two sides his swing
+// is drawn for. A tree with neither side open waits for a neighbour to fall.
 bool stand_spot(const Tilemap* map,int tx,int ty,Point* at,int* facing) {
-    const struct { float x,y; int face; } sides[4]={
-        {tx*32.0f-21,(ty+1)*32.0f-41,FACE_RIGHT},{(tx+1)*32.0f-7,(ty+1)*32.0f-41,FACE_LEFT},
-        {tx*32.0f+2,(ty+1)*32.0f-27,FACE_UP},{tx*32.0f+2,ty*32.0f-41,FACE_DOWN}};
+    const struct { float x,y; int face; } sides[2]={
+        {tx*32.0f-21,(ty+1)*32.0f-41,FACE_RIGHT},{(tx+1)*32.0f-7,(ty+1)*32.0f-41,FACE_LEFT}};
     for(const auto& s:sides)
         if(can_occupy(map,s.x,s.y,tilemap_pixel_solid)){*at={s.x,s.y};*facing=s.face;return true;}
     return false;
@@ -48,15 +49,19 @@ bool stand_spot(const Tilemap* map,int tx,int ty,Point* at,int* facing) {
 bool fits(const Tilemap* map,Point p) {
     return outdoors()?can_occupy(map,p.x,p.y,tilemap_pixel_solid):interior_feet_fit(&room,p.x,p.y);
 }
-// Every pixel of the way fits: he walks every one between.
+// Every position of the way fits: he stands at every one between.
 bool segment(const Tilemap* map,Point a,Point b) {
-    int n=std::max(1,(int)std::ceil(std::hypot(a.x-b.x,a.y-b.y)));
-    for(int i=0;i<=n;i++)if(!fits(map,{a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n}))return false;
-    return true;
+    return resident_way_fits(a,b,[&](Point p){return fits(map,p);});
 }
-// Indoors, the furniture-aware search the others use; outdoors, the trail.
+// Outdoors: from one tree to the next straight over the ground, anywhere
+// else along the trail -- and the trail when no straight way is found.
+bool route_to(const Tilemap* map,Point target,bool direct) {
+    return (direct&&resident_grass_route(map,{w.x,w.y},target,route,route_start,next))||
+           resident_trail_route(map,{w.x,w.y},target,route,route_start,next);
+}
+// Indoors, the furniture-aware search the others use.
 bool path(const Tilemap* map,Point target) {
-    if(outdoors())return resident_trail_route(map,{w.x,w.y},target,route,route_start,next);
+    if(outdoors())return route_to(map,target,w.phase==WC_TO_TREE);
     interior_load(&room,w.location);
     return resident_find_route({w.x,w.y},target,4,0,0,160,120,false,
         [&](Point p){return fits(map,p);},[&](Point a,Point b,bool){return segment(map,a,b);},
@@ -67,24 +72,34 @@ void phase(int p,bool keep_elapsed=false) {
     if(p==WC_CHOP){w.anim=0;last_beat=-1;}
     route.clear();next=0;retry=0;moving=false;
 }
-// The standing tree nearest (fx, fy) that he has a side to stand at; when
-// `walk`, also one he can walk to from where he is (the route is kept).
-// ponytail: tries the TREE_TRIES nearest; a farther reachable tree behind
-// that many unreachable ones reads as none left.
+// The standing tree nearest (fx, fy) on foot: a flood over the walkable
+// tiles from there, offering the trees beside each tile it reaches, nearest
+// first. Water stops it, so every tree on the island he can walk to is one
+// of his, and none beyond it is. With `walk`, the tree must be one he can
+// walk to from where he is now (the route is kept). False only when no tree
+// he could walk up to is left.
 bool find_tree(const Tilemap* map,int fx,int fy,bool walk) {
-    struct Candidate { int d2,x,y; };
-    std::vector<Candidate> found;
-    for(int y=std::max(0,fy-TREE_SEARCH);y<=std::min(MAP_HEIGHT-1,fy+TREE_SEARCH);y++)
-        for(int x=std::max(0,fx-TREE_SEARCH);x<=std::min(MAP_WIDTH-1,fx+TREE_SEARCH);x++)
-            if(map->overlay[y][x]==TILE_TREE)found.push_back({(x-fx)*(x-fx)+(y-fy)*(y-fy),x,y});
-    std::sort(found.begin(),found.end(),[](const Candidate& a,const Candidate& b){return a.d2<b.d2;});
-    int tries=0;
-    for(const auto& c:found) {
+    auto take=[&](int x,int y) {
         Point at;int face;
-        if(!stand_spot(map,c.x,c.y,&at,&face))continue;
-        if(walk&&!path(map,at)) {if(++tries>=TREE_TRIES)break;continue;}
-        w.tree_x=c.x;w.tree_y=c.y;
+        if(!tree_standing(map,x,y)||!stand_spot(map,x,y,&at,&face))return false;
+        if(walk&&!route_to(map,at,true))return false;
+        w.tree_x=x;w.tree_y=y;
         return true;
+    };
+    if(take(fx,fy))return true;   // waking: his tree is still there
+    std::vector<bool> seen((size_t)MAP_WIDTH*MAP_HEIGHT,false);
+    std::vector<int> queue={fy*MAP_WIDTH+fx};
+    seen[queue[0]]=true;
+    for(size_t head=0;head<queue.size();head++) {
+        int x0=queue[head]%MAP_WIDTH,y0=queue[head]/MAP_WIDTH;
+        const int dx[4]={1,-1,0,0},dy[4]={0,0,1,-1};
+        for(int d=0;d<4;d++) {
+            int x=x0+dx[d],y=y0+dy[d];
+            if(x<0||y<0||x>=MAP_WIDTH||y>=MAP_HEIGHT||seen[(size_t)y*MAP_WIDTH+x])continue;
+            seen[(size_t)y*MAP_WIDTH+x]=true;
+            if(map->overlay[y][x]==TILE_TREE){if(take(x,y))return true;}
+            else if(tilemap_is_walkable(map,x,y))queue.push_back(y*MAP_WIDTH+x);
+        }
     }
     return false;
 }
@@ -146,7 +161,9 @@ void woodcutter_tick(const Tilemap* map,float dt) {
     if(after_tree&&!tree_standing(map,w.tree_x,w.tree_y)){retarget(map);return;}
     switch(w.phase) {
     case WC_CHOP: {
-        tree_spot(map,&w.facing);
+        // Facing was set on arrival from the side he stands at; asking the
+        // tree again would pick its best side now, which a neighbour felled
+        // since can change while he still stands at the old one.
         w.elapsed+=dt;w.anim=std::fmod(w.anim+dt,4*BEAT);
         // One tree impact per swing, on the axe's contact cel.
         int beat=(int)(w.anim/BEAT);
@@ -226,11 +243,13 @@ const char* woodcutter_line() {
 bool woodcutter_art_init(SDL_Renderer* r) {
     woodcutter_art_free();art=IMG_LoadTexture(r,"assets/npcs/woodcutter.png");
     chop_art=IMG_LoadTexture(r,"assets/npcs/woodcutter_chop.png");
+    sleep_art=IMG_LoadTexture(r,"assets/npcs/woodcutter_sleep_simple.png");
     if(art)SDL_SetTextureScaleMode(art,SDL_ScaleModeNearest);
     if(chop_art)SDL_SetTextureScaleMode(chop_art,SDL_ScaleModeNearest);
-    return art!=nullptr&&chop_art!=nullptr;
+    if(sleep_art)SDL_SetTextureScaleMode(sleep_art,SDL_ScaleModeNearest);
+    return art!=nullptr&&chop_art!=nullptr&&sleep_art!=nullptr;
 }
-void woodcutter_art_free(){if(art)SDL_DestroyTexture(art);if(chop_art)SDL_DestroyTexture(chop_art);art=chop_art=nullptr;}
+void woodcutter_art_free(){if(art)SDL_DestroyTexture(art);if(chop_art)SDL_DestroyTexture(chop_art);if(sleep_art)SDL_DestroyTexture(sleep_art);art=chop_art=sleep_art=nullptr;}
 bool woodcutter_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* cam) {
     if(p.idx!=WOODCUTTER_ID)return false;
     if(!art||!chop_art)return true;
@@ -249,9 +268,8 @@ bool woodcutter_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* cam) {
              (int)(80*cam->zoom),(int)(80*cam->zoom)};
         SDL_RenderCopy(r,chop_art,&src,&dst);
     } else if(w.phase==WC_SLEEP) {   // lying on the bed
-        src={0,0,14,20};
-        dst={cam_screen_x(cam,406),cam_screen_y(cam,210),(int)(20*cam->zoom),(int)(32*cam->zoom)};
-        SDL_RenderCopyEx(r,art,&src,&dst,90,nullptr,SDL_FLIP_NONE);   // head to the headboard, right
+        float bx,by;npc_bed_centre(168,71,true,&bx,&by);   // room 6's bed (house6_design.py)
+        npc_sleep_draw(r,sleep_art,cam,bx,by,true,resident_save().world_seconds/48.0);
     } else if(w.phase==WC_COUCH) {   // standing on the seat, facing down, reads as sat
         src={0,0,14,20};dst.y=cam_screen_y(cam,p.y-22);
         SDL_RenderCopy(r,art,&src,&dst);

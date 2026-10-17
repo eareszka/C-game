@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "subject": "girl-sleep",
+  "generated": "2026-10-17T18:44:42Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "girl-sleep_sprites_v5",
+      "directory": "sprites/v5",
+      "files": [
+        "girl-sleep-pose.png"
+      ],
+      "ids": {
+        "background_job_id": "e76807eb-96a2-4405-8796-cc3925b4f665",
+        "generation_id": "4cfabf92-d903-4e64-8ab9-2dbc0be5ca58"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "girl-sleep_sprites_v7",
+      "directory": "sprites/v7",
+      "files": [
+        "girl-sleep-side-pose.png"
+      ],
+      "ids": {
+        "background_job_id": "6944354b-d000-45d8-922b-45b132ec995e",
+        "generation_id": "f6b7bd45-6830-451c-b843-05c505635810"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "girl-sleep_sprites_v8",
+      "directory": "sprites/v8",
+      "files": [
+        "girl-sleep-pixellab.png"
+      ],
+      "ids": {
+        "background_job_id": "dfa2a26c-c391-48a9-ba57-25b8c60e2b7c",
+        "generation_id": "7cbfe1f8-756b-4d2d-a538-3c8060a0dcba"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "girl-sleep_sprites_v9",
+      "directory": "sprites/v9",
+      "files": [
+        "girl-sleep-lying-pose.png"
+      ],
+      "ids": {
+        "background_job_id": "ed964a3c-682a-492a-8583-faa1880e0dbd",
+        "generation_id": "d2bb6b14-0c29-4ef8-b971-e4949842023d"
+      }
+    }
+  ]
+}

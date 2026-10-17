@@ -98,6 +98,8 @@ bool        story_npc_draw(const StoryNpcPos& p, SDL_Renderer* renderer, const C
 // stays that way (the walking resident turns again as she walks on).
 void        story_npc_face(const StoryNpcPos& p, float dx, float dy);
 int         story_npc_facing(const StoryNpcPos& p);   // FACE_*, FACE_DOWN until spoken to
+// Called while nothing is open (no speech, choices or shop): shopkeepers turn forward.
+void        story_npcs_idle();
 // The row of a 42x80 NPC sheet (assets/npcs) for a facing: down, up, left, right.
 inline int  npc_sheet_row(int facing) { return facing == FACE_UP ? 1 : facing == FACE_LEFT ? 2 : facing == FACE_RIGHT ? 3 : 0; }
 // Its column on walking beat `beat`, as player_frame steps: down and up go

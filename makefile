@@ -238,4 +238,10 @@ clean:
 	rm -f src/*.o src/*.d $(TARGET) tile_editor$(EXE) dngshot$(EXE) dngcensus$(EXE) spawncensus$(EXE) battlecensus$(EXE) oreprof$(EXE) dngportals$(EXE) shot$(EXE) craftcheck$(EXE) storycheck$(EXE) coastprobe$(EXE) sheetcensus$(EXE) cliffprobe$(EXE)
 	rm -rf src/sheettrace
 
+
+sailorfishercheck: sailorfishercheck$(EXE)
+
+sailorfishercheck$(EXE): tools/sailorfishercheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/sailorfishercheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 endif

@@ -1,7 +1,11 @@
 #include "resident.h"
+#include "npc_sleep.h"
 #include "resident_path.h"
 #include "grandmother.h"
+#include "mother.h"
+#include "bookshop.h"
 #include "fisher.h"
+#include "sailor_fisher.h"
 #include "woodcutter.h"
 #include "interior.h"
 #include "overworld.h"
@@ -21,6 +25,7 @@ constexpr float SPEED = 90.0f, FLASH_STEP = ACTOR_APPEAR_T;
 constexpr double ACTIVITY_HOUR = 3600;
 ResidentSave state = {0,0,336,224,0,RES_WORK,4,FACE_UP,0,MAGIC};
 SDL_Texture* art = nullptr;
+SDL_Texture* sleep_art = nullptr;
 using Point=ResidentPoint;
 // Stove -> one tile down -> left -> counter -> down -> right -> stove.
 const Point KITCHEN_LOOP[] = {{368,216},{368,248},{296,248},
@@ -102,7 +107,6 @@ bool path(const Tilemap* map, Point target) {
 }
 
 constexpr unsigned CLERK_MAGIC=0x434c4b31;
-const Point SHELF_STOPS[]={{235,196},{371,196},{434,308},{374,257}};
 const float SHELF_PAUSES[]={3,4,3,4};
 BookshopClerkSave clerk={CLERK_MAGIC,235,196,3,0,0,FACE_UP,1};
 InteriorMap clerk_room;
@@ -127,7 +131,7 @@ bool prepare_shelves() {
         float best=1e20f;bool found=false;
         for(int dy=-24;dy<=24;dy++)for(int dx=-24;dx<=24;dx++) {
             float d=(float)(dx*dx+dy*dy);
-            Point p={SHELF_STOPS[i].x+dx,SHELF_STOPS[i].y+dy};
+            Point p={BOOKSHOP_SHELF[i].x+dx,BOOKSHOP_SHELF[i].y+dy};
             if(d<=24*24 && d<best && interior_feet_fit(&clerk_room,p.x,p.y)) {
                 shelf_targets[i]=p;best=d;found=true;
             }
@@ -147,7 +151,7 @@ void clerk_tick(float dt) {
         return;
     }
     if(clerk_route.empty()) {
-        if(grandmother_reserved_shelf()==clerk.stop) {
+        if(bookshop_shelf_taken(clerk.stop,SHOP_CLERK)) {   // a shopper is there
             clerk.facing=FACE_UP;clerk.anim=0;return;
         }
         clerk_retry-=dt;if(clerk_retry>0)return;
@@ -168,7 +172,7 @@ Point destination(const Tilemap* map) {
     case RES_WORK: return KITCHEN_LOOP[state.kitchen_leg];
     case RES_LEAVE_HOME: return entry(4);
     case RES_TO_PARENTS: return outside(map,parents_door);
-    case RES_TO_BED: return {224,224}; // feet (238,258), just below left bed
+    case RES_TO_BED: return {426,232}; // feet (440,266), before the back bed (room 3, head against the right wall)
     case RES_LEAVE_PARENTS: return entry(3);
     case RES_TO_HOME: return outside(map,home_door);
     default: return {336,224}; // feet (350,258), between counter and stove
@@ -210,7 +214,9 @@ void resident_reset() {
     bookshop_clerk_reset();
     grandmother_reset();
     fisher_reset();
+    sailor_fisher_reset();
     woodcutter_reset();
+    mother_reset();
 }
 ResidentSave resident_save(){return state;}
 void resident_face(int facing){state.facing=facing;}
@@ -289,7 +295,9 @@ void resident_tick(const Tilemap* map,float dt) {
     grandmother_tick(map,dt);
     clerk_tick(dt);
     fisher_tick(map,dt);
+    sailor_fisher_tick(map,dt);
     woodcutter_tick(map,dt);
+    mother_tick(map,dt);
 }
 void resident_advance_hour(const Tilemap* map) {
     if(!map)return;
@@ -317,15 +325,18 @@ const char* resident_line() {
 bool resident_art_init(SDL_Renderer* r) {
     resident_art_free();
     art=IMG_LoadTexture(r,"assets/npcs/girl.png");
+    sleep_art=IMG_LoadTexture(r,"assets/npcs/girl_sleep_simple.png");
     clerk_art=IMG_LoadTexture(r,"assets/npcs/glasses.png");
     if(art)SDL_SetTextureScaleMode(art,SDL_ScaleModeNearest);
+    if(sleep_art)SDL_SetTextureScaleMode(sleep_art,SDL_ScaleModeNearest);
     if(clerk_art)SDL_SetTextureScaleMode(clerk_art,SDL_ScaleModeNearest);
-    return art != nullptr && clerk_art != nullptr && grandmother_art_init(r) && woodcutter_art_init(r) && fisher_art_init(r);
+    return art != nullptr && sleep_art != nullptr && clerk_art != nullptr && grandmother_art_init(r) && woodcutter_art_init(r) && mother_art_init(r) && fisher_art_init(r) && sailor_fisher_art_init(r);
 }
-void resident_art_free(){if(art)SDL_DestroyTexture(art);art=nullptr;if(clerk_art)SDL_DestroyTexture(clerk_art);clerk_art=nullptr;grandmother_art_free();woodcutter_art_free();fisher_art_free();}
+void resident_art_free(){if(art)SDL_DestroyTexture(art);art=nullptr;if(sleep_art)SDL_DestroyTexture(sleep_art);sleep_art=nullptr;if(clerk_art)SDL_DestroyTexture(clerk_art);clerk_art=nullptr;grandmother_art_free();woodcutter_art_free();mother_art_free();fisher_art_free();sailor_fisher_art_free();}
 bool resident_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
+    if(sailor_fisher_draw(p,r,c))return true;
     if(fisher_draw(p,r,c))return true;
-    if(grandmother_draw(p,r,c)||woodcutter_draw(p,r,c))return true;
+    if(grandmother_draw(p,r,c)||woodcutter_draw(p,r,c)||mother_draw(p,r,c))return true;
     if(p.idx==BOOKSHOP_CLERK_ID) {
         if(!clerk_art)return true;
         int col=clerk_moving&&!clerk_talking?npc_walk_col(clerk.facing,(int)(clerk.anim/.2f)):0;
@@ -347,9 +358,8 @@ bool resident_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
         return true;
     }
     if(state.phase==RES_SLEEP) {
-        src={0,0,14,20};
-        dst={cam_screen_x(c,232),cam_screen_y(c,204),(int)(20*c->zoom),(int)(32*c->zoom)};
-        SDL_RenderCopyEx(r,tex,&src,&dst,-90,nullptr,SDL_FLIP_NONE);
+        float bx,by;npc_bed_centre(174,76,true,&bx,&by);   // room 3's back bed (house3_design.py)
+        npc_sleep_draw(r,sleep_art,c,bx,by,true,state.world_seconds/48.0);
     } else SDL_RenderCopy(r,tex,&src,&dst);
     return true;
 }

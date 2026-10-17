@@ -2,9 +2,11 @@
 #include "core.h"
 #include "story.h"
 #include "fisher.h"
+#include "sailor_fisher.h"
 #include "resident.h"
 #include "grandmother.h"
 #include "woodcutter.h"
+#include "mother.h"
 #include "tilemap.h"
 #include "towns.h"      // TOWN_W/H: is a door in a town's footprint
 #include "interior.h"   // IMAP_TILE
@@ -320,12 +322,19 @@ static const StoryNpcConversation GRANDMA_CONVERSATION = {
     "Good day deer, what do you need?",{"What's there to do in town?","Where am I?","No"}
 };
 const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p) {
+    if(p.idx==SAILOR_FISHER_ID) {
+        if(sailor_fisher_view().phase==SF_SLEEP||!sailor_fisher_line())return nullptr;
+        static StoryNpcConversation sailor;
+        sailor={sailor_fisher_line(),{"What's there to do in town?","Where am I?","No"}};
+        return &sailor;
+    }
     if(p.idx==GRANDMOTHER_ID)return &GRANDMA_CONVERSATION;
     return p.idx==BOOKSHOP_CLERK_ID ? &CLERK_CONVERSATION : nullptr;
 }
 const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,int choice) {
     if(!story_npc_conversation(p))return nullptr;
     if(choice==0) {
+        if(p.idx==SAILOR_FISHER_ID)return "I usually spend a little time fishing by the river, then head home for a rest. But if you're looking for a little adventure, there's a small cave south of town and a graveyard to the northwest.";
         if(p.idx==GRANDMOTHER_ID)return "I usually pick out a good book from the library and go back home and read. But for a young one like yourself, there's a small cave south of town and a graveyard to the northwest, if you're looking for a little adventure.";
         return "Without these books you wouldn't be able to build anything or go anywhere. What's the point of these books is like asking what's the purpose of life.";
     }
@@ -338,9 +347,11 @@ void story_npc_resume(const StoryNpcPos& p) {
 }
 // Not while fading through a door.
 bool story_npc_can_talk(const StoryNpcPos& p) {
+    if(p.idx==SAILOR_FISHER_ID)return sailor_fisher_line()!=nullptr;
     if(p.idx==FISHER_ID)return fisher_line()!=nullptr;
     if(p.idx==GRANDMOTHER_ID)return grandmother_save().flash==0;
     if(p.idx==WOODCUTTER_ID)return woodcutter_save().flash==0;
+    if(p.idx==MOTHER_ID)return mother_save().flash==0;
     return true;
 }
 
@@ -400,14 +411,23 @@ void story_npc_face(const StoryNpcPos& p, float dx, float dy) {
     else if (p.idx == BOOKSHOP_CLERK_ID) bookshop_clerk_face(f);
     else if (p.idx == GRANDMOTHER_ID) grandmother_face(f);
     else if (p.idx == WOODCUTTER_ID) woodcutter_face(f);
+    else if (p.idx == MOTHER_ID) mother_face(f);
     else if (p.idx >= 0 && p.idx < NPC_COUNT) npc_facing[p.idx] = f;
 }
 
+// Nothing open: shopkeepers face forward again (they turn to the player
+// only while being spoken to); the rest keep facing where they turned.
+void story_npcs_idle() {
+    for (int i = 0; i < NPC_COUNT; i++) if (NPCS[i].shop) npc_facing[i] = FACE_DOWN;
+}
+
 int story_npc_facing(const StoryNpcPos& p) {
+    if(p.idx==SAILOR_FISHER_ID)return sailor_fisher_view().facing;
     if(p.idx==FISHER_ID)return fisher_view().facing;
     if(p.idx==BOOKSHOP_CLERK_ID)return bookshop_clerk_facing();
     if(p.idx==GRANDMOTHER_ID)return grandmother_facing();
     if(p.idx==WOODCUTTER_ID)return woodcutter_facing();
+    if(p.idx==MOTHER_ID)return mother_facing();
     return p.idx >= 0 && p.idx < NPC_COUNT ? npc_facing[p.idx] : FACE_DOWN;
 }
 
@@ -457,10 +477,12 @@ void story_village_npc_tile(const Tilemap* map, int village, int* tx, int* ty) {
 int story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max) {
     int n = 0;
     if (max > 0 && resident_here(w, &out[n])) ++n;
+    if (n < max && sailor_fisher_here(w, &out[n])) ++n;
     if (n < max && fisher_here(w, &out[n])) ++n;
     if (n < max && bookshop_clerk_here(w, &out[n])) ++n;
     if (n < max && grandmother_here(w, &out[n])) ++n;
     if (n < max && woodcutter_here(w, &out[n])) ++n;
+    if (n < max && mother_here(w, &out[n])) ++n;
     for (int i = 0; i < NPC_COUNT && n < max; i++) {
         const StoryNpc& p = NPCS[i];
         if (p.place == SP_INTERIOR || p.place == SP_DEBUG) {
@@ -484,6 +506,7 @@ int story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max) {
             }
         }
     }
+    for (int i = 0; i < n; i++) { out[i].x = art_snap(out[i].x); out[i].y = art_snap(out[i].y); }   // on the tiles' art grid
     return n;
 }
 
@@ -669,9 +692,11 @@ const char* story_note_take(int idx, const StoryWhere& w) {
 }
 
 const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
+    if(pos.idx==SAILOR_FISHER_ID)return sailor_fisher_line();
     if(pos.idx==FISHER_ID)return fisher_line();
     if (pos.idx == RESIDENT_STORY_ID) return resident_line();
     if (pos.idx == WOODCUTTER_ID) return woodcutter_line();
+    if (pos.idx == MOTHER_ID) return mother_line();
     if (const auto* conversation=story_npc_conversation(pos))return conversation->prompt;
     static char buf[512];
     const StoryNpc& p = NPCS[pos.idx];

@@ -798,7 +798,7 @@ int main(int argc, char *argv[])
         int id = ch.enemy_id, face = ch.face;
         static const int SPIN[4] = { 0, 3, 1, 2 };                  // D R U L
         if (id == 16) face = SPIN[world_ms() / 120 % 4];        // the Kamaitachi spins, whichever way it goes
-        float wx = ch.x, wy = ch.y;
+        float wx = art_snap(ch.x), wy = art_snap(ch.y);   // on the tiles' art grid
         bool running = ch.chasing && ch.aggro_timer <= 0.0f;
         bool moving = ch.chasing ? running && chase_speed(id, ch.t) != 0.0f : ch.pause <= 0.0f;
         int frame = running ? chase_frame(id, ch.t) : -1;
@@ -1369,6 +1369,7 @@ int main(int argc, char *argv[])
                 room_t < 0.0f && pre_battle_timer < 0.0f && post_battle_t <= 0.0f)
                 player_poison_tick(&player, dt);
             world_advance(dt);
+            story_npcs_idle();   // the talk is over: shopkeepers face forward
             if (post_battle_t > 0.0f) post_battle_t -= dt;
             drown_t += dt;
             if (state == STATE_DUNGEON && dmap.type == DUNGEON_ENT_OASIS) {

@@ -1,0 +1,84 @@
+appearance: original colors, frozen walking pose, reverse dissolve and forward appearance checked
+INFO: Sailor fisher: planning town 0 shoreline route
+grandmother phase 0 room 5 at 292 216
+grandmother phase 1 room 5 at 292 216
+grandmother phase 2 room -1 at 47906 48580
+grandmother phase 3 room 1 at 153 256
+grandmother phase 4 room 1 at 153 256
+grandmother phase 5 room 1 at 374 257
+grandmother phase 6 room 1 at 374 257
+grandmother phase 7 room 1 at 293 292
+grandmother phase 8 room 1 at 293 292
+grandmother phase 9 room -1 at 47842 48292
+grandmother phase 10 room 5 at 153 256
+grandmother phase 0 room 5 at 292 216
+grandmother phase 1 room 5 at 292 216
+grandmother phase 2 room -1 at 47906 48580
+grandmother phase 3 room 1 at 153 256
+grandmother phase 4 room 1 at 153 256
+grandmother phase 5 room 1 at 434 308
+grandmother phase 6 room 1 at 434 308
+grandmother phase 7 room 1 at 293 292
+grandmother phase 8 room 1 at 293 292
+grandmother phase 9 room -1 at 47842 48292
+grandmother phase 10 room 5 at 153 256
+grandmother phase 0 room 5 at 292 216
+grandmother: two complete couch/shop/couch loops; all outdoor feet on trail; reservations, 30-game-minute rest, 5-second activities, dialogue and every-phase save/load checked
+woodcutter phase 0 room -1 at 48043 47607
+woodcutter phase 2 room -1 at 48043 47607
+woodcutter phase 3 room 6 at 153 256
+woodcutter phase 4 room 6 at 396 224
+woodcutter phase 5 room 6 at 396 224
+woodcutter phase 6 room -1 at 48354 48292
+woodcutter phase 0 room -1 at 48043 47607
+woodcutter: tree felled at 1502,1488 -> next 1503,1488, walked 32 px for 32 straight, retarget 3.1 ms
+woodcutter: only tree left 1484,1575 (89 tiles off, the island's farthest) -> he heads for it
+woodcutter: first tree, a whole day at two-hour chop and sleep, tree felled -> straight to the nearest, any island tree is his, every island tree gone -> sofa then bed, save/load each phase
+mother phase 0 room 3 at 216 220
+mother phase 1 room 3 at 230 220
+mother phase 2 room -1 at 49218 48036
+mother phase 3 room 1 at 153 256
+mother phase 4 room 1 at 153 256
+mother phase 5 room 1 at 235 196
+mother phase 6 room 1 at 235 196
+mother phase 8 room 1 at 293 292
+mother phase 9 room 1 at 293 292
+mother phase 10 room -1 at 47842 48292
+mother phase 11 room 3 at 153 256
+mother phase 0 room 3 at 216 220
+mother phase 1 room 3 at 230 220
+mother phase 2 room -1 at 49218 48036
+mother phase 3 room 1 at 153 256
+mother phase 4 room 1 at 153 256
+mother phase 5 room 1 at 235 196
+mother phase 6 room 1 at 235 196
+mother phase 8 room 1 at 293 292
+mother phase 9 room 1 at 293 292
+mother phase 10 room -1 at 47842 48292
+mother phase 11 room 3 at 153 256
+mother phase 0 room 3 at 216 220
+mother: two cycles (75 s kitchen, 5 s browse/buy), shelves and desk never shared, queued behind the grandmother, save/load each phase
+bookshop shelf 0: (235,196), pause 2.95
+bookshop shelf 1: (371,196), pause 4.00
+bookshop shelf 2: (434,308), pause 3.00
+bookshop shelf 3: (374,257), pause 4.00
+bookshop: three loops, shelves, dialogue topics, location resolution, offscreen tick, clock, hour skip and save/load checked
+kitchen: all six walking legs collision-checked; hourly skips cross departure, sleep and return
+seed 387 world 2.4 phase 0 room 4 position 340.4 222.9
+seed 387 world 3600.0 phase 1 room 4 position 368.0 216.0
+seed 387 world 3746.4 phase 2 room -1 position 47682.0 48580.0
+seed 387 world 4742.4 phase 3 room 3 position 153.0 256.0
+seed 387 world 4917.6 phase 4 room 3 position 426.0 232.0
+seed 387 world 8517.6 phase 5 room 3 position 426.0 232.0
+seed 387 world 8692.8 phase 6 room -1 position 49218.0 48036.0
+seed 387 world 9698.4 phase 7 room 4 position 153.0 256.0
+seed 387 world 9828.0 phase 0 room 4 position 336.0 224.0
+seed 387 world 13428.0 phase 1 room 4 position 368.0 216.0
+seed 387 world 13574.4 phase 2 room -1 position 47682.0 48580.0
+seed 387 world 14570.4 phase 3 room 3 position 153.0 256.0
+seed 387 world 14745.6 phase 4 room 3 position 426.0 232.0
+seed 387 world 18345.6 phase 5 room 3 position 426.0 232.0
+seed 387 world 18520.8 phase 6 room -1 position 49218.0 48036.0
+seed 387 world 19526.4 phase 7 room 4 position 153.0 256.0
+seed 387 world 19656.0 phase 0 room 4 position 336.0 224.0
+PASS: two cycles, collision, 30-minute clock, dialogue, location identity and save/load (seed 387)

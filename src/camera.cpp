@@ -2,6 +2,9 @@
 #include "tilemap.h"   // wrap_dpx/wrap_dpy
 #include <math.h>
 
+// Not snapped to the art grid: a camera stepping whole art pixels stutters
+// (walking moves 1.4-4 world px a frame), so it scrolls by screen pixels and
+// the other sprites are put on the grid instead (art_snap, camera.h).
 static int to_screen(float world, float zoom) {
     return (int)floorf(world * zoom);
 }

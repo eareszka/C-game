@@ -1,5 +1,6 @@
 #include "fisher.h"
 #include "resident.h"
+#include "npc_sleep.h"
 #include "resident_path.h"
 #include "interior.h"
 #include "overworld.h"
@@ -17,7 +18,7 @@ constexpr double CYCLE=43200,SLEEP=3600,SPEED=90,RATE=48;
 constexpr Point BED={400,224};
 FisherSave saved={MAGIC,-1};
 FisherView view={BED.x,BED.y,1,FI_SLEEP,2,FACE_RIGHT,0,0,0,0};
-SDL_Texture *art=nullptr,*fishing=nullptr;
+SDL_Texture *art=nullptr,*fishing=nullptr,*sleep_art=nullptr;
 std::vector<Point> indoor,outdoor;
 double durations[10]={},inside_length=0,outside_length=0;
 const Tilemap* planned_map=nullptr;
@@ -47,11 +48,7 @@ bool prepare(const Tilemap* map) {
     Point water={(float)(map->towns[0].x*TILE_SIZE+4763),(float)(map->towns[0].y*TILE_SIZE+1399)};
     auto find=[&](Point start,Point target,bool outside,std::vector<Point>& route) {
         auto fits=[&](Point p){return outside?can_occupy(map,p.x,p.y,tilemap_pixel_solid):interior_feet_fit(&room,p.x,p.y);};
-        auto segment=[&](Point a,Point b,bool) {
-            int n=std::max(1,(int)std::ceil(std::hypot(b.x-a.x,b.y-a.y)/2));
-            for(int i=0;i<=n;i++)if(!fits({a.x+(b.x-a.x)*i/n,a.y+(b.y-a.y)*i/n}))return false;
-            return true;
-        };
+        auto segment=[&](Point a,Point b,bool){return resident_way_fits(a,b,fits);};
         Point origin;size_t next;int step=outside?8:4;
         int ox=outside?map->towns[0].x*TILE_SIZE:0,oy=outside?map->towns[0].y*TILE_SIZE:0;
         std::function<float(Point)> weight=outside?std::function<float(Point)>([&](Point p){return resident_on_trail(map,p.x,p.y,true)?1.0f:6.0f;}):nullptr;
@@ -150,18 +147,20 @@ bool fisher_here(const StoryWhere& w,StoryNpcPos* out) {
 bool fisher_art_init(SDL_Renderer* r) {
     fisher_art_free();art=IMG_LoadTexture(r,"assets/npcs/fisher.png");
     fishing=IMG_LoadTexture(r,"assets/npcs/fisher_fishing.png");
+    sleep_art=IMG_LoadTexture(r,"assets/npcs/fisher_sleep_simple.png");
     if(art)SDL_SetTextureScaleMode(art,SDL_ScaleModeNearest);
     if(fishing)SDL_SetTextureScaleMode(fishing,SDL_ScaleModeNearest);
-    return art&&fishing;
+    if(sleep_art)SDL_SetTextureScaleMode(sleep_art,SDL_ScaleModeNearest);
+    return art&&fishing&&sleep_art;
 }
-void fisher_art_free(){if(art)SDL_DestroyTexture(art);if(fishing)SDL_DestroyTexture(fishing);art=fishing=nullptr;}
+void fisher_art_free(){if(art)SDL_DestroyTexture(art);if(fishing)SDL_DestroyTexture(fishing);if(sleep_art)SDL_DestroyTexture(sleep_art);art=fishing=sleep_art=nullptr;}
 bool fisher_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
     if(p.idx!=FISHER_ID)return false;if(!art||!fishing)return true;
     SDL_Rect src={view.frame*14,npc_sheet_row(view.facing)*20,14,20};
     SDL_Rect dst={cam_screen_x(c,p.x),cam_screen_y(c,p.y),(int)(28*c->zoom),(int)(40*c->zoom)};
     if(view.phase==FI_SLEEP) {
-        src={0,0,14,20};dst={cam_screen_x(c,414),cam_screen_y(c,204),(int)(20*c->zoom),(int)(32*c->zoom)};
-        SDL_RenderCopyEx(r,art,&src,&dst,90,nullptr,SDL_FLIP_NONE);
+        float bx,by;npc_bed_centre(168,71,true,&bx,&by);   // room 2's bed (house2_design.py)
+        npc_sleep_draw(r,sleep_art,c,bx,by,true,resident_save().world_seconds/48.0);
     } else if(view.phase==FI_FISH) {
         src={view.frame*40,0,40,28};dst.y=cam_screen_y(c,p.y-16);dst.w=(int)(80*c->zoom);dst.h=(int)(56*c->zoom);
         SDL_RenderCopy(r,fishing,&src,&dst);

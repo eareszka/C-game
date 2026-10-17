@@ -210,6 +210,19 @@ def bed(r, x0, fy, flip=False):
     r.obox(bx, fy, bw, dep, high, lambda a, z: 'm' if z < 2 or z == 3 else 'R', top, 'R', flip=flip)
 
 
+def bed_against_wall(r, fy, side):
+    """A bed with its head against a side wall, its front row fy: the
+    headboard stands on that wall's floor line at the bed's front row and the
+    bed runs out into the room (the user's rule, room 3's two beds). Right
+    wall: the head end's columns start on the line; left wall, mirrored: the
+    headboard's outer column ends on it."""
+    w = BED[0] - 8
+    if side == 'right':
+        bed(r, fy - BACK + BX1 - (w - 2), fy, flip=True)
+    else:
+        bed(r, BX0 - (fy - BACK) - 1, fy)
+
+
 def dresser(r, x0):
     """Against the back wall: a wooden chest of three drawers -- each a panel
     lit along its top edge, a lit knob -- under a lit top."""

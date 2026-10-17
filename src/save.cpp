@@ -8,6 +8,8 @@
 #include "resident.h"
 #include "grandmother.h"
 #include "fisher.h"
+#include "sailor_fisher.h"
+#include "mother.h"
 #include "woodcutter.h"
 #include "battle.h"     // migrate the old white-flash timer to appearance timing
 #include <stddef.h>
@@ -16,7 +18,7 @@
 
 static const char* SAVE_PATH = "save.dat";
 static const char* SAVE_TMP  = "save.tmp";
-enum { SAVE_VERSION = 13 };
+enum { SAVE_VERSION = 15 };
 
 template<class P> struct SaveRecord {
     char     magic[4];     // "FCC1"
@@ -75,6 +77,10 @@ bool save_write(unsigned seed, float x, float y, const Player& p,
     ok = fwrite(&woodcutter,sizeof(woodcutter),1,f)==1 && ok;
     FisherSave fisher=fisher_save();
     ok = fwrite(&fisher,sizeof(fisher),1,f)==1 && ok;
+    SailorFisherSave sailor=sailor_fisher_save();
+    ok = fwrite(&sailor,sizeof(sailor),1,f)==1 && ok;
+    MotherSave mother=mother_save();
+    ok = fwrite(&mother,sizeof(mother),1,f)==1 && ok;
     ok = fclose(f) == 0 && ok;
     if (!ok) { remove(SAVE_TMP); return false; }
     remove(SAVE_PATH);   // rename does not replace on Windows
@@ -108,6 +114,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     GrandmotherSave grandmother = {};
     WoodcutterSave woodcutter = {};
     FisherSave fisher = {};
+    SailorFisherSave sailor = {};
+    MotherSave mother = {};
     if (valid && header.version==2 && header.player_size==sizeof(LegacyPlayerV2)) {
         static LegacySaveFile old;
         valid=read_record(f,old,true);
@@ -153,6 +161,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
         if(valid && header.version>=11)valid=fread(&grandmother,sizeof(grandmother),1,f)==1;
         if(valid && header.version>=12)valid=fread(&woodcutter,sizeof(woodcutter),1,f)==1;
         if(valid && header.version>=13)valid=fread(&fisher,sizeof(fisher),1,f)==1;
+        if(valid && header.version>=14)valid=fread(&sailor,sizeof(sailor),1,f)==1;
+        if(valid && header.version>=15)valid=fread(&mother,sizeof(mother),1,f)==1;
         valid=valid && fgetc(f)==EOF;
         // V7's final four bytes were padding, not a saved pause timer.
         if(header.version<8) resident.kitchen_pause=0;
@@ -164,6 +174,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     if(header.version>=11 && !grandmother_valid(grandmother))return false;
     if(header.version>=12 && !woodcutter_valid(woodcutter))return false;
     if(header.version>=13 && (!fisher_valid(fisher)||fisher.epoch>resident.world_seconds))return false;
+    if(header.version>=14 && (!sailor_fisher_valid(sailor)||sailor.epoch>resident.world_seconds))return false;
+    if(header.version>=15 && !mother_valid(mother))return false;
     if (header.version>=6) {
         if (!resident_restore(resident)) return false;
     } else resident_reset();
@@ -171,6 +183,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     if(header.version>=11)grandmother_restore(grandmother);
     if(header.version>=12)woodcutter_restore(woodcutter);
     if(header.version>=13)fisher_restore(fisher);
+    if(header.version>=14)sailor_fisher_restore(sailor);
+    if(header.version>=15)mother_restore(mother);
     *seed=s.seed; *x=s.x; *y=s.y; *p=s.player;
     int snapshot[ITEM_COUNT]={}; items_note_gains(p,snapshot,true);
     if (!item_footwear_equipped(p,ITEM_SWIFT_BOOTS) && !item_footwear_equipped(p,ITEM_DIVING_FINS)) p->footwear=FOOTWEAR_NONE;

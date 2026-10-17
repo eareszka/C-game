@@ -1,7 +1,10 @@
 #include "resident.h"
 #include "fisher.h"
+#include "sailor_fisher.h"
 #include "grandmother.h"
 #include "woodcutter.h"
+#include "mother.h"
+#include "bookshop.h"
 #include "tilemap.h"
 #include "interior.h"
 #include "collision.h"
@@ -275,6 +278,7 @@ static void woodcutter_checks() {
         if(before.phase==WC_SLEEP)sleep+=.05f;
         resident_tick(&map,.05f);auto s=woodcutter_save();
         assert(woodcutter_valid(s));phases|=1u<<s.phase;
+        if(s.phase==WC_CHOP)assert(s.facing==FACE_LEFT||s.facing==FACE_RIGHT);   // the only swings drawn
         if(s.phase!=last){printf("woodcutter phase %d room %d at %.0f %.0f\n",s.phase,s.location,s.x,s.y);last=s.phase;}
         if(s.location<0&&!can_occupy(&map,s.x,s.y,tilemap_pixel_solid)){printf("woodcutter off ground at %.1f %.1f phase %d (from %.1f %.1f)\n",s.x,s.y,s.phase,before.x,before.y);assert(0);}
         if(s.location==before.location&&s.flash==0)assert(std::hypot(s.x-before.x,s.y-before.y)<=90*.05f+.02f);
@@ -285,37 +289,125 @@ static void woodcutter_checks() {
     }
     assert(day);
     for(int ph:{WC_CHOP,WC_TO_HOME,WC_TO_BED,WC_SLEEP,WC_LEAVE_HOME,WC_TO_WORK})assert(phases&(1u<<ph));
-    // His tree felled while he chops: on to the nearest standing tree he can reach, the chopping clock kept.
+    // His tree felled while he chops: straight on to the nearest standing tree, the chopping clock kept.
     for(int i=0;i<200;i++)resident_tick(&map,.05f);
     auto chopping=woodcutter_save();assert(chopping.phase==WC_CHOP&&chopping.elapsed>9);
     map.overlay[chopping.tree_y][chopping.tree_x]=0;
-    resident_tick(&map,.05f);auto moved=woodcutter_save();
+    Uint64 t0=SDL_GetPerformanceCounter();resident_tick(&map,.05f);
+    double retarget_ms=(SDL_GetPerformanceCounter()-t0)*1000.0/SDL_GetPerformanceFrequency();
+    auto moved=woodcutter_save();
     assert(moved.phase==WC_TO_TREE&&!strcmp(woodcutter_line(),"Stop targeting my trees."));
     assert(moved.tree_x!=chopping.tree_x||moved.tree_y!=chopping.tree_y);
     assert(map.overlay[moved.tree_y][moved.tree_x]==TILE_TREE&&std::fabs(moved.elapsed-chopping.elapsed)<.2f);
-    int d2=(moved.tree_x-chopping.tree_x)*(moved.tree_x-chopping.tree_x)+(moved.tree_y-chopping.tree_y)*(moved.tree_y-chopping.tree_y);
-    assert(d2<=8);
-    for(int i=0;i<2000&&woodcutter_save().phase!=WC_CHOP;i++)resident_tick(&map,.05f);
-    assert(woodcutter_save().phase==WC_CHOP);
-    printf("woodcutter: tree felled at %d,%d -> next %d,%d\n",chopping.tree_x,chopping.tree_y,moved.tree_x,moved.tree_y);
-    map.overlay[chopping.tree_y][chopping.tree_x]=TILE_TREE;
+    float walked=0,px=moved.x,py=moved.y;
+    for(int i=0;i<2000&&woodcutter_save().phase!=WC_CHOP;i++){resident_tick(&map,.05f);auto s=woodcutter_save();walked+=std::hypot(s.x-px,s.y-py);px=s.x;py=s.y;}
+    auto arrived=woodcutter_save();assert(arrived.phase==WC_CHOP&&(arrived.facing==FACE_LEFT||arrived.facing==FACE_RIGHT));
+    float straight=std::hypot(arrived.x-chopping.x,arrived.y-chopping.y);
+    printf("woodcutter: tree felled at %d,%d -> next %d,%d, walked %.0f px for %.0f straight, retarget %.1f ms\n",
+           chopping.tree_x,chopping.tree_y,moved.tree_x,moved.tree_y,walked,straight,retarget_ms);
+    assert(walked<=straight*1.5f+8&&retarget_ms<50);   // straight there, not by the trail
+    {   // Chopping from a tree's right side while its left (his first choice) is
+        // free -- a neighbour felled after he arrived: he keeps facing the tree.
+        auto s=woodcutter_save();s.phase=WC_CHOP;s.flash=0;s.transfer_pending=0;
+        s.x=(s.tree_x+1)*32.0f-7;s.y=(s.tree_y+1)*32.0f-41;s.facing=FACE_LEFT;
+        assert(can_occupy(&map,s.tree_x*32.0f-21,(s.tree_y+1)*32.0f-41,tilemap_pixel_solid));   // left side free
+        assert(woodcutter_restore(s));
+        for(int i=0;i<10;i++)resident_tick(&map,.05f);
+        assert(woodcutter_save().phase==WC_CHOP&&woodcutter_save().facing==FACE_LEFT);
+    }
+    // Every tree on the island is his: with all but one far one felled, he walks to that one.
+    static decltype(map.overlay) kept;memcpy(kept,map.overlay,sizeof(kept));
+    auto here=woodcutter_save();int far_x=-1,far_y=-1;
+    float far_d=0;
+    {   // the island tree farthest from him that he can walk to
+        std::vector<bool> seen((size_t)MAP_WIDTH*MAP_HEIGHT);std::vector<int> q={here.tree_y*MAP_WIDTH+here.tree_x};seen[q[0]]=true;
+        for(size_t h=0;h<q.size();h++)for(int d=0;d<4;d++){
+            int x=q[h]%MAP_WIDTH+(d==0)-(d==1),y=q[h]/MAP_WIDTH+(d==2)-(d==3);
+            if(x<0||y<0||x>=MAP_WIDTH||y>=MAP_HEIGHT||seen[(size_t)y*MAP_WIDTH+x])continue;seen[(size_t)y*MAP_WIDTH+x]=true;
+            if(map.overlay[y][x]==TILE_TREE){float dd=std::hypot(x-here.tree_x,y-here.tree_y);if(dd>far_d){far_d=dd;far_x=x;far_y=y;}}
+            else if(tilemap_is_walkable(&map,x,y))q.push_back(y*MAP_WIDTH+x);
+        }
+    }
+    assert(far_d>20);
+    {
+        for(int y=0;y<MAP_HEIGHT;y++)for(int x=0;x<MAP_WIDTH;x++)if(map.overlay[y][x]==TILE_TREE&&(x!=far_x||y!=far_y))map.overlay[y][x]=0;
+        resident_tick(&map,.05f);auto s=woodcutter_save();
+        assert(s.phase==WC_TO_TREE&&s.tree_x==far_x&&s.tree_y==far_y);
+        printf("woodcutter: only tree left %d,%d (%.0f tiles off, the island's farthest) -> he heads for it\n",far_x,far_y,far_d);
+    }
     // Every tree on the island gone: home to the sofa for chopping time, then bed.
-    static uint16_t kept[301][301];auto here=woodcutter_save();
-    for(int y=0;y<301;y++)for(int x=0;x<301;x++){int tx=here.tree_x-150+x,ty=here.tree_y-150+y;
-        kept[y][x]=map.overlay[ty][tx];if(kept[y][x]==TILE_TREE)map.overlay[ty][tx]=0;}
-    resident_tick(&map,.05f);assert(woodcutter_save().phase==WC_NO_TREES_HOME);
+    for(int y=0;y<MAP_HEIGHT;y++)for(int x=0;x<MAP_WIDTH;x++)if(map.overlay[y][x]==TILE_TREE)map.overlay[y][x]=0;
+    for(int i=0;i<2&&woodcutter_save().phase!=WC_NO_TREES_HOME;i++)resident_tick(&map,.05f);
+    assert(woodcutter_save().phase==WC_NO_TREES_HOME);
     assert(!strcmp(woodcutter_line(),"Well, look at that. You ruined all my fun. Now there's nothing left for me to chop away at. Get lost, kid."));
     unsigned seen=0;
-    for(int i=0;i<20000;i++){resident_tick(&map,.05f);auto s=woodcutter_save();seen|=1u<<s.phase;if(s.phase==WC_SLEEP&&(seen&(1u<<WC_COUCH)))break;}
+    for(int i=0;i<40000;i++){resident_tick(&map,.05f);auto s=woodcutter_save();seen|=1u<<s.phase;if(s.phase==WC_SLEEP&&(seen&(1u<<WC_COUCH)))break;}
     assert(seen&(1u<<WC_TO_COUCH)&&seen&(1u<<WC_COUCH)&&seen&(1u<<WC_COUCH_TO_BED)&&woodcutter_save().phase==WC_SLEEP);
     for(int i=0;i<4000&&woodcutter_save().phase==WC_SLEEP;i++)resident_tick(&map,.05f);
     assert(woodcutter_save().phase==WC_TO_COUCH);   // woke with still no trees
-    for(int y=0;y<301;y++)for(int x=0;x<301;x++)map.overlay[here.tree_y-150+y][here.tree_x-150+x]=kept[y][x];
+    memcpy(map.overlay,kept,sizeof(kept));
     resident_reset();
-    puts("woodcutter: first tree, a whole day at two-hour chop and sleep, tree felled -> next nearest, no trees -> sofa then bed, save/load each phase");
+    puts("woodcutter: first tree, a whole day at two-hour chop and sleep, tree felled -> straight to the nearest, any island tree is his, every island tree gone -> sofa then bed, save/load each phase");
+}
+
+// The girl's mother: kitchen an hour, a free shelf, the desk (in line behind
+// the grandmother when she has it), home; two cycles, saved at every phase.
+static void mother_checks() {
+    resident_reset();resident_tick(&map,.05f);
+    auto m0=mother_save();assert(m0.phase==MO_KITCHEN&&m0.location==3&&mother_valid(m0));
+    unsigned phases=0;int cycles=0,last=-1;float kitchen=0,browse=0,buy=0;bool queued=false;
+    for(int frame=0;frame<40000&&cycles<2;frame++) {
+        auto before=mother_save();
+        if(before.phase==MO_KITCHEN)kitchen+=.05f;
+        if(before.phase==MO_BROWSE)browse+=.05f;
+        if(before.phase==MO_BUY)buy+=.05f;
+        resident_tick(&map,.05f);auto s=mother_save();
+        assert(mother_valid(s));phases|=1u<<s.phase;
+        if(s.phase!=last){printf("mother phase %d room %d at %.0f %.0f\n",s.phase,s.location,s.x,s.y);last=s.phase;}
+        if(s.location<0)assert(can_occupy(&map,s.x,s.y,tilemap_pixel_solid));
+        else {InteriorMap im;interior_load(&im,s.location);assert(interior_feet_fit(&im,s.x,s.y));}
+        if(s.location==before.location&&s.flash==0)assert(std::hypot(s.x-before.x,s.y-before.y)<=90*.05f+.02f);
+        if(before.phase==MO_KITCHEN&&s.phase==MO_LEAVE_HOME){assert(kitchen>=74.9f&&kitchen<75.2f);kitchen=0;}
+        if(before.phase==MO_BROWSE&&s.phase!=MO_BROWSE){assert(browse>=4.99f&&browse<5.1f);browse=0;}
+        if(before.phase==MO_BUY&&s.phase==MO_LEAVE_SHOP){assert(buy>=4.99f&&buy<5.1f);buy=0;}
+        if(before.phase==MO_TO_KITCHEN&&s.phase==MO_KITCHEN)cycles++;
+        // never two at one shelf, never two at the desk
+        auto g=grandmother_save();auto c=bookshop_clerk_save();
+        if(s.phase==MO_BROWSE){
+            assert(!(g.phase==GM_SEARCH&&g.shelf==s.shelf));
+            assert(!(c.browsing&&c.stop==s.shelf));
+        }
+        if(s.phase==MO_BUY)assert(g.phase!=GM_DESK);
+        queued|=s.phase==MO_QUEUE;
+        if(s.phase!=before.phase){MotherSave copy=s;assert(mother_restore(copy));auto back=mother_save();assert(!memcmp(&back,&s,sizeof(s)));}
+    }
+    assert(cycles==2);
+    for(int ph=MO_KITCHEN;ph<=MO_TO_KITCHEN;ph++)if(ph!=MO_QUEUE)assert(phases&(1u<<ph));
+    // In line: the grandmother at the desk as the mother finishes browsing.
+    resident_reset();resident_tick(&map,.05f);
+    for(int i=0;i<40000&&!(mother_save().phase==MO_BROWSE&&mother_save().elapsed>4.5f);i++)resident_tick(&map,.05f);
+    assert(mother_save().phase==MO_BROWSE);   // half a second of browsing left
+    {auto g=grandmother_save();g.phase=GM_DESK;g.location=1;g.x=BOOKSHOP_DESK.x;g.y=BOOKSHOP_DESK.y;g.elapsed=0;g.shelf=-1;g.flash=0;g.transfer_pending=0;assert(grandmother_restore(g));}
+    for(int i=0;i<200&&mother_save().phase==MO_BROWSE;i++)resident_tick(&map,.05f);
+    assert(mother_save().phase==MO_QUEUE&&!strcmp(mother_line(),"I'll wait my turn."));
+    bool stepped_up=false;
+    for(int i=0;i<400&&!stepped_up;i++){
+        resident_tick(&map,.05f);auto s=mother_save();auto g=grandmother_save();
+        if(s.phase==MO_TO_DESK||s.phase==MO_BUY){assert(g.phase!=GM_DESK&&g.phase!=GM_TO_DESK);stepped_up=true;}
+        else assert(s.phase==MO_QUEUE);
+    }
+    assert(stepped_up);
+    resident_reset();
+    printf("mother: two cycles (75 s kitchen, 5 s browse/buy), shelves and desk never shared, queued behind the grandmother%s, save/load each phase\n",
+           queued?" (also on her own)":"");
 }
 int main(int argc,char** argv) {
     setvbuf(stdout,nullptr,_IONBF,0);
+    {   // The camera scrolls by screen pixels (no stutter); sprites snap to the art grid themselves.
+        Camera c={};c.zoom=1;c.screen_w=640;c.screen_h=480;camera_place(&c,0,0);
+        assert(cam_px(&c,101)-cam_px(&c,100)==1);
+        assert(art_snap(101)==100&&art_snap(102)==102&&art_snap(103.9f)==102);
+    }
     SDL_SetMainReady();assert(SDL_Init(SDL_INIT_VIDEO)==0);IMG_Init(IMG_INIT_PNG);
     SDL_Surface* surface=SDL_CreateRGBSurfaceWithFormat(0,640,480,32,SDL_PIXELFORMAT_RGBA32);
     SDL_Renderer* ren=SDL_CreateSoftwareRenderer(surface);
@@ -327,6 +419,7 @@ int main(int argc,char** argv) {
     tilemap_build_overworld_phase2(&map,seed);
     grandmother_checks(ren,seed);
     woodcutter_checks();
+    mother_checks();
     bookshop_checks(ren,seed);
     resident_reset();
     assert(!strcmp(resident_line(),"these new stoves scare me, i'm always afraid of a sudden gas leak"));
@@ -472,21 +565,27 @@ int main(int argc,char** argv) {
     assert(_chdir("build_tmp/npc_review/save_test")==0);
     FILE* file=fopen("save.dat","rb");assert(file);fseek(file,0,SEEK_END);long size=ftell(file);rewind(file);
     std::vector<unsigned char> bytes(size);assert(fread(bytes.data(),1,size,file)==size);fclose(file);
-    const size_t base_size=size-sizeof(ResidentSave)-sizeof(BookshopClerkSave)-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave);
+    const size_t base_size=size-sizeof(ResidentSave)-sizeof(BookshopClerkSave)-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave);
     // V12 preserves all previous residents; the new fisher starts in bed.
-    auto version12=bytes;version12.resize(size-sizeof(FisherSave));
+    // V14 has every resident but the mother: she starts at her stove.
+    auto version14=bytes;version14.resize(size-sizeof(MotherSave));
+    unsigned v14=14;memcpy(version14.data()+4,&v14,4);
+    file=fopen("save.dat","wb");assert(file);assert(fwrite(version14.data(),1,version14.size(),file)==version14.size());fclose(file);
+    {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
+    assert(mother_save().phase==MO_KITCHEN&&mother_save().location==3);
+    auto version12=bytes;version12.resize(size-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
     unsigned v12=12;memcpy(version12.data()+4,&v12,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version12.data(),1,version12.size(),file)==version12.size());fclose(file);
     {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
     assert(fisher_save().epoch==-1);
     // V11 has the grandmother but no woodcutter: he starts his day fresh.
-    auto version11=bytes;version11.resize(size-sizeof(WoodcutterSave)-sizeof(FisherSave));
+    auto version11=bytes;version11.resize(size-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
     unsigned v11=11;memcpy(version11.data()+4,&v11,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version11.data(),1,version11.size(),file)==version11.size());fclose(file);
     {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
     assert(woodcutter_save().phase==WC_CHOP&&woodcutter_save().tree_x==-1);
     // V10 has both existing residents, but no grandmother footer.
-    auto version10=bytes;version10.resize(size-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave));
+    auto version10=bytes;version10.resize(size-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
     unsigned v10=10;memcpy(version10.data()+4,&v10,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version10.data(),1,version10.size(),file)==version10.size());fclose(file);
     unsigned v10seed;float v10x,v10y;Player v10player;

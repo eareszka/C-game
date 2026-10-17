@@ -1,5 +1,6 @@
-"""The dark-red-brick cottage's room: two beds side by side at the back,
-a rug, a chest of drawers.
+"""The dark-red-brick cottage's room (the girl's parents'): an iron stove and
+a kitchen counter on the back wall, two beds with their heads against the
+right wall -- the back one the girl's, the front one the sailor fisher's.
 
     python art/structures/interiors/house3_design.py <design.json>
     python tools/draw_views.py <design.json> art/structures/interiors/house3
@@ -16,10 +17,10 @@ PAL = {'W': '792727', 'Z': '531b1c', 'm': 'e8e0c0', 'R': 'b6433d'}
 
 def design():
     r = new_room()
-    bed(r, 76, BACK + 8)
-    bed(r, 112, BACK + 8)
-    dresser(r, 154)
-    rug(r, 104, 116, 40, 10)
+    stove(r, 72)                       # left of the counter, iron and wood a tile apart
+    cupboard(r, 100, w=26)
+    bed_against_wall(r, 76, 'right')   # the girl's
+    bed_against_wall(r, 110, 'right')  # the sailor fisher's
     return finish(r, 'house 3', PAL)
 
 

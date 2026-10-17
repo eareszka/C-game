@@ -1,6 +1,7 @@
 #include "grandmother.h"
 #include "resident.h"
 #include "resident_path.h"
+#include "bookshop.h"
 #include "interior.h"
 #include "overworld.h"
 #include "collision.h"
@@ -14,8 +15,7 @@ namespace {
 using Point=ResidentPoint;
 constexpr unsigned MAGIC=0x47524d31;
 constexpr float SPEED=90,COUCH_TIME=1800.0f/48.0f;
-constexpr Point COUCH={292,216},DESK={293,292};
-const Point SHELVES[]={{235,196},{371,196},{434,308},{374,257}};
+constexpr Point COUCH={292,216};
 GrandmotherSave g={MAGIC,COUCH.x,COUCH.y,0,0,0,GM_COUCH,5,FACE_DOWN,0,0,-1};
 InteriorMap room;
 std::vector<Point> route;
@@ -53,8 +53,8 @@ Point destination(const Tilemap* map) {
     switch(g.phase) {
     case GM_LEAVE_HOME:return entry(5);
     case GM_TO_SHOP:return outside(map,door_for(map,1));
-    case GM_TO_SHELF:return SHELVES[g.shelf];
-    case GM_TO_DESK:return DESK;
+    case GM_TO_SHELF:return BOOKSHOP_SHELF[g.shelf];
+    case GM_TO_DESK:return BOOKSHOP_DESK;
     case GM_LEAVE_SHOP:return entry(1);
     case GM_TO_HOME:return outside(map,door_for(map,5));
     default:return COUCH;
@@ -98,13 +98,14 @@ void grandmother_tick(const Tilemap* map,float dt) {
         g.elapsed+=dt;g.anim=0;
         g.facing=g.phase==GM_COUCH?FACE_DOWN:FACE_UP;
         float duration=g.phase==GM_COUCH?COUCH_TIME:5;
+        // Browsing on while someone else has the desk.
+        if(g.phase==GM_SEARCH&&g.elapsed>=duration&&bookshop_desk_taken(SHOP_GRANDMOTHER)){g.elapsed=duration;return;}
         if(g.elapsed>=duration)phase(g.phase==GM_COUCH?GM_LEAVE_HOME:g.phase==GM_SEARCH?GM_TO_DESK:GM_LEAVE_SHOP);
         return;
     }
     if(g.phase==GM_FIND_SHELF) {
-        auto clerk=bookshop_clerk_save();
         for(int shelf:{2,3}) {
-            if(clerk.stop==shelf||std::hypot(clerk.x-SHELVES[shelf].x,clerk.y-SHELVES[shelf].y)<32)continue;
+            if(bookshop_shelf_taken(shelf,SHOP_GRANDMOTHER))continue;
             g.shelf=shelf;phase(GM_TO_SHELF);break;
         }
         return;
