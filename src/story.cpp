@@ -1,3 +1,5 @@
+#include "courier.h"
+#include "gardener.h"
 // The story's state, people and boss sites. See include/story.h.
 #include "core.h"
 #include "story.h"
@@ -328,12 +330,19 @@ const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p) {
         sailor={sailor_fisher_line(),{"What's there to do in town?","Where am I?","No"}};
         return &sailor;
     }
+    if(p.idx==COURIER_ID){
+        if(courier_save().phase==CR_SLEEP)return nullptr;
+        static StoryNpcConversation courier;courier={courier_line(),{"Delivering letters?","Where am I?","No"}};return &courier;
+    }
+    if(p.idx==GARDENER_ID){static StoryNpcConversation c;c={gardener_line(),{"Why water them?","Where am I?","No"}};return &c;}
     if(p.idx==GRANDMOTHER_ID)return &GRANDMA_CONVERSATION;
     return p.idx==BOOKSHOP_CLERK_ID ? &CLERK_CONVERSATION : nullptr;
 }
 const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,int choice) {
     if(!story_npc_conversation(p))return nullptr;
     if(choice==0) {
+        if(p.idx==COURIER_ID)return "Every front door gets a visit. Then it is back to my couch.";
+        if(p.idx==GARDENER_ID)return "Someone has to look after this street. A little green makes the walk nicer.";
         if(p.idx==SAILOR_FISHER_ID)return "I usually spend a little time fishing by the river, then head home for a rest. But if you're looking for a little adventure, there's a small cave south of town and a graveyard to the northwest.";
         if(p.idx==GRANDMOTHER_ID)return "I usually pick out a good book from the library and go back home and read. But for a young one like yourself, there's a small cave south of town and a graveyard to the northwest, if you're looking for a little adventure.";
         return "Without these books you wouldn't be able to build anything or go anywhere. What's the point of these books is like asking what's the purpose of life.";
@@ -342,6 +351,8 @@ const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,int choice
     return nullptr;
 }
 void story_npc_resume(const StoryNpcPos& p) {
+    if(p.idx==GARDENER_ID)gardener_resume();
+    if(p.idx==COURIER_ID)courier_resume();
     if(p.idx==BOOKSHOP_CLERK_ID)bookshop_clerk_resume();
     if(p.idx==GRANDMOTHER_ID)grandmother_resume();
 }
@@ -351,6 +362,7 @@ bool story_npc_can_talk(const StoryNpcPos& p) {
     if(p.idx==FISHER_ID)return fisher_line()!=nullptr;
     if(p.idx==GRANDMOTHER_ID)return grandmother_save().flash==0;
     if(p.idx==WOODCUTTER_ID)return woodcutter_save().flash==0;
+    if(p.idx==COURIER_ID)return courier_save().flash==0;
     if(p.idx==MOTHER_ID)return mother_save().flash==0;
     return true;
 }
@@ -411,6 +423,8 @@ void story_npc_face(const StoryNpcPos& p, float dx, float dy) {
     else if (p.idx == BOOKSHOP_CLERK_ID) bookshop_clerk_face(f);
     else if (p.idx == GRANDMOTHER_ID) grandmother_face(f);
     else if (p.idx == WOODCUTTER_ID) woodcutter_face(f);
+    else if (p.idx == COURIER_ID) courier_face(f);
+    else if (p.idx == GARDENER_ID) gardener_face(f);
     else if (p.idx == MOTHER_ID) mother_face(f);
     else if (p.idx >= 0 && p.idx < NPC_COUNT) npc_facing[p.idx] = f;
 }
@@ -427,6 +441,8 @@ int story_npc_facing(const StoryNpcPos& p) {
     if(p.idx==BOOKSHOP_CLERK_ID)return bookshop_clerk_facing();
     if(p.idx==GRANDMOTHER_ID)return grandmother_facing();
     if(p.idx==WOODCUTTER_ID)return woodcutter_facing();
+    if(p.idx==COURIER_ID)return courier_facing();
+    if(p.idx==GARDENER_ID)return gardener_facing();
     if(p.idx==MOTHER_ID)return mother_facing();
     return p.idx >= 0 && p.idx < NPC_COUNT ? npc_facing[p.idx] : FACE_DOWN;
 }
@@ -483,6 +499,8 @@ int story_npcs_here(const StoryWhere& w, StoryNpcPos out[], int max) {
     if (n < max && grandmother_here(w, &out[n])) ++n;
     if (n < max && woodcutter_here(w, &out[n])) ++n;
     if (n < max && mother_here(w, &out[n])) ++n;
+    if (n < max && gardener_here(w, &out[n])) ++n;
+    if (n < max && courier_here(w, &out[n])) ++n;
     for (int i = 0; i < NPC_COUNT && n < max; i++) {
         const StoryNpc& p = NPCS[i];
         if (p.place == SP_INTERIOR || p.place == SP_DEBUG) {
@@ -692,6 +710,7 @@ const char* story_note_take(int idx, const StoryWhere& w) {
 }
 
 const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
+    if(pos.idx==COURIER_ID)return courier_line();
     if(pos.idx==SAILOR_FISHER_ID)return sailor_fisher_line();
     if(pos.idx==FISHER_ID)return fisher_line();
     if (pos.idx == RESIDENT_STORY_ID) return resident_line();

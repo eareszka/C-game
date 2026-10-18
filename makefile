@@ -169,6 +169,16 @@ storycheck: storycheck$(EXE)
 storycheck$(EXE): tools/storycheck.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/storycheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
+couriercheck: couriercheck$(EXE)
+
+couriercheck$(EXE): tools/couriercheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/couriercheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+gardenercheck: gardenercheck$(EXE)
+
+gardenercheck$(EXE): tools/gardenercheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/gardenercheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
 residentcheck: residentcheck$(EXE)
 
 residentcheck$(EXE): tools/residentcheck.cpp $(HEADLESS_OBJ)

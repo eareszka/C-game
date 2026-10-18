@@ -1,3 +1,5 @@
+#include "courier.h"
+#include "gardener.h"
 #include "save.h"
 #include "legacy_player_v2.h"
 #include "legacy_player_v3.h"
@@ -18,7 +20,7 @@
 
 static const char* SAVE_PATH = "save.dat";
 static const char* SAVE_TMP  = "save.tmp";
-enum { SAVE_VERSION = 15 };
+enum { SAVE_VERSION = 17 };
 
 template<class P> struct SaveRecord {
     char     magic[4];     // "FCC1"
@@ -81,6 +83,10 @@ bool save_write(unsigned seed, float x, float y, const Player& p,
     ok = fwrite(&sailor,sizeof(sailor),1,f)==1 && ok;
     MotherSave mother=mother_save();
     ok = fwrite(&mother,sizeof(mother),1,f)==1 && ok;
+    GardenerSave gardener=gardener_save();
+    ok = fwrite(&gardener,sizeof(gardener),1,f)==1 && ok;
+    CourierSave courier=courier_save();
+    ok = fwrite(&courier,sizeof(courier),1,f)==1 && ok;
     ok = fclose(f) == 0 && ok;
     if (!ok) { remove(SAVE_TMP); return false; }
     remove(SAVE_PATH);   // rename does not replace on Windows
@@ -112,6 +118,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     ResidentSave resident = {};
     BookshopClerkSave clerk = {};
     GrandmotherSave grandmother = {};
+    CourierSave courier = {};
+    GardenerSave gardener = {};
     WoodcutterSave woodcutter = {};
     FisherSave fisher = {};
     SailorFisherSave sailor = {};
@@ -163,6 +171,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
         if(valid && header.version>=13)valid=fread(&fisher,sizeof(fisher),1,f)==1;
         if(valid && header.version>=14)valid=fread(&sailor,sizeof(sailor),1,f)==1;
         if(valid && header.version>=15)valid=fread(&mother,sizeof(mother),1,f)==1;
+        if(valid && header.version>=16)valid=fread(&gardener,sizeof(gardener),1,f)==1;
+        if(valid && header.version>=17)valid=fread(&courier,sizeof(courier),1,f)==1;
         valid=valid && fgetc(f)==EOF;
         // V7's final four bytes were padding, not a saved pause timer.
         if(header.version<8) resident.kitchen_pause=0;
@@ -176,6 +186,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     if(header.version>=13 && (!fisher_valid(fisher)||fisher.epoch>resident.world_seconds))return false;
     if(header.version>=14 && (!sailor_fisher_valid(sailor)||sailor.epoch>resident.world_seconds))return false;
     if(header.version>=15 && !mother_valid(mother))return false;
+    if(header.version>=16 && !gardener_valid(gardener))return false;
+    if(header.version>=17 && !courier_valid(courier))return false;
     if (header.version>=6) {
         if (!resident_restore(resident)) return false;
     } else resident_reset();
@@ -185,6 +197,8 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     if(header.version>=13)fisher_restore(fisher);
     if(header.version>=14)sailor_fisher_restore(sailor);
     if(header.version>=15)mother_restore(mother);
+    if(header.version>=16)gardener_restore(gardener);
+    if(header.version>=17)courier_restore(courier);
     *seed=s.seed; *x=s.x; *y=s.y; *p=s.player;
     int snapshot[ITEM_COUNT]={}; items_note_gains(p,snapshot,true);
     if (!item_footwear_equipped(p,ITEM_SWIFT_BOOTS) && !item_footwear_equipped(p,ITEM_DIVING_FINS)) p->footwear=FOOTWEAR_NONE;

@@ -1,3 +1,5 @@
+#include "courier.h"
+#include "gardener.h"
 #include "resident.h"
 #include "fisher.h"
 #include "sailor_fisher.h"
@@ -565,27 +567,27 @@ int main(int argc,char** argv) {
     assert(_chdir("build_tmp/npc_review/save_test")==0);
     FILE* file=fopen("save.dat","rb");assert(file);fseek(file,0,SEEK_END);long size=ftell(file);rewind(file);
     std::vector<unsigned char> bytes(size);assert(fread(bytes.data(),1,size,file)==size);fclose(file);
-    const size_t base_size=size-sizeof(ResidentSave)-sizeof(BookshopClerkSave)-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave);
+    const size_t base_size=size-sizeof(ResidentSave)-sizeof(BookshopClerkSave)-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave)-sizeof(GardenerSave)-sizeof(CourierSave);
     // V12 preserves all previous residents; the new fisher starts in bed.
     // V14 has every resident but the mother: she starts at her stove.
-    auto version14=bytes;version14.resize(size-sizeof(MotherSave));
+    auto version14=bytes;version14.resize(size-sizeof(MotherSave)-sizeof(GardenerSave)-sizeof(CourierSave));
     unsigned v14=14;memcpy(version14.data()+4,&v14,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version14.data(),1,version14.size(),file)==version14.size());fclose(file);
     {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
     assert(mother_save().phase==MO_KITCHEN&&mother_save().location==3);
-    auto version12=bytes;version12.resize(size-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
+    auto version12=bytes;version12.resize(size-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave)-sizeof(GardenerSave)-sizeof(CourierSave));
     unsigned v12=12;memcpy(version12.data()+4,&v12,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version12.data(),1,version12.size(),file)==version12.size());fclose(file);
     {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
     assert(fisher_save().epoch==-1);
     // V11 has the grandmother but no woodcutter: he starts his day fresh.
-    auto version11=bytes;version11.resize(size-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
+    auto version11=bytes;version11.resize(size-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave)-sizeof(GardenerSave)-sizeof(CourierSave));
     unsigned v11=11;memcpy(version11.data()+4,&v11,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version11.data(),1,version11.size(),file)==version11.size());fclose(file);
     {unsigned sd;float sx,sy;Player pl;assert(save_read(&sd,&sx,&sy,&pl,explored));}
     assert(woodcutter_save().phase==WC_CHOP&&woodcutter_save().tree_x==-1);
     // V10 has both existing residents, but no grandmother footer.
-    auto version10=bytes;version10.resize(size-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave));
+    auto version10=bytes;version10.resize(size-sizeof(GrandmotherSave)-sizeof(WoodcutterSave)-sizeof(FisherSave)-sizeof(SailorFisherSave)-sizeof(MotherSave)-sizeof(GardenerSave)-sizeof(CourierSave));
     unsigned v10=10;memcpy(version10.data()+4,&v10,4);
     file=fopen("save.dat","wb");assert(file);assert(fwrite(version10.data(),1,version10.size(),file)==version10.size());fclose(file);
     unsigned v10seed;float v10x,v10y;Player v10player;

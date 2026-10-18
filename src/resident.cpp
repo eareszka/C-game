@@ -1,3 +1,5 @@
+#include "courier.h"
+#include "gardener.h"
 #include "resident.h"
 #include "npc_sleep.h"
 #include "resident_path.h"
@@ -217,6 +219,8 @@ void resident_reset() {
     sailor_fisher_reset();
     woodcutter_reset();
     mother_reset();
+    gardener_reset();
+    courier_reset();
 }
 ResidentSave resident_save(){return state;}
 void resident_face(int facing){state.facing=facing;}
@@ -298,6 +302,8 @@ void resident_tick(const Tilemap* map,float dt) {
     sailor_fisher_tick(map,dt);
     woodcutter_tick(map,dt);
     mother_tick(map,dt);
+    gardener_tick(map,dt);
+    courier_tick(map,dt);
 }
 void resident_advance_hour(const Tilemap* map) {
     if(!map)return;
@@ -330,13 +336,13 @@ bool resident_art_init(SDL_Renderer* r) {
     if(art)SDL_SetTextureScaleMode(art,SDL_ScaleModeNearest);
     if(sleep_art)SDL_SetTextureScaleMode(sleep_art,SDL_ScaleModeNearest);
     if(clerk_art)SDL_SetTextureScaleMode(clerk_art,SDL_ScaleModeNearest);
-    return art != nullptr && sleep_art != nullptr && clerk_art != nullptr && grandmother_art_init(r) && woodcutter_art_init(r) && mother_art_init(r) && fisher_art_init(r) && sailor_fisher_art_init(r);
+    return art != nullptr && sleep_art != nullptr && clerk_art != nullptr && courier_art_init(r) && gardener_art_init(r) && grandmother_art_init(r) && woodcutter_art_init(r) && mother_art_init(r) && fisher_art_init(r) && sailor_fisher_art_init(r);
 }
-void resident_art_free(){if(art)SDL_DestroyTexture(art);art=nullptr;if(sleep_art)SDL_DestroyTexture(sleep_art);sleep_art=nullptr;if(clerk_art)SDL_DestroyTexture(clerk_art);clerk_art=nullptr;grandmother_art_free();woodcutter_art_free();mother_art_free();fisher_art_free();sailor_fisher_art_free();}
+void resident_art_free(){if(art)SDL_DestroyTexture(art);art=nullptr;if(sleep_art)SDL_DestroyTexture(sleep_art);sleep_art=nullptr;if(clerk_art)SDL_DestroyTexture(clerk_art);clerk_art=nullptr;courier_art_free();gardener_art_free();grandmother_art_free();woodcutter_art_free();mother_art_free();fisher_art_free();sailor_fisher_art_free();}
 bool resident_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
     if(sailor_fisher_draw(p,r,c))return true;
     if(fisher_draw(p,r,c))return true;
-    if(grandmother_draw(p,r,c)||woodcutter_draw(p,r,c)||mother_draw(p,r,c))return true;
+    if(courier_draw(p,r,c)||gardener_draw(p,r,c)||grandmother_draw(p,r,c)||woodcutter_draw(p,r,c)||mother_draw(p,r,c))return true;
     if(p.idx==BOOKSHOP_CLERK_ID) {
         if(!clerk_art)return true;
         int col=clerk_moving&&!clerk_talking?npc_walk_col(clerk.facing,(int)(clerk.anim/.2f)):0;
