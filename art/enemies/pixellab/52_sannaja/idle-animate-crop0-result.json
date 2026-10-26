@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-crop0_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\52-sannaja-idle-crop0-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\idle-animate-crop0\\idle-animate-crop0\\animations\\v1\\idle-animate-crop0_animations_v1.manifest.json",
+  "cost": {
+    "generations": 6.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "0818ed55-bf67-4f8e-854f-30a2c8c8a8c3",
+    "generation_id": "0dd78cc4-6507-452b-9323-565dc173253c"
+  }
+}

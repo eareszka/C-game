@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\99-fad-felen-idle-d-try2-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\idle-animate-d-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "8f6fd735-2b3c-4a0e-a79b-616fad7d24e7",
+    "generation_id": "99cb0c03-889b-491e-92a0-2e365bcf950e"
+  }
+}

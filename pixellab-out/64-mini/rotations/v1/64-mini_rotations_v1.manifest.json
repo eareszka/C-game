@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "64-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2172 characters>",
+      "format": "png"
+    },
+    "description": "Dungavenhooter, a squat low crocodilian with a long brown scaly body, short splayed legs, a ridged pale back, no mouth, yellow eyes, its long tail curled up over its back ending in a grey spiked mace club, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "09a4ec87-2a5a-4d55-be29-fb3180713e50",
+    "generation_id": "86a1c13d-a3bd-4f9c-9b82-029909283ff4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "png": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.png",
+  "aseprite": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.aseprite",
+  "frames_per_direction": 3,
+  "directions": [
+    "D",
+    "DR",
+    "R",
+    "UR",
+    "U",
+    "UL",
+    "L",
+    "DL"
+  ],
+  "size": [
+    1152,
+    35
+  ],
+  "round_trip_exact": true,
+  "source_selection": {
+    "D": {
+      "sampled_indices": [
+        0,
+        2,
+        4
+      ],
+      "bounds": [
+        [
+          15,
+          7,
+          34,
+          35
+        ],
+        [
+          12,
+          9,
+          37,
+          35
+        ],
+        [
+          15,
+          9,
+          34,
+          35
+        ]
+      ]
+    },
+    "DR": {
+      "sampled_indices": [
+        0,
+        2,
+        4
+      ],
+      "bounds": [
+        [
+          11,
+          4,
+          37,
+          35
+        ],
+        [
+          10,
+          7,
+          38,
+          34
+        ],
+        [
+          9,
+          10,
+          38,
+          34
+        ]
+      ]
+    },
+    "R": {
+      "sampled_indices": [
+        0,
+        2,
+        4
+      ],
+      "bounds": [
+        [
+          8,
+          1,
+          40,
+          35
+        ],
+        [
+          8,
+          3,
+          41,
+          35
+        ],
+        [
+          8,
+          6,
+          41,
+          35
+        ]
+      ]
+    },
+    "UR": {
+      "sampled_indices": [
+        0,
+        2,
+        4
+      ],
+      "bounds": [
+        [
+          13,
+          1,
+          37,
+          35
+        ],
+        [
+          13,
+          4,
+          37,
+          35
+        ],
+        [
+          12,
+          5,
+          39,
+          35
+        ]
+      ]
+    },
+    "U": {
+      "sampled_indices": [
+        0,
+        2,
+        4
+      ],
+      "bounds": [
+        [
+          13,
+          1,
+          35,
+          35
+        ],
+        [
+          13,
+          4,
+          35,
+          35
+        ],
+        [
+          14,
+          8,
+          34,
+          35
+        ]
+      ]
+    }
+  },
+  "sha256": {
+    "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.png": "6bceea49b914fea0d609aa8a86f514ac16ce3767dc62849b5842a3fa26358eaf",
+    "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.aseprite": "d7fca740a38cb2e0787c854e590e0be5eeb4eaa3fcaabaeca9c3cb6d8ab887c8"
+  }
+}

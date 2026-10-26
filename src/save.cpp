@@ -4,6 +4,7 @@
 #include "legacy_player_v2.h"
 #include "legacy_player_v3.h"
 #include "legacy_player_v4.h"
+#include "persist.h"     // what has been taken out of the world for good
 #include "crafting.h"
 #include "dungeon.h"   // the dungeons' chests (dungeon_chest_records)
 #include "story.h"     // the story's flags (story_flags)
@@ -20,7 +21,11 @@
 
 static const char* SAVE_PATH = "save.dat";
 static const char* SAVE_TMP  = "save.tmp";
-enum { SAVE_VERSION = 17 };
+enum { SAVE_VERSION = 19 };
+// Set by a read that refused the save because it was played in another
+// world (WORLDGEN_VERSION), for the title to say so.
+static bool s_refused_old_world = false;
+bool save_refused_old_world(void) { return s_refused_old_world; }
 
 template<class P> struct SaveRecord {
     char     magic[4];     // "FCC1"
@@ -45,6 +50,10 @@ using SaveFile = SaveRecord<Player>;
 using LegacySaveFile = SaveRecord<LegacyPlayerV2>;
 using InventorySaveFile = SaveRecord<LegacyPlayerV3>;
 using PoisonSaveFile = SaveRecord<LegacyPlayerV4>;
+// raft_worn (version 18) sits in what was the V5 layout's tail padding, so
+// sizeof(Player) did not change: versions 5-17 read whole, and save_read sets
+// it from the raft they own.
+static_assert(offsetof(Player, raft_worn) == offsetof(Player, footwear) + sizeof(int), "raft_worn follows footwear");
 static_assert(offsetof(Player, footwear) == sizeof(LegacyPlayerV4), "V4 player prefix must stay intact");
 static_assert(offsetof(Player, poisoned) == sizeof(LegacyPlayerV3), "V3 player prefix must stay intact");
 static_assert(offsetof(Player, extra_items) == sizeof(LegacyPlayerV2), "V2 player prefix must stay intact");
@@ -87,6 +96,9 @@ bool save_write(unsigned seed, float x, float y, const Player& p,
     ok = fwrite(&gardener,sizeof(gardener),1,f)==1 && ok;
     CourierSave courier=courier_save();
     ok = fwrite(&courier,sizeof(courier),1,f)==1 && ok;
+    ok = persist_write(f) && ok;   // version 18: the harvested, the broken and the beaten
+    unsigned worldgen = WORLDGEN_VERSION;   // version 19: which world this was played in
+    ok = fwrite(&worldgen, sizeof(worldgen), 1, f) == 1 && ok;
     ok = fclose(f) == 0 && ok;
     if (!ok) { remove(SAVE_TMP); return false; }
     remove(SAVE_PATH);   // rename does not replace on Windows
@@ -106,12 +118,27 @@ template<class P> static bool read_record(FILE* f, SaveRecord<P>& s, bool legacy
     if (got != sizeof(s)) memset(&s.story,0,sizeof(s.story));
     return true;
 }
+static bool save_read_file(unsigned* seed, float* x, float* y, Player* p,
+                           uint8_t explored[EXPLORE_H][EXPLORE_W]);
 bool save_read(unsigned* seed, float* x, float* y, Player* p,
                uint8_t explored[EXPLORE_H][EXPLORE_W]) {
+    // A save refused partway may have read its version-18 block already: a
+    // refused save leaves nothing of itself behind.
+    bool ok = save_read_file(seed, x, y, p, explored);
+    if (!ok) persist_clear();
+    return ok;
+}
+static bool save_read_file(unsigned* seed, float* x, float* y, Player* p,
+                           uint8_t explored[EXPLORE_H][EXPLORE_W]) {
+    persist_clear();   // before version 18 nothing was kept: the world is whole
+    s_refused_old_world = false;
     FILE* f=fopen(SAVE_PATH,"rb");
     if (!f) return false;
     struct Header { char magic[4]; unsigned version, player_size; } header;
     bool valid=fread(&header,sizeof(header),1,f)==1 && memcmp(header.magic,"FCC1",4)==0;
+    // A save from before the world was stamped was played in an older
+    // world: its seed grows a different one now.
+    if (valid && header.version < 19) { fclose(f); s_refused_old_world = true; return false; }
     rewind(f);
     static SaveFile s;
     memset(&s,0,sizeof(s));
@@ -173,6 +200,12 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
         if(valid && header.version>=15)valid=fread(&mother,sizeof(mother),1,f)==1;
         if(valid && header.version>=16)valid=fread(&gardener,sizeof(gardener),1,f)==1;
         if(valid && header.version>=17)valid=fread(&courier,sizeof(courier),1,f)==1;
+        if(valid && header.version>=18)valid=persist_read(f);
+        if(valid && header.version>=19){
+            unsigned worldgen=0;
+            valid=fread(&worldgen,sizeof(worldgen),1,f)==1;
+            if(valid && worldgen!=WORLDGEN_VERSION){ s_refused_old_world=true; valid=false; }
+        }
         valid=valid && fgetc(f)==EOF;
         // V7's final four bytes were padding, not a saved pause timer.
         if(header.version<8) resident.kitchen_pause=0;
@@ -202,6 +235,9 @@ bool save_read(unsigned* seed, float* x, float* y, Player* p,
     *seed=s.seed; *x=s.x; *y=s.y; *p=s.player;
     int snapshot[ITEM_COUNT]={}; items_note_gains(p,snapshot,true);
     if (!item_footwear_equipped(p,ITEM_SWIFT_BOOTS) && !item_footwear_equipped(p,ITEM_DIVING_FINS)) p->footwear=FOOTWEAR_NONE;
+    // Before version 18 a raft owned was a raft in use.
+    if (header.version<18) p->raft_worn = p->raft>0;
+    if (p->raft<=0) p->raft_worn = 0;
     memcpy(explored,s.explored,sizeof(s.explored));
     memcpy(tilemap_landmarks_opened(),s.landmarks,sizeof(s.landmarks));
     memcpy(dungeon_chest_records(),s.dungeon_chests,sizeof(s.dungeon_chests));

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "standing-edit",
+  "generated": "2026-10-19T00:51:16Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "standing-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "99-fad-felen-standing-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "9a044112-9eb7-4d3b-99ab-a533079f0acc",
+        "generation_id": "49ad462a-a97c-406c-9fda-ba3a1a1b5390"
+      }
+    }
+  ]
+}

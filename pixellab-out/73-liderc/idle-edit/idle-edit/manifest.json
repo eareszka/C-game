@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T00:21:44Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "73-liderc-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "509c8da5-1e84-4979-9cc6-b6e2e0a01fdc",
+        "generation_id": "6ba1d3e9-5556-4165-8ff2-d8cba0bd45b6"
+      }
+    }
+  ]
+}

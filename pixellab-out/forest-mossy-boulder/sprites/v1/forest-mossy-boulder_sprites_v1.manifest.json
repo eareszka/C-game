@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "forest-mossy-boulder_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art large grey boulder with green moss growing on its top, forest, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAECAIAAAABPYjBAAAAJ0lEQVR4nGNkQALHztyCsy+evgBnHzq0G85eY3YVzmZC1kwqGDjNAF1YCNaN7CaAAAAAAElFTkSuQmCC",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "mossy-boulder.png"
+  ]
+}

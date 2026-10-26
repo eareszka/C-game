@@ -1,0 +1,21 @@
+{
+  "id": 23,
+  "name": "23-olgoi-khorkhoi",
+  "dir": "art/enemies/pixellab/23_olgoi_khorkhoi",
+  "description": "",
+  "prompts": {
+    "back": "prompt_back.txt"
+  },
+  "sheets": {
+    "back": {
+      "png": "art/enemies/pixellab/23_olgoi_khorkhoi/cell_back.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "ref"
+    }
+  }
+}

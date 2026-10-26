@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "fly-animate-d",
+  "generated": "2026-10-19T00:31:33Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "fly-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "75-makalala-fly-d-00.png",
+        "75-makalala-fly-d-01.png",
+        "75-makalala-fly-d-02.png",
+        "75-makalala-fly-d-03.png",
+        "75-makalala-fly-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e9ee8ad7-69d7-4d74-9009-34308ea5fe68",
+        "generation_id": "9a0af611-8201-4454-aaf1-eef7bce85e4d"
+      }
+    }
+  ]
+}

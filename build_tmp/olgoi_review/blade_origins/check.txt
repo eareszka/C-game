@@ -1,0 +1,1 @@
+PASS: all 48 launch origins hit actual white blade pixels in installed idle/spinning sheets. Frame callbacks bounded and do not duplicate launches. Long laser implementation and all other enemies unchanged.

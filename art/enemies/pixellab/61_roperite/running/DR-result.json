@@ -1,0 +1,26 @@
+﻿{
+  "run": "61-roperite-run-dr_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\61-roperite-run-dr_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "8b5b4c3b-7e0d-4e99-a739-d8d138561097",
+    "generation_id": "ea2b1a5d-6693-4c79-a226-54a434a7af54"
+  }
+}

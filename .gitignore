@@ -1,4 +1,7 @@
 # Compiled output
+.pixellab.json
+**/.pixellab.json
+
 *.o
 *.d
 *.exe
@@ -16,3 +19,7 @@ art/**/_work/
 art/**/_preview.png
 art/_backup/
 src/sheettrace/
+
+# Packaged builds (dist.bat)
+dist/
+settings.txt

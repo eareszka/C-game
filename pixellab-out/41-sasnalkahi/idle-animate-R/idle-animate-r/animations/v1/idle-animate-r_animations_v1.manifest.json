@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-r_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1872 characters>",
+      "format": "png"
+    },
+    "action": "<elided 263 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "905b4cb6-5edb-4b37-a0d3-8bca521a433f",
+    "generation_id": "812206ac-66e0-4f0f-a1a6-fd1ff5607e43"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "41-sasnalkahi-idle-r-00.png",
+    "41-sasnalkahi-idle-r-01.png",
+    "41-sasnalkahi-idle-r-02.png",
+    "41-sasnalkahi-idle-r-03.png",
+    "41-sasnalkahi-idle-r-04.png",
+    "41-sasnalkahi-idle-r-05.png",
+    "41-sasnalkahi-idle-r-06.png",
+    "41-sasnalkahi-idle-r-07.png",
+    "41-sasnalkahi-idle-r-08.png"
+  ]
+}

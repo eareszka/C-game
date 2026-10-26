@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "side-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1036 characters>",
+          "format": "png"
+        },
+        "width": 62,
+        "height": 47
+      }
+    ],
+    "image_size": {
+      "width": 62,
+      "height": 47
+    },
+    "description": "<elided 923 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 952 characters>",
+        "format": "png"
+      },
+      "width": 62,
+      "height": 47
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "28e979c6-eb97-4106-b335-11604e46b232",
+    "generation_id": "75cbfbab-f65a-4760-882e-2bf07db7fa98"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "39-ajaju-side-frame0.png"
+  ]
+}

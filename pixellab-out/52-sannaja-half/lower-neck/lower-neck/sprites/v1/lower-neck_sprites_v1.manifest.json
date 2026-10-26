@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "run": "lower-neck_sprites_v1",
+  "provider": "pixellab",
+  "route": "inpaint-v3",
+  "arguments": {
+    "description": "<elided 445 characters>",
+    "inpainting_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 6160 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 177,
+        "height": 113
+      }
+    },
+    "mask_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 352 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 177,
+        "height": 113
+      }
+    },
+    "no_background": true,
+    "crop_to_mask": false
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e9e9f3b6-89ad-40cf-9819-2772a3bc0ef3",
+    "generation_id": "7c245773-ff73-4bc3-928e-7cd673d10a8e"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-half-lower-neck.png"
+  ]
+}

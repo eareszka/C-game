@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "subject": "47-mini",
+  "generated": "2026-10-24T04:47:56Z",
+  "spent": {
+    "calls": 6,
+    "generations": 6.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "47-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "crawll-00.png",
+        "crawll-01.png",
+        "crawll-02.png",
+        "crawll-03.png",
+        "crawll-04.png"
+      ],
+      "ids": {
+        "background_job_id": "81792e95-4062-4fa4-a130-4f3887f6de2d",
+        "generation_id": "3d29cbc6-2266-41e1-9d90-10b3813d444b"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "47-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "crawlu-00.png",
+        "crawlu-01.png",
+        "crawlu-02.png",
+        "crawlu-03.png",
+        "crawlu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "dde9d7f9-e74c-416e-a170-35110604c118",
+        "generation_id": "bf4636bd-304b-4646-8c03-f7efb5c0e3f6"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "47-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "crawld-00.png",
+        "crawld-01.png",
+        "crawld-02.png",
+        "crawld-03.png",
+        "crawld-04.png"
+      ],
+      "ids": {
+        "background_job_id": "828de971-23cd-47c2-a9a0-a05daf2eaa4a",
+        "generation_id": "673efd05-4314-42f2-88ae-7ed15f7d5271"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "47-mini_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "flopd-00.png",
+        "flopd-01.png",
+        "flopd-02.png",
+        "flopd-03.png",
+        "flopd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "baea8ae8-d7f0-4d40-a618-92fbc863f7fd",
+        "generation_id": "e2fe7cb1-251b-4b48-9486-1c63276133b3"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "47-mini_animations_v5",
+      "directory": "animations/v5",
+      "files": [
+        "flopl-00.png",
+        "flopl-01.png",
+        "flopl-02.png",
+        "flopl-03.png",
+        "flopl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "d532de53-7cf0-42cb-887c-07d743baec87",
+        "generation_id": "538ebabd-dbba-41a0-be4b-f5575eef0dd1"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "47-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "12389c85-98aa-497c-94a0-30a063af1d48",
+        "generation_id": "38cc065d-2090-4732-a279-410da6172b8c"
+      }
+    }
+  ]
+}

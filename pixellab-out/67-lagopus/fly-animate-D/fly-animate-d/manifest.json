@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "fly-animate-d",
+  "generated": "2026-10-19T17:49:25Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "fly-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "67-lagopus-fly-d-00.png",
+        "67-lagopus-fly-d-01.png",
+        "67-lagopus-fly-d-02.png",
+        "67-lagopus-fly-d-03.png",
+        "67-lagopus-fly-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "5b47eae8-260d-4b95-84b8-2b06c0f20c0f",
+        "generation_id": "3306dacf-5621-4631-9284-b1154342b971"
+      }
+    }
+  ]
+}

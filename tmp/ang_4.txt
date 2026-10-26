@@ -1,0 +1,10 @@
+  HIT t=42.98 enemy hp 52% player (604,448) enemy (320,160) bullets 161 | shot r4.0 speed 150 age 4.77 mine POISON
+  HIT t=63.27 enemy hp 30% player (16,179) enemy (320,160) bullets 242 | shot r3.0 speed 81 age 3.58
+  HIT t=64.63 enemy hp 28% player (19,213) enemy (320,160) bullets 216 | shot r3.0 speed 81 age 3.55
+  HIT t=68.87 enemy hp 23% player (58,50) enemy (320,160) bullets 227 | shot r3.0 speed 56 age 4.28
+  HIT t=69.33 enemy hp 23% player (26,107) enemy (320,160) bullets 205 | shot r3.0 speed 118 age 4.05
+  HIT t=69.67 enemy hp 23% player (50,74) enemy (320,160) bullets 218 | shot r3.0 speed 126 age 4.38
+  HIT t=70.78 enemy hp 21% player (103,44) enemy (320,160) bullets 221 | shot r3.0 speed 56 age 4.10
+enemy 32 ANGONT seed 4: 90.0s, hits 7, peak bullets 256/1024, frames at cap 0, spawns <40px 0 (closest 176.4), tightest pass -3.7px at t=69.67
+  enemy nearest 224 px, passes within 60 px: 0
+  poison hits 1, player poisoned after: yes

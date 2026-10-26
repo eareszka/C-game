@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "74-mini",
+  "generated": "2026-10-26T04:37:30Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "74-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "pounced-00.png",
+        "pounced-01.png",
+        "pounced-02.png",
+        "pounced-03.png",
+        "pounced-04.png"
+      ],
+      "ids": {
+        "background_job_id": "4c0e95b3-6133-42fd-9d46-ed67d6156c93",
+        "generation_id": "3f8f78f6-ed72-4739-baf5-483fa89b731d"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "74-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "pounceu-00.png",
+        "pounceu-01.png",
+        "pounceu-02.png",
+        "pounceu-03.png",
+        "pounceu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "30980069-80b9-4539-b3aa-b6b35641612d",
+        "generation_id": "9dbe6ca9-842e-4e96-9f1d-f8d3911d7805"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "74-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "pouncel-00.png",
+        "pouncel-01.png",
+        "pouncel-02.png",
+        "pouncel-03.png",
+        "pouncel-04.png"
+      ],
+      "ids": {
+        "background_job_id": "5abb1a5d-b8c6-4193-a17e-6afd81557cf6",
+        "generation_id": "65889175-fc8d-4c5e-8636-c60822fb0cce"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "74-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "b85d7367-0f8d-42f0-9e93-db122e88488b",
+        "generation_id": "fad6a067-3db7-458e-a0a7-8645bf814f2d"
+      }
+    }
+  ]
+}

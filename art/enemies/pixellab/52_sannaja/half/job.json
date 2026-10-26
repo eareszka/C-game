@@ -1,0 +1,43 @@
+{
+  "id": 52,
+  "name": "52-sannaja-half",
+  "dir": "art/enemies/pixellab/52_sannaja/half",
+  "description": "",
+  "prompts": {
+    "stand": "prompt_stand.txt",
+    "lower": "prompt_lower.txt",
+    "body": "prompt_body.txt"
+  },
+  "sheets": {
+    "stand": {
+      "png": "art/enemies/pixellab/52_sannaja/half/cell.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "ref"
+    },
+    "lower": {
+      "png": "art/enemies/pixellab/52_sannaja/half/cell.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "ref"
+    },
+    "body": {
+      "png": "art/enemies/pixellab/52_sannaja/half/cell.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "lower"
+    }
+  }
+}

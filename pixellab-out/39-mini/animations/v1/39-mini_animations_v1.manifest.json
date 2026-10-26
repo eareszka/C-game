@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "39-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "stalking slowly to the left on its four long stiff stilt legs, legs stepping in turn, body level",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d4485bf5-cf22-4660-8155-bbc847cdcd4b",
+    "generation_id": "efbe975a-c43a-49de-8655-570540ab3951"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "stalkl-00.png",
+    "stalkl-01.png",
+    "stalkl-02.png",
+    "stalkl-03.png",
+    "stalkl-04.png"
+  ]
+}

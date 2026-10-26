@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "body-edit-try2",
+  "generated": "2026-10-19T16:05:17Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "body-edit-try2_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-body-frame0-try2.png"
+      ],
+      "ids": {
+        "background_job_id": "1a2d7221-99ef-43b3-aeb7-ea94ce261a55",
+        "generation_id": "ee44065c-225d-48e9-ab3e-635d9e166d9b"
+      }
+    }
+  ]
+}

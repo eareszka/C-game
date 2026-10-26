@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T00:53:45Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "49-physeter-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "656ed9a5-69a2-490b-aa8a-096613f5567c",
+        "generation_id": "417b7ffd-f66a-4abe-ab2c-a885deafeea4"
+      }
+    }
+  ]
+}

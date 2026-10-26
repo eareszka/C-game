@@ -1,0 +1,30 @@
+{
+  "run": "walk-half-animate_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-08.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-09.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-10.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-11.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\52-sannaja-walk-half-12.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\walk-half-animate\\walk-half-animate\\animations\\v1\\walk-half-animate_animations_v1.manifest.json",
+  "cost": {
+    "generations": 6.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "2c4db3bd-894e-4164-b99a-088f7784dd5a",
+    "generation_id": "df88cedf-c919-4af1-9df0-5f05b8c78059"
+  }
+}

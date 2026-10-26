@@ -94,6 +94,11 @@ struct BulletSpawn {
     bool  fade_out       = false;
     // Drawn behind the enemy, not over it: weather at its back.
     bool  behind         = false;
+    // Poison: a hit costs its bar AND poisons the player (Player::poisoned --
+    // 1 HP a second until an Antidote, never below 1; the user). Drawn with a
+    // lavender core, the HUD's POISON colour. What it sheds is poison too.
+    // A minority threat: one or two poison sources a pattern, never a screen.
+    bool  poison         = false;
     // Leaves from (ox, oy) instead of from the enemy: rain from the top.
     bool  from           = false;
     float ox = 0.0f, oy  = 0.0f;
@@ -151,12 +156,20 @@ public:
     virtual int anim_frame() const { return -1; }
     // The share of its HP left when its second phase starts.
     virtual float phase2_at() const { return 0.5f; }
+    // Every phase line, as shares of its HP, highest first -- for one with a
+    // third phase (or more). Most have just the one, phase2_at.
+    virtual int phase_lines(float out[], int /*max*/) const { out[0] = phase2_at(); return 1; }
     // How hard it draws the player toward it, px/s (0 = not at all): a
     // hurricane's suck.
     virtual float pull() const { return 0.0f; }
     // A shove: the player thrown this way, px/s, while it lasts (a bite that
     // flings them back down the arena). They are kept in the arena.
     virtual void shove(float* vx, float* vy) const { *vx = 0.0f; *vy = 0.0f; }
+    // Told the way the player faces, each frame (a Facing, entity.h) -- for a
+    // gaze that must not be met.
+    virtual void  see_facing(int /*facing*/) {}
+    // How white the arena is washed right now, 0..1 (blinded by a gaze).
+    virtual float blind() const { return 0.0f; }
     // Pieces of it drawn over its sprite, each on its own -- a head that
     // reaches out while the body idles. (x, y) the piece's middle; (sx, sy,
     // w, h) its cell in the enemy's parts sheet (EnemySheet::parts); scale 1
@@ -182,6 +195,15 @@ public:
     struct TeleLine { float x0, y0, x1, y1; int stage = 0; float fade = 0.0f; float hurt_w = 0.0f;
                       float orb = 0.0f; };   // orb > 0: not a line but a glowing ball of that radius at (x0, y0), drawn like the lasers
     virtual int telegraphs(TeleLine /*out*/[], int /*max*/) const { return 0; }
+    // Bars it is still forming, held on the part that makes them: drawn like
+    // its logs without a sprite (its bullet colour, white core), harmless --
+    // it fires the real ones itself. Blink them by leaving them out.
+    struct Held { float x, y, ang, half_len, radius; };
+    virtual int held(Held /*out*/[], int /*max*/) const { return 0; }
+    // Told, each frame, where its bars (BulletSpawn::half_len shots) are in
+    // flight -- for a charge that jumps to them.
+    struct Seen { float x, y; };
+    virtual void see_bars(const Seen* /*bars*/, int /*n*/) {}
     // Catching: a player's shot that comes within this of it (0 = never) is
     // caught out of the air -- gone, no damage -- and catch_shot() is told
     // where. (Show it in the sprite -- a catching pose -- not a ring: the user.)
@@ -194,6 +216,10 @@ public:
     // idle sheet's opaque pixels) and its resting parts stop them, like a
     // wall. No damage: something that big is simply in the way.
     virtual bool  solid() const { return false; }
+    // Its whole drawn sprite is the target: shots hit, and touching hurts (by
+    // contact_damage), on any opaque pixel of the frame on screen, not just a
+    // round hitbox -- for a creature too big and long for one.
+    virtual bool  sprite_hitbox() const { return false; }
     // Where shots sharing an aim slot (BulletSpawn::path_aim_slot) head when
     // their orbits end: by default the player, wherever they are then.
     virtual void  aim_slot(int /*slot*/, float px, float py, float* tx, float* ty) { *tx = px; *ty = py; }

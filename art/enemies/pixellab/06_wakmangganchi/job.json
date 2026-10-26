@@ -1,0 +1,6 @@
+{
+  "id": 6, "name": "06-wakmangganchi", "dir": "art/enemies/pixellab/06_wakmangganchi",
+  "description": "Wakmangganchi Aragondi: huge dark-brown shaggy beast with seven boar heads, blue rivers and bamboo on its back.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {"png": "assets/enemies/06_wakmangganchi_aragondi.png", "frames": 8, "rows": true, "ms": 260, "views": ["D"], "make": "generator"}}
+}

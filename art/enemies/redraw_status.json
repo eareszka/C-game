@@ -2,7 +2,7 @@
   "_": "The enemy redraw to art/direction/SPRITE_STYLE.md: what is done. tools/enemy_redraw_sheet.py draws enemy_rating.png from this. Add an id to `done` when its redraw is approved and installed.",
   "reference": [0, 1, 3, 8],
   "fine": { "_": "Not redrawn; the user said it is fine as it is (73: after its colours were brought to 8 plus black).", "ids": [5, 73] },
-  "done": [4, 6, 7, 17, 18, 21, 22, 23, 24, 25, 27, 28, 30, 33, 39, 41, 47, 48, 49, 51, 54, 55, 56, 57, 58, 60, 62, 63, 64, 69, 70, 71, 72, 74, 75, 76, 77, 78, 82, 83, 86, 97, 98, 99],
+  "done": [4, 6, 7, 17, 18, 21, 22, 23, 24, 25, 27, 28, 30, 32, 33, 39, 41, 47, 48, 49, 51, 52, 54, 55, 56, 57, 58, 60, 61, 62, 63, 64, 66, 69, 70, 71, 72, 74, 75, 76, 77, 78, 82, 83, 86, 97, 98, 99],
   "rating": {
     "_": "How close each old sprite was to the bible, 8 closest, read off the chart of 2026-10-10. Kept for the ones still to do.",
     "0": 8, "1": 8, "2": 8, "3": 8, "4": 7, "5": 8, "6": 6, "7": 7, "8": 7, "9": 5,

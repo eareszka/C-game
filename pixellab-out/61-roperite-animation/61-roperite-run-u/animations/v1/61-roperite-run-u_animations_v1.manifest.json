@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "61-roperite-run-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1308 characters>",
+      "format": "png"
+    },
+    "action": "<elided 518 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d054b5b8-afac-4017-ae43-2aa9e2f41662",
+    "generation_id": "f070450a-97f5-4725-a947-e08124776d02"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "roperite-run-u-00.png",
+    "roperite-run-u-01.png",
+    "roperite-run-u-02.png",
+    "roperite-run-u-03.png",
+    "roperite-run-u-04.png",
+    "roperite-run-u-05.png",
+    "roperite-run-u-06.png",
+    "roperite-run-u-07.png",
+    "roperite-run-u-08.png"
+  ]
+}

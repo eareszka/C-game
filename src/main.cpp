@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <SDL2/SDL_image.h>
+#include <unistd.h>   // chdir: run from game.exe's own folder
 
 #include "fc_palette.h"
 #include "game_state.h"
@@ -25,8 +26,14 @@
 #include "game_menu.h"
 #include "save.h"
 #include "story.h"
+#include "ready.h"
+#include "playtest.h"   // F4: the difficulty trials
+#include "version.h"
+#include "persist.h"     // nothing beaten or broken comes back
 #include "resident.h"
 #include "towns.h"      // TOWN1_HALL_DOOR_*: the debug warp to the hall
+#include "audio.h"
+#include "settings.h"   // settings.txt: volumes, fullscreen
 
 
 // How many whole pixels of frame there are to a logical pixel: as many as the
@@ -103,7 +110,31 @@ static float chase_speed(int enemy_id, float t) {
         case 16: return fmodf(t, 0.8f) < 0.35f ? 2.0f : 0.6f;     // the Kamaitachi gusts at you, then whirls
         case 17: return 1.1f;                                     // the Qiqirn flees (chase_bend), a little slower than you run
         case 19: return 0.8f;                                     // the Skeljaskrimsli plods, slow and steady
-        case 21: return fmodf(t, 0.5f) < 0.2f ? 1.7f : 0.5f;      // the Asp springs off its coils, then gathers
+        case 41: return 0.8f;                                     // the Sasnalkahi lumbers at you, slow and heavy
+        case 47: return fmodf(t, 0.55f) < 0.25f ? 2.4f : 0.0f;    // the Moha-Moha flops along out of the sea, then lies there
+        case 48: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Bjarndyrakongur lumbers, then rushes straight at you
+        case 54: return fmodf(t, 0.6f) < 0.3f ? 1.7f : 0.2f;      // the Billdad bounds on its kangaroo legs: a leap, a landing
+        case 55: return fmodf(t, 0.6f) < 0.35f ? 1.5f : 0.2f;     // the Wapaloosie inches: reaching out, then humped up gathering
+        case 56: return 1.15f;                                    // the Moskitto buzzes in, weaving (chase_bend)
+        case 57: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Dingbat swoops: a glide, then wingbeats
+        case 58: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Agropelter lies in wait, then pounces
+        case 62: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Hugag wanders on its stilts, its pace rising and falling
+        case 63: return fmodf(t, 1.1f) < 0.8f ? 1.3f : 1.8f;      // the Hidebehind circles round you, then darts in
+        case 64: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Dungavenhooter dashes at you, its club swinging, then a breath
+        case 66: return 1.7f - 1.5f * fmodf(t, 1.0f);             // the Ayotochtli kicks off in its ball, rolls out, kicks off again
+        case 69: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // Bes Chem swoops down out of the branches: a glide, then wingbeats
+        case 70: return 0.7f;                                     // the Trollgadda, so great it can barely move, swims slow
+        case 71: return 0.8f;                                     // the Namungumi crawls heavily out of its lake
+        case 73: return fmodf(t, 0.85f) < 0.6f ? 0.5f : 2.0f;     // the Liderc drifts like a marsh light, then streaks like a shooting star
+        case 74: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // Bes Rap crouches at the roots, then pounces
+        case 75: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Makalala sprints at you on its long legs, then a breath
+        case 76: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Loch Oich monster surges through its loch in humps, then glides
+        case 22: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Cactus Cat, drunk on the cacti's sap, meanders
+        case 24: return fmodf(t, 0.9f) < 0.55f ? 0.0f : 2.5f;     // the Zoureg coils, still, then is thrown straight at you
+        case 25: return 1.0f;                                     // the Myrmecoleon scuttles like an ant, never stopping (chase_bend)
+        case 28: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Opimachus, small but bold, dashes straight at you, then trots
+        case 33: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Tse'nagahi rolls after you, fast, then grinding slow, never stopping
+        case 39: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Ajaju stalks on its stilts, a long stride, then a slow one
         default: return 1.0f;                                     // straight at the player
     }
 }
@@ -112,9 +143,17 @@ static float chase_speed(int enemy_id, float t) {
 static int chase_frame(int enemy_id, float t) {
     switch (enemy_id) {
         case 8:  return fmodf(t, 0.6f) < 0.3f ? 0 : 1;            // Snawfus: stretched out in the leap, gathered landing
+        case 54: return fmodf(t, 0.6f) < 0.3f ? 0 : 1;            // the Billdad: up off its hind legs in the leap, crouched landing
+        case 55: return fmodf(t, 0.6f) < 0.35f ? 1 : 0;           // the Wapaloosie: stretched out reaching, arched gathering
+        case 58: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Agropelter: crouched in the wait, in the air in the pounce
+        case 74: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // Bes Rap: crouched in the wait, sprung in the pounce
         case 11: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Paoxiao: standing in the wait, in the air in the pounce
         case 14: return fmodf(t, 0.55f) < 0.25f ? 1 : 0;          // the Lodsilungur: in the air in the flop, lying between
-        case 21: return fmodf(t, 0.5f) < 0.2f ? 1 : 0;            // the Asp: up in the air in the spring
+        case 24: return fmodf(t, 0.9f) < 0.55f ? 0 : 1;           // the Zoureg: coiled while it waits, uncoiled in the thrust
+        case 47: {                                                // the Moha-Moha (three frames): heaved up, flopping down, lying flat
+            float u = fmodf(t, 0.55f);
+            return u < 0.1f ? 1 : u < 0.25f ? 2 : 0;
+        }
         default: return -1;
     }
 }
@@ -126,8 +165,19 @@ static float chase_bend(int enemy_id, float t) {
         case 12: return fmodf(t, 0.5f) < 0.25f ? 0.8f : -0.8f;    // Ebigane jinks, a bat's dart off one side then the other
         case 13: return 0.6f;                                     // the Beast prowls, circling in on you
         case 14: return fmodf(t, 1.1f) < 0.55f ? 0.7f : -0.7f;    // each of the Lodsilungur's flops veers the other way
+        case 47: return fmodf(t, 1.1f) < 0.55f ? 0.7f : -0.7f;    // and each of the Moha-Moha's
+        case 56: return 0.8f * sinf(t * 6.2831853f / 0.45f);      // the Moskitto weaves side to side as it buzzes in
+        case 62: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Hugag wanders the woods, curving one way then the other
+        case 63: return fmodf(t, 1.1f) < 0.8f ? 1.2f : 0.0f;      // circling wide behind you, then straight in
+        case 70: return 0.4f * sinf(t * 6.2831853f / 1.6f);       // the Trollgadda's slow swim weaving a little
+        case 72: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Mahwot swims fast, weaving in an S
         case 15: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Ofuguggi meanders, curving one way then the other
         case 17: return 3.14159265f;                              // the Qiqirn, terrified of people, runs straight away from you
+        case 22: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Cactus Cat staggers drunk, curving one way then the other
+        case 25: return 0.35f * sinf(t * 6.2831853f / 0.5f);      // the Myrmecoleon weaves a little on its long ant legs
+        case 21: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Asp slithers, weaving side to side (a snake: the user)
+        case 27: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Grootslang slithers, weaving side to side
+        case 32: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Angont slithers out of its swamp, weaving side to side
         case 16: {                                                // the Kamaitachi: a gust straight at you, then one loop round
             float u = fmodf(t, 0.8f);
             return u < 0.35f ? 0.0f : 6.2831853f * (u - 0.35f) / 0.45f;
@@ -136,8 +186,42 @@ static float chase_bend(int enemy_id, float t) {
     }
 }
 
+// How many frames a view its mini has in its own strip (minis_NN.png): two,
+// or three for one that needs them (tools/minis.py; the strip is 4 views of them).
+static int mini_frames(int enemy_id) {
+    return enemy_id == 47 || enemy_id == 60 || enemy_id == 71 || enemy_id == 72 ? 3 : 2;   // the Moha-Moha's flop: lying, heaved up, flopping down; the Rumptifusel's wave;
+                                                                  // the Namungumi's crawl, a pair of legs up, all down, the other pair up; the Mahwot's swim
+}
+// A mini only ever seen from the side: going up or down it shows the side it
+// last faced, left or right (DungeonChaser::side). It still goes all four ways.
+static bool mini_sideways(int enemy_id) {
+    return enemy_id == 60 || enemy_id == 72;                      // the Rumptifusel: its front looked awkward (the user); the Mahwot: drawn side on only
+}
+// A flier's mini hovers (the user: "hover + ground shadow"): drawn HOVER_UP
+// art px over its shadow, bobbing a pixel with its wingbeat, its wings never
+// still. Returns its shadow's half width, art px, or 0 for one on the ground
+// (tools/minis.py chase_gif(hover=)). Those drawn standing before this stay so.
+static const int HOVER_UP = 6;
+static int mini_hover(int enemy_id) {
+    switch (enemy_id) {
+        case 56: return 6;                                        // the Moskitto: it never lands
+        case 57: return 7;                                        // the Dingbat: always in the air
+        case 69: return 6;                                        // Bes Chem: on the wing, never landing
+        case 73: return 6;                                        // the Liderc: a wisp, a burning hen in the air
+        default: return 0;
+    }
+}
+
 int main(int argc, char *argv[])
 {
+    // Assets and save.dat are relative paths: resolve them beside game.exe,
+    // however it was launched (a shortcut, another folder's prompt).
+    if (char* base = SDL_GetBasePath()) {
+        chdir(base);
+        SDL_free(base);
+    }
+    settings_load();   // settings.txt beside the exe: the volumes and fullscreen
+
     // Two modes. Play, for players: a title screen, saving, none of the test
     // keys. Test (--debug): straight into the spawn house with the practice
     // enemy, and F1/F2/F3, B, R in battle and click-to-warp on the map.
@@ -157,6 +241,7 @@ int main(int argc, char *argv[])
     if (!platform_init(&plat, "Four Castle Chronicles", LOGICAL_W, LOGICAL_H)) {
         return 1;
     }
+    if (settings()->fullscreen) SDL_SetWindowFullscreen(plat.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
     SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
@@ -237,7 +322,6 @@ int main(int argc, char *argv[])
         // Keep items whose functionality is being tested ready in debug runs.
         if (debug) {
             player.stats.hp = 1; // Start injured for healing-item tests.
-            player.poisoned = 1; // Debug-only status for testing poison and Antidotes.
             const Item test_items[] = { ITEM_ESCAPE_CHARM, ITEM_BAND_AID, ITEM_MEDKIT, ITEM_ANTIDOTE, ITEM_SWIFT_BOOTS, ITEM_DIVING_FINS };
             for (Item it : test_items) {
                 item_slot(&player, it) = (it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE)?5:1;
@@ -272,19 +356,9 @@ int main(int argc, char *argv[])
     // straight back: it is live only once the player has stood off every door.
     bool         room_armed         = false;
 
-    // The stair sound. ponytail: one device playing one clip; a mixer when a
-    // second sound has to play over it.
-    SDL_AudioSpec     stairs_spec;
-    Uint8*            stairs_buf = nullptr;
-    Uint32            stairs_len = 0;
-    SDL_AudioDeviceID stairs_dev = 0;
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0 &&
-        SDL_LoadWAV("assets/sound/40011_in.wav", &stairs_spec, &stairs_buf, &stairs_len)) {
-        stairs_dev = SDL_OpenAudioDevice(NULL, 0, &stairs_spec, NULL, 0);
-        SDL_PauseAudioDevice(stairs_dev, 0);
-    } else {
-        printf("No stair sound: %s\n", SDL_GetError());
-    }
+    // Sound: the mixer and its clips (audio.h), at settings.txt's volumes.
+    audio_init();
+    settings_apply_audio();
     // Test enemies in the spawn house: the enemy being tuned (swap in each new
     // one as its patterns are done; more entries fight as a pack). Armed
     // again once the player steps off them.
@@ -295,7 +369,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 23, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 23 Olgoi-Khorkhoi
+        { 30, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 30 Dajna
     };
     const int    TEST_N             = debug ? (int)(sizeof(test_enemies) / sizeof(test_enemies[0])) : 0;   // none in play
     bool         debug_chest_opened = false;
@@ -461,13 +535,13 @@ int main(int argc, char *argv[])
     bool dbg_open     = false;
     float ow_swap_t   = 99.0f;   // seconds since Q / E swapped weapons outside battle, for the weapon box
     bool dbg_readout  = false;   // F1: FPS, current-area coordinates and game time
-    // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam
-    static const int DBG_ROW_COUNT = 13;
-    // The rows in two columns: the world (0-4, 6, 7) on the left, the player
+    // 0=target, 1=enter, 2=regen, 3=noclip, 4=show all, 5=weapon, 6=grid, 7=seam, 13=chase test room
+    static const int DBG_ROW_COUNT = 14;
+    // The rows in two columns: the world (0-4, 6, 7, 13) on the left, the player
     // (5, 8-10) on the right. dbg_sel is a row's id; UP/DOWN step through this
     // order, down the left column and on into the right.
-    static const int DBG_ORDER[DBG_ROW_COUNT] = { 0, 1, 2, 3, 4, 6, 7,   5, 8, 9, 10, 11, 12 };
-    static const int DBG_PLAYER_AT = 7;   // where the player column starts in DBG_ORDER
+    static const int DBG_ORDER[DBG_ROW_COUNT] = { 0, 1, 13, 2, 3, 4, 6, 7,   5, 8, 9, 10, 11, 12 };
+    static const int DBG_PLAYER_AT = 8;   // where the player column starts in DBG_ORDER
     auto dbg_pos = [&](int id) { int i = 0; while (DBG_ORDER[i] != id) i++; return i; };
     int  dbg_sel      = 0;
     int  dbg_target   = 0;
@@ -475,6 +549,14 @@ int main(int argc, char *argv[])
     bool dbg_noclip   = false;
     bool dbg_show_all = false;
     bool dbg_grid     = false;
+    // The chase test room (row 13): a two-storey cave with nobody in it, where
+    // [ ] pick an enemy, P lets one loose on your floor and O on the other, so
+    // each one's chase (chase_speed / chase_frame / chase_bend) can be watched.
+    // A touch only counts, unless N has turned battles on; nothing is saved.
+    bool chase_test         = false;
+    int  chase_test_id      = 0;
+    bool chase_test_battle  = false;
+    int  chase_test_touches = 0;
     GameMenu menu;            // the TAB menu: crafting and items
     // The speech box (draw_speech): what a person or a note says, typing out
     // part by part (dlg_part: the presses at its stops so far; dlg_t: seconds
@@ -571,6 +653,13 @@ int main(int argc, char *argv[])
     bool battle_list_open = false;
     int  battle_list_sel  = 0;        // position in the filtered list
     char battle_query[24] = "";       // typed search: part of a name, or an id
+    // F4, the difficulty run (src/playtest.cpp): its menu, then the trials
+    // one after another in the sheet's order.
+    bool trial_open = false, trial_running = false;
+    bool trial_reverse = false, trial_warmup = true;
+    int  trial_ids[ENEMY_COUNT], trial_n = 0, trial_start = 0, trial_pos = 0;
+    char trial_run[32] = "";
+    GameState trial_return = STATE_OVERWORLD;
 
     static const char* ENEMY_NAMES[] = {
         // Grassland 0–6
@@ -622,7 +711,9 @@ int main(int argc, char *argv[])
     // by the bed. Exiting the doormat drops the player onto the overworld in
     // front of its door (place_at_start).
     auto wake_at_home = [&]() {
+        chase_test = false;
         debug_chest_opened = false;
+        entered_door = -1;   // out through the spawn house's own door, not the last one used
         interior_load(&imap, 0);
         interior_player_init(&iplayer, &player, &imap);
         iplayer.x = IMAP_W * IMAP_TILE * 0.5f - (HB_X1 + HB_X2) * 0.5f;
@@ -653,8 +744,8 @@ int main(int argc, char *argv[])
         SDL_FreeSurface(ms);
         minis_tex = load_with_white(plat.renderer, "assets/enemies/minis.png", &minis_white);
     }
-    // A mini too big for the sheet's cells has a strip of its own (minis_NN.png):
-    // its 8 cells side by side, drawn at the same scale, feet where a chaser's are.
+    // A mini too big for the sheet's cells, or with three frames a view, has a strip of its own (minis_NN.png):
+    // its cells side by side (4 views of mini_frames() each), drawn at the same scale, feet where a chaser's are.
     SDL_Texture* mini_big[100] = {}, *mini_big_white[100] = {};
     int mini_big_w[100] = {}, mini_big_h[100] = {};
     for (int id = 0; id < 100; id++) {
@@ -662,7 +753,7 @@ int main(int argc, char *argv[])
         SDL_snprintf(path, sizeof path, "assets/enemies/minis_%02d.png", id);
         if ((mini_big[id] = load_with_white(plat.renderer, path, &mini_big_white[id]))) {
             SDL_QueryTexture(mini_big[id], NULL, NULL, &mini_big_w[id], &mini_big_h[id]);
-            mini_big_w[id] /= 8;
+            mini_big_w[id] /= 4 * mini_frames(id);
             mini_done[id] = mini_two[id] = true;
         }
     }
@@ -672,8 +763,10 @@ int main(int argc, char *argv[])
     // face: its mini's view, 0-3 D U L R, and the way it ambles; t: how long it
     // has run at you; ax, ay: the middle of its amble; pause: a stop at a turn;
     // hx, hy: the leg it is on (one of 8 ways); poll: seconds to its next re-aim.
-    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; };
-    static const int MAX_CHASERS = 32;
+    // spawner: its dungeon spawner, beaten for good when it loses (persist.h); -1 for none.
+    // sx, sy: where the chase test room let it loose; flash: seconds of white left after a touch there.
+    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; int spawner; float sx = 0, sy = 0, flash = 0; int side = 2; };   // side: the last way it faced of L R (2 3), for mini_sideways()
+    static const int MAX_CHASERS = DMAP_MAX_SPAWNERS;   // one a spawner, the catacombs' 64 too
     DungeonChaser chasers[MAX_CHASERS] = {};
     int num_chasers = 0;
     // The test house's enemies: drawn as chasers (draw_chaser), standing still
@@ -682,7 +775,7 @@ int main(int argc, char *argv[])
     auto test_home = [&]() {
         for (int i = 0; i < TEST_N; i++)
             test_ch[i] = { test_enemies[i].x, test_enemies[i].y, test_enemies[i].id, true, false, 0.0f,
-                           0, 0.0f, test_enemies[i].x, test_enemies[i].y, 1.0f, 0.0f, 0.0f, 0.0f };   // pause > 0: still
+                           0, 0.0f, test_enemies[i].x, test_enemies[i].y, 1.0f, 0.0f, 0.0f, 0.0f, -1 };   // pause > 0: still
     };
     test_home();
 
@@ -691,6 +784,7 @@ int main(int argc, char *argv[])
     // A chest struck open: "chest was opened." in the speech box, then a
     // line for each thing in it, its icon beside it.
     auto say_chest = [&](const Item* items, const int* counts, int n) {
+        audio_play(SFX_CHEST);
         SDL_strlcpy(pickup_buf, "chest was opened.", sizeof(pickup_buf));
         for (int i = 0; i < n; i++) {
             char ln[40];
@@ -702,6 +796,7 @@ int main(int argc, char *argv[])
         for (int i = 0; i < n; i++) dlg_icons[i] = items[i];
     };
     uint32_t current_dng_seed = 0;
+    int      dng_story_spawner = 0;       // spawners 0..n-1 hold the story's enemies (the bat, the asps, the swarm), kept by the story, not persist.h
     float dng_arrival_x = 0, dng_arrival_y = 0;
     bool dng_arrival_valid = false;
 
@@ -710,6 +805,44 @@ int main(int argc, char *argv[])
     // is no connected partner dungeon.
     int dng_entry_portal_x = -1, dng_entry_portal_y = -1;
     int dng_exit_portal_x  = -1, dng_exit_portal_y  = -1;
+    // In at the way the player stands before (dungeon_player_init already run):
+    // where a stuck player is put back, a fresh breath, and the dungeon state.
+    auto dmap_arrive = [&]() {
+        dungeon_stand_before_way(&dmap, &dplayer);
+        dng_arrival_x = dplayer.x; dng_arrival_y = dplayer.y;
+        dng_arrival_valid = dungeon_player_fits(&dmap, &dplayer);
+        state = STATE_DUNGEON;
+        oxygen = 1.0f; oxy_hurt_t = 0.0f;          // a breath at the top of the shaft
+        dplayer.vx = dplayer.vy = 0.0f;
+    };
+    // Into the chase test room (debug: where a run starts, and F2's row 13).
+    // A cave from no mountain: two floors, a way out on each, ladders up the
+    // band between (carve_cave_terraces); both ways lead back to where you
+    // stood outside. No spawners, no story -- the room is empty until you let
+    // something loose in it.
+    auto enter_chase_test = [&]() {
+        if (!chase_test) {
+            dng_entry_portal_x = dng_exit_portal_x = wrap_x((int)((ow.x + player.width  * 0.5f) / TILE_SIZE));
+            dng_entry_portal_y = dng_exit_portal_y = wrap_y((int)((ow.y + player.height - 8.0f) / TILE_SIZE));
+        }
+        DungeonWiring w = {};
+        w.seed = 0xC4A5Eu; w.difficulty = 0.5f; w.type = DUNGEON_ENT_CAVE;
+        w.connect_angle = NAN; w.my_mouth = -1;
+        dungeon_want(&dmap, &w);
+        dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
+        current_dng_seed = w.seed;
+        dng_story_spawner = 0;
+        dmap.num_spawners = 0;
+        int mx[2] = { dng_entry_portal_x, dng_exit_portal_x }, my[2] = { dng_entry_portal_y, dng_exit_portal_y };
+        dungeon_bind_cave_mouths(&dmap, mx, my, 2);
+        dungeon_player_init(&dplayer, &player, &dmap, 0);
+        num_chasers = 0;
+        chase_test = true;
+        chase_test_touches = 0;
+        dmap_arrive();
+    };
+    // A debug run starts in it; out either way is in front of the spawn house.
+    if (debug) enter_chase_test();
 
     float esc_hold_time = 0.f;
 
@@ -727,6 +860,7 @@ int main(int argc, char *argv[])
         map = new Tilemap();
         memset(tilemap_landmarks_opened(), 0, MAX_LANDMARKS / 8);   // another world: none of its landmarks opened
         memset(dungeon_chest_records(), 0, sizeof(DungeonChestRecord) * MAX_DUNGEON_CHEST_RECORDS);   // nor its dungeons' chests
+        persist_clear();   // nor anything taken out of it
         memset(story_flags(), 0, sizeof(StoryFlags));   // and its story not begun
         resident_reset();
         tilemap_build_overworld_phase1(map, map_seed);
@@ -749,7 +883,7 @@ int main(int argc, char *argv[])
     // actor updates must use this gate; UI keeps using real frame time.
     // Read it dynamically so dialogue opened mid-frame pauses later actors too.
     auto actors_paused = [&]() {
-        return dbg_open || menu.open || map_open || battle_list_open || dlg_text || dlg_list >= 0;
+        return dbg_open || menu.open || map_open || battle_list_open || trial_open || dlg_text || dlg_list >= 0;
     };
 
     // Manual 60 fps frame cap — more consistent than SDL_RENDERER_PRESENTVSYNC on WSL2
@@ -794,15 +928,53 @@ int main(int argc, char *argv[])
     // its square; while it moves it steps to its second frame every other 150 ms
     // (or the one its chase picks), or hops a pixel if it has none. A square
     // until its mini is confirmed.
+    // An enemy with no mini stands in on the map as its battle sheet (draw_chaser),
+    // loaded the first time it is needed.
+    struct SheetFallback { SDL_Texture* tex; SDL_Texture* white; int w, h, frames; bool rows, tried; };
+    static SheetFallback fallbacks[ENEMY_COUNT] = {};
+    auto sheet_fallback = [&](int id) -> const SheetFallback* {
+        if (id < 0 || id >= ENEMY_COUNT) return nullptr;
+        SheetFallback& fb = fallbacks[id];
+        if (!fb.tried) {
+            fb.tried = true;
+            int frames = 3; bool rows = false;
+            if (const char* path = enemy_sheet_info(id, &frames, &rows)) {
+                if ((fb.tex = load_with_white(plat.renderer, path, &fb.white))) {
+                    int tw = 0, th = 0;
+                    SDL_QueryTexture(fb.tex, nullptr, nullptr, &tw, &th);
+                    fb.frames = frames > 0 ? frames : 1;
+                    fb.rows   = rows;
+                    fb.w = rows ? tw / fb.frames : tw / (8 * fb.frames);
+                    fb.h = rows ? th / 8 : th;
+                }
+            }
+        }
+        return fb.tex && fb.w > 0 && fb.h > 0 ? &fb : nullptr;
+    };
     auto draw_chaser = [&](const Camera* c, const DungeonChaser& ch, bool white = false) {
         int id = ch.enemy_id, face = ch.face;
         static const int SPIN[4] = { 0, 3, 1, 2 };                  // D R U L
         if (id == 16) face = SPIN[world_ms() / 120 % 4];        // the Kamaitachi spins, whichever way it goes
+        if (mini_sideways(id) && face < 2) face = ch.side;          // going up or down, still side on
         float wx = art_snap(ch.x), wy = art_snap(ch.y);   // on the tiles' art grid
         bool running = ch.chasing && ch.aggro_timer <= 0.0f;
         bool moving = ch.chasing ? running && chase_speed(id, ch.t) != 0.0f : ch.pause <= 0.0f;
         int frame = running ? chase_frame(id, ch.t) : -1;
         if (id < 0 || id >= 100 || !mini_done[id] || (!minis_tex && !mini_big[id])) {
+            // No mini yet: its battle sheet's first frame for that way (D U L R
+            // are sheet directions 0 4 6 2), shrunk to a mini's size, hopping.
+            if (const SheetFallback* fb = sheet_fallback(id)) {
+                static const int DIR[4] = { 0, 4, 6, 2 };
+                int d = DIR[face & 3];
+                SDL_Rect src = fb->rows ? SDL_Rect{ 0, d * fb->h, fb->w, fb->h }
+                                        : SDL_Rect{ d * fb->frames * fb->w, 0, fb->w, fb->h };
+                float k = fminf(1.0f, fminf(28.0f / fb->h, 48.0f / fb->w)) * 2.0f * c->zoom;
+                int hop = moving && (world_ms() / 150) % 2 ? (int)(2.0f * c->zoom) : 0;
+                SDL_Rect dst = { cam_px(c, wx) - (int)(fb->w * k / 2), cam_py(c, wy + 7.0f) - (int)(fb->h * k) - hop,
+                                 (int)(fb->w * k), (int)(fb->h * k) };
+                SDL_RenderCopy(plat.renderer, white && fb->white ? fb->white : fb->tex, &src, &dst);
+                return;
+            }
             SDL_Rect cr = chaser_rect(c, wx, wy);
             fc_draw_color(plat.renderer, 200, 30, 30, 255);
             SDL_RenderFillRect(plat.renderer, &cr);
@@ -811,13 +983,29 @@ int main(int argc, char *argv[])
             return;
         }
         float s = 2.0f * c->zoom;
-        int step = moving && (world_ms() / 150) % 2;
-        if (mini_two[id] && frame >= 0) step = frame;               // its chase picks the frame
-        int hop = step && !mini_two[id] ? (int)s : 0;
-        int cell = face * 2 + (step && mini_two[id]), cw = 40, chh = 28;
+        int n = mini_big[id] ? mini_frames(id) : mini_two[id] ? 2 : 1;   // frames a view; one hops
+        int hover = mini_hover(id);
+        int step = moving || hover ? (int)(world_ms() / 150 % (n > 1 ? n : 2)) : 0;
+        if (n > 1 && frame >= 0) step = frame;                      // its chase picks the frame
+        int hop = step && n == 1 ? (int)s : 0;
+        int cell = n > 1 ? face * n + step : face * 2, cw = 40, chh = 28;
         SDL_Rect src = { ((id % 5) * 8 + cell) * 40, (id / 5) * 28, 40, 28 };
         if (mini_big[id]) { cw = mini_big_w[id]; chh = mini_big_h[id]; src = { cell * cw, 0, cw, chh }; }
         SDL_Rect dst = { cam_px(c, wx) - (int)(cw / 2 * s), cam_py(c, wy + 7.0f) - (int)(chh * s) - hop, (int)(cw * s), (int)(chh * s) };
+        if (hover) {
+            // its shadow under it: an ellipse hover art px across each way and
+            // 2 down, half its pixels black by the dither (no alpha: every
+            // pixel stays on the palette)
+            int gx = cam_px(c, wx), gy = cam_py(c, wy + 7.0f) - (int)(2 * s);
+            fc_draw_color(plat.renderer, 0, 0, 0, 255);
+            for (int y = -2; y <= 2; y++)
+                for (int x = -hover; x <= hover; x++)
+                    if (x * x * 4 + y * y * hover * hover <= hover * hover * 4 && fc_bayer(x + hover, y + 2) < 8) {
+                        SDL_Rect px = { gx + (int)(x * s), gy + (int)(y * s), (int)s, (int)s };
+                        SDL_RenderFillRect(plat.renderer, &px);
+                    }
+            dst.y -= (int)((HOVER_UP - (n > 1 ? step : 0)) * s);
+        }
         SDL_Texture* tex = mini_big[id] ? (white ? mini_big_white[id] : mini_big[id]) : (white ? minis_white : minis_tex);
         SDL_RenderCopy(plat.renderer, tex, &src, &dst);
     };
@@ -841,6 +1029,7 @@ int main(int argc, char *argv[])
                     ch.x = nx; ch.y = ny;
                 } else {
                     ch.face  = rand() % 4;
+                    if (ch.face >= 2) ch.side = ch.face;
                     ch.pause = 0.4f + (rand() % 100) * 0.01f;
                 }
                 return 0.0f;
@@ -850,6 +1039,7 @@ int main(int argc, char *argv[])
             ch.t = 0.0f;
             ch.poll = 0.0f;
             ch.face = fabsf(cdx) > fabsf(cdy) ? (cdx < 0 ? 2 : 3) : (cdy < 0 ? 1 : 0);
+            if (cdx != 0.0f) ch.side = cdx < 0 ? 2 : 3;
         }
         if (ch.aggro_timer > 0.0f) { ch.aggro_timer -= dt; return 0.0f; }
         ch.t += dt;
@@ -863,6 +1053,7 @@ int main(int argc, char *argv[])
             float a = roundf(atan2f(mx * bs + my * bc, mx * bc - my * bs) / EIGHTH) * EIGHTH;
             ch.hx = cosf(a); ch.hy = sinf(a);
             ch.face = fabsf(ch.hx) > fabsf(ch.hy) ? (ch.hx < 0 ? 2 : 3) : (ch.hy < 0 ? 1 : 0);   // it looks the way it runs
+            if (fabsf(ch.hx) > 0.01f) ch.side = ch.hx < 0 ? 2 : 3;
         }
         return CHASER_SPEED * chase_speed(ch.enemy_id, ch.t);
     };
@@ -983,13 +1174,15 @@ int main(int argc, char *argv[])
             SDL_RenderSetLogicalSize(plat.renderer, LOGICAL_W, LOGICAL_H);
         }
 
-        if (input_pressed(&in, SDL_SCANCODE_F1))
+        if (debug && input_pressed(&in, SDL_SCANCODE_F1))
             dbg_readout = !dbg_readout;
 
         if (input_pressed(&in, SDL_SCANCODE_F11)) {
             Uint32 flags = SDL_GetWindowFlags(plat.window);
             SDL_SetWindowFullscreen(plat.window,
                 (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+            settings()->fullscreen = (flags & SDL_WINDOW_FULLSCREEN_DESKTOP) ? 0 : 1;
+            settings_save();
         }
 
         // ── Debug menu toggle / navigation ───────────────────────────────────
@@ -1046,7 +1239,7 @@ int main(int argc, char *argv[])
                 // Row 11: the story, as far as a stage (its beaten bits set to there)
                 if (dbg_sel == 11 && step)
                     story_set_stage((StoryStage)((story_stage() + step + STORY_STAGE_COUNT) % STORY_STAGE_COUNT));
-                if (dbg_sel == 12 && step)   // the sites, the hall, village 0, the lighthouse, the bat's tree, the wharf's tip
+                if (dbg_sel == 12 && step)   // the sites, the hall, the worm's village, the lighthouse, the bat's tree, the wharf's tip
                     dbg_story_go = (dbg_story_go + step + STORY_BOSS_COUNT + 5) % (STORY_BOSS_COUNT + 5);
             }
 
@@ -1093,7 +1286,10 @@ int main(int argc, char *argv[])
                 } else if (dbg_story_go == STORY_BOSS_COUNT) {
                     if (map->towns[1].x >= 0) { tx = map->towns[1].x + TOWN1_HALL_DOOR_X; ty = map->towns[1].y + TOWN1_HALL_DOOR_Y + 2; }
                 } else if (dbg_story_go == STORY_BOSS_COUNT + 1) {
-                    if (map->num_villages > 0) { story_village_npc_tile(map, 0, &tx, &ty); ty += 1; }   // the street's lower row, a step from the speaker
+                    if (map->num_villages > 0) {   // the worm's village (village 0 without one): the street's lower row, a step from the speaker
+                        int v = story_worm_village(map);
+                        story_village_npc_tile(map, v >= 0 ? v : 0, &tx, &ty); ty += 1;
+                    }
                 } else if (dbg_story_go == STORY_BOSS_COUNT + 2) {
                     if (map->lighthouse_door >= 0)   // onto the lighthouse's door foot: it takes you in
                         { tx = map->doors[map->lighthouse_door].x; ty = map->doors[map->lighthouse_door].y; }
@@ -1116,6 +1312,12 @@ int main(int argc, char *argv[])
                 ow.x = (MAP_WIDTH  / 2.0f) * TILE_SIZE;
                 ow.y = (MAP_HEIGHT / 2.0f) * TILE_SIZE;
                 state    = STATE_OVERWORLD;
+                dbg_open = false;
+            }
+
+            // Row 13: into the chase test room, from outside (or afresh from in it).
+            if (dbg_sel == 13 && dbg_confirm && (state == STATE_OVERWORLD || chase_test)) {
+                enter_chase_test();
                 dbg_open = false;
             }
 
@@ -1193,6 +1395,14 @@ int main(int argc, char *argv[])
                 : state != STATE_DUNGEON || !dng_arrival_valid ? "ONLY IN A DUNGEON"
                 : pre_battle_timer >= 0.0f ? "BATTLE IS STARTING"
                 : room_t >= 0.0f ? "TRANSITION IN PROGRESS" : nullptr;
+            // The raft stays on while it holds you up: off over water, you would sink.
+            // Any corner of the feet in water counts: the box would be wedged.
+            {
+                bool wet = ow.sailing;
+                for (int k = 0; k < 4 && !wet; k++)
+                    wet = tilemap_pixel_water(map, ow.x + ((k & 1) ? HB_X2 : HB_X1), ow.y + ((k & 2) ? HB_Y2 : HB_Y1));
+                menu.raft_block = state == STATE_OVERWORLD && !player.at_sea && wet ? "CAN'T WHILE ON WATER" : nullptr;
+            }
             menu.healing_block = state == STATE_BATTLE ? "EXPLORATION ONLY"
                 : pre_battle_timer >= 0.0f ? "BATTLE IS STARTING"
                 : room_t >= 0.0f ? "TRANSITION IN PROGRESS" : nullptr;
@@ -1353,6 +1563,7 @@ int main(int argc, char *argv[])
                     delete battle_scene;
                     battle_scene = new BattleScene(&player, battle_hits[battle_list_sel]);
                     state = STATE_BATTLE;
+                    audio_play(SFX_BATTLE_START);
                     battle_list_open = false;
                 }
             }
@@ -1361,6 +1572,55 @@ int main(int argc, char *argv[])
                 else battle_list_open = false;
             }
         }
+
+        // ── Difficulty run (F4) ───────────────────────────────────────────────
+        // The enemies in the sheet's order, each a timed trial that can't be
+        // lost; the menu picks where to start (the first not yet logged by
+        // today's pass), the direction and a warm-up against Skvader.
+        // trial_seq(i): the run's i-th enemy, forward or reversed.
+        auto trial_seq = [&](int i) { return trial_ids[trial_reverse ? trial_n - 1 - i : i]; };
+        auto trial_resume = [&]() {
+            playtest_run_label(trial_run, sizeof(trial_run), trial_reverse);
+            trial_start = 0;
+            while (trial_start < trial_n && playtest_logged(trial_run, trial_seq(trial_start))) trial_start++;
+            if (trial_start >= trial_n) trial_start = 0;
+        };
+        auto trial_fight = [&](int id) {
+            delete battle_scene;
+            battle_scene = new BattleScene(&player, id);
+            battle_scene->set_trial(TRIAL_DRAIN_SECS, playtest_gear(id));
+            state = STATE_BATTLE;
+            audio_play(SFX_BATTLE_START);
+        };
+        if (debug && input_pressed(&in, SDL_SCANCODE_F4) && !dbg_open && !menu.open && !battle_list_open && state != STATE_BATTLE) {
+            trial_open = !trial_open;
+            if (trial_open) { trial_n = playtest_order(trial_ids, ENEMY_COUNT); trial_resume(); }
+        }
+        if (trial_open && trial_n > 0) {
+            if (input_pressed(&in, SDL_SCANCODE_LEFT))  trial_start = (trial_start + trial_n - 1) % trial_n;
+            if (input_pressed(&in, SDL_SCANCODE_RIGHT)) trial_start = (trial_start + 1) % trial_n;
+            // Up/down: a whole tier at a time, to the first enemy of the next or this/previous one.
+            auto tier_at = [&](int i) { return enemy_tier(trial_seq(i)); };
+            if (input_pressed(&in, SDL_SCANCODE_DOWN)) {
+                int t = tier_at(trial_start);
+                while (trial_start + 1 < trial_n && tier_at(trial_start) == t) trial_start++;
+            }
+            if (input_pressed(&in, SDL_SCANCODE_UP)) {
+                if (trial_start > 0 && tier_at(trial_start - 1) != tier_at(trial_start)) trial_start--;
+                int t = tier_at(trial_start);
+                while (trial_start > 0 && tier_at(trial_start - 1) == t) trial_start--;
+            }
+            if (input_pressed(&in, SDL_SCANCODE_R)) { trial_reverse = !trial_reverse; trial_resume(); }
+            if (input_pressed(&in, SDL_SCANCODE_W)) trial_warmup = !trial_warmup;
+            if (input_pressed(&in, SDL_SCANCODE_RETURN)) {
+                trial_open    = false;
+                trial_running = true;
+                trial_return  = state;
+                trial_pos     = trial_warmup ? -1 : trial_start;   // -1: the warm-up, then trial_start
+                trial_fight(trial_pos < 0 ? 0 : trial_seq(trial_pos));
+            }
+        }
+        if (trial_open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) trial_open = false;
 
         // Advance simulation only while no modal UI is open. UI animations
         // and dialogue typing continue to use dt independently.
@@ -1399,10 +1659,7 @@ int main(int argc, char *argv[])
             if (room_t < 0.0f && room_armed) {
                 room_armed = false;
                 room_t = 0.0f;
-                if (stairs && stairs_dev) {
-                    SDL_ClearQueuedAudio(stairs_dev);
-                    SDL_QueueAudio(stairs_dev, stairs_buf, stairs_len);
-                }
+                if (stairs) audio_play(SFX_STAIRS);
             }
             return room_swap;
         };
@@ -1453,6 +1710,7 @@ int main(int argc, char *argv[])
             delete battle_scene;
             battle_scene = new BattleScene(&player, 0);
             state = STATE_BATTLE;
+            audio_play(SFX_BATTLE_START);
         }
 
         // Mouse wheel steps through pixel-perfect zoom levels
@@ -1543,7 +1801,7 @@ int main(int argc, char *argv[])
         // a battle freezes the day.
         if (!actors_paused() &&
             (state == STATE_OVERWORLD || state == STATE_DUNGEON || state == STATE_INTERIOR)) {
-            if (state == STATE_OVERWORLD && post_battle_t <= 0.0f && input_pressed(&in, SDL_SCANCODE_T)) {
+            if (debug && state == STATE_OVERWORLD && post_battle_t <= 0.0f && input_pressed(&in, SDL_SCANCODE_T)) {
                 resident_advance_hour(map);
                 pickup_note = "1 HOUR LATER";
                 pickup_note_t = 1.5f;
@@ -1660,6 +1918,22 @@ int main(int argc, char *argv[])
                             }
                         }
                     }
+                    // The herder's bell, on the worm's soft sand: rung, the site stands
+                    // and the boy is on it, so the fight comes straight on (src/story.cpp).
+                    if (!player.at_sea && !dlg_text && ow_talk < 0 && !ow_prompt &&
+                        story_worm_can_ring(map, ow.x + player.width * 0.5f, ow.y + player.height * 0.5f)) {
+                        ow_prompt = "RING THE BELL";
+                        if (input_pressed(game_in, SDL_SCANCODE_RETURN) ||
+                            input_pressed(game_in, SDL_SCANCODE_Z)      ||
+                            input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                            story_worm_ring();
+                            site_armed = true;
+                            pickup_note = "THE SAND RINGS BACK..."; pickup_note_t = 2.0f;
+                            input_consume(&in, SDL_SCANCODE_Z);
+                            input_consume(&in, SDL_SCANCODE_RETURN);
+                            input_consume(&in, SDL_SCANCODE_SPACE);
+                        }
+                    }
                     // The story's bosses stand on the map (src/story.cpp): walk
                     // into one and it fights, once per approach as the dummies.
                     int hit = story_site_touch(map, ow.x + player.width * 0.5f, ow.y + player.height * 0.5f);
@@ -1669,12 +1943,18 @@ int main(int argc, char *argv[])
                         site_armed = false;
                         float fx, fy;
                         story_site_flash_at(map, hit, &fx, &fy);
-                        battle_queue[0]            = STORY_BOSSES[hit];
-                        battle_queue_chaser_idx[0] = -1;
-                        flash_entries[0]           = { fx, fy };
-                        battle_queue_count = flash_count = 1;
-                        battle_queue_idx   = 0;
-                        pre_battle_timer   = 0.0f;
+                        if (!debug && !enemy_ready(STORY_BOSSES[hit])) {   // not finished: no fight yet
+                            pickup_note = "SOMETHING STIRS HERE... NOT YET.";
+                            pickup_note_t = 2.0f;
+                        } else {
+                            battle_queue[0]            = STORY_BOSSES[hit];
+                            battle_queue_chaser_idx[0] = -1;
+                            flash_entries[0]           = { fx, fy };
+                            battle_queue_count = flash_count = 1;
+                            battle_queue_idx   = 0;
+                            pre_battle_timer   = 0.0f;
+                            audio_play(SFX_BATTLE_START);   // with the first flash
+                        }
                     }
                 }
                 floattext_spawn_from_harvest(&cur_float, &harvest);
@@ -1698,7 +1978,7 @@ int main(int argc, char *argv[])
                 // picture of it at 2x, while their feet are on water.
                 {
                     float fx = ow.x + (HB_X1 + HB_X2) * 0.5f, fy = ow.y + (HB_Y1 + HB_Y2) * 0.5f;
-                    if (player.raft > 0 && !player.at_sea && tilemap_pixel_water(map, fx, fy)) {
+                    if (item_raft_worn(&player) && !player.at_sea && tilemap_pixel_water(map, fx, fy)) {
                         int size = (int)(32 * cam.zoom);
                         game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT,
                                             cam_screen_x(&cam, fx) - size / 2,
@@ -1835,14 +2115,29 @@ int main(int argc, char *argv[])
                         dungeon_generate(&dmap, w.type, w.difficulty, w.seed);
                         current_dng_seed = w.seed;
                         // The lighthouse keeper's bat roosts in the tree it named (src/story.cpp)
-                        if (dmap.num_spawners > 0 && story_quest_pin(map, map_seed, w.seed, &player))
+                        dng_story_spawner = 0;
+                        if (dmap.num_spawners > 0 && story_quest_pin(map, map_seed, w.seed, &player)) {
                             dmap.spawners[0].enemy_id = 12;
+                            dmap.spawners[0].dead = false;   // whatever stood there before, the bat is new
+                            dng_story_spawner = 1;
+                        }
+                        // The sand village's asps nest in the desert dungeon nearest it while
+                        // their glands are asked for: one asp a gland, back each time in
+                        if (dmap.num_spawners > 0 && story_worm_pin(map, map_seed, w.seed)) {
+                            dng_story_spawner = dmap.num_spawners < STORY_WORM_GLANDS ? dmap.num_spawners : STORY_WORM_GLANDS;
+                            for (int si = 0; si < dng_story_spawner; si++) {
+                                dmap.spawners[si].enemy_id = 21;
+                                dmap.spawners[si].dead = false;
+                            }
+                        }
                         // Once Anaye has fallen at its mouth, the island's cave leads to the
                         // swarm: nothing else is inside, only the planet's core (src/story.cpp).
                         if (dmap.num_spawners > 0 && dmap.starter && dmap.type == DUNGEON_ENT_CAVE &&
                             story_stage() >= STORY_OPEN && !story_beaten(100)) {
                             dmap.spawners[0].enemy_id = 100;
+                            dmap.spawners[0].dead = false;
                             dmap.num_spawners = 1;
+                            dng_story_spawner = 1;
                         }
                         // A treasure is found once: every dungeon of its kind
                         // holds it until the player has picked one up anywhere.
@@ -1882,12 +2177,11 @@ int main(int argc, char *argv[])
                             dplayer.y = (float)(dmap.portals[my_mouth].ty * DMAP_TILE
                                                 + DMAP_TILE / 2 - 24);
                         }
-                        dungeon_stand_before_way(&dmap, &dplayer);
-                        dng_arrival_x = dplayer.x; dng_arrival_y = dplayer.y;
-                        dng_arrival_valid = dungeon_player_fits(&dmap, &dplayer);
+                        chase_test = false;
                         num_chasers = 0;
                         for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
                             DungeonSpawner& sp = dmap.spawners[si];
+                            if (sp.dead) continue;   // beaten before: gone for good
                             float cx = sp.tx * DMAP_TILE + DMAP_TILE * 0.5f, cy = sp.ty * DMAP_TILE + DMAP_TILE * 0.5f;
                             if (!enemy_flies(sp.enemy_id)) {   // a walker starts where its feet fit the drawn floor
                                 float fx = cx - (HB_X1 + HB_X2) * 0.5f, fy = cy - (HB_Y1 + HB_Y2) * 0.5f;
@@ -1895,11 +2189,9 @@ int main(int argc, char *argv[])
                                 cx = fx + (HB_X1 + HB_X2) * 0.5f; cy = fy + (HB_Y1 + HB_Y2) * 0.5f;
                             }
                             chasers[num_chasers++] = { cx, cy, sp.enemy_id, true, false, 0.0f,
-                                                       si % 4, 0.0f, cx, cy, 0.0f, 0.0f, 0.0f, 0.0f };   // ambles set off different ways
+                                                       si % 4, 0.0f, cx, cy, 0.0f, 0.0f, 0.0f, 0.0f, si };   // ambles set off different ways
                         }
-                        state = STATE_DUNGEON;
-                        oxygen = 1.0f; oxy_hurt_t = 0.0f;          // a breath at the top of the shaft
-                        dplayer.vx = dplayer.vy = 0.0f;
+                        dmap_arrive();
                     }
                 }
                 // Building door — walking into it enters the interior.
@@ -1949,10 +2241,42 @@ int main(int argc, char *argv[])
                 if (battle_scene) {
                     if (!actors_paused()) battle_scene->update(game_in, dt);
                     battle_scene->draw(plat.renderer, player_sprite);
-                    if (battle_scene->is_done()) {
+                    if (battle_scene->is_done() && battle_scene->is_trial()) {
+                        // A difficulty trial: log it, then the next in the run
+                        // -- or back where the run started.
+                        const TrialStats& ts = battle_scene->trial();
+                        int id = trial_pos < 0 ? 0 : trial_seq(trial_pos);
+                        int order_index = -1;
+                        for (int i = 0; trial_pos >= 0 && i < trial_n; i++) if (trial_ids[i] == id) order_index = i;
+                        playtest_log(trial_run, order_index, id, ENEMY_NAMES[id], ts);
+                        bool quit = ts.quit;
+                        delete battle_scene;
+                        battle_scene = nullptr;
+                        trial_pos = trial_pos < 0 ? trial_start : trial_pos + 1;
+                        if (trial_running && !quit && trial_pos < trial_n) {
+                            trial_fight(trial_seq(trial_pos));
+                        } else {
+                            trial_running = false;
+                            state = trial_return;
+                            post_battle_t = 1.0f;
+                        }
+                    } else if (battle_scene->is_done()) {
                         {
                             bool victory = battle_scene->get_phase() == BATTLE_PHASE_VICTORY;
+                            bool defeat  = battle_scene->get_phase() == BATTLE_PHASE_DEFEAT;
                             if (victory) story_mark_beaten(battle_queue[battle_queue_idx]);   // a story boss down: the stage moves
+                            // A dungeon enemy beaten is beaten for good -- each win of a
+                            // pack, even one lost later (the user). Not the story's own.
+                            if (victory && state_after_battle == STATE_DUNGEON) {
+                                int cidx = battle_queue_chaser_idx[battle_queue_idx];
+                                if (cidx >= 0 && cidx < num_chasers) {
+                                    int si = chasers[cidx].spawner;
+                                    if (si >= 0 && si >= dng_story_spawner && !chase_test) {
+                                        persist_spawner_beaten(dmap.seed, si);
+                                        dmap.spawners[si].dead = true;
+                                    }
+                                }
+                            }
                             float last_x = battle_scene->player_x(), last_y = battle_scene->player_y();
                             delete battle_scene;
                             battle_scene = nullptr;
@@ -1973,6 +2297,17 @@ int main(int argc, char *argv[])
                                 battle_queue_idx   = 0;
                                 state = state_after_battle;
                                 state_after_battle = STATE_OVERWORLD;
+                                // Beaten: wake at home, whole again and cured. Nothing
+                                // is lost (user); the dungeon regrows on the next visit.
+                                if (defeat) {
+                                    player.stats.hp     = player.stats.max_hp;
+                                    player.poisoned     = 0;
+                                    player.poison_timer = 0.0f;
+                                    oxygen = 1.0f; oxy_hurt_t = 0.0f;
+                                    wake_at_home();
+                                    pickup_note = "YOU WAKE UP AT HOME";
+                                    pickup_note_t = 2.0f;
+                                }
                             }
                         }
                     }
@@ -2060,6 +2395,15 @@ int main(int argc, char *argv[])
                         float cdx = dpcx - ch.x, cdy = dpcy - ch.y;
                         float dist2 = cdx*cdx + cdy*cdy;
 
+                        if (dist2 < TRIGGER_DIST2 && chase_test && !chase_test_battle) {
+                            // The test room: counted, a flash, and back where it was let loose.
+                            if (ch.flash <= 0.0f) chase_test_touches++;
+                            ch.flash = 0.3f;
+                            ch.x = ch.ax = ch.sx; ch.y = ch.ay = ch.sy;
+                            ch.chasing = false;
+                            ch.pause = 0.5f;
+                            continue;
+                        }
                         if (dist2 < TRIGGER_DIST2) {
                             ch.active = false;
 
@@ -2068,6 +2412,7 @@ int main(int argc, char *argv[])
                             battle_queue_count = 0;
                             battle_queue_idx   = 0;
                             battle_queue_chaser_idx[0] = battle_queue_chaser_idx[1] = battle_queue_chaser_idx[2] = -1;
+                            battle_queue_chaser_idx[0] = ci;   // so its win is recorded (persist.h)
                             battle_queue[battle_queue_count++] = ch.enemy_id;
                             flash_entries[0] = { ch.x, ch.y, ch.enemy_id, ch.face };
 
@@ -2106,6 +2451,7 @@ int main(int argc, char *argv[])
 
                             flash_count       = battle_queue_count;
                             pre_battle_timer  = 0.0f;
+                            audio_play(SFX_BATTLE_START);   // with the first flash
                             break;
                         }
 
@@ -2218,12 +2564,55 @@ int main(int argc, char *argv[])
 
                 // Draw active chasers
                 for (int ci = 0; ci < num_chasers; ci++) {
-                    if (chasers[ci].active) draw_chaser(&cam, chasers[ci]);
+                    if (chasers[ci].active) draw_chaser(&cam, chasers[ci], chasers[ci].flash > 0.0f);
+                    if (chasers[ci].flash > 0.0f) chasers[ci].flash -= dt;
                 }
                 hurt_shake_end(plat.renderer, &drown_vp);
                 hurt_flash(plat.renderer, drown_t, 640, 480);
 
                 battle_veil_draw(&cam);
+
+                // The chase test room's picker: [ ] the enemy (Shift by tens), P one
+                // let loose on your floor, O on the other, BACKSPACE clears, N
+                // battles on a touch or not. A spot is a floor tile at least four
+                // away, the nearest ring that has any, one of them at random.
+                if (chase_test && !dbg_open && !menu.open && !dlg_text && pre_battle_timer < 0.0f) {
+                    int tens = (input_down(&in, SDL_SCANCODE_LSHIFT) || input_down(&in, SDL_SCANCODE_RSHIFT)) ? 10 : 1;
+                    int step = input_pressed(&in, SDL_SCANCODE_RIGHTBRACKET) - input_pressed(&in, SDL_SCANCODE_LEFTBRACKET);
+                    chase_test_id = ((chase_test_id + step * tens) % ENEMY_COUNT + ENEMY_COUNT) % ENEMY_COUNT;
+                    if (input_pressed(&in, SDL_SCANCODE_N)) chase_test_battle = !chase_test_battle;
+                    if (input_pressed(&in, SDL_SCANCODE_BACKSPACE)) num_chasers = 0;
+                    bool here = input_pressed(&in, SDL_SCANCODE_P), there = input_pressed(&in, SDL_SCANCODE_O);
+                    if ((here || there) && num_chasers < MAX_CHASERS) {
+                        auto tier_at = [&](int tx, int ty) {
+                            if (tx < 0 || tx >= DMAP_W || ty < 0 || ty >= DMAP_H) return -1;
+                            int r = dmap.region[ty][tx] - 1;
+                            return r >= 0 && r < dmap.num_tree_floors ? (int)dmap.tree_floors[r].t : -1;
+                        };
+                        int ptx = (int)(dpcx / DMAP_TILE), pty = (int)(dpcy / DMAP_TILE);
+                        int mine = tier_at(ptx, pty);
+                        bool flies = enemy_flies(chase_test_id);
+                        int cand[256][2], nc = 0;
+                        for (int rad = 4; rad < 60 && nc == 0; rad++)
+                            for (int dy = -rad; dy <= rad; dy++)
+                                for (int dx = -rad; dx <= rad; dx++) {
+                                    if (abs(dx) != rad && abs(dy) != rad) continue;   // the ring only
+                                    int tx = ptx + dx, ty = pty + dy, t = tier_at(tx, ty);
+                                    if (t < 0 || (here ? t != mine : t == mine)) continue;
+                                    float cx = tx * DMAP_TILE + DMAP_TILE * 0.5f, cy = ty * DMAP_TILE + DMAP_TILE * 0.5f;
+                                    if (!flies && !can_occupy(&dmap, cx - (HB_X1 + HB_X2) * 0.5f, cy - (HB_Y1 + HB_Y2) * 0.5f, dungeon_solid_at)) continue;
+                                    if (nc < 256) { cand[nc][0] = tx; cand[nc][1] = ty; nc++; }
+                                }
+                        if (nc > 0) {
+                            int k = rand() % nc;
+                            float cx = cand[k][0] * DMAP_TILE + DMAP_TILE * 0.5f, cy = cand[k][1] * DMAP_TILE + DMAP_TILE * 0.5f;
+                            DungeonChaser c = { cx, cy, chase_test_id, true, false, 0.0f,
+                                                rand() % 4, 0.0f, cx, cy, 0.0f, 0.0f, 0.0f, 0.0f, -1 };
+                            c.sx = cx; c.sy = cy;
+                            chasers[num_chasers++] = c;
+                        }
+                    }
+                }
 
                 // The catacombs' holes and ladders, taken by walking onto them.
                 if (dungeon_link_name(&dmap, &dplayer)) {
@@ -2236,8 +2625,10 @@ int main(int argc, char *argv[])
                 // DNG_ENTRY tile — exit back to the overworld entrance we came from.
                 if (dplayer.at_entry) {
                     if (room_taken(true)) {
-                        dungeon_explored_cache[current_dng_seed].assign(
-                            &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                        if (!chase_test)
+                            dungeon_explored_cache[current_dng_seed].assign(
+                                &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                        chase_test = false;
                         // Leave by the portal walked into. A cave has one
                         // per mouth, so which one you are on is the whole question,
                         // and the old pair of destinations could only answer it for
@@ -2256,8 +2647,10 @@ int main(int argc, char *argv[])
                 // DNG_EXIT tile — exit to the connected overworld entrance (or back if none).
                 if (dplayer.at_exit) {
                     if (room_taken(true)) {
-                        dungeon_explored_cache[current_dng_seed].assign(
-                            &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                        if (!chase_test)
+                            dungeon_explored_cache[current_dng_seed].assign(
+                                &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                        chase_test = false;
                         // Leave by the portal walked into. A cave has one
                         // per mouth, so which one you are on is the whole question,
                         // and the old pair of destinations could only answer it for
@@ -2273,6 +2666,26 @@ int main(int argc, char *argv[])
                     }
                 }
 
+
+                if (chase_test) {
+                    // What is picked and how the room stands, down the bottom left.
+                    const int id = chase_test_id;
+                    char l1[96], l2[96], l3[96];
+                    SDL_snprintf(l1, sizeof(l1), "CHASE TEST  [ ] PICK  P HERE  O OTHER FLOOR  BKSP CLEAR  N BATTLE");
+                    SDL_snprintf(l2, sizeof(l2), "#%d %s   %s   %s", id, ENEMY_NAMES[id],
+                                 enemy_flies(id) ? "FLIES" : "WALKS",
+                                 id < 100 && mini_done[id] ? "MINI" : "NO MINI: SHEET");
+                    SDL_snprintf(l3, sizeof(l3), "BATTLE ON TOUCH: %s   TOUCHES: %d   OUT: %d",
+                                 chase_test_battle ? "ON" : "OFF", chase_test_touches, num_chasers);
+                    SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_BLEND);
+                    fc_draw_color(plat.renderer, 0, 0, 0, 200);
+                    SDL_Rect bg = { 0, 432, 640, 48 };
+                    SDL_RenderFillRect(plat.renderer, &bg);
+                    SDL_SetRenderDrawBlendMode(plat.renderer, SDL_BLENDMODE_NONE);
+                    draw_text(plat.renderer, l1, 6, 436, 1, 180, 180, 180);
+                    draw_text(plat.renderer, l2, 6, 450, 1, 255, 255, 80);
+                    draw_text(plat.renderer, l3, 6, 464, 1, chase_test_battle ? 255 : 180, chase_test_battle ? 120 : 180, chase_test_battle ? 120 : 180);
+                }
 
                 if (input_pressed(&in, SDL_SCANCODE_M) && !menu.open)
                     map_open = !map_open;
@@ -2293,8 +2706,10 @@ int main(int argc, char *argv[])
 
                 // ESC out of a dungeon or a house from anywhere: a test shortcut.
                 if (debug && !dbg_open && !menu.open && input_pressed(&in, SDL_SCANCODE_ESCAPE)) {
-                    dungeon_explored_cache[current_dng_seed].assign(
-                        &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                    if (!chase_test)
+                        dungeon_explored_cache[current_dng_seed].assign(
+                            &dmap.explored[0][0], &dmap.explored[0][0] + DMAP_H * DMAP_W);
+                    chase_test = false;
                     state = STATE_OVERWORLD;
                 }
                 break;
@@ -2345,6 +2760,7 @@ int main(int argc, char *argv[])
                         battle_queue_count = flash_count = n;
                         battle_queue_idx   = 0;
                         pre_battle_timer   = 0.0f;
+                        audio_play(SFX_BATTLE_START);   // with the first flash
                     }
                 }
 
@@ -2522,7 +2938,9 @@ int main(int argc, char *argv[])
             const Enemy* foe = nullptr;
             const WeaponSwingState* sw = state == STATE_OVERWORLD ? &ow.swing
                                        : state == STATE_DUNGEON   ? &dplayer.swing : nullptr;
+            bool poisoned = player.poisoned != 0;
             if (state == STATE_BATTLE && battle_scene) {
+                poisoned = battle_scene->hud_poisoned();   // a trial's own poison, not the save's
                 hp      = battle_scene->hud_hp();
                 max_hp  = battle_scene->hud_max_hp();
                 stamina = battle_scene->hud_stamina();
@@ -2549,7 +2967,7 @@ int main(int argc, char *argv[])
                 SDL_RenderDrawRect(plat.renderer, &box);
                 for (int b = 0; b < bars; b++) {
                     if (b < full) {
-                        if (player.poisoned) fc_draw_color(plat.renderer, 183, 74, 220, 255);
+                        if (poisoned) fc_draw_color(plat.renderer, 183, 74, 220, 255);
                         else fc_draw_color(plat.renderer, 78, 220, 74, 255);
                     }
                     else          fc_draw_color(plat.renderer, 0, 0, 0, 255);
@@ -2558,7 +2976,7 @@ int main(int argc, char *argv[])
                 }
             }
             draw_bar(plat.renderer, 28, 17, 110, 5, stamina, 1.0f, 255, 220, 0);
-            if (player.poisoned) draw_text(plat.renderer, "POISON", 144, 20, 1, 183, 74, 220);
+            if (poisoned) draw_text(plat.renderer, "POISON", 144, 20, 1, 183, 74, 220);
             char buf[24];
             // Level and EXP, just right of the HP box (it grows a bar a level).
             // In battle the score climbs live with this fight's hits and
@@ -2653,6 +3071,12 @@ int main(int argc, char *argv[])
             SDL_RenderFillRect(ren, &all);
             draw_text(ren, "FOUR CASTLE", (640 - text_width("FOUR CASTLE", 4)) / 2, 96, 4, 252, 252, 252);
             draw_text(ren, "CHRONICLES",  (640 - text_width("CHRONICLES", 4)) / 2, 136, 4, 252, 252, 252);
+            // The beta's small print: which build, and where to say what broke.
+            draw_text(ren, "BETA: SAVES MAY BE WIPED BETWEEN VERSIONS",
+                      (640 - text_width("BETA: SAVES MAY BE WIPED BETWEEN VERSIONS", 1)) / 2, 420, 1, 120, 120, 120);
+            draw_text(ren, "REPORT BUGS IN THE ITCH.IO PAGE COMMENTS",
+                      (640 - text_width("REPORT BUGS IN THE ITCH.IO PAGE COMMENTS", 1)) / 2, 436, 1, 120, 120, 120);
+            draw_text(ren, "V" GAME_VERSION, 8, 464, 1, 120, 120, 120);
 
             bool up   = input_pressed(&in, SDL_SCANCODE_UP)   || input_pressed(&in, SDL_SCANCODE_W);
             bool down = input_pressed(&in, SDL_SCANCODE_DOWN) || input_pressed(&in, SDL_SCANCODE_S);
@@ -2698,8 +3122,14 @@ int main(int argc, char *argv[])
                 draw_nes_panel(ren, BX, BY, BW, BH);
                 for (int i = 0; i < TITLE_COUNT; i++)
                     row(i, NAMES[i], title_sel == i, i == TITLE_CONTINUE && !has_save);
+                if (!has_save && save_refused_old_world()) {
+                    const char* note = "SAVE IS FROM AN OLDER WORLD. NEW GAME REPLACES IT.";
+                    draw_text(ren, note, (640 - text_width(note, 1)) / 2, BY + BH + 10, 1, 120, 120, 120);
+                }
                 if (up)   title_sel = (title_sel + TITLE_COUNT - 1) % TITLE_COUNT;
                 if (down) title_sel = (title_sel + 1) % TITLE_COUNT;
+                if (up || down) audio_play(SFX_CURSOR);
+                if (ok) audio_play(title_sel == TITLE_CONTINUE && !has_save ? SFX_DENY : SFX_CONFIRM);
                 if (ok && title_sel == TITLE_NEW) {
                     if (has_save) { title_page = TPAGE_ERASE; title_erase = false; }
                     else          begin_new();
@@ -2720,14 +3150,53 @@ int main(int argc, char *argv[])
                     running = false;
                 }
             } else if (title_page == TPAGE_OPTIONS) {
-                draw_nes_panel(ren, BX - 40, BY, BW + 80, 72);
-                char buf[32];
+                // Three rows: fullscreen, and the two volumes, 0-10, as rows of
+                // blocks. Up/down picks a row; left/right (or Z) changes it. A
+                // volume change plays the cursor at the new level, to be heard.
+                bool left  = input_pressed(&in, SDL_SCANCODE_LEFT)  || input_pressed(&in, SDL_SCANCODE_A);
+                bool right = input_pressed(&in, SDL_SCANCODE_RIGHT) || input_pressed(&in, SDL_SCANCODE_D);
+                enum { OPT_FULLSCREEN, OPT_MASTER, OPT_SFX, OPT_COUNT };
+                static int opt_sel = 0;
+                if (up)   { opt_sel = (opt_sel + OPT_COUNT - 1) % OPT_COUNT; audio_play(SFX_CURSOR); }
+                if (down) { opt_sel = (opt_sel + 1) % OPT_COUNT;             audio_play(SFX_CURSOR); }
+                draw_nes_panel(ren, BX - 60, BY, BW + 120, 112);
+                char buf[40];
+                auto opt_label = [&](int i, const char* label) {
+                    int y = BY + 12 + i * 24;
+                    bool on = opt_sel == i;
+                    if (on) draw_text(ren, GLYPH_CURSOR, BX - 50, y, 2, 255, 255, 80);
+                    draw_text(ren, label, BX - 32, y, 2, on ? 255 : 252, on ? 255 : 252, on ? 80 : 252);
+                    return y;
+                };
+                auto volume_row = [&](int i, const char* label, int v) {
+                    int y = opt_label(i, label);
+                    bool on = opt_sel == i;
+                    for (int b = 0; b < 10; b++) {   // ten blocks, lit up to v
+                        if (b < v) fc_draw_color(ren, on ? 255 : 252, on ? 255 : 252, on ? 80 : 252, 255);
+                        else       fc_draw_color(ren, 80, 80, 80, 255);
+                        SDL_Rect blk = { BX + 92 + b * 9, y + 2, 7, 12 };
+                        SDL_RenderFillRect(ren, &blk);
+                    }
+                };
                 SDL_snprintf(buf, sizeof(buf), "FULLSCREEN: %s", fullscreen ? "ON" : "OFF");
-                draw_text(ren, GLYPH_CURSOR, BX - 30, BY + 12, 2, 255, 255, 80);
-                draw_text(ren, buf, BX - 12, BY + 12, 2, 255, 255, 80);
-                draw_text(ren, "Z: CHANGE  X: BACK", BX - 12, BY + 44, 1, 120, 120, 120);
-                if (ok) SDL_SetWindowFullscreen(plat.window, fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
-                if (back) title_page = TPAGE_MAIN;
+                opt_label(OPT_FULLSCREEN, buf);
+                volume_row(OPT_MASTER, "MASTER", settings()->master_volume);
+                volume_row(OPT_SFX,    "SOUND",  settings()->sfx_volume);
+                draw_text(ren, "LEFT/RIGHT: CHANGE  X: BACK", BX - 32, BY + 88, 1, 120, 120, 120);
+                int step = right ? 1 : left ? -1 : 0;
+                if (opt_sel == OPT_FULLSCREEN && (ok || step)) {
+                    SDL_SetWindowFullscreen(plat.window, fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+                    settings()->fullscreen = !fullscreen;
+                    settings_save();
+                    audio_play(SFX_CONFIRM);
+                } else if (opt_sel != OPT_FULLSCREEN && (step || ok)) {
+                    int& v  = opt_sel == OPT_MASTER ? settings()->master_volume : settings()->sfx_volume;
+                    int  nv = step ? v + step : (v + 1) % 11;   // Z alone steps up, and round
+                    nv = nv < 0 ? 0 : nv > 10 ? 10 : nv;
+                    if (nv != v) { v = nv; settings_apply_audio(); settings_save(); }
+                    audio_play(SFX_CURSOR);
+                }
+                if (back) { title_page = TPAGE_MAIN; audio_play(SFX_BACK); }
             } else {   // TPAGE_ERASE
                 // The save is only replaced by the new game's first SAVE.
                 draw_nes_panel(ren, BX - 40, BY, BW + 80, 96);
@@ -2738,9 +3207,9 @@ int main(int argc, char *argv[])
                     if (on) draw_text(ren, i ? "YES" : "NO", BX - 12, BY + 40 + i * 24, 2, 255, 255, 80);
                     else    draw_text(ren, i ? "YES" : "NO", BX - 12, BY + 40 + i * 24, 2, 252, 252, 252);
                 }
-                if (up || down) title_erase = !title_erase;
-                if (back || (ok && !title_erase)) title_page = TPAGE_MAIN;
-                else if (ok) { title_page = TPAGE_MAIN; title_loading = true; }
+                if (up || down) { title_erase = !title_erase; audio_play(SFX_CURSOR); }
+                if (back || (ok && !title_erase)) { title_page = TPAGE_MAIN; audio_play(SFX_BACK); }
+                else if (ok) { title_page = TPAGE_MAIN; title_loading = true; audio_play(SFX_CONFIRM); }
             }
         }
 
@@ -2806,6 +3275,7 @@ int main(int argc, char *argv[])
             }
 
             draw_row(2, "REGEN MAP", dbg_sel == 2);
+            draw_row(13, chase_test ? "CHASE TEST ROOM (AFRESH)" : "CHASE TEST ROOM", dbg_sel == 13);
 
             // Row 3: noclip toggle
             {
@@ -2870,7 +3340,7 @@ int main(int argc, char *argv[])
                 else if (dbg_story_go == STORY_BOSS_COUNT)
                     SDL_snprintf(gbuf, sizeof(gbuf), "GO: < TOWN 1 HALL >");
                 else if (dbg_story_go == STORY_BOSS_COUNT + 1)
-                    SDL_snprintf(gbuf, sizeof(gbuf), "GO: < VILLAGE 0 >");
+                    SDL_snprintf(gbuf, sizeof(gbuf), "GO: < WORM VILLAGE %d >", story_worm_village(map));
                 else if (dbg_story_go == STORY_BOSS_COUNT + 2)
                     SDL_snprintf(gbuf, sizeof(gbuf), "GO: < TOWN 1 LIGHTHOUSE >");
                 else if (dbg_story_go == STORY_BOSS_COUNT + 3)
@@ -2910,6 +3380,34 @@ int main(int argc, char *argv[])
                 story_dialogue(li, dlg_where, &lbl, &strike);
                 int sc = text_width(lbl, 2) <= LST_W - 40 ? 2 : 1;
                 draw_text(plat.renderer, lbl, LST_X + 28, ry + (2 - sc) * 4, sc, cr, cg, cb);
+            }
+        }
+
+        // ── Difficulty run menu (F4) ─────────────────────────────────────────
+        if (trial_open) {
+            draw_nes_panel(plat.renderer, 120, 110, 400, 260);
+            draw_text(plat.renderer, "DIFFICULTY RUN", 320 - text_width("DIFFICULTY RUN", 2) / 2, 128, 2, 252, 252, 252);
+            char ln[96];
+            if (trial_n == 0) {
+                draw_text(plat.renderer, "NO ENEMIES: RUN TOOLS/PLAYTEST_ORDER.PY", 140, 170, 1, 255, 120, 120);
+            } else {
+                int left = 0;
+                for (int i = 0; i < trial_n; i++) if (!playtest_logged(trial_run, trial_seq(i))) left++;
+                SDL_snprintf(ln, sizeof(ln), "%d ENEMIES, %d LEFT IN %s", trial_n, left, trial_run);
+                draw_text(plat.renderer, ln, 140, 164, 1, 200, 200, 200);
+                SDL_snprintf(ln, sizeof(ln), "KNIFE, GEAR BY TIER. ABOUT %d MIN", (int)((trial_n - trial_start) * 40.0f / 60.0f));
+                draw_text(plat.renderer, ln, 140, 182, 1, 200, 200, 200);
+                int id = trial_seq(trial_start);
+                SDL_snprintf(ln, sizeof(ln), "START AT #%d  %02d %s", trial_start + 1, id, ENEMY_NAMES[id]);
+                draw_text(plat.renderer, ln, 140, 210, 1, 255, 255, 80);
+                SDL_snprintf(ln, sizeof(ln), "ORDER: %s", trial_reverse ? "REVERSED (HARDEST FIRST)" : "SHEET ORDER");
+                draw_text(plat.renderer, ln, 140, 228, 1, 252, 252, 252);
+                SDL_snprintf(ln, sizeof(ln), "WARM-UP VS SKVADER: %s", trial_warmup ? "ON" : "OFF");
+                draw_text(plat.renderer, ln, 140, 246, 1, 252, 252, 252);
+                static const char* KEYS[4] = { "LEFT/RIGHT: START  UP/DN: TIER","R: REVERSE   W: WARM-UP",
+                                               "ENTER: GO   ESC: CLOSE", "IN THE CARD: 1-5 RATE, ESC ENDS RUN" };
+                for (int i = 0; i < 4; i++)
+                    draw_text(plat.renderer, KEYS[i], 140, 284 + i * 18, 1, 150, 150, 150);
             }
         }
 
@@ -3025,8 +3523,7 @@ int main(int argc, char *argv[])
     frame_tex = NULL;
 
     tilemap_free_tile_cache();
-    if (stairs_dev) SDL_CloseAudioDevice(stairs_dev);
-    SDL_FreeWAV(stairs_buf);
+    audio_shutdown();
     IMG_Quit();
     platform_shutdown(&plat);
 

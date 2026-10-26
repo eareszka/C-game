@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "60-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "description": "Rumptifusel, a big flat flexible creature like a fur coat: a long brown mink-like pelt with dark folds, a raised hood at one end, a small head with two little eyes at the other, a purple pocked belly underneath, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "aade203a-2d4d-44cc-852c-e523ec38786f",
+    "generation_id": "407c3665-9187-4569-9702-9b8bae1ee782"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

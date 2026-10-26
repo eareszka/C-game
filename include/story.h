@@ -26,9 +26,16 @@ struct StoryFlags {
     uint32_t notes;
     uint8_t  first_village_plus1;
     uint8_t  quest;          // STORY_Q_* bits: the lighthouse keeper's errands
-    uint8_t  pad[2];
+    uint8_t  worm;           // STORY_W_* bits: the sand village's errand, up to the worm (23)
+    uint8_t  pad;
 };
 enum { STORY_Q_BOAT_WOOD = 1, STORY_Q_SAIL_TOLD = 2 };   // the wood delivered; the bat named (its tree holds it)
+// The worm's errand, in order: asked for the glands; glands brought (the
+// trail begins); the three clues found; the herder's bell given; the bell
+// rung on the soft sand (only then does the worm's site stand).
+enum { STORY_W_ASKED = 1, STORY_W_GLANDS = 2, STORY_W_CLUE1 = 4, STORY_W_CLUE2 = 8, STORY_W_CLUE3 = 16,
+       STORY_W_BELL = 32, STORY_W_RUNG = 64 };
+enum { STORY_WORM_GLANDS = 3, STORY_WORM_CLUES = 3 };
 StoryFlags* story_flags();
 
 // The bosses in story order. Tier 1 (06 23 49 30) stand in the world from the
@@ -162,5 +169,21 @@ int         story_quest_tree(const Tilemap* map);
 bool        story_boat_spot(const Tilemap* map, int* tx, int* ty);
 bool        story_boat_ready(const Player* player);
 bool        story_quest_pin(const Tilemap* map, unsigned map_seed, unsigned dungeon_seed, const Player* player);
+
+// The worm's errand. The village that sets it: the sand village nearest the
+// worm's site (any village if none is sand), -1 without a site or villages.
+int         story_worm_village(const Tilemap* map);
+// The desert dungeon (an oasis or pyramid entrance, map->dungeon_entrances
+// index) nearest that village, where the asps for the glands are pinned; -1 none.
+int         story_worm_den(const Tilemap* map);
+// While the glands are asked for: is this dungeon the den (its spawner 0 an asp).
+bool        story_worm_pin(const Tilemap* map, unsigned map_seed, unsigned dungeon_seed);
+// The world tile of clue k (0..STORY_WORM_CLUES-1), on the way from the
+// village to the site; false if the errand has no village or site.
+bool        story_worm_clue_tile(const Tilemap* map, int k, int* tx, int* ty);
+// RING THE BELL: is the boy, bell in hand, on the worm's soft sand (its
+// site, not yet standing). Ringing it raises the worm.
+bool        story_worm_can_ring(const Tilemap* map, float pcx, float pcy);
+void        story_worm_ring();
 
 #endif

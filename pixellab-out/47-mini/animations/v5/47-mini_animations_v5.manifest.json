@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "47-mini_animations_v5",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1680 characters>",
+      "format": "png"
+    },
+    "action": "a long-necked sea turtle flopping clumsily forward on land: heaving its body up on its front flippers, then flopping down flat on its belly with its flippers splayed, neck bobbing, moving to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d532de53-7cf0-42cb-887c-07d743baec87",
+    "generation_id": "538ebabd-dbba-41a0-be4b-f5575eef0dd1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flopl-00.png",
+    "flopl-01.png",
+    "flopl-02.png",
+    "flopl-03.png",
+    "flopl-04.png"
+  ]
+}

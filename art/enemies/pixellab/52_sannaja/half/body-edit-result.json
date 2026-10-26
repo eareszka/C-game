@@ -1,0 +1,19 @@
+{
+  "run": "body-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\body-edit\\body-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\body-edit\\body-edit\\sprites\\v1\\52-sannaja-half-body-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\body-edit\\body-edit\\sprites\\v1\\body-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "2e15eaa5-f237-4591-abf7-6b21607972c9",
+    "generation_id": "18e5caea-ee3e-4b4b-9c56-48bb0abeb509"
+  },
+  "route": "edit-images-v2"
+}

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "t06-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 11508 characters>",
+          "format": "png"
+        },
+        "width": 354,
+        "height": 225
+      }
+    ],
+    "image_size": {
+      "width": 354,
+      "height": 225
+    },
+    "description": "<elided 494 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 7040 characters>",
+        "format": "png"
+      },
+      "width": 354,
+      "height": 225
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5e9b5f64-1746-4010-906f-a6addb43cf8b",
+    "generation_id": "1b2a81de-082c-47ea-a695-e47a01d49698"
+  },
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-t06-frame0.png"
+  ]
+}

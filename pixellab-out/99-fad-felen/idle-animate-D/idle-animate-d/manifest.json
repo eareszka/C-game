@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-19T00:54:01Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "99-fad-felen-idle-d-00.png",
+        "99-fad-felen-idle-d-01.png",
+        "99-fad-felen-idle-d-02.png",
+        "99-fad-felen-idle-d-03.png",
+        "99-fad-felen-idle-d-04.png",
+        "99-fad-felen-idle-d-05.png",
+        "99-fad-felen-idle-d-06.png",
+        "99-fad-felen-idle-d-07.png",
+        "99-fad-felen-idle-d-08.png"
+      ],
+      "ids": {
+        "background_job_id": "b6b35e45-332c-4fd2-8d53-629de4ee073a",
+        "generation_id": "a129a425-5933-497e-a895-f5ec7162a7e7"
+      }
+    }
+  ]
+}

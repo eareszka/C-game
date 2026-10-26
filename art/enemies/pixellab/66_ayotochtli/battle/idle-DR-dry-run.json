@@ -1,0 +1,21 @@
+{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAjCAYAAADSQImyAAACg0lEQVR4nO1YQUsbQRR+uxHyE6RUKCgEchAKkYjQgwhtIYcmEE9FELymlyKCF+9CkXqw14IQcmpBe8hBQXooiFLB24LQQiBFPPVsIax8Y944WSernZnN5pAPhp2dZXe+9943780s0QgjjJAGwm6zhk+DRxjsrhEaOTDCT4M8I3BgRBoRcAo/QX0/SueBZRTGyC3CrVq5Z2D10z7IeZQQxlx/sFTMRUbKiRrhU0J4Mv5UN3zPiPzyB+14WgZ4XULSCESkKyuhc/X5UEfg8upPXCSG2gAvxss9UWieXlhPlmgd4CgAXMCUKizkZZtGXWYGSeKkXqDZpTN6NTNJr2enZWaCx9Usdf0sI67ZVsd4MfsuyU8tFun8+7oYAPmDn7+RQqVUouSzrY5oWCemkfBdVFt4HPj6boGu24d09S8vyMcBxAGQV6WWtAGCMLzFpHHNTrwUfSb/ZqVOHBF9cbvDpQV5owjwAoTG2Yjn85uC7Nu9jCCPPtqvL6d9v6PLVIGBjIy2EurkG9t/ZR8SqtJg4f/vC7wg4WGQh9ZZKtWdo3teRxXW5Xv1XGADqyykkgdAnu8/lnKi/2KuLe5hxEOFK2+wzTCSkEiREU8z+UalI9bC++YtWfQblTb9OJ54bPX1KGFgzy+y0dRiUabSYHdNjp3UC+KK9u3zkrxG0+9WrSy/ZVqNTa0N+2kaMuBIcAQYGEP2csiDTNeAFzcp5KQjijFOsZFvGcN2K+H1iwTWSdQIrg1oytEzdErAAKEuNUJKIIm9UBTqublUzFmdypxs5lRC0XSJZ8rzHpIlS/JWL+r+ROi83Weu0BUHjxL4leLCs6mcyOJ2ncOOEIUMRYkL2qAmvgE+bC9gndMqzwAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "action": "In-place resting and defensive hunch cycle, facing the same direction throughout. Start in the supplied resting pose. At the midpoint draw the head and neck down into the shell, lower the long ears, tuck the limbs and tail close, and bunch the broad shell bands slightly. Then ease out to a relaxed resting pose. Tiny restrained breathing, no running, rolling or camera movement. Preserve exact anatomy, size, black one-pixel outlines, flat fills and colors. No effects, extra parts, dithering or textured scales. Keep the same ground line and framing.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

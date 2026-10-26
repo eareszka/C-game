@@ -21,44 +21,6 @@
       "run_png": "assets/enemies/redraws/17_qiqirn_run.png"
     },
     {
-      "id": 41,
-      "source": "art/enemies/41_sasnalkahi_frame0_draft.png",
-      "png": "assets/enemies/redraws/41_sasnalkahi.png",
-      "aseprite": "assets/enemies/redraws/41_sasnalkahi.aseprite",
-      "frame_size": [
-        98,
-        65
-      ],
-      "frames": 5,
-      "rows": false,
-      "tags": [
-        "D"
-      ],
-      "body_pivot": 43,
-      "frame_zero_exact": true,
-      "png_sha256": "791167139bd1940469083aa66efb3d8d88b0c4016eb27a314e75bf0eb34f630e",
-      "aseprite_sha256": "9321544892b19d7713581ad79c868e221e94a0f03dc78176f18fb48afc3b66b5"
-    },
-    {
-      "id": 49,
-      "source": "art/enemies/49_physeter_frame0_draft.png",
-      "png": "assets/enemies/redraws/49_physeter.png",
-      "aseprite": "assets/enemies/redraws/49_physeter.aseprite",
-      "frame_size": [
-        302,
-        166
-      ],
-      "frames": 8,
-      "rows": true,
-      "tags": [
-        "D"
-      ],
-      "body_pivot": 105,
-      "frame_zero_exact": true,
-      "png_sha256": "1e5fb568a41a5f1a29fcbb500e7ec3c153a3a492324bd45b8267efe649266ed0",
-      "aseprite_sha256": "7a4566d4a7586368a4e25bbe408f8f2d9ff2a34f5494110696640b7a968346e7"
-    },
-    {
       "id": 51,
       "source": "art/enemies/51_aspidochelone_frame0_no_water.png",
       "png": "assets/enemies/redraws/51_aspidochelone.png",
@@ -136,7 +98,7 @@
     },
     {
       "id": 97,
-      "source": "art/enemies/97_ro_demonic_frame0_draft.png",
+      "source": "art/enemies/pixellab/97_ro/97_ro_frame0_clean.png",
       "png": "assets/enemies/redraws/97_ro.png",
       "aseprite": "assets/enemies/redraws/97_ro.aseprite",
       "frame_size": [
@@ -150,8 +112,434 @@
       ],
       "body_pivot": 56,
       "frame_zero_exact": true,
-      "png_sha256": "63dcadcfa9591a3cce35f5db365dd5c969ffc0b35bc5015cb5c1c1041f5d8b0d",
-      "aseprite_sha256": "e749259265cb33b3c49173f456e003be7c1632776e2a443459b5417dcf01f80e"
+      "png_sha256": "c8a816a5e287c941679f3f54f994fdfd93049db23ed9b7385cd9a2a04837c8cc",
+      "aseprite_sha256": "ee2c4bc39d7f8af9dcc436f86ff1a51d3909e9b78d30f0072ebfd5872b12c534",
+      "replaced": "97_ro_demonic_frame0_draft (red outline); backup art/_backup/ro_redraw_install_20261018_175703",
+      "pixellab_job": "cb625e56-dbf6-4127-9799-3b15b7747c68, 10 generations"
+    },
+    {
+      "id": 61,
+      "source": "art/enemies/pixellab/61_roperite/running/61_roperite_running.aseprite",
+      "png": "assets/enemies/redraws/61_roperite.png",
+      "aseprite": "assets/enemies/redraws/61_roperite.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "directions": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "frame_ms": 260,
+      "attack_frame": 2,
+      "approved": true,
+      "approval_date": "2026-10-18",
+      "review_source_sha256": "3046ebf7fb267acba4c40f19449539a76e1188f84ff24489f9f52df0d749be99",
+      "duplicate_review_frames_removed": {
+        "D": 1,
+        "DR": 0,
+        "R": 0,
+        "UR": 0,
+        "U": 0
+      },
+      "png_sha256": "fa05a0f66c38e843e7ba42eec8742447b0998bcfd94a4f37b2a2222b524d173b",
+      "aseprite_sha256": "b5e28fa2aa41034f9333d3532078a6130befe362c48dd915b14e13d19a0a4157",
+      "preserved_original_sha256": {
+        "assets\\enemies\\61_roperite.png": "2f0c03b19ebaeda340253aa8e54e24745060962a9efaf320cfcd4fc794edec76",
+        "assets\\enemies\\61_roperite.aseprite": "5dff15407918445c451d3f4388764db1e363a838f582a2ec89104eb0e618edb6"
+      },
+      "validation": {
+        "game_build": "passed",
+        "battlecensus_build": "passed",
+        "aseprite_round_trip": "pixel-exact",
+        "installed_battle_seconds": 12,
+        "seed": 3872026,
+        "gameplay_log_matches_staged_and_original": true,
+        "screenshots": 5,
+        "review_directory": "build_tmp/roperite_run_review/installed/"
+      }
+    },
+    {
+      "id": 66,
+      "source": "art/enemies/pixellab/66_ayotochtli/battle/66_ayotochtli_idle.aseprite",
+      "roll_source": "art/enemies/pixellab/66_ayotochtli/battle/66_ayotochtli_roll.aseprite",
+      "png": "assets/enemies/redraws/66_ayotochtli.png",
+      "aseprite": "assets/enemies/redraws/66_ayotochtli.aseprite",
+      "roll_png": "assets/enemies/redraws/66_ayotochtli_roll.png",
+      "roll_aseprite": "assets/enemies/redraws/66_ayotochtli_roll.aseprite",
+      "frame_size": [
+        48,
+        35
+      ],
+      "frames": 3,
+      "roll_frames": 4,
+      "rows": false,
+      "directions": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "standing_loop": [
+        0,
+        1,
+        0,
+        2
+      ],
+      "standing_ms": [
+        400,
+        250,
+        400,
+        250
+      ],
+      "roll_frame_ms": 70,
+      "attack_frame": 1,
+      "approved": true,
+      "approval_date": "2026-10-18",
+      "preserved_original_sha256": {
+        "assets/enemies/66_ayotochtli.png": "3b144363723843613140d8378354e98ca8e7d83a4076a947b07953ec9ed8527b",
+        "assets/enemies/66_ayotochtli.aseprite": "c65bd3e5d6e3a992148785b07538c59e3382d81f13ab8016114fc7ed52d7c7dc",
+        "assets/enemies/66_ayotochtli_roll.png": "bcb07414898daba6f707a39f55cb8e020b605a0b03d832c8f99873c9b8d6f00a",
+        "assets/enemies/66_ayotochtli_roll.aseprite": "0e91f1470575743230fa62d65d447bde46bb68ceb346ee64e82b7ad5e23d0cd7"
+      },
+      "installed_sha256": {
+        "assets\\enemies\\redraws\\66_ayotochtli.aseprite": "d7fca740a38cb2e0787c854e590e0be5eeb4eaa3fcaabaeca9c3cb6d8ab887c8",
+        "assets\\enemies\\redraws\\66_ayotochtli.png": "6bceea49b914fea0d609aa8a86f514ac16ce3767dc62849b5842a3fa26358eaf",
+        "assets\\enemies\\redraws\\66_ayotochtli_roll.aseprite": "4490228fcac85f4ab32aadf3af6d96c740b5dc337aa18bca6f80e9f4e8a2bd09",
+        "assets\\enemies\\redraws\\66_ayotochtli_roll.png": "e139bf9dc56804706c87ae4acc990142e8b3ec3426ecdb6430c3faf047654d09"
+      },
+      "validation": {
+        "game_build": "passed",
+        "battlecensus_build": "passed",
+        "aseprite_round_trips": "both pixel-exact",
+        "installed_battle_seconds": 12,
+        "seed": 3872026,
+        "gameplay_log_matches_original_and_staged": true,
+        "screenshots": 5,
+        "review_directory": "build_tmp/ayotochtli_battle_review/installed/",
+        "visible_tracker_refreshed": true
+      }
+    },
+    {
+      "id": 32,
+      "source": "art/enemies/pixellab/32_angont/32_angont_frame0_gold.png",
+      "png": "assets/enemies/redraws/32_angont.png",
+      "aseprite": "assets/enemies/redraws/32_angont.aseprite",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "body_pivot": 36,
+      "frame_zero_exact": true,
+      "png_sha256": "350c02c826535e5da299bc2dc7ea76bf29ff641886629ef614574f2cf05450da",
+      "aseprite_sha256": "7b038ea441a3be32ebce4ad4832aa9422336784bdd7199ac850f85755449eaef",
+      "pixellab_job": "af594b04-ad01-4a45-a10f-afc15607e69f, 10 generations",
+      "recolor": "tools/angont_recolor.py gold (hand palette mapping, shaded skulls)"
+    },
+    {
+      "id": 41,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/41_sasnalkahi.png",
+      "aseprite": "assets/enemies/redraws/41_sasnalkahi.aseprite",
+      "source": "art/enemies/pixellab/41_sasnalkahi/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/41_sasnalkahi/job.json"
+    },
+    {
+      "id": 63,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/63_hidebehind.png",
+      "aseprite": "assets/enemies/redraws/63_hidebehind.aseprite",
+      "source": "art/enemies/pixellab/63_hidebehind/idle_frame0_clean.png",
+      "frame_size": [
+        76,
+        61
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/63_hidebehind/job.json"
+    },
+    {
+      "id": 71,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/71_namungumi.png",
+      "aseprite": "assets/enemies/redraws/71_namungumi.aseprite",
+      "source": "art/enemies/pixellab/71_namungumi/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 12,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 162,
+      "job": "art/enemies/pixellab/71_namungumi/job.json"
+    },
+    {
+      "id": 71,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/71_namungumi_flash.png",
+      "aseprite": "assets/enemies/redraws/71_namungumi_flash.aseprite",
+      "source": "art/enemies/pixellab/71_namungumi/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 12,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 162,
+      "job": "art/enemies/pixellab/71_namungumi/job.json"
+    },
+    {
+      "id": 75,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/75_makalala.png",
+      "aseprite": "assets/enemies/redraws/75_makalala.aseprite",
+      "source": "art/enemies/pixellab/75_makalala/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/75_makalala/job.json"
+    },
+    {
+      "id": 75,
+      "sheet": "fly",
+      "png": "assets/enemies/redraws/75_makalala_fly.png",
+      "aseprite": "assets/enemies/redraws/75_makalala_fly.aseprite",
+      "source": "art/enemies/pixellab/75_makalala/fly_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 4,
+      "rows": false,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 70,
+      "job": "art/enemies/pixellab/75_makalala/job.json"
+    },
+    {
+      "id": 73,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/73_liderc.png",
+      "aseprite": "assets/enemies/redraws/73_liderc.aseprite",
+      "source": "art/enemies/pixellab/73_liderc/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/73_liderc/job.json"
+    },
+    {
+      "id": 49,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/49_physeter.png",
+      "aseprite": "assets/enemies/redraws/49_physeter.aseprite",
+      "source": "art/enemies/pixellab/49_physeter/idle_frame0_clean.png",
+      "frame_size": [
+        302,
+        166
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "make": "breathe",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/49_physeter/job.json"
+    },
+    {
+      "id": 6,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/06_wakmangganchi_aragondi.png",
+      "aseprite": "assets/enemies/redraws/06_wakmangganchi_aragondi.aseprite",
+      "source": "art/enemies/pixellab/06_wakmangganchi/idle_frame0_clean.png",
+      "frame_size": [
+        302,
+        166
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "make": "generator: art/enemies/06_wakmangganchi_aragondi_follow.py on the PixelLab frame 0",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/06_wakmangganchi/job.json"
+    },
+    {
+      "id": 6,
+      "sheet": "bite",
+      "png": "assets/enemies/redraws/06_wakmangganchi_aragondi_bite.png",
+      "source": "art/enemies/pixellab/06_wakmangganchi/idle_frame0_clean.png",
+      "make": "generator: art/enemies/06_wakmangganchi_aragondi_follow.py on the PixelLab frame 0 (homes and mouths unchanged)",
+      "png_sha256": "d276d5668990fa71179db5cd0e303bc3c60785445dd9ca8ec94955ab74ed4c1f"
+    },
+    {
+      "id": 39,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/39_ajaju.png",
+      "aseprite": "assets/enemies/redraws/39_ajaju.aseprite",
+      "source": "art/enemies/pixellab/39_ajaju/idle_frame0_clean.png",
+      "frame_size": [
+        62,
+        47
+      ],
+      "frames": 10,
+      "rows": false,
+      "tags": [
+        "D",
+        "R",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 130,
+      "job": "art/enemies/pixellab/39_ajaju/job.json"
+    },
+    {
+      "id": 99,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/99_fad_felen.png",
+      "aseprite": "assets/enemies/redraws/99_fad_felen.aseprite",
+      "source": "art/enemies/pixellab/99_fad_felen/idle_frame0_clean.png",
+      "frame_size": [
+        76,
+        52
+      ],
+      "frames": 10,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 180,
+      "job": "art/enemies/pixellab/99_fad_felen/job.json"
+    },
+    {
+      "id": 99,
+      "sheet": "standing",
+      "png": "assets/enemies/redraws/99_fad_felen_standing.png",
+      "aseprite": "assets/enemies/redraws/99_fad_felen_standing.aseprite",
+      "source": "art/enemies/pixellab/99_fad_felen/standing_frame0_clean.png",
+      "frame_size": [
+        76,
+        75
+      ],
+      "frames": 10,
+      "rows": true,
+      "tags": [
+        "D"
+      ],
+      "make": "animate",
+      "frame_ms": 180,
+      "job": "art/enemies/pixellab/99_fad_felen/job.json"
+    },
+    {
+      "id": 52,
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "role": "legs (stage 1), 8 frames, crop-animated through PixelLab",
+      "source": "art/enemies/pixellab/52_sannaja/",
+      "png_sha256": "db152b1eb2b9987964c8ed3d157c5fa2fee263565060726a6ff1a457955ece66"
+    },
+    {
+      "id": 52,
+      "png": "assets/enemies/redraws/52_sannaja_body.png",
+      "role": "alt: head down, 8 frames = the legs idle shifted by the walk + the still head (tools/sannaja_turn.py)",
+      "source": "art/enemies/pixellab/52_sannaja/",
+      "png_sha256": "a2e580781854f29edb89143b2ca3d18d1640e0a884b80fd9d284da2cbd1b99fe"
+    },
+    {
+      "id": 52,
+      "png": "assets/enemies/redraws/52_sannaja_turn.png",
+      "role": "flap: the turn, 18 frames -- 12 steps walking back, 6 lowering the head (forward down, backward up); built by tools/sannaja_turn.py from the PixelLab parts",
+      "source": "art/enemies/pixellab/52_sannaja/",
+      "png_sha256": "d8db484de67a5cd046bd345420d0334ff96c9a059d1a5c745f54a0a74e7f1c17"
+    },
+    {
+      "id": 52,
+      "png": "assets/enemies/redraws/52_sannaja_eyes.png",
+      "role": "parts: glint 7x7, then each eye's shut lid 24x24",
+      "source": "art/enemies/pixellab/52_sannaja/",
+      "png_sha256": "345e635b71b1888c617367e3cc9330347e67bb94445139029457e94d781d54c1"
     }
   ],
   "backup": "art/_backup/enemy_redraw_install_20261016_224715",
@@ -191,14 +579,16 @@
     "assets/enemies/17_qiqirn_run.png": "a1456d0aa0df4d70eeb65061dca56ccc617cbcfb2827e5bc661d973965aaf78f",
     "assets/enemies/17_qiqirn_run.aseprite": "23f7efc132c493e727c33de6ee4b231b966cb7473a66c1dd2d2ed232d5fef700"
   },
-  "rendering": "One drawn pose, project direction fallback (left views mirrored), three subtle breathing states resampled into existing frame counts",
-  "limitations": "Distinct directional, attack and Qiqirn gallop drawings have not been created; gameplay hooks/frame counts retained",
+  "rendering": "Original eight entries: one drawn pose with direction fallback and subtle breathing. Roperite: five drawn running directions plus mirrored left views, five frames each. Ayotochtli: five drawn standing/hunching and rolling directions plus mirrored left views, three standing and four rolling frames.",
+  "limitations": "Original eight entries retain their prior directional/attack/gallop limitations. Roperite running animation approved and installed; existing projectile timing retained.",
   "paid_calls": 0,
   "validation": {
     "game_build": "passed",
     "battlecensus_build": "passed",
     "battle_smoke_tests": "All eight enemies, seed 3872026, three seconds each; three screenshots each; all exited successfully",
     "review_board": "build_tmp/enemy_redraw_install_review/installed_battle_review.png",
-    "original_assets_and_artwork_hashes_preserved": true
+    "original_assets_and_artwork_hashes_preserved": true,
+    "roperite_installed_battle_smoke_test": "12 seconds, seed 3872026, five screenshots; original/staged gameplay metrics matched",
+    "ayotochtli_installed_battle_smoke_test": "12 seconds, seed 3872026, five screenshots; original/staged gameplay log matched; tracker refreshed"
   }
 }

@@ -1,0 +1,19 @@
+{
+  "run": "roll-pose-v3_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-pose-v3\\roll-pose-v3\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-pose-v3\\roll-pose-v3\\sprites\\v1\\ayotochtli-roll-pose.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-pose-v3\\roll-pose-v3\\sprites\\v1\\roll-pose-v3_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "d69d5285-0434-420c-b1dc-9b968ab69ed1",
+    "generation_id": "77c46a58-2173-403c-b422-ea2ce5f298a6"
+  },
+  "route": "edit-image-pixen"
+}

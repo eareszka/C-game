@@ -1,0 +1,38 @@
+{
+  "id": 100,
+  "name": "100-flesh-planet",
+  "dir": "art/enemies/pixellab/100_flesh_planet",
+  "match": "art/enemies/pixellab/boss_reference_boiuna.png",
+  "description": "",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/100_flesh_planet.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 8,
+      "ground": true,
+      "despeckle": 3,
+      "action": "",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
+    }
+  }
+}

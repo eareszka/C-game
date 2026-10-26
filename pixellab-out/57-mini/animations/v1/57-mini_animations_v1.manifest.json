@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "57-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1652 characters>",
+      "format": "png"
+    },
+    "action": "an owl-like creature flying in the air, beating its very large wings up and down in a slow strong flap, then gliding with wings spread, feet tucked, flying to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "007b1860-04c1-4256-bc19-2ac7625c4699",
+    "generation_id": "5889b5ee-4395-4cc8-9120-f4dadcd1a012"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyl-00.png",
+    "flyl-01.png",
+    "flyl-02.png",
+    "flyl-03.png",
+    "flyl-04.png"
+  ]
+}

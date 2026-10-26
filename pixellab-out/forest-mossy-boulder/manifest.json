@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "forest-mossy-boulder",
+  "generated": "2026-10-26T11:08:40Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "forest-mossy-boulder_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "mossy-boulder.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

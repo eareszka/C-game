@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "run": "roll-ur_animations_v2",
+  "provider": "pixellab",
+  "route": "background-job",
+  "collected": "8cc62c34-ff42-429e-8186-08b43eb59c3d",
+  "ids": {
+    "job_id": "8cc62c34-ff42-429e-8186-08b43eb59c3d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ayotochtli-roll-ur-00.png",
+    "ayotochtli-roll-ur-01.png",
+    "ayotochtli-roll-ur-02.png",
+    "ayotochtli-roll-ur-03.png",
+    "ayotochtli-roll-ur-04.png"
+  ]
+}

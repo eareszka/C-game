@@ -1,0 +1,21 @@
+﻿{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAGIAAABBCAYAAAAqnXGWAAADs0lEQVR4nO2bsWsUQRTGZxabdNYiCjYKNhZpBAWLa645gkUgYBEsrVJ6f4GWqVLKFYFACgnXXGMhGEhzhU3ANAGPYG2XwmLkTebtvdubu51Zovve7PxgOS+3Jrvz7fvmvTdzSmUymUwmk8lkMmLQKk2MtPtkf4ENMN+/vrf/mF1eqQeP7qtnrz6yv9dCJSjC7PLKvjmffrOvThjjiRQ2sH5KmogwOT6yb4YHP8sPxp/e2MgAuEZHkVokXPzaQBE0HoO3h4o7qQhRWtHo5IfvidcuEqhNsSIpIYbzSPCCtsWRIqUsqQYNtsWVFIQIftrBtmAe4WhPyQjxdPNl0HmYPXGjSMWWBjeZUVBaynGukC5EzMCWKW5/e0dxo+iSLdFqmxtJCHEeMbgcoyEJISbHR9GDi70oTrDruTTtL9UUc+bDu4fBhV8mHhhgEKOus2rPwYNbDQHcUcLpb++ssxo74JjickxbU5kjNDbzHIYeIACKsL9/YrMrrrbE7oIaUNoM7TmBQHQdAqImpuj737C8qAgWrKdqUSACEYDer+F276wupmkErEtHP4+n6vG964UVO473LW2OMGA3ALYr6mqCvb0tWnnjqh07CqnrDrPAogx3cnBHkhAW8HuMilC4rkFIFMJAZQyZUOBq3IJwcHBsa0gr6Mzu1hM1PLCbAqIAAVA4Um+wy5gUxwuqy5JCn2wqAp0nKgUgmzGQEBHRIlDw/+BrtegjQusuC0EnT33bv9wnHP4MIqTSkW3VslqfrH9/eWGPap/oNqIB7GnVolG1AehEMV2NCHXWO7WvToySu73TclCaiAApLggBe5kuxlPPGRu24kba3vPUthC6r5SZeMSBnz134pz1DtWfyNoBWhuQbbktmEvAZzj4VJC2YJExKI8YcxFuIgYIFQPsCAZ5xT7Y8m+CGEjNuclHxEJkKPDuFSeEigCRALYTw6qo6WJEUBYE6Tu/D4kAz6BqKV/v4ijE0kChhbwebKrlp38OiIDntm01Uq3JB13E8Q48glFAPV8aUp4Y4xtoakP4Gc2AuK5P+xBxkQSzLnJADKlCcLYmL56Us4RDPSC2xZGRJ4ThVIB1WYg6dGWnhihECjFKLBokCWEk1wgpCZE8koUw1fd0xU0a4oQYuX5S2ytqqutC7Lq5AjIk15X1iiGpqhYpBAIRwXmbfbItjpF/8SYJESRFhF5xhBR0LL8zJ1WIptCvb7EWQ4w1xYKpLNliydrGUo8IBZmVhIhg/ZQ0wHToXjPqH/AXNe65nGydsAkAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "action": "Looping sprint in place, facing the same direction throughout. Alternate two long bird legs through contact, push-off, flight and recovery, with small body bob and a trailing orange segmented rattle tail. Rope snout lasso bounces as one clear loop with one forward flick at the middle of the cycle, then recoils into its original loop. Preserve creature anatomy, scale, tiny pixel clusters, one-pixel black outlines and flat colors; no camera motion or translation. No extra limbs, no trails or effects. Seamless loop.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

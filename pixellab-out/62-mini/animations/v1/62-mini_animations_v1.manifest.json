@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "62-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1404 characters>",
+      "format": "png"
+    },
+    "action": "a shaggy moose-sized beast walking slowly on four long stiff straight legs that never bend at the knee, swinging them like stilts, body rocking side to side, long neck and lumpy head bobbing, walking to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e7de4e5d-a4cb-44ac-b161-a7784bb0b567",
+    "generation_id": "bb010fa1-39ea-4593-a7d2-dc73e6e5c62d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

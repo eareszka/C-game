@@ -1,0 +1,62 @@
+{
+  "id": 71,
+  "name": "71-namungumi",
+  "dir": "art/enemies/pixellab/71_namungumi",
+  "description": "Namungumi: low wide dome-backed lake monster, slate-blue with bold pale grid lines, four short webbed limbs, red gums and pale tusks, one round eye in the middle of the dome.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/71_namungumi.png",
+      "frames": 12,
+      "rows": false,
+      "ms": 162,
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": {
+        "breath": "Slow heavy breath in place, facing the viewer: the dome swells and rises a little to its highest at the midpoint, then settles back. The eye stays in the same place. Same size, black one-pixel outlines, flat fills. No walking or effects.",
+        "walk": "Shuffles sideways in place, facing the viewer: the four webbed limbs step in turn while the dome rocks slightly side to side and the eye stays level. Same size, black one-pixel outlines, flat fills. No effects."
+      },
+      "map": {
+        "*": [
+          0,
+          "breath:2",
+          "breath:4",
+          "breath:5",
+          "breath:6",
+          "breath:2",
+          0,
+          "walk:2",
+          "walk:3",
+          "walk:5",
+          "walk:6",
+          "walk:7"
+        ]
+      },
+      "anchor": {
+        "at": [
+          49,
+          42
+        ],
+        "colors": [
+          "fcfcfc"
+        ],
+        "shift": false
+      },
+      "flash": {
+        "png": "assets/enemies/71_namungumi_flash.png",
+        "colors": [
+          "000000",
+          "181224"
+        ],
+        "radius": 2,
+        "to": "fcfcfc"
+      },
+      "ground": true
+    }
+  }
+}

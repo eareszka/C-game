@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "22-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 964 characters>",
+      "format": "png"
+    },
+    "action": "walking away from the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "1f368767-71f3-46b0-876a-2585cf6bbed5",
+    "generation_id": "5f0610c8-b677-461a-a6d5-ad7b99f4eed8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "22-mini-walku-00.png",
+    "22-mini-walku-01.png",
+    "22-mini-walku-02.png",
+    "22-mini-walku-03.png",
+    "22-mini-walku-04.png"
+  ]
+}

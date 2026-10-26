@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "61-roperite",
+  "generated": "2026-10-18T19:50:29Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "61-roperite_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "61-roperite-frame0-draft.png"
+      ],
+      "ids": {
+        "background_job_id": "9da2b202-ffa6-419a-8462-21e3aa114b2b",
+        "generation_id": "aff3f2ba-2c05-4ebe-b444-e849b35d025e"
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "28-mini_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 828 characters>",
+      "format": "png"
+    },
+    "description": "the same creature standing up on all four legs mid-stride, trotting toward the viewer, tail curled up behind, red crest blowing, keep colours and black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b59c9f50-f9ec-4bed-91a8-fadfa68293e3",
+    "generation_id": "7fe4aa44-796d-4107-8919-bcdfae48cf90"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "28-mini-stand.png"
+  ]
+}

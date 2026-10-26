@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe
+.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe sfxdump biomecensus propcheck
 
 all: $(TARGET)
 
@@ -152,6 +152,30 @@ dngportals: dngportals$(EXE)
 
 dngportals$(EXE): tools/dngportals.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/dngportals.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Every synthesized sound effect written out as a WAV (build_tmp/sfx/) to
+# audition, and checked for silence, NaN and clipping. Exits non-zero on a bad clip.
+biomecensus: biomecensus$(EXE)
+
+biomecensus$(EXE): tools/biomecensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/biomecensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# The props break as they should: blows, cells cleared and kept gone, drops paid.
+propcheck: propcheck$(EXE)
+
+propcheck$(EXE): tools/propcheck.cpp src/props.inc $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) -Isrc tools/propcheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+sfxdump: sfxdump$(EXE)
+
+sfxdump$(EXE): tools/sfxdump.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/sfxdump.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Nothing comes back: beaten spawners and broken veins stay so (persist.h).
+killcheck: killcheck$(EXE)
+
+killcheck$(EXE): tools/killcheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/killcheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 # Is the join where the world wraps as invisible as any other line of it?
 # Same repo-root rule as dngcensus.

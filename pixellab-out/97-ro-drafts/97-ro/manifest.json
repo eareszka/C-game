@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "97-ro",
+  "generated": "2026-10-18T21:56:05Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "97-ro_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "97-ro-frame0-draft.png"
+      ],
+      "ids": {
+        "background_job_id": "cb625e56-dbf6-4127-9799-3b15b7747c68",
+        "generation_id": "09c416ae-4cfa-4f85-a0c6-b5f405495c38"
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "status": "reviewed animations installed for testing 2026-10-18; all eight standing/hunching and ball-rolling directions; original assets preserved; 66 DONE in visible tracker; builds and installed battle-render check passed",
+  "size": [
+    48,
+    35
+  ],
+  "bounds": [
+    15,
+    12,
+    34,
+    35
+  ],
+  "sha256": {
+    "assets/enemies/66_ayotochtli.png": "3b144363723843613140d8378354e98ca8e7d83a4076a947b07953ec9ed8527b",
+    "assets/enemies/66_ayotochtli.aseprite": "c65bd3e5d6e3a992148785b07538c59e3382d81f13ab8016114fc7ed52d7c7dc",
+    "assets/enemies/66_ayotochtli_roll.png": "bcb07414898daba6f707a39f55cb8e020b605a0b03d832c8f99873c9b8d6f00a",
+    "assets/enemies/66_ayotochtli_roll.aseprite": "0e91f1470575743230fa62d65d447bde46bb68ceb346ee64e82b7ad5e23d0cd7",
+    "art\\enemies\\pixellab\\66_ayotochtli\\source_frame0.png": "c8e008d7cdee2dd60f3eb28d18f8e7b2268a97a80d6dfd0b44967cde8cf467a6",
+    "art\\enemies\\pixellab\\66_ayotochtli\\prompt.txt": "80ea7279a77deb77e34c2201ec68c571dc74021c52b3cc1c7954b230dbf220d3",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png": "1fb1b19cae804a51cc02c75d6fed057829c6c2cd98e35e5cef126a70da40cac2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "back-edit",
+  "generated": "2026-10-19T18:38:16Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "back-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "23-olgoi-khorkhoi-back-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "539d4f4e-feb9-4080-a5cb-f589d3641cdc",
+        "generation_id": "1f522b3e-d3d0-42c5-b2f5-da675ae49492"
+      }
+    }
+  ]
+}

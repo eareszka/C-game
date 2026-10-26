@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit-try4_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 6700 characters>",
+          "format": "png"
+        },
+        "width": 354,
+        "height": 225
+      }
+    ],
+    "image_size": {
+      "width": 354,
+      "height": 225
+    },
+    "description": "<elided 1285 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 4100 characters>",
+        "format": "png"
+      },
+      "width": 192,
+      "height": 176
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5afb6323-1929-4156-88bc-4dff97e800e0",
+    "generation_id": "9a73d734-fa02-47d2-a187-54cb15eb4aa6"
+  },
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-idle-frame0-try4.png"
+  ]
+}

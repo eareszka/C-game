@@ -1,0 +1,68 @@
+{
+  "id": 52,
+  "name": "52-sannaja",
+  "dir": "art/enemies/pixellab/52_sannaja",
+  "description": "",
+  "prompts": {
+    "turn1": "prompt_turn1.txt",
+    "turn2": "prompt_turn.txt",
+    "turn3": "prompt_turn.txt"
+  },
+  "sheets": {
+    "headup": {
+      "png": "assets/enemies/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "breathe",
+      "from": "idle",
+      "pivot": 40,
+      "breathe": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        2,
+        2
+      ]
+    },
+    "turn1": {
+      "png": "assets/enemies/redraws/52_sannaja_body.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "headup"
+    },
+    "turn2": {
+      "png": "assets/enemies/redraws/52_sannaja_body.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "headup"
+    },
+    "turn3": {
+      "png": "assets/enemies/redraws/52_sannaja_body.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "headup"
+    }
+  }
+}

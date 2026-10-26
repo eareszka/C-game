@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "subject": "24-mini",
+  "generated": "2026-10-23T01:04:08Z",
+  "spent": {
+    "calls": 6,
+    "generations": 6.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "24-mini-coil-d.png"
+      ],
+      "ids": {
+        "background_job_id": "75ba7c80-9b4b-42d8-a678-f512f16a8101",
+        "generation_id": "37234acd-c274-4159-800e-dd8442d71662"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "24-mini-coil-u.png"
+      ],
+      "ids": {
+        "background_job_id": "35bd7dce-9260-41c2-967c-ae887b246ebe",
+        "generation_id": "935b9e3b-6d6f-47c8-8237-077764456eb6"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "24-mini-coil-l.png"
+      ],
+      "ids": {
+        "background_job_id": "56954546-e440-41ad-9285-413a25fc7bc5",
+        "generation_id": "32695c08-d48a-4d72-a69a-698e09496917"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "24-mini-dash-d.png"
+      ],
+      "ids": {
+        "background_job_id": "eadc6ccd-ce69-4f2c-8f54-5616a9d50078",
+        "generation_id": "ea3df688-2285-40ae-9c5c-7322f0380685"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v5",
+      "directory": "sprites/v5",
+      "files": [
+        "24-mini-dash-u.png"
+      ],
+      "ids": {
+        "background_job_id": "d3f91db7-d787-408b-b66a-f6feac5a59b6",
+        "generation_id": "14bb640c-60bc-4ffb-9a22-d8ba65342596"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "24-mini_sprites_v6",
+      "directory": "sprites/v6",
+      "files": [
+        "24-mini-dash-l.png"
+      ],
+      "ids": {
+        "background_job_id": "1eca4b52-6858-4e97-90d1-42072a3f4644",
+        "generation_id": "ca2e7e97-cd20-4023-a83e-dfef08328d26"
+      }
+    }
+  ]
+}

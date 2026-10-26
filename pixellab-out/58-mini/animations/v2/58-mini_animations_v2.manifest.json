@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "58-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1780 characters>",
+      "format": "png"
+    },
+    "action": "a squat ape creature crouching low and still, then springing up into a big pouncing leap with its long whip-like arms flung up and out, then landing in a crouch, leaping toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "12753e44-c936-4dab-bc13-aebaacdaf233",
+    "generation_id": "94925c11-277c-4da2-9ddd-09d63b3ec743"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pounced-00.png",
+    "pounced-01.png",
+    "pounced-02.png",
+    "pounced-03.png",
+    "pounced-04.png"
+  ]
+}

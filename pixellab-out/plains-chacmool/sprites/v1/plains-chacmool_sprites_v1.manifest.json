@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "plains-chacmool_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art chacmool stone statue, reclining figure on its back with knees up holding a bowl on its belly, head turned, grey stone, mayan, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIklEQVR4nGNkQALHztyCsy+evgBnHzq0G85mQtZADKC9BgC7ZgcfKLN00QAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "chacmool.png"
+  ]
+}

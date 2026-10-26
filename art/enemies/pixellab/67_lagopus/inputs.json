@@ -1,0 +1,22 @@
+{
+  "status": "first-frame approved; grounded and flight animations ready for review; not installed",
+  "size": [
+    62,
+    45
+  ],
+  "bounds": [
+    3,
+    14,
+    54,
+    44
+  ],
+  "sha256": {
+    "assets/enemies/67_lagopus.png": "19c044245d72c57d50035c1816bbb9b8c0b40db23b79f1e21bffcd6857556f5c",
+    "assets/enemies/67_lagopus.aseprite": "21fb4a762be6b78ad795d8e5228e77a9cbccc001db06d1f8a54ff017bb23a82d",
+    "assets/enemies/67_lagopus_fly.png": "598fc179541840fb8dc3e25384e18923dbd2d2833598c924224b0680b08cd2cc",
+    "assets/enemies/67_lagopus_fly.aseprite": "5a457f857470db63684fe77c8954f4f55722344f322f88b60b37aba2e256992e",
+    "art\\enemies\\pixellab\\67_lagopus\\source_idle.png": "e3686a983132d8e39bfd9833b2e422ea90de949a04c38ddad098d8b40c3f09fe",
+    "art\\enemies\\pixellab\\67_lagopus\\prompt.txt": "d2360d0a10fc950945990c8e541dd45dc420e05f0bddcb4cfc62246fe02df93a",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png": "1fb1b19cae804a51cc02c75d6fed057829c6c2cd98e35e5cef126a70da40cac2"
+  }
+}

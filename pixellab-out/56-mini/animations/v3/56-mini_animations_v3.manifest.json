@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "56-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1864 characters>",
+      "format": "png"
+    },
+    "action": "a giant bee-striped mosquito flying, hovering in the air, its two wings beating fast up and down, legs dangling, body bobbing slightly, flying away from the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "43d74c75-479d-446c-bc17-6f9eca84fb89",
+    "generation_id": "14b08b9d-fb9c-4554-80cf-0c2801d32260"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyu-00.png",
+    "flyu-01.png",
+    "flyu-02.png",
+    "flyu-03.png",
+    "flyu-04.png"
+  ]
+}

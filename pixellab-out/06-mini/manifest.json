@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "06-mini",
+  "generated": "2026-10-23T09:07:59Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "06-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "walkl-00.png",
+        "walkl-01.png",
+        "walkl-02.png",
+        "walkl-03.png",
+        "walkl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e92efab9-b6eb-43af-b79a-d90a45521c3b",
+        "generation_id": "fc37415e-61de-4d5b-938b-a5f1509f43f6"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "06-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "walkd-00.png",
+        "walkd-01.png",
+        "walkd-02.png",
+        "walkd-03.png",
+        "walkd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "6e092b40-11dd-40aa-908f-e23318d5bf7f",
+        "generation_id": "cc9b44d2-b39e-445e-a81b-52d1cb732b6e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "06-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "walku-00.png",
+        "walku-01.png",
+        "walku-02.png",
+        "walku-03.png",
+        "walku-04.png"
+      ],
+      "ids": {
+        "background_job_id": "5692eeee-23ba-428e-a14f-cc61cdf70ce2",
+        "generation_id": "e80031cb-4ee0-4920-b26d-7fd6c3b473c2"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "06-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "06-mini-rot-south-00.png",
+        "06-mini-rot-south-east-01.png",
+        "06-mini-rot-east-02.png",
+        "06-mini-rot-north-east-03.png",
+        "06-mini-rot-north-04.png",
+        "06-mini-rot-north-west-05.png",
+        "06-mini-rot-west-06.png",
+        "06-mini-rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "3926818d-3e44-43e3-b942-3d5ccf0800ae",
+        "generation_id": "d3441c2f-886b-4d96-8b9c-ee014923929f"
+      }
+    }
+  ]
+}

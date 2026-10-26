@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "chead-edit-try3",
+  "generated": "2026-10-19T17:02:18Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "chead-edit-try3_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-close-chead-frame0-try3.png"
+      ],
+      "ids": {
+        "background_job_id": "6acbbda4-1bd7-4d94-bd43-61d2a4ee9aa3",
+        "generation_id": "1ed49e8e-a1ba-4d73-9dbc-30c27cc7d65d"
+      }
+    }
+  ]
+}

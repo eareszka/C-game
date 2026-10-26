@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "idle-rotate",
+  "generated": "2026-10-19T00:27:30Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "idle-rotate_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "73-liderc-idle-views-south-00.png",
+        "73-liderc-idle-views-south-east-01.png",
+        "73-liderc-idle-views-east-02.png",
+        "73-liderc-idle-views-north-east-03.png",
+        "73-liderc-idle-views-north-04.png",
+        "73-liderc-idle-views-north-west-05.png",
+        "73-liderc-idle-views-west-06.png",
+        "73-liderc-idle-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "073ec028-2cc5-4a9e-be0d-285bb3ffc9b3",
+        "generation_id": "04ac8b6e-79af-4a70-9856-e50cfa7eedae"
+      }
+    }
+  ]
+}

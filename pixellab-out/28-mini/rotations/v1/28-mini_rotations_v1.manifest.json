@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "28-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1352 characters>",
+      "format": "png"
+    },
+    "description": "small four-legged cat-griffin, brown hawk head with long pale beak, red feather crest, golden ruff collar, tan cat body and legs, striped curling tail, black outline, flat shading",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d3a28a7d-dd3f-498d-adac-3cbba7584b7d",
+    "generation_id": "c0287ded-0a92-4b8a-88cc-561db14afb06"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "28-mini-rot-south-00.png",
+    "28-mini-rot-south-east-01.png",
+    "28-mini-rot-east-02.png",
+    "28-mini-rot-north-east-03.png",
+    "28-mini-rot-north-04.png",
+    "28-mini-rot-north-west-05.png",
+    "28-mini-rot-west-06.png",
+    "28-mini-rot-south-west-07.png"
+  ]
+}

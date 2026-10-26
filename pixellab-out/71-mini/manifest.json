@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "71-mini",
+  "generated": "2026-10-25T06:41:45Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "71-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "b320d741-d8c3-44b7-adeb-3126f632aea5",
+        "generation_id": "d0621bda-3314-471a-a4df-77330d2a69d1"
+      }
+    }
+  ]
+}

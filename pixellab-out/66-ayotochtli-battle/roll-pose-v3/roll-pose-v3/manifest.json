@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "roll-pose-v3",
+  "generated": "2026-10-18T20:41:15Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "roll-pose-v3_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "ayotochtli-roll-pose.png"
+      ],
+      "ids": {
+        "background_job_id": "d69d5285-0434-420c-b1dc-9b968ab69ed1",
+        "generation_id": "77c46a58-2173-403c-b422-ea2ce5f298a6"
+      }
+    }
+  ]
+}

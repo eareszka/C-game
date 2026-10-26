@@ -1,0 +1,19 @@
+{
+  "id": 52,
+  "name": "52-sannaja",
+  "dir": "art/enemies/pixellab/52_sannaja",
+  "description": "",
+  "prompts": {},
+  "sheets": {
+    "walk": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+﻿{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAGIAAABBCAYAAAAqnXGWAAADnElEQVR4nO2cv2sUQRTH3xyxsLOwknAH1yQgSIo0gkKKNAcSDotIIIVYpkoZ/4JLmcoybCGIFrIcQhqLgAGbFIcgrM1BQrCyT2Ex8sadzdxk93bvcpr33ZsP7N1mfxwz89333rw3dyEKBAKBQCAQCARgUISFBm9/IUgd0YPjvZEDK2v7iP3IRaFYwSAVwQ5+/3Cbmu1F9xhCX2DRg+M9s6WCuK5J93Za5lz/cNs/B0eDADj68M7uuk+9ev3mjM6HF5llBP4Nmp92fupLnvZaWAWERcwDQQghNKTHhs7mVtllypnGwiJaiM7mlhuox4IesEULwTxcfUpV6e20CDVgixeiCf6k10KI8+GF2TiLrnItMg3p1tBsL9L30y+lLgfdciAsolM+cwr851rTTTJw0Yi2CJe0+go70OhCqIODOMslisSomPgFboi2rienJG6KfQVlcigU2urcytp+tkhk/wbszzUWSC7aHVyePW28emtEcHMGTxSNKobkRmsuWfDij8UXIS+XQLUQ6Q3VL7vLFMVJqQhjxEDop/xZUxQnxGJULWHwddZd8TvfixDEpQth2N3t0iS4ok16720hUQjt7nPBb5qFH7YG7z7RViFJCG0DtJsT2JkSv08rRvqZopEkBPkDxgNpgzRbxiRiuO7px8+74q1iQdLsiOgyO1B1llQlcCOsaUuwCO1aAucNsxABjYYUEaI4MSJUWY2bhJwVPpF1qVt3Tey/ozgxg8UrcX+3618cmCZY+/ccEdHjz0/M/r31E5KEkhIflh5cxQfGljbShMyIZfefb6yWfuidVIT33WV6ESdGgK/rJ9l7R07/RbimbJBd3PoSn7Mi+NeVicCDziJYPBFEIUEINea43Ub42D81WxG/c+IMC+BZghhrIEGN0TZoszXcf9SiX9/O3PaNBFY+/6yd5Qa5rorjA8cEF2nuyEVSozS/eC5I5ecbozGjSBC2Gs+dSeovSW6YLmlXJsSn4aWxGl+MPFIxpPV1BNGNKxLB4j7tRYIgiCAij5gBil+iOClK0MSLIGXWNCuymRBbRxWXJQlYIaIKLgdldQ5aiKqgiFF7IVBo1NAtqaqlEElAzZqWvMJgnYC0iB7wb+VqJUQJRiA091Q3ITSBAhUjqoCWyNXVIhSaS0KxCD1FvYjFgHNRoi1icPXbh0kH1l3dE7cal4f0Buq8r0uma9rS214fi6D0v5TNA9KFmBsxkMxbA7c9QCD8ASaGprnPl0UPAAAAAElFTkSuQmCC",
+      "format": "png"
+    },
+    "action": "Looping sprint in place, facing the same direction throughout. Alternate two long bird legs through contact, push-off, flight and recovery, with small body bob and a trailing orange segmented rattle tail. Rope snout lasso bounces as one clear loop with one forward flick at the middle of the cycle, then recoils into its original loop. Preserve creature anatomy, scale, tiny pixel clusters, one-pixel black outlines and flat colors; no camera motion or translation. No extra limbs, no trails or effects. Seamless loop.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

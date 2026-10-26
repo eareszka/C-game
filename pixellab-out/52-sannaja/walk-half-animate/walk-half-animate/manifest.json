@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "subject": "walk-half-animate",
+  "generated": "2026-10-19T14:19:13Z",
+  "spent": {
+    "calls": 1,
+    "generations": 6.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "walk-half-animate_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "52-sannaja-walk-half-00.png",
+        "52-sannaja-walk-half-01.png",
+        "52-sannaja-walk-half-02.png",
+        "52-sannaja-walk-half-03.png",
+        "52-sannaja-walk-half-04.png",
+        "52-sannaja-walk-half-05.png",
+        "52-sannaja-walk-half-06.png",
+        "52-sannaja-walk-half-07.png",
+        "52-sannaja-walk-half-08.png",
+        "52-sannaja-walk-half-09.png",
+        "52-sannaja-walk-half-10.png",
+        "52-sannaja-walk-half-11.png",
+        "52-sannaja-walk-half-12.png"
+      ],
+      "ids": {
+        "background_job_id": "2c4db3bd-894e-4164-b99a-088f7784dd5a",
+        "generation_id": "df88cedf-c919-4af1-9df0-5f05b8c78059"
+      }
+    }
+  ]
+}

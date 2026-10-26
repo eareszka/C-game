@@ -5,6 +5,11 @@ local ms = tonumber(app.params.ms or '')
 if ms then
   for _, f in ipairs(s.frames) do f.duration = ms / 1000 end
 end
+local durations = {}
+for value in string.gmatch(app.params.durations or '', '%d+') do durations[#durations + 1] = tonumber(value) end
+if #durations > 0 then
+  for i, f in ipairs(s.frames) do f.duration = durations[(i - 1) % #durations + 1] / 1000 end
+end
 local cols = {}
 for h in string.gmatch(app.params.pal or '', '%x%x%x%x%x%x') do cols[#cols + 1] = h end
 if #cols > 0 then

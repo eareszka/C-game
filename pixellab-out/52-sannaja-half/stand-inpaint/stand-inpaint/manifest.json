@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "stand-inpaint",
+  "generated": "2026-10-19T15:48:49Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "stand-inpaint_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-stand-inpaint.png"
+      ],
+      "ids": {
+        "background_job_id": "a1b36365-ffe7-4fea-bb0a-2ca364714250",
+        "generation_id": "036255ba-cf14-4bf8-a539-ab8e362e9b1d"
+      }
+    }
+  ]
+}

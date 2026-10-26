@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "desert-arch",
+  "generated": "2026-10-26T05:31:34Z",
+  "spent": {
+    "calls": 2,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-arch_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "arch-1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-arch_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "arch-2.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

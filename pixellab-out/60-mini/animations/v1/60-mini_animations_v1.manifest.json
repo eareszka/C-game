@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "60-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3440 characters>",
+      "format": "png"
+    },
+    "action": "a flat furry creature like a dropped fur coat lying still and flat on the ground, then suddenly rearing up its hood and flinging its whole body forward to engulf its prey, then flattening out again, lunging to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "316188bf-88c5-49a8-8e5c-64124860a694",
+    "generation_id": "70bbee01-ea24-4c47-b84c-c9f9179366ba"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "lungel-00.png",
+    "lungel-01.png",
+    "lungel-02.png",
+    "lungel-03.png",
+    "lungel-04.png"
+  ]
+}

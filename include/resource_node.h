@@ -59,6 +59,7 @@ typedef struct ResourceNode
     int reveal_tx, reveal_ty;
 
     int chest;   // 0: ordinary node, 1: closed chest (interaction only), 2: opened chest yielding wood
+    int site;    // an oilbloom's site (tilemap_spawn_oilbloom): what persist.h keeps it by; else -1
 } ResourceNode;
 
 typedef struct ResourceNodeList 
@@ -92,6 +93,8 @@ typedef struct HarvestHit {
     float x, y;      // centre of what was struck, for the floating "+1"
     int   resource;  // ResourceType awarded, or -1 for none (e.g. flowers)
     int   destroyed; // 1 if this hit finished it off
+    int   item;      // or an Item paid instead (a prop's drops), -1 for none
+    int   amount;    // how many of the item
 } HarvestHit;
 
 typedef struct HarvestResult {
@@ -101,6 +104,8 @@ typedef struct HarvestResult {
 
 // Append a hit; silently ignores overflow past MAX_HARVEST_HITS.
 void harvest_add(HarvestResult* r, float x, float y, int resource, int destroyed);
+// Append a broken thing's drop of `amount` of an Item (a prop's, tilemap.cpp).
+void harvest_add_item(HarvestResult* r, float x, float y, int item, int amount);
 // True if any hit in the result finished something off.
 bool harvest_any_destroyed(const HarvestResult* r);
 

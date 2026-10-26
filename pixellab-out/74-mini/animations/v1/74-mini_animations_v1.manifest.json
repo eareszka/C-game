@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "74-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1432 characters>",
+      "format": "png"
+    },
+    "action": "a crouching pink pig spirit gathers itself low on its haunches then springs forward in a pouncing leap, its jaw dropping open, its arms reaching out, leaping toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4c0e95b3-6133-42fd-9d46-ed67d6156c93",
+    "generation_id": "3f8f78f6-ed72-4739-baf5-483fa89b731d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pounced-00.png",
+    "pounced-01.png",
+    "pounced-02.png",
+    "pounced-03.png",
+    "pounced-04.png"
+  ]
+}

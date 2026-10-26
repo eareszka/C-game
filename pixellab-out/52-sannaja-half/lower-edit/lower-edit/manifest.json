@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "lower-edit",
+  "generated": "2026-10-19T15:39:27Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "lower-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-lower-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "44fb4c96-773e-44e9-a20f-4d002445e411",
+        "generation_id": "3ad6515f-4bd3-4f41-a9f0-ef1959c8be36"
+      }
+    }
+  ]
+}

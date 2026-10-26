@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "22-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1156 characters>",
+      "format": "png"
+    },
+    "action": "walking toward the viewer, a drunk swaying walk",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "78f0e0b6-5c20-4723-bc5c-e1139aa7b372",
+    "generation_id": "e23dfbc3-fd5d-4aad-9a18-a2bc8f84b568"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "22-mini-walkd-00.png",
+    "22-mini-walkd-01.png",
+    "22-mini-walkd-02.png",
+    "22-mini-walkd-03.png",
+    "22-mini-walkd-04.png"
+  ]
+}

@@ -11,6 +11,7 @@
 #include "save.h"
 #include "dungeon.h"
 #include "story.h"
+#include "persist.h"
 #include <SDL2/SDL_image.h>
 #include <cassert>
 #include <cstdio>
@@ -94,17 +95,51 @@ static void save_checks(){
  static SaveFixture<LegacyPlayerV2> old={};memcpy(old.magic,"FCC1",4);old.version=2;old.player_size=sizeof(LegacyPlayerV2);old.seed=123;old.x=7;old.y=9;
  memcpy(&old.player,&p,sizeof(LegacyPlayerV2));old.player.parts[PART_FUR]=6;old.player.sail=1;old.player.books[2]=1;old.explored[3][4]=1;old.landmarks[0]=5;old.story=*story_flags();
  const size_t sizes[]={sizeof(old),offsetof(SaveFixture<LegacyPlayerV2>,story),(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+MAX_LANDMARKS/8+3)&~(size_t)3,(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+3)&~(size_t)3};
- for(size_t size:sizes){FILE* f=fopen("save.dat","wb");assert(f);assert(fwrite(&old,1,size,f)==size);fclose(f);memset(&got,0,sizeof(got));assert(save_read(&seed,&x,&y,&got,explored));assert(seed==123&&x==7&&y==9&&got.sail==1&&got.books[2]==1&&item_count(&got,ITEM_WHITE_FUR)==6&&explored[3][4]);assert(item_count(&got,ITEM_BINOCULARS)==0&&got.found_extra[0]==0);}
+ // Saves from before version 19 were played in another world (WORLDGEN_VERSION): refused, and the title told why.
+ for(size_t size:sizes){FILE* f=fopen("save.dat","wb");assert(f);assert(fwrite(&old,1,size,f)==size);fclose(f);memset(&got,0,sizeof(got));assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());}
  static SaveFixture<LegacyPlayerV3> v3={};memcpy(v3.magic,"FCC1",4);v3.version=3;v3.player_size=sizeof(LegacyPlayerV3);v3.seed=321;v3.x=12;v3.y=34;memcpy(&v3.player,&p,sizeof(v3.player));v3.explored[1][2]=1;v3.landmarks[0]=7;v3.story=*story_flags();
  FILE* f3=fopen("save.dat","wb");assert(f3);assert(fwrite(&v3,1,sizeof(v3),f3)==sizeof(v3));fclose(f3);
- assert(save_read(&seed,&x,&y,&got,explored));assert(seed==321&&x==12&&y==34&&!got.poisoned&&got.poison_timer==0&&item_count(&got,ITEM_ENCHANTED_WOOD)==17&&item_found(&got,ITEM_BINOCULARS)&&explored[1][2]&&tilemap_landmarks_opened()[0]==7);
+ assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());
  static SaveFixture<LegacyPlayerV4> v4={};memcpy(v4.magic,"FCC1",4);v4.version=4;v4.player_size=sizeof(LegacyPlayerV4);v4.seed=456;memcpy(&v4.player,&p,sizeof(v4.player));
  FILE* f4=fopen("save.dat","wb");assert(f4);assert(fwrite(&v4,1,sizeof(v4),f4)==sizeof(v4));fclose(f4);
- assert(save_read(&seed,&x,&y,&got,explored));assert(seed==456&&got.poisoned&&got.poison_timer==0.75f&&got.footwear&&item_count(&got,ITEM_SWIFT_BOOTS)==1);
+ assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());got=p;seed=456;
  got.footwear=0;assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(!got.footwear&&item_count(&got,ITEM_SWIFT_BOOTS)==1);
  item_slot(&got,ITEM_DIVING_FINS)=1;assert(item_equip_footwear(&got,ITEM_DIVING_FINS,true));assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(got.footwear==FOOTWEAR_DIVING_FINS&&item_footwear_equipped(&got,ITEM_DIVING_FINS)&&!item_footwear_equipped(&got,ITEM_SWIFT_BOOTS));
+ assert(!save_refused_old_world());
  FILE* f=fopen("save.dat","wb");fwrite(&old,1,12,f);fclose(f);assert(!save_read(&seed,&x,&y,&got,explored));fs::current_path(original);
- puts("saves: V5 equipped/unequipped round trip, V4/V3 migration, all four V2 lengths and truncation rejection checked");
+ puts("saves: V19 equipped/unequipped round trip, V4/V3/V2 refused as an older world, truncation rejection checked");
+}
+// The raft worn and taken off, and what was destroyed (persist.h), through a
+// save and back; a version-17 save (no block) migrates to a worn raft and an
+// untouched world.
+static void raft_and_persist_checks(){
+ namespace fs=std::filesystem;fs::path original=fs::current_path();fs::create_directories("build_tmp/crafting_qa/saves");fs::current_path("build_tmp/crafting_qa/saves");
+ static uint8_t explored[EXPLORE_H][EXPLORE_W]={};unsigned seed;float x,y;Player got={};
+ Player p=fresh_player();item_slot(&p,ITEM_RAFT_BOOK)=1;fill(p,craft_recipe(&p,result(ITEM_RAFT),-1));
+ assert(craft_make(&p,result(ITEM_RAFT))&&p.raft==1&&item_raft_worn(&p));
+ assert(item_equip_raft(&p,false)&&!item_raft_worn(&p));
+ persist_clear();assert(save_write(7,1,2,p,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(got.raft==1&&!item_raft_worn(&got));
+ assert(item_equip_raft(&got,true));assert(save_write(7,1,2,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(item_raft_worn(&got));
+ Player none=fresh_player();assert(!item_equip_raft(&none,true));none.raft_worn=1;assert(save_write(7,1,2,none,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(!got.raft_worn);
+ // What was destroyed, kept.
+ persist_tile_add(tilemap_tile_key(10,20));persist_oilbloom_add(3);persist_spawner_beaten(0xABCDu,2);persist_spawner_beaten(0xABCDu,63);persist_node_broken(0xABCDu,4);
+ assert(save_write(7,1,2,p,explored));persist_clear();assert(!persist_tile_has(tilemap_tile_key(10,20)));
+ assert(save_read(&seed,&x,&y,&got,explored));
+ assert(persist_tile_has(tilemap_tile_key(10,20))&&!persist_tile_has(tilemap_tile_key(11,20))&&persist_oilbloom_has(3)&&!persist_oilbloom_has(4));
+ DungeonDeadRecord d=persist_dungeon(0xABCDu);assert(d.spawners==((1ull<<2)|(1ull<<63))&&d.nodes==(1ull<<4)&&persist_dungeon(0x1234u).spawners==0);
+ // Version 17: the same file without the block, the raft field and the world
+ // stamp. Played in an older world, so refused -- and it still leaves nothing behind.
+ persist_clear();p.raft_worn=0;assert(save_write(7,1,2,p,explored));
+ {const uintmax_t sz=fs::file_size("save.dat");fs::resize_file("save.dat",sz-20);   // the empty block (4 + 8 + 4) and the stamp (4)
+  FILE* f=fopen("save.dat","r+b");assert(f);unsigned v=17;fseek(f,4,SEEK_SET);fwrite(&v,sizeof(v),1,f);fclose(f);}
+ persist_tile_add(99);   // left from a session before: a refused load clears it
+ assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());assert(!persist_tile_has(99));
+ // A refused save leaves nothing of itself behind.
+ persist_tile_add(tilemap_tile_key(10,20));assert(save_write(7,1,2,p,explored));
+ {const uintmax_t sz=fs::file_size("save.dat");fs::resize_file("save.dat",sz-1);}
+ assert(!save_read(&seed,&x,&y,&got,explored));assert(!persist_tile_has(tilemap_tile_key(10,20)));
+ persist_clear();fs::current_path(original);
+ puts("raft and persistence: worn on craft, unequip, save round trips, v17 migration and refused-save cleanup checked");
 }
 static void swift_boots_checks(){
  Player p=fresh_player();float speed,anim;Input in={};
@@ -303,7 +338,7 @@ static void render_checks(){
 }
 int main(){
  setvbuf(stdout,nullptr,_IONBF,0);SDL_setenv("SDL_VIDEODRIVER","dummy",1);assert(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER)==0);
- catalog_checks();loot_checks();save_checks();swift_boots_checks();diving_fins_checks();poison_checks();band_aid_checks();medkit_checks();escape_menu_checks();render_checks();
+ catalog_checks();loot_checks();save_checks();raft_and_persist_checks();swift_boots_checks();diving_fins_checks();poison_checks();band_aid_checks();medkit_checks();escape_menu_checks();render_checks();
  for(int w=0;w<WEAPON_COUNT;w++){ProjectileProfile p=weapon_profile((WeaponType)w);assert(fabsf(faster_fire_rate(p.fire_rate,0)-p.fire_rate)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)-TOUHOU_FIRE_RATE)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)*faster_damage(p.fire_rate,p.damage,WEAPON_OIL_MAX)/(p.fire_rate*p.damage)-FASTER_DPS_AT_MAX)<0.001f);}
  SDL_Quit();puts("craftcheck: ok");return 0;
 }

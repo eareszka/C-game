@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "22-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1156 characters>",
+      "format": "png"
+    },
+    "description": "small green bobcat with thorny fur, pale cream belly and paws, pink inner ears, branching cactus tail, black outline, flat shading",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "de8c01e9-0cc4-4ee4-be30-149bbd940c98",
+    "generation_id": "8bc509af-123d-4234-a95e-034f9ce09672"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "22-mini-rot-south-00.png",
+    "22-mini-rot-south-east-01.png",
+    "22-mini-rot-east-02.png",
+    "22-mini-rot-north-east-03.png",
+    "22-mini-rot-north-04.png",
+    "22-mini-rot-north-west-05.png",
+    "22-mini-rot-west-06.png",
+    "22-mini-rot-south-west-07.png"
+  ]
+}

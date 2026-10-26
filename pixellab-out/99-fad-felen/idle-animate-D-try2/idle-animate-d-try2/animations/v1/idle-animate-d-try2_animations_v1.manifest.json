@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d-try2_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1896 characters>",
+      "format": "png"
+    },
+    "action": "<elided 492 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "8f6fd735-2b3c-4a0e-a79b-616fad7d24e7",
+    "generation_id": "99cb0c03-889b-491e-92a0-2e365bcf950e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "99-fad-felen-idle-d-try2-00.png",
+    "99-fad-felen-idle-d-try2-01.png",
+    "99-fad-felen-idle-d-try2-02.png",
+    "99-fad-felen-idle-d-try2-03.png",
+    "99-fad-felen-idle-d-try2-04.png",
+    "99-fad-felen-idle-d-try2-05.png",
+    "99-fad-felen-idle-d-try2-06.png",
+    "99-fad-felen-idle-d-try2-07.png",
+    "99-fad-felen-idle-d-try2-08.png"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": 63, "name": "63-hidebehind", "dir": "art/enemies/pixellab/63_hidebehind",
+  "description": "Hidebehind: a shaggy dark-brown furry creature, tall cone-shaped body like a hunched shadow, two long thin arms raised high with fans of long ivory claws. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/63_hidebehind.png", "frames": 3, "rows": false, "ms": 260,
+    "views": ["D"], "make": "animate", "count": 4,
+    "action": "Lurking idle in place, facing the viewer: the shaggy body sways and at the midpoint dips down slightly, arms and claws always raised high in the same place, then rises back. Same size, black one-pixel outlines and flat fills. No walking or effects.",
+    "map": {"*": [0, 1, 2]}
+  }}
+}

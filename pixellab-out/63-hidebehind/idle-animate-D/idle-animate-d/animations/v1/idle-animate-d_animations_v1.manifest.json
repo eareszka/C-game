@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2036 characters>",
+      "format": "png"
+    },
+    "action": "Lurking idle in place, facing the viewer: the shaggy body sways and at the midpoint dips down slightly, arms and claws always raised high in the same place, then rises back. Same size, black one-pixel outlines and flat fills. No walking or effects.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "26c5bcd6-00cd-4c25-9584-9bf92337ae01",
+    "generation_id": "e0fcefe3-964e-48a0-ae0c-45599083db28"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "63-hidebehind-idle-d-00.png",
+    "63-hidebehind-idle-d-01.png",
+    "63-hidebehind-idle-d-02.png",
+    "63-hidebehind-idle-d-03.png",
+    "63-hidebehind-idle-d-04.png"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "headup-animate-crop0_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 8684 characters>",
+      "format": "png"
+    },
+    "action": "<elided 258 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a89a9689-50ff-4526-b122-ef74ae1fc399",
+    "generation_id": "d4ee89b3-9d42-4a8e-bda3-9a6108f7b5fe"
+  },
+  "cost": {
+    "generations": 8.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-headup-crop0-00.png",
+    "52-sannaja-headup-crop0-01.png",
+    "52-sannaja-headup-crop0-02.png",
+    "52-sannaja-headup-crop0-03.png",
+    "52-sannaja-headup-crop0-04.png",
+    "52-sannaja-headup-crop0-05.png",
+    "52-sannaja-headup-crop0-06.png",
+    "52-sannaja-headup-crop0-07.png",
+    "52-sannaja-headup-crop0-08.png"
+  ]
+}

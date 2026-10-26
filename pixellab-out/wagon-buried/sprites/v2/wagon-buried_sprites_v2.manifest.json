@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "wagon-buried_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art abandoned covered wagon half buried in desert sand, wheels sunk in a sand drift, torn tattered white canvas over the front half, bare wooden hoops exposed at the back, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABwAAAAECAIAAAAS6sg1AAAAMUlEQVR4nGNkQALTSjzg7EdPXsDZF+8/grM3H30FZ5+6cA+h5vQFOJsJ2VBqgaFjKADtEg3g4MZ+rAAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "buried-2.png"
+  ]
+}

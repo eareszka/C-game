@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "lids-edit",
+  "generated": "2026-10-19T13:37:34Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "lids-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-lids-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "23c2aee3-a972-4b53-8f06-3ef7403363fa",
+        "generation_id": "d3a45b50-d4a4-4399-862d-0ec95f294801"
+      }
+    }
+  ]
+}

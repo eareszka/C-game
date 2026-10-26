@@ -1,0 +1,422 @@
+{
+  "approved": true,
+  "installed": true,
+  "frame_size": [
+    48,
+    35
+  ],
+  "palette": [
+    "000000",
+    "235436",
+    "463422",
+    "8d6b4f",
+    "b29e5c",
+    "c9a433",
+    "d0c078",
+    "d7a175",
+    "f0b890"
+  ],
+  "sheets": {
+    "idle": {
+      "png": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.png",
+      "aseprite": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.aseprite",
+      "frames_per_direction": 3,
+      "directions": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "size": [
+        1152,
+        35
+      ],
+      "round_trip_exact": true,
+      "source_selection": {
+        "D": {
+          "sampled_indices": [
+            0,
+            2,
+            4
+          ],
+          "bounds": [
+            [
+              15,
+              7,
+              34,
+              35
+            ],
+            [
+              12,
+              9,
+              37,
+              35
+            ],
+            [
+              15,
+              9,
+              34,
+              35
+            ]
+          ]
+        },
+        "DR": {
+          "sampled_indices": [
+            0,
+            2,
+            4
+          ],
+          "bounds": [
+            [
+              11,
+              4,
+              37,
+              35
+            ],
+            [
+              10,
+              7,
+              38,
+              34
+            ],
+            [
+              9,
+              10,
+              38,
+              34
+            ]
+          ]
+        },
+        "R": {
+          "sampled_indices": [
+            0,
+            2,
+            4
+          ],
+          "bounds": [
+            [
+              8,
+              1,
+              40,
+              35
+            ],
+            [
+              8,
+              3,
+              41,
+              35
+            ],
+            [
+              8,
+              6,
+              41,
+              35
+            ]
+          ]
+        },
+        "UR": {
+          "sampled_indices": [
+            0,
+            2,
+            4
+          ],
+          "bounds": [
+            [
+              13,
+              1,
+              37,
+              35
+            ],
+            [
+              13,
+              4,
+              37,
+              35
+            ],
+            [
+              12,
+              5,
+              39,
+              35
+            ]
+          ]
+        },
+        "U": {
+          "sampled_indices": [
+            0,
+            2,
+            4
+          ],
+          "bounds": [
+            [
+              13,
+              1,
+              35,
+              35
+            ],
+            [
+              13,
+              4,
+              35,
+              35
+            ],
+            [
+              14,
+              8,
+              34,
+              35
+            ]
+          ]
+        }
+      },
+      "sha256": {
+        "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.png": "6bceea49b914fea0d609aa8a86f514ac16ce3767dc62849b5842a3fa26358eaf",
+        "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_idle.aseprite": "d7fca740a38cb2e0787c854e590e0be5eeb4eaa3fcaabaeca9c3cb6d8ab887c8"
+      }
+    },
+    "roll": {
+      "png": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_roll.png",
+      "aseprite": "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_roll.aseprite",
+      "frames_per_direction": 4,
+      "directions": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "size": [
+        1536,
+        35
+      ],
+      "round_trip_exact": true,
+      "source_selection": {
+        "D": {
+          "sampled_indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              12,
+              9,
+              38,
+              35
+            ],
+            [
+              12,
+              8,
+              37,
+              35
+            ],
+            [
+              11,
+              9,
+              35,
+              35
+            ],
+            [
+              11,
+              9,
+              36,
+              35
+            ]
+          ]
+        },
+        "DR": {
+          "sampled_indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              11,
+              8,
+              38,
+              35
+            ],
+            [
+              10,
+              8,
+              40,
+              35
+            ],
+            [
+              8,
+              8,
+              40,
+              35
+            ],
+            [
+              10,
+              7,
+              39,
+              33
+            ]
+          ]
+        },
+        "R": {
+          "sampled_indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              11,
+              8,
+              37,
+              35
+            ],
+            [
+              11,
+              4,
+              37,
+              34
+            ],
+            [
+              11,
+              2,
+              37,
+              34
+            ],
+            [
+              11,
+              1,
+              37,
+              33
+            ]
+          ]
+        },
+        "UR": {
+          "sampled_indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              11,
+              8,
+              37,
+              35
+            ],
+            [
+              11,
+              7,
+              36,
+              34
+            ],
+            [
+              11,
+              5,
+              36,
+              33
+            ],
+            [
+              11,
+              3,
+              36,
+              31
+            ]
+          ]
+        },
+        "U": {
+          "sampled_indices": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "bounds": [
+            [
+              11,
+              9,
+              37,
+              35
+            ],
+            [
+              11,
+              7,
+              37,
+              34
+            ],
+            [
+              11,
+              6,
+              37,
+              32
+            ],
+            [
+              11,
+              6,
+              37,
+              32
+            ]
+          ]
+        }
+      },
+      "sha256": {
+        "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_roll.png": "e139bf9dc56804706c87ae4acc990142e8b3ec3426ecdb6430c3faf047654d09",
+        "art\\enemies\\pixellab\\66_ayotochtli\\battle\\66_ayotochtli_roll.aseprite": "4490228fcac85f4ab32aadf3af6d96c740b5dc337aa18bca6f80e9f4e8a2bd09"
+      }
+    }
+  },
+  "original_assets_unchanged": true,
+  "reported_generations": 13.0,
+  "standing_loop": [
+    0,
+    1,
+    0,
+    2
+  ],
+  "standing_ms": [
+    400,
+    250,
+    400,
+    250
+  ],
+  "rolling_frame_ms": 70,
+  "approved_front_pixels_preserved": true,
+  "approved_front_sha256": "8813b2d5462d62ad601fc8959ab5d1553db67317cbf2cbb6e0310dd265e7eaa0",
+  "validation": {
+    "staged_battle_seconds": 12,
+    "seed": 3872026,
+    "gameplay_log_matches_original": true,
+    "screenshots": 5,
+    "review_directory": "build_tmp/ayotochtli_battle_review/after/",
+    "standing_source_durations_ms": [
+      400,
+      250,
+      250
+    ],
+    "rolling_source_durations_ms": [
+      70
+    ],
+    "installed_battle_seconds": 12,
+    "installed_gameplay_log_matches_original": true,
+    "installed_review_directory": "build_tmp/ayotochtli_battle_review/installed/",
+    "game_build": "passed",
+    "battlecensus_build": "passed",
+    "visible_tracker_refreshed": true
+  },
+  "balance_before_animation": 1969,
+  "balance_after_animation": 1956,
+  "balance_verified_animation_cost": 13,
+  "approval_date": "2026-10-18",
+  "installed_idle": "assets/enemies/redraws/66_ayotochtli.png",
+  "installed_roll": "assets/enemies/redraws/66_ayotochtli_roll.png"
+}

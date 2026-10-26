@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "plains-haystack_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art tall rounded haystack in a farm field, golden straw, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABwAAAAECAIAAAAS6sg1AAAAMUlEQVR4nGNkQALTSjzg7EdPXsDZF+8/grMbchXh7H3H3sDZBtMewtlMyIZSCwwdQwGWNAu/hGhpJwAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "haystack.png"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "33-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1116 characters>",
+      "format": "png"
+    },
+    "description": "a faceted boulder of banded red sandstone, carved petroglyphs: spiral eyes and a zigzag mouth on its front, a carved sun on its back, black outline, flat shading",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f20ed671-6f06-4aae-a88a-513f834f8997",
+    "generation_id": "a40e885a-f585-48f0-a03c-33fcf707952c"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "init-front-south-00.png",
+    "init-front-south-east-01.png",
+    "init-front-east-02.png",
+    "init-front-north-east-03.png",
+    "init-front-north-04.png",
+    "init-front-north-west-05.png",
+    "init-front-west-06.png",
+    "init-front-south-west-07.png"
+  ]
+}

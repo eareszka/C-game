@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "06-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 5764 characters>",
+      "format": "png"
+    },
+    "action": "a giant seven-headed boar stomping slowly, heavy walk, legs stepping in turn, the heads bobbing, body steady, walking toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6e092b40-11dd-40aa-908f-e23318d5bf7f",
+    "generation_id": "cc9b44d2-b39e-445e-a81b-52d1cb732b6e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

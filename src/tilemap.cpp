@@ -8,6 +8,8 @@
 #include "resource_node.h"
 #include "towns.h"
 #include "castles.h"
+#include "persist.h"      // what the player has destroyed stays destroyed
+#include "crafting.h"     // Item: what a prop drops
 #include <stdint.h>
 #include <climits>
 #include <math.h>
@@ -225,9 +227,7 @@ static float s_cliff_ref_x, s_cliff_ref_y;
 // Using absolute start time (not a countdown) makes shake immune to dt spikes.
 static const float JITTER_DUR = 0.22f; // seconds
 static std::unordered_map<uint32_t, Uint64> s_tile_jitter;   // when struck, world_ms()
-static inline uint32_t tile_key(int x, int y) {
-    return (uint32_t)y * MAP_WIDTH + (uint32_t)x;
-}
+static inline uint32_t tile_key(int x, int y) { return tilemap_tile_key(x, y); }
 
 // Pre-rendered tile texture cache — eliminates thousands of per-frame draw calls.
 // Each entry is a TILE_SIZE×TILE_SIZE texture with the tile's bg+glyph baked in.
@@ -540,7 +540,7 @@ static void lay_art_block(Tilemap* map, int col, int row, int w, int h, int x, i
 }
 
 // Which village's footprint tile (x, y) lies in, or -1: what keeps the roads,
-// the entrances, the landmarks, the castles and the desert's formations out
+// the entrances, the landmarks, the castles and the props out
 // of one, now that a village's ground is its biome's own.
 int village_at(const Tilemap* map, int x, int y) {
     for (int i = 0; i < map->num_villages; i++) {
@@ -666,17 +666,47 @@ static inline bool is_yard_wall(int id) { return id == YARD_FENCE_MARK || id == 
 // the overlay on grass, like a rock, so it can be struck, shakes and breaks --
 // for a little wood and stone.
 static constexpr int SIGN_CELL = TILE_TOWN0_BASE;
-// The desert's formations (art/structures/entrances/desert_design.py): a strip
-// of DESERT_COUNT things two cells tall -- cacti, rock, bones -- the sand is
-// scattered with (phase 2, "Desert formations"). The overlay holds the bottom
-// cell's id; the top cell, a sheet row up, is drawn over the tile above, as a
-// yard wall's is (art_cells_at). Solid to the pixel where one stands and
-// walked behind where it rises, by its depth cells, like any entrance art;
-// the bones lie flat and are walked over. Not harvestable.
-static constexpr int desert_cell(int i) {
-    return TILE_TOWN0_BASE + (DESERT_SHEET_ROW + 1) * TOWN0_SHEET_COLS + DESERT_SHEET_COL + i;
+// The overworld's props (art/structures/props/props.py; gen_entrance_art.py
+// --props): the cacti, rock and old trail of the desert, the deadfall, camps
+// and undergrowth of the forest, the farmsteads and Mayan ruins of the plains.
+// Each is a block of entrance art (TOWN_HOUSE), laid whole by lay_art_block
+// in groups ("Props"), so the feet meet it to the pixel and it is drawn over
+// whoever walks behind it. Struck on any cell it takes the blow at its block's
+// top left, and breaks whole for what it drops (prop_strike).
+#include "props.inc"
+static const int PROP_KIND_N = (int)(sizeof PROP_KINDS / sizeof *PROP_KINDS);
+static const int PROP_FRAME_MS = 160;      // an animated prop's frame
+// Which prop a sheet id is a cell of: its kind, the cell within its frame,
+// and which frame; false if none.
+static bool prop_at(int id, int* k, int* cx, int* cy, int* frame = nullptr) {
+    int rel = id - TILE_TOWN0_BASE;
+    if (rel < 0) return false;
+    int col = rel % TOWN0_SHEET_COLS, row = rel / TOWN0_SHEET_COLS;
+    if (row < PROP_BAND_ROW0 || row > PROP_BAND_ROW1) return false;
+    for (int i = 0; i < PROP_KIND_N; i++) {
+        const PropKind& p = PROP_KINDS[i];
+        if (row < p.row || row >= p.row + p.h || col < p.col || col >= p.col + p.w * p.frames) continue;
+        *k = i; *cx = (col - p.col) % p.w; *cy = row - p.row;
+        if (frame) *frame = (col - p.col) / p.w;
+        return true;
+    }
+    return false;
 }
-static inline bool is_desert_piece(int id) { return id >= desert_cell(0) && id < desert_cell(DESERT_COUNT); }
+static inline bool is_prop_cell(int id) { int k, cx, cy; return prop_at(id, &k, &cx, &cy); }
+// The top left tile of the prop whose cell is at (x, y), and its kind.
+static bool prop_origin(const Tilemap* map, int x, int y, int* ox, int* oy, int* kind) {
+    int k, cx, cy;
+    if (!in_world(&x, &y) || !prop_at(map->overlay[y][x], &k, &cx, &cy)) return false;
+    *ox = x - cx; *oy = y - cy;
+    in_world(ox, oy);
+    *kind = k;
+    return true;
+}
+// A prop of kind k laid with its top left at (x, y).
+static void lay_prop(Tilemap* map, int k, int x, int y) {
+    const PropKind& p = PROP_KINDS[k];
+    lay_art_block(map, p.col, p.row, p.w, p.h, x, y);
+}
 
 // The boardwalk: the coastal town's wharf, drawn from the graveyard dungeon's
 // planks in the houses' projection and cut into cells of its own on the sheet
@@ -731,12 +761,12 @@ static int yard_wall_piece(const Tilemap* map, int x, int y, bool top) {
 }
 
 // The cells of art drawn at tile (x, y), in the order they are drawn, each
-// with the tile whose shake it takes when struck: the top of a yard wall or
-// a desert formation standing in the tile below, the wall here -- its own,
-// or running on under a building -- and the entrance art or formation laid
-// here. Collision and drawing both read this, so what the feet meet is what
-// is drawn. Three at most: a formation is placed only where its tile and the
-// tile above are bare, so it never shares a tile with a wall or a building.
+// with the tile whose shake it takes when struck: the top of a yard wall
+// standing in the tile below, the wall here -- its own, or running on under a
+// building -- and the entrance art laid here. A prop's cell shakes with its
+// block's top left, where it takes its blows, and an animated one draws the
+// frame of the moment. Collision and drawing both read this, so what the feet
+// meet is what is drawn.
 struct ArtAt { int id, shake_x, shake_y; };
 static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
     int n = 0;
@@ -744,12 +774,18 @@ static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
     bool below = in_world(&bx, &by);
     if (below && yard_wall_at(map, bx, by))
         out[n++] = { yard_wall_piece(map, bx, by, true), bx, by };
-    if (below && is_desert_piece(map->overlay[by][bx]))
-        out[n++] = { map->overlay[by][bx] - TOWN0_SHEET_COLS, bx, by };
     if (yard_wall_at(map, x, y))
         out[n++] = { yard_wall_piece(map, x, y, false), x, y };
     int ov = map->overlay[y][x];
-    if (entrance_art_role(ov) != ART_NONE || is_desert_piece(ov))
+    int pk, pcx, pcy;
+    if (prop_at(ov, &pk, &pcx, &pcy)) {
+        const PropKind& p = PROP_KINDS[pk];
+        int ox = x - pcx, oy = y - pcy;
+        in_world(&ox, &oy);
+        if (p.frames > 1)                   // each one on its own beat
+            ov += (int)((world_ms() / PROP_FRAME_MS + (unsigned)(ox * 7 + oy * 13)) % p.frames) * p.w;
+        out[n++] = { ov, ox, oy };
+    } else if (entrance_art_role(ov) != ART_NONE)
         out[n++] = { ov, x, y };
     else if (is_node(ov))
         out[n++] = { node_cell(ov, x, y), x, y };
@@ -825,9 +861,8 @@ static void clear_overlays_near_liquid(Tilemap* map) {
             if (ov == 0 || entrance_art_role(ov) != ART_NONE || is_oasis_mark(ov) || is_coast_art(ov)) continue;
             bool dry = overlay_site_dry(map, x, y);
             // A tree's canopy is drawn one tile up, so that tile needs the same
-            // clearance or the crown hangs out over the water. A desert
-            // formation's top cell the same.
-            if (dry && (ov == TILE_TREE || ov == TILE_DEAD_TREE || is_desert_piece(ov)))
+            // clearance or the crown hangs out over the water.
+            if (dry && (ov == TILE_TREE || ov == TILE_DEAD_TREE))
                 dry = overlay_site_dry(map, x, y - 1);
             if (!dry) map->overlay[y][x] = 0;
         }
@@ -2498,7 +2533,14 @@ static void stamp_village(Tilemap* map, int tx, int ty, int biome, unsigned int 
             if (abs(y - dy) <= 1 && x >= laid[i].dx - 1 && x <= laid[i].dx + laid[i].dw) at_door = true;
         }
         if (at_door) continue;
-        map->overlay[y][x] = set == VS_SAND ? desert_cell(roll(7)) : set == VS_WASTE ? TILE_DEAD_TREE : TILE_TREE;
+        if (set == VS_SAND) {               // a cactus of the desert's props, one cell wide and two tall
+            int pick[PROP_KIND_N], np = 0;
+            for (int k = 0; k < PROP_KIND_N; k++)
+                if ((PROP_KINDS[k].themes & (1u << TH_CACTUS)) && PROP_KINDS[k].w == 1 && PROP_KINDS[k].h == 2) pick[np++] = k;
+            if (np) lay_prop(map, pick[roll(np)], x, y - 1);
+        } else {
+            map->overlay[y][x] = set == VS_WASTE ? TILE_DEAD_TREE : TILE_TREE;
+        }
         t++;
     }
 }
@@ -2630,6 +2672,8 @@ static void dress_cave_entrances(Tilemap* map, unsigned int seed) {
     cliff_paint_invalidate();
 }
 
+static void apply_destroyed(Tilemap* map);   // below tilemap_strike
+
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // Which edge the ocean takes (0=W, 1=E, 2=N, 3=S), and with it which pair
     // of edges joins: the ocean and the edge across from it are the borders,
@@ -2708,6 +2752,7 @@ void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     // own banks rather than waiting for the sweep at the end of generation.
     clear_overlays_near_liquid(map);
     dress_cave_entrances(map, seed);
+    apply_destroyed(map);   // what the save says is gone, gone again
 }
 
 // ---------------------------------------------------------------------------
@@ -2795,9 +2840,9 @@ static int biome_of(const Tilemap* map, int tx, int ty) {
 // rest), so the old "add a cave on a mountain" modifier could never fire.
 //
 // Oasis is native to snow as well as sand, and pyramid to open flat ground
-// as well. Desert survives worldgen as one or two large blobs, so a world can
-// simply have too little of it for either to reach its place in the order;
-// snow is a fifth of every world and flat ground two thirds.
+// as well. Desert and snow are one blob each, about a tenth of the land
+// apiece (the biome pass), so either can run out of cells before its kinds
+// reach their place in the order; flat ground is most of the rest.
 // stamp_dungeon_surround dresses a snow oasis differently.
 static int build_entrance_pool(int biome, DungeonEntranceType* pool) {
     int pool_sz = 0;
@@ -3405,13 +3450,17 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             }
                         return true;
                     };
+                    // The wasteland is one country now, not a patch: the
+                    // furthest point can be the better part of a thousand
+                    // tiles off. The track runs STUB_MAX at most.
+                    const long STUB_MAX2 = 120L * 120L;
                     int pick = -1; long bestd = -1;
                     for (int c : comp) {
                         int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
                         if (is_lava(px2, py2)) continue;   // no track ends mid-bridge
                         if (!is_deep(px2, py2)) continue;
                         long wdx = wrap_dx(px2 - ax), wdy = wrap_dy(py2 - ay), dd = wdx*wdx + wdy*wdy;
-                        if (dd > bestd) { bestd = dd; pick = c; }
+                        if (dd > bestd && dd <= STUB_MAX2) { bestd = dd; pick = c; }
                     }
                     if (pick < 0) {
                         // No point has full clearance — a thin sliver of a
@@ -3421,7 +3470,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             int px2 = c % MAP_WIDTH, py2 = c / MAP_WIDTH;
                             if (is_lava(px2, py2)) continue;
                             long wdx = wrap_dx(px2 - ax), wdy = wrap_dy(py2 - ay), dd = wdx*wdx + wdy*wdy;
-                            if (dd > bestd) { bestd = dd; pick = c; }
+                            if (dd > bestd && dd <= STUB_MAX2) { bestd = dd; pick = c; }
                         }
                     }
                     // The far end is a point in the waste, not an anchor, so
@@ -4324,6 +4373,284 @@ static void route_network(Tilemap* map, unsigned int route_seed,
             fprintf(stderr, "route kind %d: %d edges, %d unroutable\n", route_kind, s_trail_edges, s_trail_unroutable);
 }
 
+// --- Props: the country's things, laid in groups ---
+//
+// The desert's sand, the forest's grass and the plains' meadow are each laid
+// with their props (PROP_KINDS) as a scatter of small groups -- a stand of
+// cacti, a deadfall, a farmstead -- with the odd lone thing between. A group
+// is one theme and nothing else, so a farm's hay never stands among a ruin's
+// statues. Group middles come off a jittered grid, one roll a GROUP_CELL and
+// some cells skipped, so groups fall thirty or forty tiles apart without
+// reading as a grid. In a group: the theme's anchor (the haystack, the ball
+// court, the uprooted tree) at the middle, and a few fillers thrown round it,
+// thinning out toward its edge, each kept a tile clear of the next.
+//
+// The plains have two themes, and the Mayan ruins ring the step pyramids --
+// the plains' pyramids, not the desert's tombs -- MAYAN_NEAR0..MAYAN_NEAR1
+// tiles out, in the woods too where a pyramid stands among them. Elsewhere a
+// ruin field stands only on the plains where a slow noise runs high,
+// and farms keep FARM_FROM_PYRAMID from a pyramid and THEMES_APART from any
+// ruin, so the two countries never meet.
+//
+// Last of the overlay's stages but the sweeps: after the roads and trails, so
+// a route is never pushed aside by a cart, and kept off them.
+static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1, int iy1,
+                      int cx, int cy, int hw) {
+    const int GROUP_CELL = 36, SKIP_PCT = 25, STRAY_ROLL = 32686;   // a lone thing about a tile in four hundred
+    const int MAYAN_NEAR0 = 12, MAYAN_NEAR1 = 60, FARM_FROM_PYRAMID = 70, THEMES_APART = 50;
+    const float RUIN_FIELD = 24500.0f;                             // the slow noise's cut: a ruin field away from any pyramid
+    const int TRAIL_PCT = 15, CAMP_PCT = 15;
+    const int GROUPS_APART = 20, RING_GROUPS = 4, RING_TRIES = 24;  // any two groups' middles; a pyramid's ruins
+    const int s = (int)seed;
+
+    std::vector<std::pair<int, int>> pyramids;                      // the step pyramids
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        if (e.type == DUNGEON_ENT_PYRAMID && e.biome != TILE_SAND) pyramids.push_back({ e.x, e.y });
+    }
+    auto pyramid_dist = [&](int x, int y) {
+        int best = INT_MAX;
+        for (auto& p : pyramids) {
+            int dx = wrap_dx(x - p.first), dy = wrap_dy(y - p.second);
+            best = std::min(best, (int)sqrtf((float)(dx * dx + dy * dy)));
+        }
+        return best;
+    };
+    auto biome_at = [&](int x, int y) {
+        int t = map->tiles[y][x];
+        return t == TILE_SAND ? PB_DESERT : t == TILE_GRASS ? PB_FOREST : t == TILE_MEADOW ? PB_PLAINS : -1;
+    };
+    auto is_tree = [&](int ov) { return ov == TILE_TREE || ov == TILE_DEAD_TREE; };
+    // Kept clear: towns, entrances (their art rises above the stamp), the
+    // landmarks, the villages, the boss sites and the start's ring.
+    auto kept_clear = [&](int x, int y) {
+        int ddx = wrap_dx(x - cx), ddy = wrap_dy(y - cy);
+        if (ddx * ddx + ddy * ddy <= (hw + 8) * (hw + 8)) return true;
+        for (const TownPlacement& t : map->towns)
+            if (t.x >= 0 && x > t.x - 4 && x < t.x + TOWN_W + 4 && y > t.y - 4 && y < t.y + TOWN_H + 4) return true;
+        for (int i = 0; i < map->num_dungeon_entrances; i++) {
+            const DungeonEntrance& e = map->dungeon_entrances[i];
+            int dx = wrap_dx(x - e.x), dy = wrap_dy(y - e.y);
+            if (abs(dx) <= 8 && dy >= -12 && dy <= 4) return true;
+        }
+        for (int i = 0; i < map->num_landmarks; i++) {
+            const LandmarkPlacement& l = map->landmarks[i];
+            const LandmarkKind& k = LANDMARK_KINDS[l.kind];
+            int dx = wrap_dx(x - l.x), dy = wrap_dy(y - l.y);
+            if (dx >= -3 && dx < k.w + 3 && dy >= -3 && dy < k.h + 4) return true;
+        }
+        return village_at(map, x, y) >= 0 || boss_site_at(map, x, y);
+    };
+    // Whether kind k fits with its top left at (x, y) on this ground: every
+    // cell it draws on bare (or a tree, if fell), a margin round it free of
+    // art and routes, and no tree's crown rising into its bottom row.
+    std::vector<const EntranceArt*> art(PROP_KIND_N, nullptr);     // each kind's block, for which of its cells it draws on
+    for (int k = 0; k < PROP_KIND_N; k++)
+        for (const EntranceArt& e : ENTRANCE_ART)
+            if (e.type == TOWN_HOUSE && e.col == PROP_KINDS[k].col && e.row == PROP_KINDS[k].row) art[k] = &e;
+    auto fits = [&](int k, int x, int y, int ground, bool fell) {
+        const PropKind& p = PROP_KINDS[k];
+        const EntranceArt* a = art[k];
+        const int m = p.w * p.h >= 4 ? 2 : 1;
+        int cells = 0;
+        for (int j = -m; j <= p.h + m - 1; j++)
+            for (int i = -m; i <= p.w + m - 1; i++) {
+                int wx = x + i, wy = y + j;
+                if (!in_world(&wx, &wy) || wx < ix0 || wx >= ix1 || wy < iy0 || wy >= iy1) return false;
+                int ov = map->overlay[wy][wx];
+                if (map->route[wy][wx] != ROUTE_NONE || entrance_art_role(ov) != ART_NONE || is_yard_wall(ov)) return false;
+                bool inside = i >= 0 && i < p.w && j >= 0 && j < p.h;
+                if (!inside) {
+                    if (j == p.h && i >= 0 && i < p.w && is_tree(ov) && !fell) return false;
+                    continue;
+                }
+                if (a && !a->has(i, j)) continue;
+                if (map->tiles[wy][wx] != ground || (ov != 0 && !(fell && is_tree(ov)))) return false;
+                if (s_cliff_elev[wy][wx] || cliff_bars_overlay(wx, wy) || !overlay_site_dry(map, wx, wy)) return false;
+                if (kept_clear(wx, wy)) return false;
+                cells++;
+            }
+        return cells > 0;
+    };
+    auto lay = [&](int k, int x, int y, bool fell) {
+        const PropKind& p = PROP_KINDS[k];
+        if (fell)                                           // the trees on its ground and the row in front
+            for (int j = 0; j <= p.h; j++)
+                for (int i = -1; i <= p.w; i++) {
+                    int wx = x + i, wy = y + j;
+                    if (in_world(&wx, &wy) && is_tree(map->overlay[wy][wx])) map->overlay[wy][wx] = 0;
+                }
+        int wx = x, wy = y;
+        in_world(&wx, &wy);
+        lay_prop(map, k, wx, wy);
+    };
+    // A kind of the theme by weight (anchors, or the fillers), or -1.
+    auto pick = [&](int theme, bool anchor, int r) {
+        int total = 0;
+        for (int k = 0; k < PROP_KIND_N; k++)
+            if ((PROP_KINDS[k].themes >> theme & 1) && PROP_KINDS[k].anchor == (int)anchor) total += PROP_KINDS[k].weight;
+        if (!total) return -1;
+        r %= total;
+        for (int k = 0; k < PROP_KIND_N; k++)
+            if ((PROP_KINDS[k].themes >> theme & 1) && PROP_KINDS[k].anchor == (int)anchor && (r -= PROP_KINDS[k].weight) < 0) return k;
+        return -1;
+    };
+
+    struct Group { int x, y, theme, props; };
+    std::vector<Group> groups;
+    int stats_props[PB_COUNT] = {}, stats_strays[PB_COUNT] = {};
+    auto near_group = [&](int x, int y, int d, int theme_other) {   // a group within d (of that theme, or any if -1)
+        for (const Group& g : groups) {
+            if (theme_other >= 0 && g.theme != theme_other) continue;
+            int dx = wrap_dx(x - g.x), dy = wrap_dy(y - g.y);
+            if (dx * dx + dy * dy < d * d) return true;
+        }
+        return false;
+    };
+    // A group of the theme round (x, y): its anchor there, its fillers round
+    // it. False if the anchor has nowhere to stand.
+    auto group = [&](int x, int y, int theme, unsigned rs) {
+        const int ground = map->tiles[y][x];
+        // a camp clears its own ground; ruins in the woods stand among the trees
+        const bool fell = theme == TH_CAMP || (theme == TH_MAYAN && ground == TILE_GRASS);
+        auto roll = [&](int n) { rs = rs * 1664525u + 1013904223u; return (int)((rs >> 16) % (unsigned)n); };
+        int ak = pick(theme, true, roll(1 << 15)), placed = 0;
+        if (ak < 0) return false;
+        const PropKind& a = PROP_KINDS[ak];
+        for (int t = 0; t < 16 && !placed; t++) {               // nudged to the nearest place it fits
+            int ox = x - a.w / 2 + (t ? roll(7) - 3 : 0), oy = y - a.h + 1 + (t ? roll(7) - 3 : 0);
+            if (fits(ak, ox, oy, ground, fell)) { lay(ak, ox, oy, fell); placed = 1; }
+        }
+        if (!placed) return false;
+        const int want = theme == TH_CAMP ? 2 + roll(3) : 3 + roll(5);
+        const int R = 5 + roll(5);
+        std::vector<int> used(PROP_KIND_N, 0);              // no more than two of a small thing, one of a bigger
+        for (int t = 0; t < want * 8 && placed <= want; t++) {
+            int k = pick(theme, false, roll(1 << 15));
+            if (k < 0) break;
+            const PropKind& p = PROP_KINDS[k];
+            if (used[k] >= (p.w * p.h == 1 ? 2 : 1)) continue;
+            int dx = roll(R + 1) - roll(R + 1), dy = (roll(R + 1) - roll(R + 1)) * 4 / 5;   // thinning toward the edge
+            int ox = x + dx - p.w / 2, oy = y + dy - p.h + 1;
+            if (fits(k, ox, oy, ground, fell)) { lay(k, ox, oy, fell); placed++; used[k]++; }
+        }
+        groups.push_back({ x, y, theme, placed });
+        stats_props[biome_at(x, y)] += placed;
+        return true;
+    };
+
+    // The ruins round each step pyramid first, on the plains or in the woods:
+    // RING_GROUPS of them if the ground allows, a fair way round it.
+    for (size_t i = 0; i < pyramids.size() && !s_gen_cancel; i++) {
+        int laid = 0;
+        for (int t = 0; t < RING_TRIES && laid < RING_GROUPS; t++) {
+            float ang = tile_noise((int)i, t, s ^ 0x9A0B7) * (6.2831853f / 32768.0f);
+            int d = MAYAN_NEAR0 + 4 + tile_noise((int)i, t, s ^ 0x9A0B8) % (MAYAN_NEAR1 - MAYAN_NEAR0 - 8);
+            int x = pyramids[i].first + (int)(cosf(ang) * d), y = pyramids[i].second + (int)(sinf(ang) * d);
+            if (!in_world(&x, &y) || x < ix0 || y < iy0 || x >= ix1 || y >= iy1) continue;
+            int b = biome_at(x, y);
+            if ((b != PB_PLAINS && b != PB_FOREST) || pyramid_dist(x, y) < MAYAN_NEAR0 || near_group(x, y, GROUPS_APART, -1)) continue;
+            laid += group(x, y, TH_MAYAN, (unsigned)tile_noise((int)i, t, s ^ 0x9A0B9) * 2654435761u);
+        }
+    }
+
+    // Then the country at large, a group a grid cell.
+    for (int gy = 0; gy * GROUP_CELL < MAP_HEIGHT && !s_gen_cancel; gy++)
+        for (int gx = 0; gx * GROUP_CELL < MAP_WIDTH; gx++) {
+            if (tile_noise(gx, gy, s ^ 0x9A0B0) % 100 < SKIP_PCT) continue;
+            int x = gx * GROUP_CELL + tile_noise(gx, gy, s ^ 0x9A0B1) % GROUP_CELL;
+            int y = gy * GROUP_CELL + tile_noise(gx, gy, s ^ 0x9A0B2) % GROUP_CELL;
+            if (x < ix0 || y < iy0 || x >= ix1 || y >= iy1) continue;
+            const int biome = biome_at(x, y);
+            if (biome < 0 || near_group(x, y, GROUPS_APART, -1)) continue;
+            const int r = tile_noise(x, y, s ^ 0x9A0B3) % 100;
+            const int pd = biome == PB_DESERT ? INT_MAX : pyramid_dist(x, y);
+            if (pd < MAYAN_NEAR0) continue;
+            int theme;
+            if (biome == PB_DESERT)
+                theme = r < TRAIL_PCT ? TH_TRAIL : cluster_noise(x, y, s ^ 0xF07) > 16000 ? TH_CACTUS : TH_ROCK;
+            else if (pd <= MAYAN_NEAR1)
+                theme = TH_MAYAN;                           // a pyramid's ruins, in the woods as on the plains
+            else if (biome == PB_FOREST)
+                theme = r < CAMP_PCT ? TH_CAMP : cluster_noise(x, y, s ^ 0x9A0B4) > 16000 ? TH_DEADFALL : TH_UNDERGROWTH;
+            else if (pd >= FARM_FROM_PYRAMID)
+                theme = cliff_value_noise(x, y, 200, 200, s ^ 0x9A0B5) > RUIN_FIELD ? TH_MAYAN : TH_FARM;
+            else
+                continue;
+            // the other country's groups kept well off
+            if (theme == TH_FARM && near_group(x, y, THEMES_APART, TH_MAYAN)) continue;
+            if (theme == TH_MAYAN && near_group(x, y, THEMES_APART, TH_FARM)) continue;
+            group(x, y, theme, (unsigned)tile_noise(x, y, s ^ 0x9A0B6) * 2654435761u + (unsigned)gx * 97u + (unsigned)gy);
+        }
+
+    // The lone things between: the plains' only its grass, so nothing of
+    // either country strays into the other's.
+    for (int y = iy0; y < iy1 && !s_gen_cancel; y++)
+        for (int x = ix0; x < ix1; x++) {
+            if (tile_noise(x, y, s ^ 0x9A0C0) <= STRAY_ROLL) continue;
+            const int biome = biome_at(x, y);
+            if (biome < 0 || map->overlay[y][x] != 0) continue;
+            int total = 0;
+            for (int k = 0; k < PROP_KIND_N; k++)
+                if (PROP_KINDS[k].biome == biome) total += PROP_KINDS[k].stray;
+            if (!total) continue;
+            int r = tile_noise(x, y, s ^ 0x9A0C1) % total, k = 0;
+            for (; k < PROP_KIND_N; k++)
+                if (PROP_KINDS[k].biome == biome && (r -= PROP_KINDS[k].stray) < 0) break;
+            const PropKind& p = PROP_KINDS[k];
+            int ox = x, oy = y - p.h + 1;
+            if (fits(k, ox, oy, map->tiles[y][x], false)) { lay(k, ox, oy, false); stats_strays[biome]++; }
+        }
+
+    if (getenv("PROP_STATS")) {
+        static const char* BN[PB_COUNT] = { "desert", "forest", "plains" };
+        static const char* TN[TH_COUNT] = { "cactus", "rock", "trail", "deadfall", "camp", "undergrowth", "farm", "mayan" };
+        int per_theme[TH_COUNT] = {};
+        for (const Group& g : groups) per_theme[g.theme]++;
+        for (int b = 0; b < PB_COUNT; b++) {
+            long sum = 0; int n = 0;                        // each group's nearest neighbour of its biome
+            for (const Group& g : groups) {
+                if (PROP_THEME_BIOME[g.theme] != b) continue;
+                int best = INT_MAX;
+                for (const Group& h : groups) {
+                    if (&h == &g || PROP_THEME_BIOME[h.theme] != b) continue;
+                    int dx = wrap_dx(g.x - h.x), dy = wrap_dy(g.y - h.y);
+                    best = std::min(best, dx * dx + dy * dy);
+                }
+                if (best != INT_MAX) { sum += (long)sqrtf((float)best); n++; }
+            }
+            fprintf(stderr, "props %s: %d in groups, %d strays, nearest group %ld tiles on average\n",
+                    BN[b], stats_props[b], stats_strays[b], n ? sum / n : 0L);
+        }
+        for (int t = 0; t < TH_COUNT; t++) {
+            const Group* big = nullptr;                     // the fullest, to go and look at
+            for (const Group& g : groups)
+                if (g.theme == t && (!big || g.props > big->props)) big = &g;
+            fprintf(stderr, "  %-12s %d groups", TN[t], per_theme[t]);
+            if (big) fprintf(stderr, ", fullest %d props at %d,%d", big->props, big->x, big->y);
+            fprintf(stderr, "\n");
+        }
+        int mixed = 0, nearest = INT_MAX;                    // farm and ruin groups closer than THEMES_APART
+        for (const Group& g : groups)
+            for (const Group& h : groups)
+                if (g.theme == TH_FARM && h.theme == TH_MAYAN) {
+                    int dx = wrap_dx(g.x - h.x), dy = wrap_dy(g.y - h.y), d = (int)sqrtf((float)(dx * dx + dy * dy));
+                    nearest = std::min(nearest, d);
+                    if (d < THEMES_APART) mixed++;
+                }
+        fprintf(stderr, "  farm-ruin pairs closer than %d: %d (nearest %d)\n", THEMES_APART, mixed, nearest);
+        for (auto& p : pyramids) {
+            int n = 0;
+            for (const Group& g : groups)
+                if (g.theme == TH_MAYAN) {
+                    int dx = wrap_dx(g.x - p.first), dy = wrap_dy(g.y - p.second);
+                    if (dx * dx + dy * dy <= MAYAN_NEAR1 * MAYAN_NEAR1) n++;
+                }
+            fprintf(stderr, "  step pyramid (%d,%d): %d ruin groups round it\n", p.first, p.second, n);
+        }
+    }
+}
+
 void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Run at idle priority so this thread doesn't compete with the game loop
 #ifdef _WIN32
@@ -4545,116 +4872,124 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     GEN_STAGE(map, "before Biome pass");
-    // --- Biome pass: plains / desert / snow / wasteland ---
+    // --- Biome pass: woods and meadow everywhere, then one desert, one snow
+    // country and one wasteland, each a single blob placed from home ---
+    //
+    // The three were thresholds on a 300-tile noise field once, and came out
+    // as a quilt: snow in five to nine pieces, wasteland anywhere from a
+    // fiftieth of the land to an eighth, by seed. A biome's content is seven
+    // enemies and a dungeon kind or two, so the eighth identical snow patch
+    // is where the world starts repeating itself. One blob each, BLOB_R in
+    // radius (about a tenth of the land, four minutes' walk across): the
+    // desert nearer home on the ocean half, the snow and the wasteland
+    // farther out on the mountain half, the wasteland up against the peak.
     if (s_gen_cancel) return;
-    // Desert: flat areas away from mountains. Snow/wasteland: map edges.
     {
-        const int BIOME_GRID = 300;
-        // Where desert starts before the mountain and the peak push it back.
-        // It was 16383, the middle of the noise; the edge bands now reach
-        // further into the low ground by the ocean, where desert lives, and
-        // this is what gives it back the same share of the world it had.
-        const int DESERT_BASE = 13000;
+        const int BIOME_GRID = 300;   // the forest / meadow lattice
         static_assert(MAP_WIDTH % 300 == 0 && MAP_HEIGHT % 300 == 0, "the biome lattice must close on the joined axis");
-        // The farthest a tile can be from the peak, the short way round: half
-        // the joined axis and the whole of the other. It was the map's full
-        // diagonal when nothing wrapped; measured the short way round, the old
-        // scale left every tile nearer the peak than it used to be, and the
-        // desert the peak suppresses all but vanished.
-        const float max_dist2 = (float)MAP_WIDTH * (float)MAP_WIDTH * 1.25f;
-        const float half_map  = (float)MAP_WIDTH * 0.5f;
         for (int y = iy0; y < iy1; y++) {
+            if ((y & 63) == 0 && s_gen_cancel) return;
             for (int x = ix0; x < ix1; x++) {
                 if (map->tiles[y][x] != TILE_GRASS) continue;
                 int ddx = x - cx, ddy = y - cy;
                 if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-
-                // Mountain-side projection (0=ocean side, 1=cliff side)
-                float proj = (((float)x - s_cliff_ref_x) * s_cliff_dir_x +
-                               ((float)y - s_cliff_ref_y) * s_cliff_dir_y) / s_cliff_dir_len;
-                if (proj < 0.0f) proj = 0.0f;
-                if (proj > 1.0f) proj = 1.0f;
-
-                // Proximity to cliff peak, the short way round
-                float dpx = (float)wrap_dx(x - (int)map->cliff_peak_x);
-                float dpy = (float)wrap_dy(y - (int)map->cliff_peak_y);
-                float peak_nearness = 1.0f - (dpx*dpx + dpy*dpy) / max_dist2;
-                if (peak_nearness < 0.0f) peak_nearness = 0.0f;
-
-                // Proximity to a hard edge (0=center, 1=edge). The joined
-                // edges are not edges: nothing is near them.
-                int me = wrapx() ? (y < MAP_HEIGHT-1-y ? y : MAP_HEIGHT-1-y)
-                                 : (x < MAP_WIDTH-1-x  ? x : MAP_WIDTH-1-x);
-                // Square-rooted so it covers the same share of the world at
-                // each value as the four-edge measure did: two edges are half
-                // the perimeter, and linear it gave snow half its ground.
-                float edge_u = (float)me / half_map;
-                float edge_nearness = edge_u < 1.0f ? sqrtf(1.0f - edge_u) : 0.0f;
-                if (edge_nearness < 0.0f) edge_nearness = 0.0f;
-                if (edge_nearness > 1.0f) edge_nearness = 1.0f;
-
-                // Proximity to the ocean edge (0=far, 1=ocean side)
-                float ocean_dist;
-                switch (ocean_side) {
-                    case 0: ocean_dist = (float)x;              break; // west
-                    case 1: ocean_dist = (float)(MAP_WIDTH-1-x);  break; // east
-                    case 2: ocean_dist = (float)y;              break; // north
-                    default:ocean_dist = (float)(MAP_HEIGHT-1-y); break; // south
-                }
-                float ocean_nearness = 1.0f - ocean_dist / half_map;
-                if (ocean_nearness < 0.0f) ocean_nearness = 0.0f;
-                if (ocean_nearness > 1.0f) ocean_nearness = 1.0f;
-
-                // Coarse biome noise helper. The lattice closes on the joined
-                // axis -- the grid divides the map -- so the field is one
-                // continuous thing across the seam.
-                int gx = x / BIOME_GRID, gy = y / BIOME_GRID;
-                int gx1 = (wrapx() && (gx + 1) * BIOME_GRID >= MAP_WIDTH)  ? 0 : gx + 1;
-                int gy1 = (wrapy() && (gy + 1) * BIOME_GRID >= MAP_HEIGHT) ? 0 : gy + 1;
-                float fx = (float)(x % BIOME_GRID) / BIOME_GRID;
-                float fy = (float)(y % BIOME_GRID) / BIOME_GRID;
-                auto bn = [&](unsigned int s) -> int {
-                    float t = tile_noise(gx,gy,s)   + fx*(tile_noise(gx1,gy,s)  -tile_noise(gx,gy,s));
-                    float b = tile_noise(gx,gy1,s)  + fx*(tile_noise(gx1,gy1,s) -tile_noise(gx,gy1,s));
-                    return (int)(t + fy*(b - t));
-                };
-
-                int noise1 = bn((unsigned int)(seed ^ 0xDE5E7u));    // desert vs plains
-                int noise2 = bn((unsigned int)(seed ^ 0xED6E1Du));   // snow vs wasteland
-                int noise3 = bn((unsigned int)(seed ^ 0xFA4EEFu));   // edge zone selector
-
-                // Edge biomes: threshold drops steeply near edges
-                // center(0): need noise3>30000 (~8%); full edge(1): need noise3>5000 (~85%)
-                int edge_threshold = 30000 - (int)(edge_nearness * edge_nearness * 25000);
-                if (noise3 > edge_threshold) {
-                    // Snow: occupies upper noise2 range, suppressed near ocean
-                    int snow_threshold = 16383 + (int)(ocean_nearness * ocean_nearness * 16000);
-                    bool is_snow = noise2 > snow_threshold;
-
-                    // Wasteland: rare by default, boosted near cliff peak, impossible near ocean
-                    // Occupies only the bottom slice of noise2 (below waste_threshold)
-                    // so it is always the rarest biome.
-                    bool can_waste = ocean_nearness < 0.35f;
-                    int waste_threshold = 5000 + (int)(peak_nearness * peak_nearness * 12000);
-                    bool is_waste = can_waste && !is_snow && noise2 < waste_threshold;
-
-                    if (is_snow)  map->tiles[y][x] = TILE_SNOW;
-                    else if (is_waste) map->tiles[y][x] = TILE_WASTELAND;
-                    // else: middle noise2 range or ocean edge — stays TILE_GRASS
-                    continue;
-                }
-
-                // Desert vs plains: suppressed near mountains and cliff peak
-                int desert_threshold = DESERT_BASE
-                    + (int)(proj * proj * 14000)
-                    + (int)(peak_nearness * peak_nearness * 14000);
-                int noise4 = bn((unsigned int)(seed ^ 0xC0FFEEu)); // dense forest vs meadow
-                if (noise1 > desert_threshold)
-                    map->tiles[y][x] = TILE_SAND;
-                else if (noise4 > 16383)
-                    map->tiles[y][x] = TILE_MEADOW; // open plains
-                // else stays TILE_GRASS (dense forest)
+                // Leaning to forest: the three countries used to come out of
+                // both, and mountains stand on forest, not meadow.
+                if (cliff_value_noise(x, y, BIOME_GRID, BIOME_GRID, (int)(seed ^ 0xC0FFEEu)) > 18200.0f)
+                    map->tiles[y][x] = TILE_MEADOW;   // open plains; else dense forest
             }
+        }
+
+        // The three countries. A centre is drawn until it fits its window:
+        // where it lies along the ocean-to-mountain axis (proj, 0 at the
+        // ocean's edge, 1 at the mountain edge; home is at 0.5), how far it
+        // is from home, and how clear of the others. The desert keeps two
+        // radii from the snow so the two never share a border -- the fixup
+        // below would lay fifty tiles of meadow along it. The wasteland may
+        // touch the snow. The blob's edge wanders a fifth of the radius
+        // either way on 200-tile noise, and the smoothing below rounds it.
+        const int BLOB_R = 500;
+        auto proj_at = [&](int px, int py) -> float {
+            float p = (((float)px - s_cliff_ref_x) * s_cliff_dir_x +
+                       ((float)py - s_cliff_ref_y) * s_cliff_dir_y) / s_cliff_dir_len;
+            return p < 0.0f ? 0.0f : p > 1.0f ? 1.0f : p;
+        };
+        auto wdist = [&](int ax, int ay, int bx, int by) -> float {
+            float dx = (float)wrap_dx(ax - bx), dy = (float)wrap_dy(ay - by);
+            return sqrtf(dx*dx + dy*dy);
+        };
+        auto open_ground = [&](int px, int py) {
+            int t = map->tiles[py][px];
+            return t == TILE_GRASS || t == TILE_MEADOW;
+        };
+        auto blob = [&](int tile, int bx, int by, unsigned int salt) {
+            const int reach = BLOB_R + BLOB_R / 5;
+            for (int dy = -reach; dy <= reach; dy++)
+                for (int dx = -reach; dx <= reach; dx++) {
+                    int px = bx + dx, py = by + dy;
+                    if (!in_world(&px, &py)) continue;
+                    if (px < ix0 || px >= ix1 || py < iy0 || py >= iy1) continue;   // the border rows stay
+                    if (!open_ground(px, py)) continue;
+                    float r = BLOB_R * (0.8f + 0.4f * cliff_value_noise(px, py, 200, 200, (int)salt) / 32767.0f);
+                    if ((float)(dx*dx + dy*dy) <= r*r) map->tiles[py][px] = tile;
+                }
+        };
+        unsigned int bs = seed ^ 0xB10B5u;
+        auto roll = [&](int& px, int& py) {
+            bs = bs*1664525u + 1013904223u; px = (int)((bs >> 16) % MAP_WIDTH);
+            bs = bs*1664525u + 1013904223u; py = (int)((bs >> 16) % MAP_HEIGHT);
+        };
+        auto draw = [&](int& ox, int& oy, auto fits) -> bool {
+            for (int attempt = 0; attempt < 4000; attempt++) {
+                int px, py; roll(px, py);
+                if (open_ground(px, py) && fits(px, py)) { ox = px; oy = py; return true; }
+            }
+            return false;
+        };
+        const float APART = 2.0f * BLOB_R + 150.0f;   // desert from snow or wasteland: never a border
+        const float TOUCH = BLOB_R + 250.0f;          // snow from wasteland: may meet, not overlap
+        int dx0 = -1, dy0 = -1, sx0 = -1, sy0 = -1, wx0 = -1, wy0 = -1;
+
+        // Desert: the ocean half, 950-1250 from home, so its near edge is the
+        // 500-600 tiles out the story's two desert sites ask for.
+        if (!draw(dx0, dy0, [&](int px, int py) {
+                float p = proj_at(px, py), d = wdist(px, py, cx, cy);
+                return p >= 0.22f && p <= 0.48f && d >= 950.0f && d <= 1250.0f; }))
+            draw(dx0, dy0, [&](int px, int py) { return proj_at(px, py) <= 0.5f && wdist(px, py, cx, cy) >= 700.0f; });
+        if (dx0 >= 0) blob(TILE_SAND, dx0, dy0, seed ^ 0x5A4Du);
+
+        // Snow: the mountain half, a thousand or more from home.
+        if (!draw(sx0, sy0, [&](int px, int py) {
+                float p = proj_at(px, py);
+                return p >= 0.55f && p <= 0.85f && wdist(px, py, cx, cy) >= 1000.0f
+                    && (dx0 < 0 || wdist(px, py, dx0, dy0) >= APART); }))
+            draw(sx0, sy0, [&](int px, int py) {
+                return proj_at(px, py) >= 0.5f && (dx0 < 0 || wdist(px, py, dx0, dy0) >= APART); });
+        if (sx0 >= 0) blob(TILE_SNOW, sx0, sy0, seed ^ 0x5004u);
+
+        // Wasteland: of four hundred fitting draws, the one nearest the peak,
+        // and farther from home than the snow. Kept 420 tiles off the
+        // mountain edge so half of it lies inside the villages' 450-tile
+        // margin.
+        {
+            auto fits = [&](int px, int py) {
+                float p = proj_at(px, py);
+                return p >= 0.55f && p <= 0.86f && wdist(px, py, cx, cy) >= 1100.0f
+                    && (sx0 < 0 || wdist(px, py, sx0, sy0) >= TOUCH)
+                    && (dx0 < 0 || wdist(px, py, dx0, dy0) >= APART);
+            };
+            float best = 1e30f;
+            for (int attempt = 0, found = 0; attempt < 20000 && found < 400; attempt++) {
+                int px, py; roll(px, py);
+                if (!open_ground(px, py) || !fits(px, py)) continue;
+                found++;
+                float pd = wdist(px, py, (int)map->cliff_peak_x, (int)map->cliff_peak_y);
+                if (pd < best) { best = pd; wx0 = px; wy0 = py; }
+            }
+            if (wx0 < 0)
+                draw(wx0, wy0, [&](int px, int py) {
+                    return proj_at(px, py) >= 0.5f && (sx0 < 0 || wdist(px, py, sx0, sy0) >= TOUCH); });
+            if (wx0 >= 0) blob(TILE_WASTELAND, wx0, wy0, seed ^ 0x3A57u);
         }
     }
 
@@ -5440,7 +5775,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // Twelve small settlements, each laid afresh from its ground's building
     // set (stamp_village). Nothing else is laid inside a footprint after
     // this: the roads, the entrances, the landmarks, the castles and the
-    // desert's formations all ask village_at.
+    // props all ask village_at.
     //
     // Where they stand is a preference with a floor, not luck and not a
     // quota. The rolls used to be uniform over the inland map with no biome
@@ -5530,8 +5865,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 
         // A village on a given ground. Rolled first, so it lands somewhere as
         // random as the rest; if twenty thousand rolls never hit a footprint
-        // that fits on that ground -- the wasteland is a fiftieth of the map,
-        // and the coast biomes mostly lie outside the inland margin -- walk
+        // that fits on that ground -- the wasteland is one blob, a tenth of
+        // the map and half of it outside the inland margin -- walk
         // the whole map in shuffled 150-tile cells for the first site that
         // fits, and if none fits at the usual clearances, again at half and
         // at a quarter: the earlier biome guarantee only promises a patch,
@@ -6308,7 +6643,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 DungeonEntranceType ent_type;
                 int ent_size;
                 es = es * 1664525u + 1013904223u;
-                if (!pick_entrance_type(biome, have_kind, es, ent_type, ent_size)) continue;
+                // A desert or wasteland cell whose own kinds are all at target
+                // takes a flat kind instead: each is one blob of about 25
+                // cells, and ruins and oases fill long before the cells do.
+                if (!pick_entrance_type(biome, have_kind, es, ent_type, ent_size) &&
+                    !((biome == TILE_SAND || biome == TILE_WASTELAND) &&
+                      pick_entrance_type(TILE_GRASS, have_kind, es, ent_type, ent_size))) continue;
                 int sz = ent_size + 1; // 1 = small, 2 = large
 
                 // In a hill, not beside one. See hits_cliff.
@@ -6325,9 +6665,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // ── Guarantee every KIND exists somewhere ─────────────────────
         // Which kinds a world gets is decided by which biomes its cells
         // happen to land in, and biome area is luck: measured across 32
-        // worlds, three had no pyramid or no oasis at all. Desert survives
-        // worldgen only as one or two large blobs (MIN_BIOME_AREA), and a
-        // world's 400 cells can simply miss them. A world short a kind is
+        // worlds, three had no pyramid or no oasis at all. Desert is one
+        // blob (the biome pass), and a world's 400 cells can simply miss
+        // its kinds' turn. A world short a kind is
         // short a whole kind of dungeon, so anything that came out at zero is
         // placed here. Counted over the procedural records only: phase 1's
         // fixed pair would otherwise make a cave and a small graveyard
@@ -6608,8 +6948,8 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     // What fills the ground between the dungeons and the settlements: about
     // one to every LM_CELL tiles each way, so there is something to come upon
     // every half minute of walking. After the entrances, which they keep
-    // clear of, and before the desert's formations and the roads: a landmark
-    // is entrance art, so formations scatter round it and a road goes round.
+    // clear of, and before the roads and the props: a landmark is entrance
+    // art, so a road goes round it and the props keep off it.
     //
     // A site is the block's every drawn cell, and the row of ground in front
     // of it to come at the cache from, on bare dry ground of one kind, off
@@ -6751,8 +7091,30 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                     if (open) { map->boss_sites[2] = { (short)x, (short)y }; break; }
                 }
             }
+            // The worm (23, row 1): within reach of a sand village, whose people
+            // set the errand that leads to it (src/story.cpp, the worm's errand) --
+            // rolled round the sand villages first, the open rule below if none fits.
+            {
+                const int NEAR_VILLAGE = 150;
+                int sand[15], ns = 0;
+                for (int v = 0; v < map->num_villages; v++)
+                    if (map->villages[v].biome == TILE_SAND || map->villages[v].ground == TILE_SAND) sand[ns++] = v;
+                for (int pass = 0; pass < 4 && ns > 0 && map->boss_sites[1].x < 0 && !s_gen_cancel; pass++)
+                    for (int t = 0; t < 40000 && map->boss_sites[1].x < 0; t++) {
+                        const VillagePlacement& v = map->villages[sand[t % ns]];
+                        int ox = tile_noise(t, 1, (int)seed ^ 0xB0553) % (2 * NEAR_VILLAGE + 1) - NEAR_VILLAGE;
+                        int oy = tile_noise(t, 1, (int)seed ^ 0xB0554) % (2 * NEAR_VILLAGE + 1) - NEAR_VILLAGE;
+                        if (ox * ox + oy * oy > NEAR_VILLAGE * NEAR_VILLAGE) continue;
+                        int x = v.x + 15 + ox, y = v.y + 15 + oy;
+                        if (!in_world(&x, &y) || !site_fits(1, x, y, RULES[1].min_tiles >> pass)) continue;
+                        for (int cy = y - SITE_H + 1; cy <= y; cy++)
+                            for (int cx = x - SITE_W / 2; cx <= x + SITE_W / 2; cx++)
+                                if (tree_at(cx, cy)) map->overlay[cy][cx] = 0;
+                        map->boss_sites[1] = { (short)x, (short)y };
+                    }
+            }
             for (int i = 0; i < BOSS_SITE_COUNT && !s_gen_cancel; i++) {
-                if (RULES[i].ground < 0) continue;
+                if (RULES[i].ground < 0 || map->boss_sites[i].x >= 0) continue;
                 // the distance eased by halves if no such ground lies that far out
                 for (int pass = 0; pass < 4 && map->boss_sites[i].x < 0; pass++)
                     for (int t = 0; t < 40000 && map->boss_sites[i].x < 0; t++) {
@@ -6764,44 +7126,6 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                                 if (tree_at(cx, cy)) map->overlay[cy][cx] = 0;
                         map->boss_sites[i] = { (short)x, (short)y };
                     }
-            }
-        }
-    }
-
-    GEN_STAGE(map, "before Desert formations");
-    // --- Desert formations: the sand scattered with cacti, rock and bones ---
-    //
-    // After the entrances, which want bare ground round them, and before the
-    // roads, which clear the overlay under their track. A thing stands where
-    // its tile and the tile above are bare: its top cell is drawn there, and
-    // so nothing ever shares a tile with it (art_cells_at). The country comes
-    // in stands -- cactus country and rock country, each a slow noise of its
-    // own -- with bones anywhere. The strip's order: two saguaros, a barrel
-    // cactus and a prickly pear; a boulder, a pile, a spire and a shrub; a
-    // skull and ribs (desert_design.py).
-    {
-        const int STAND = 18000, STAND_ROLL = 29500, OPEN_ROLL = 32100;   // in a stand about a tile in ten, outside under one in fifty
-        const int BONES_PCT = 8, OTHER_PCT = 20;                          // of what is placed: bones; the other country's things
-        for (int y = iy0; y < iy1; y++) {
-            for (int x = ix0; x < ix1; x++) {
-                if (map->tiles[y][x] != TILE_SAND || map->overlay[y][x] != 0 || village_at(map, x, y) >= 0 || boss_site_at(map, x, y)) continue;
-                int ax = x, ay = y - 1;
-                if (!in_world(&ax, &ay) || map->overlay[ay][ax] != 0) continue;
-                if (cliff_bars_overlay(x, y)) continue;
-                int ddx = x - cx, ddy = y - cy;
-                if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-                int n = tile_noise(x, y, (int)seed ^ 0xDE5E27);
-                if (n <= (cluster_noise(x, y, (int)seed ^ 0xF06) > STAND ? STAND_ROLL : OPEN_ROLL)) continue;
-                bool cactus = cluster_noise(x, y, (int)seed ^ 0xF07) > 16000;
-                int r = tile_noise(x, y, (int)seed ^ 0xDE5E28) % 100;
-                int kind;
-                if (r < BONES_PCT) {
-                    kind = 8 + (r & 1);
-                } else {
-                    if (r < BONES_PCT + OTHER_PCT) cactus = !cactus;
-                    kind = (cactus ? 0 : 4) + tile_noise(x, y, (int)seed ^ 0xDE5E29) % 4;
-                }
-                map->overlay[y][x] = desert_cell(kind);
             }
         }
     }
@@ -7110,9 +7434,13 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     if (map->castles[2].x >= 0)
         stamp_castle_moat(map, map->castles[2].x, map->castles[2].y, seed);
 
+    GEN_STAGE(map, "before Props");
+    lay_props(map, seed, ix0, iy0, ix1, iy1, cx, cy, hw);
+
     // Last, after every pond, stream and town stamp has had its say.
     clear_overlays_near_liquid(map);
     dress_cave_entrances(map, seed);
+    apply_destroyed(map);   // and over the whole world, once it is all there
     GEN_STAGE(map, "final");
 }
 
@@ -8690,7 +9018,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                               screen_y, draw_size);
             }
             if (is_cave_mouth_cell(ov) || entrance_art_role(ov) != ART_NONE || is_yard_wall(ov) ||
-                is_desert_piece(ov) || is_oasis_mark(ov) || is_node(ov)) {
+                is_oasis_mark(ov) || is_node(ov)) {
                 // already painted, over the cliff, or just above -- or drawn
                 // in the depth pass, over the player
             } else if (ov == TILE_TREE) {
@@ -8717,7 +9045,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // that stands in front of it goes back over it, as over the
             // player: the thing's foot is the bottom of its tile.
             if (ov != 0 && !is_cave_mouth_cell(ov) && entrance_art_role(ov) == ART_NONE &&
-                !is_yard_wall(ov) && !is_desert_piece(ov) && !is_oasis_mark(ov) && !is_node(ov)) {
+                !is_yard_wall(ov) && !is_oasis_mark(ov) && !is_node(ov)) {
                 ArtAt art[3];
                 int n = art_cells_at(map, x, y, art);
                 for (int i = 0; i < n; i++)
@@ -9191,7 +9519,7 @@ static int tile_max_hp(const Tilemap* map, int tx, int ty) {
 
 static bool tile_is_harvestable(int t) {
     return t == TILE_TREE || t == TILE_DEAD_TREE || t == TILE_ROCK || t == TILE_GOLD_ORE || is_yard_wall(t) ||
-           t == SIGN_CELL || t == CHEST_OPEN_CELL;
+           t == SIGN_CELL || t == CHEST_OPEN_CELL || is_prop_cell(t);
 }
 
 static HarvestTarget tile_target(int t) {
@@ -9208,10 +9536,75 @@ static int tile_award(int t) {
     return -1;
 }
 
+// Lay what the player destroyed (persist.h) back over a freshly grown world:
+// harvestable overlay tiles cleared, and a small graveyard whose hiding stone
+// was broken shown open, as breaking it did (overworld_update). Run at the end
+// of each generation phase, so it is the last word on those tiles.
+static void apply_destroyed(Tilemap* map) {
+    persist_tiles_each([](uint32_t key, void* ctx) {
+        Tilemap* m = (Tilemap*)ctx;
+        int tx = (int)(key % MAP_WIDTH), ty = (int)(key / MAP_WIDTH);
+        if (ty < MAP_HEIGHT && tile_is_harvestable(m->overlay[ty][tx])) m->overlay[ty][tx] = 0;
+    }, map);
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        if (e.type != DUNGEON_ENT_GRAVEYARD_SM || e.partner_idx >= 0) continue;
+        if (!persist_tile_has(tile_key(e.x, e.y))) continue;
+        map->tiles[e.y][e.x]   = TILE_DUNGEON_GRAVEYARD_SM;
+        map->overlay[e.y][e.x] = 0;
+    }
+}
+
+// Strike a prop, its block's top left at (ox, oy): one blow to the whole of
+// it, however many of its cells the swing crosses -- a blade passes over a
+// big prop's cells a frame apart, so a blow PROP_BLOW_MS after the last is
+// the same one. Broken, every cell of it goes, each kept gone (persist.h),
+// and it pays its drops.
+static std::unordered_map<uint32_t, Uint32> s_prop_struck;   // when each prop last took a blow
+static const Uint32 PROP_BLOW_MS = 200;
+static int prop_strike(Tilemap* map, int k, int ox, int oy, Weapon weapon, HarvestResult* out) {
+    const PropKind& p = PROP_KINDS[k];
+    const uint32_t key = tile_key(ox, oy);
+    const Uint32 now = world_ms();
+    auto last = s_prop_struck.find(key);
+    if (last != s_prop_struck.end() && now - last->second < PROP_BLOW_MS) return 0;
+    s_prop_struck[key] = now;
+    const float cx = (ox + p.w * 0.5f) * TILE_SIZE, cy = (oy + p.h - 0.5f) * TILE_SIZE;
+    auto it = s_tile_hp.find(key);
+    int hp = (it == s_tile_hp.end() ? p.hp : it->second) - weapon_harvest_damage(weapon, p.target);
+    if (hp > 0) {
+        s_tile_hp[key] = hp;
+        s_tile_jitter[key] = now;
+        harvest_add(out, cx, cy, -1, 0);
+        return 0;
+    }
+    s_tile_hp.erase(key);
+    s_tile_jitter.erase(key);
+    s_prop_struck.erase(key);
+    for (int j = 0; j < p.h; j++)
+        for (int i = 0; i < p.w; i++) {
+            int x = ox + i, y = oy + j, pk, pox, poy;
+            if (!prop_origin(map, x, y, &pox, &poy, &pk) || pk != k || pox != ox || poy != oy) continue;
+            in_world(&x, &y);
+            map->overlay[y][x] = 0;
+            persist_tile_add(tile_key(x, y));   // for good: the regrown world clears it again (apply_destroyed)
+        }
+    bool paid = false;
+    for (int d = 0; d < 2; d++)
+        if (p.item[d] >= 0) {
+            harvest_add_item(out, cx, cy - d * TILE_SIZE * 0.5f, p.item[d], p.n[d]);
+            paid = true;
+        }
+    if (!paid) harvest_add(out, cx, cy, -1, 1);
+    return 1;
+}
+
 // Strike one tile. Returns 1 if it was destroyed.
 static int tilemap_strike(Tilemap* map, int tx, int ty, Weapon weapon, HarvestResult* out) {
     int t = map->overlay[ty][tx];
     uint32_t key = tile_key(tx, ty);
+    int pk, pox, poy;
+    if (prop_origin(map, tx, ty, &pox, &poy, &pk)) return prop_strike(map, pk, pox, poy, weapon, out);
 
     auto it = s_tile_hp.find(key);
     int hp = (it == s_tile_hp.end()) ? tile_max_hp(map, tx, ty) : it->second;
@@ -9229,6 +9622,7 @@ static int tilemap_strike(Tilemap* map, int tx, int ty, Weapon weapon, HarvestRe
             return 1;
         }
         map->overlay[ty][tx] = 0;
+        persist_tile_add(key);   // for good: the regrown world clears it again (apply_destroyed)
         harvest_add(out, cx, cy, tile_award(t), 1);
         if (t == SIGN_CELL) harvest_add(out, cx, cy - TILE_SIZE / 2, (int)RESOURCE_ROCK, 1);   // and stone
         return 1;
@@ -9486,7 +9880,7 @@ bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y) {
     // A structure entrance or a yard wall the same way: any tile it stands on
     // at all, where the exact answer is art_pixel_solid.
     if (entrance_art_role(map->overlay[tile_y][tile_x]) == ART_SOLID ||
-        is_yard_wall(map->overlay[tile_y][tile_x]) || is_desert_piece(map->overlay[tile_y][tile_x])) return false;
+        is_yard_wall(map->overlay[tile_y][tile_x])) return false;
 
     return tile_ground_walkable(map, tile_x, tile_y);
 }
@@ -9647,11 +10041,24 @@ bool tilemap_pixel_solid(const void* vmap, float px, float py) {
     return ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == SIGN_CELL;
 }
 
+// The nodes a lazy spawner just added (from `from` on) that the player broke
+// before, in this world (persist.h): gone again. A hiding stone's entrance is
+// already open -- apply_destroyed stamped it.
+static void cull_destroyed_nodes(ResourceNodeList* resources, int from) {
+    for (int i = from; i < resources->count; i++) {
+        ResourceNode* n = &resources->nodes[i];
+        bool gone = n->site >= 0 ? persist_oilbloom_has(n->site)
+                                 : persist_tile_has(tile_key((int)(n->x / TILE_SIZE), (int)(n->y / TILE_SIZE)));
+        if (gone) { n->alive = 0; n->reveal_tx = -1; }
+    }
+}
+
 void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
                                    int entrance_idx, unsigned int seed) {
     DungeonEntrance* e = &map->dungeon_entrances[entrance_idx];
     if (e->type != DUNGEON_ENT_GRAVEYARD_SM || e->gravestones_spawned) return;
     e->gravestones_spawned = 1;
+    const int first = resources->count;
 
     // Per-entrance RNG so every graveyard has a unique layout
     unsigned int rng = seed
@@ -9713,6 +10120,7 @@ void tilemap_spawn_graveyard_nodes(Tilemap* map, ResourceNodeList* resources,
         resource_nodes_add_gravestone(resources, wx, wy, 0, 0, -1, -1);
         placed++;
     }
+    cull_destroyed_nodes(resources, first);
 }
 
 bool tilemap_spawn_oilbloom(Tilemap* map, ResourceNodeList* resources, unsigned int seed,
@@ -9741,15 +10149,16 @@ bool tilemap_spawn_oilbloom(Tilemap* map, ResourceNodeList* resources, unsigned 
                 if (base != TILE_MEADOW && base != TILE_GRASS) continue;
                 if (map->overlay[ty][tx] || !tilemap_is_walkable(map, tx, ty)) continue;
                 if (!overlay_site_dry(map, tx, ty) || tile_is_route(map, tx, ty)) continue;
-                if (base == TILE_MEADOW) {
-                    resource_nodes_add(resources, RESOURCE_OILBLOOM,
-                                       (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE));
-                    return true;
-                }
+                if (base == TILE_MEADOW) { gx = tx; gy = ty; goto found; }
                 if (gx < 0) { gx = tx; gy = ty; }
             }
-    if (gx >= 0)
+found:
+    if (gx >= 0) {
+        const int first = resources->count;
         resource_nodes_add(resources, RESOURCE_OILBLOOM, (float)(gx * TILE_SIZE), (float)(gy * TILE_SIZE));
+        if (resources->count > first) resources->nodes[first].site = site;
+        cull_destroyed_nodes(resources, first);
+    }
     return true;
 }
 
@@ -9761,6 +10170,7 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
     if (e->type == DUNGEON_ENT_GRAVEYARD_SM ||
         !dungeon_is_graveyard(e->type) || e->gravestones_spawned) return;
     e->gravestones_spawned = 1;
+    const int first = resources->count;
 
     unsigned int rng = seed
         ^ ((unsigned int)e->x * 73856093u)
@@ -9817,4 +10227,5 @@ void tilemap_spawn_graveyard_lg_nodes(Tilemap* map, ResourceNodeList* resources,
             (float)(tx * TILE_SIZE), (float)(ty * TILE_SIZE),
             0, 0, -1, -1);
     }
+    cull_destroyed_nodes(resources, first);
 }

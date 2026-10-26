@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-breath-d",
+  "generated": "2026-10-19T00:27:32Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-breath-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "71-namungumi-idle-breath-d-00.png",
+        "71-namungumi-idle-breath-d-01.png",
+        "71-namungumi-idle-breath-d-02.png",
+        "71-namungumi-idle-breath-d-03.png",
+        "71-namungumi-idle-breath-d-04.png",
+        "71-namungumi-idle-breath-d-05.png",
+        "71-namungumi-idle-breath-d-06.png",
+        "71-namungumi-idle-breath-d-07.png",
+        "71-namungumi-idle-breath-d-08.png"
+      ],
+      "ids": {
+        "background_job_id": "cd0aaa4c-f1b0-409f-ad2a-61a80648843d",
+        "generation_id": "1d67f7f4-0dbd-44a5-934f-a7226816dffb"
+      }
+    }
+  ]
+}

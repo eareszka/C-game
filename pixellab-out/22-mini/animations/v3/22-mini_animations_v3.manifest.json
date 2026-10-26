@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "22-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1120 characters>",
+      "format": "png"
+    },
+    "action": "walking to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c51d1895-1267-4916-a486-6adced929f69",
+    "generation_id": "a09e386d-b595-48db-9c05-a24cfb599bf5"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "22-mini-walkl-00.png",
+    "22-mini-walkl-01.png",
+    "22-mini-walkl-02.png",
+    "22-mini-walkl-03.png",
+    "22-mini-walkl-04.png"
+  ]
+}

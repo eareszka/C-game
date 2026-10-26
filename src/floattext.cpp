@@ -1,5 +1,6 @@
 #include "floattext.h"
 #include "core.h"   // draw_text, text_width
+#include "crafting.h"   // Item: a prop's drops
 #include <math.h>
 
 void floattext_spawn(FloatText* ft, float wx, float wy, int amount, Uint8 r, Uint8 g, Uint8 b) {
@@ -20,6 +21,16 @@ void floattext_spawn_from_harvest(FloatText* ft, const HarvestResult* h) {
     // One popup per thing broken, showing its whole yield -- what was paid,
     // since a blow that breaks nothing pays nothing.
     for (int i = 0; i < h->count; i++) {
+        if (h->hits[i].item >= 0) {                 // a prop's drop: its first, where it broke
+            if (i > 0 && h->hits[i - 1].item >= 0 && h->hits[i - 1].x == h->hits[i].x) continue;
+            int it = h->hits[i].item;
+            Uint8 r = 220, g = 220, b = 220;
+            if      (it == ITEM_WOOD)  { r = 180; g = 120; b =  60; }
+            else if (it == ITEM_STONE) { r = 160; g = 160; b = 160; }
+            else if (it == ITEM_VINE)  { r =  90; g = 190; b =  70; }
+            floattext_spawn(ft, h->hits[i].x, h->hits[i].y, h->hits[i].amount, r, g, b);
+            continue;
+        }
         int res = h->hits[i].resource;
         if (res < 0 || !h->hits[i].destroyed) continue;
         Uint8 r = 180, g = 120, b = 60;

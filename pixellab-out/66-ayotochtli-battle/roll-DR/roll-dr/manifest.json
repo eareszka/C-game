@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "roll-dr",
+  "generated": "2026-10-18T20:48:58Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "roll-dr_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "ayotochtli-roll-dr-00.png",
+        "ayotochtli-roll-dr-01.png",
+        "ayotochtli-roll-dr-02.png",
+        "ayotochtli-roll-dr-03.png",
+        "ayotochtli-roll-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "34f3c7ff-640b-44da-8eaf-fd1bdedab80c",
+        "generation_id": "b3c9c329-f38a-4cef-a949-59504e58f0cf"
+      }
+    }
+  ]
+}

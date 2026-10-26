@@ -1,0 +1,22 @@
+{
+  "run": "idle-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\ayotochtli-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\ayotochtli-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\ayotochtli-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\ayotochtli-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\ayotochtli-idle-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\idle-D\\idle-d\\animations\\v1\\idle-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "c365693c-369d-4cc5-aa1f-f50959f2930d",
+    "generation_id": "e552bfb3-455a-43bd-82b3-7cb6d6a38b63"
+  }
+}

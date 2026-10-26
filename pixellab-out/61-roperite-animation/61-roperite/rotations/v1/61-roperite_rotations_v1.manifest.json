@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "61-roperite_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1360 characters>",
+      "format": "png"
+    },
+    "description": "Roperite: lean tan runner, rope snout looping up and back into a lasso, orange segmented rattle tail, two large bird running legs, small dangling arm. Preserve approved silhouette scale and flat black outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "26139b9a-2fc9-4f76-b119-f7f064ec4b2e",
+    "generation_id": "3a6c406a-7a10-4ad7-a3fc-99857a44d303"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "roperite-views-south-00.png",
+    "roperite-views-south-east-01.png",
+    "roperite-views-east-02.png",
+    "roperite-views-north-east-03.png",
+    "roperite-views-north-04.png",
+    "roperite-views-north-west-05.png",
+    "roperite-views-west-06.png",
+    "roperite-views-south-west-07.png"
+  ]
+}

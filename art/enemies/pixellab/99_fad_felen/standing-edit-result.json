@@ -1,0 +1,19 @@
+{
+  "run": "standing-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-edit\\standing-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-edit\\standing-edit\\sprites\\v1\\99-fad-felen-standing-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-edit\\standing-edit\\sprites\\v1\\standing-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "9a044112-9eb7-4d3b-99ab-a533079f0acc",
+    "generation_id": "49ad462a-a97c-406c-9fda-ba3a1a1b5390"
+  },
+  "route": "edit-images-v2"
+}

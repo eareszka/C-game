@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "62-mini",
+  "generated": "2026-10-25T02:32:55Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "62-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "walkl-00.png",
+        "walkl-01.png",
+        "walkl-02.png",
+        "walkl-03.png",
+        "walkl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e7de4e5d-a4cb-44ac-b161-a7784bb0b567",
+        "generation_id": "bb010fa1-39ea-4593-a7d2-dc73e6e5c62d"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "62-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "walkd-00.png",
+        "walkd-01.png",
+        "walkd-02.png",
+        "walkd-03.png",
+        "walkd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "99c85130-a03d-4acb-84eb-92bf9c306803",
+        "generation_id": "bf286d04-b0c7-4e0f-8f0e-c932edd9a511"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "62-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "walku-00.png",
+        "walku-01.png",
+        "walku-02.png",
+        "walku-03.png",
+        "walku-04.png"
+      ],
+      "ids": {
+        "background_job_id": "636a5300-0f23-4d36-a8c8-133b80062daa",
+        "generation_id": "8a4199b1-49dd-4982-94c2-e22527480ee1"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "62-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "1468ba60-6f8e-471d-989f-08fd8bed998e",
+        "generation_id": "a77e71f1-8dce-4801-86a8-34fd4b2ff5cf"
+      }
+    }
+  ]
+}

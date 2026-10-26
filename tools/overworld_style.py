@@ -151,6 +151,38 @@ PIECES.update({
     'burnt wagon':       (('art/structures/landmarks/wagon.png', 0, 0, 48, 32), 'object', ('bark',)),
     'wrecked boat':      (('art/structures/landmarks/boat.png', 0, 0, 48, 32), 'object', ('wood',)),
 })
+# The overworld's props (art/structures/props/props.py, laid by worldgen's "Props"), read from
+# the registry: each one's first frame or variant, built if it is drawn in the houses' projection,
+# its materials those whose tones it is drawn in. The tufts -- ground cover drawn as the ground
+# draws its grass, with no line round it -- are let off the outline (TUFTS).
+PROP_BUILT = {'arch', 'balanced_rock', 'mesa', 'slab', 'wagon_covered', 'wagon_buried', 'woodpile',
+              'lean_to', 'hay_bale', 'handcart', 'wheelbarrow', 'barrel', 'trough', 'field_gate',
+              'stele', 'serpent_head', 'jaguar', 'altar', 'ball_ring', 'fallen_block', 'chacmool'}
+TUFTS = ('grass_a', 'grass_b', 'leaf_litter', 'tall_grass_a', 'tall_grass_b')
+
+
+def _prop_pieces():
+    from PIL import Image
+    sys.path.insert(0, os.path.join(ROOT, 'art', 'structures', 'props'))
+    import props
+    mats = {k: set(v['tones']) for k, v in MATERIALS.items() if not k.startswith('mini') and k != 'player'}
+    out = {}
+    for name, path, x, w, h, *_ in props.PROPS:
+        src = ('art/structures/props/' + path, x, 0, w * 16, h * 16)
+        im = Image.open(os.path.join(ROOT, src[0])).convert('RGBA').crop((x, 0, x + w * 16, h * 16))
+        cols = {'%02x%02x%02x' % p[:3] for p in im.get_flattened_data() if p[3]} - {'000000'}
+        need, made = set(cols), []
+        while need:                                         # fewest materials that cover its colours
+            best = max(sorted(mats), key=lambda m: (len(mats[m] & need), -len(mats[m] - cols)))
+            if not mats[best] & need:
+                break
+            made.append(best)
+            need -= mats[best]
+        out[name] = (src, 'built' if name in PROP_BUILT else 'object', tuple(made))
+    return out
+
+
+PIECES.update(_prop_pieces())
 # The things to mine (art/structures/nodes/nodes_design.py): the stone rock, and the vein -- the
 # overworld's gold ore, and in a cave its ore's (tools/gen_cave_tiles.py; the gold read here).
 PIECES.update({
@@ -258,7 +290,7 @@ def check(name):
             'lit': res['lit'] if kind == 'built' else 0,       # a ground's and an object's lightest tone may be a mark
             'flat': int(kind == 'ground' and m['flat'] < FLAT),
             'line': int(kind == 'ground' and m['line'] > LINE),
-            'out': int(kind != 'ground' and name not in JOINED and m['out'] < OUT),
+            'out': int(kind != 'ground' and name not in JOINED + TUFTS and m['out'] < OUT),
             'tones': m['tones'] if kind == 'object' and m['tones'] > TONES else 0}
 
 

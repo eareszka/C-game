@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "body-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 4552 characters>",
+          "format": "png"
+        },
+        "width": 177,
+        "height": 113
+      }
+    ],
+    "image_size": {
+      "width": 177,
+      "height": 113
+    },
+    "description": "<elided 1090 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 6716 characters>",
+        "format": "png"
+      },
+      "width": 177,
+      "height": 113
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2e15eaa5-f237-4591-abf7-6b21607972c9",
+    "generation_id": "18e5caea-ee3e-4b4b-9c56-48bb0abeb509"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-half-body-frame0.png"
+  ]
+}

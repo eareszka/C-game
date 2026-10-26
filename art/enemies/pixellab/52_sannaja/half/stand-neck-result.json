@@ -1,0 +1,19 @@
+{
+  "run": "stand-neck_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\stand-neck\\stand-neck\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\stand-neck\\stand-neck\\sprites\\v1\\52-sannaja-half-stand-neck.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\stand-neck\\stand-neck\\sprites\\v1\\stand-neck_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "35f40841-56b7-49af-8734-b1299979b3c4",
+    "generation_id": "f01f75b4-ed06-4581-98c4-5a490f77a9f8"
+  },
+  "route": "inpaint-v3"
+}

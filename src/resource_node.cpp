@@ -32,6 +32,7 @@ void resource_nodes_add(ResourceNodeList* list, ResourceType type, float x, floa
     n->reveal_tx = -1;
     n->reveal_ty = -1;
     n->chest = 0;
+    n->site = -1;
 
     switch (type) {
         case RESOURCE_TREE:        n->hp = 3; break;
@@ -235,6 +236,20 @@ void harvest_add(HarvestResult* r, float x, float y, int resource, int destroyed
     h->y = y;
     h->resource  = resource;
     h->destroyed = destroyed;
+    h->item      = -1;
+    h->amount    = 0;
+}
+
+void harvest_add_item(HarvestResult* r, float x, float y, int item, int amount)
+{
+    if (!r || r->count >= MAX_HARVEST_HITS) return;
+    HarvestHit* h = &r->hits[r->count++];
+    h->x = x;
+    h->y = y;
+    h->resource  = -1;
+    h->destroyed = 1;
+    h->item      = item;
+    h->amount    = amount;
 }
 
 bool harvest_any_destroyed(const HarvestResult* r)

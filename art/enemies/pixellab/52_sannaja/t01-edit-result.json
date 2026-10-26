@@ -1,0 +1,19 @@
+{
+  "run": "t01-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t01-edit\\t01-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t01-edit\\t01-edit\\sprites\\v1\\52-sannaja-t01-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t01-edit\\t01-edit\\sprites\\v1\\t01-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "ff7aac3b-549b-4794-a935-f5f175a8c49d",
+    "generation_id": "b3a528b3-4bcf-4849-9da1-9f3a12fb5e2e"
+  },
+  "route": "edit-images-v2"
+}

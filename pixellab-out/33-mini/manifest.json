@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "33-mini",
+  "generated": "2026-10-23T04:07:17Z",
+  "spent": {
+    "calls": 1,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "33-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "init-front-south-00.png",
+        "init-front-south-east-01.png",
+        "init-front-east-02.png",
+        "init-front-north-east-03.png",
+        "init-front-north-04.png",
+        "init-front-north-west-05.png",
+        "init-front-west-06.png",
+        "init-front-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "f20ed671-6f06-4aae-a88a-513f834f8997",
+        "generation_id": "a40e885a-f585-48f0-a03c-33fcf707952c"
+      }
+    }
+  ]
+}

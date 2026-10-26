@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "turn1-edit",
+  "generated": "2026-10-19T13:40:43Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "turn1-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-turn1-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "d603f6f5-8213-4493-9337-fdd2b5e3f670",
+        "generation_id": "1a148f72-315d-4575-99d6-44e81f8184f6"
+      }
+    }
+  ]
+}

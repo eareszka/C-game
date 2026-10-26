@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-slab_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art flat sandstone rock slab lying on desert sand, low wide flat slickrock outcrop cracked into a few plates, slightly raised, seen from above at an angle, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "high top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIklEQVR4nGNkQAKb5sXA2dcuLYGzDx4XgrOZkDUQA2ivAQC5BAWa5iKwwQAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slab-2.png"
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": 75,
+  "name": "75-makalala",
+  "dir": "art/enemies/pixellab/75_makalala",
+  "description": "Makalala: a tall dark-grey ground bird with a big hooked yellow beak, a pale glowing club-like knob on its head and long thin legs. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt_idle.txt",
+    "fly": "prompt_fly.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/75_makalala.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Standing in place facing the viewer, then a scream: at the midpoint it stretches its neck straight up, gapes its beak wide open and flares both wings out, then folds back to standing. Legs and feet stay planted. Same size, black one-pixel outlines, flat fills. No effects or sound lines.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4,
+          2,
+          7
+        ]
+      },
+      "ground": true
+    },
+    "fly": {
+      "png": "assets/enemies/75_makalala_fly.png",
+      "frames": 4,
+      "rows": false,
+      "ms": 70,
+      "from": "idle",
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "One full wingbeat in place, flying right: the wing sweeps from raised high down to below the body and back up. Body, head, beak and the knob on its head stay level and still. Same size, black one-pixel outlines, flat fills. No motion lines.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "anchor": {
+        "at": [
+          49,
+          15
+        ],
+        "colors": [
+          "e8e0c0"
+        ]
+      }
+    }
+  }
+}

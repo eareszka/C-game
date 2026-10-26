@@ -1,0 +1,58 @@
+{
+  "id": 67,
+  "name": "67-lagopus",
+  "dir": "art/enemies/pixellab/67_lagopus",
+  "description": "Lagopus, a plump white winter grouse with a small round head, short black bill, tiny eyes and small red combs, black outer tail feathers, large feathered hare-like feet and broad white wings. Match the approved chibi pixel design, flat gray shading and black outlines.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/67_lagopus.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 260,
+      "views": [
+        "D",
+        "R",
+        "UR"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Grounded wing ripple, same viewing angle throughout. Keep both wings broadly spread and feet planted. Start in the supplied pose; lift the wing tips a little at the midpoint, then dip them gently below the original position toward the end. Tiny restrained breathing, body and head stay still. No takeoff, translation, effects or extra feathers. Preserve exact white/gray/red palette, black outlines, feathered feet and native scale.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4
+        ]
+      },
+      "ground": true
+    },
+    "fly": {
+      "png": "assets/enemies/67_lagopus_fly.png",
+      "frames": 4,
+      "rows": false,
+      "ms": 110,
+      "from": "idle",
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "One seamless full flying wingbeat in place, maintaining the same viewing angle. Sweep both broad wings up, down through a firm downstroke and back up. The body and head stay steady and airborne; the big feathered feet draw up slightly and the black tail steadies the bird. Preserve the same Lagopus anatomy, white feathers, simple gray shading, tiny red eye combs, black bill, exact palette and black outlines. No walking, ground contact, translation, motion lines, particles or camera movement. Keep the feather clusters broad and simple.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    }
+  }
+}

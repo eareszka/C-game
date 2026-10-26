@@ -5,7 +5,8 @@
 Reads the tiers from ENEMY_TIERS in include/enemy.h, the sheet layouts from
 ENEMY_SHEETS in src/battle.cpp and the names from ENEMY_NAMES in src/main.cpp,
 so it always shows what the game uses. An enemy whose sprite isn't drawn yet
-gets a NO SPRITE cell. Rerun after any tier change.
+gets a NO SPRITE cell. The DONE tags are READY_ENEMIES in include/ready.h, the
+list the game itself spawns from. Rerun after any tier change.
 """
 import re, sys, os
 from PIL import Image, ImageDraw, ImageFont
@@ -22,6 +23,10 @@ def table(path, start):
     s = open(os.path.join(ROOT, path), encoding='utf-8').read()
     i = s.index(start)
     return s[i:s.index('};', i)]
+
+def ready_ids():
+    # READY_ENEMIES in include/ready.h: the enemies a player can meet
+    return {int(v) for v in re.findall(r'\d+', table('include/ready.h', 'READY_ENEMIES[] = {').split('{', 1)[1])}
 
 def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
     # done: ids whose bullet patterns are finished -- drawn with a green DONE mark
@@ -91,5 +96,5 @@ def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
     img.save(out)
 
 if __name__ == '__main__':
-    # optional 2nd arg: comma-separated ids with finished bullet patterns
-    main(sys.argv[1], {int(v) for v in sys.argv[2].split(',')} if len(sys.argv) > 2 else set())
+    # optional 2nd arg: comma-separated ids to tag DONE instead of the ready list
+    main(sys.argv[1], {int(v) for v in sys.argv[2].split(',')} if len(sys.argv) > 2 else ready_ids())

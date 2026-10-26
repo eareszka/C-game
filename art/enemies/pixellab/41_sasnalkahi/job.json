@@ -1,0 +1,11 @@
+{
+  "id": 41, "name": "41-sasnalkahi", "dir": "art/enemies/pixellab/41_sasnalkahi",
+  "description": "Sasnalkahi: a huge dark-brown grizzly bear monster standing hunched on four legs, glowing red eyes, pale claws. Flat black-outline pixel art, flat dark/mid/light brown fur ramp, no fur texture.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/redraws/41_sasnalkahi.png", "frames": 5, "rows": false, "ms": 260,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 8,
+    "action": "Menacing idle: the bear breathes heavily in place, shoulders rising and falling, head lowering slightly and lifting again, facing the same direction throughout. Same size, ground line, black one-pixel outlines and flat brown fills. No walking, effects or texture.",
+    "map": {"*": [0, 2, 4, 6, 8]}
+  }}
+}

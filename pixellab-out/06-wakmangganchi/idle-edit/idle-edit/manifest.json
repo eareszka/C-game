@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T00:56:40Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "06-wakmangganchi-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "5633eab7-cd2e-48f7-969f-aa6a3f42d6bd",
+        "generation_id": "ac29365a-c556-4cb4-b429-3bdcc06b017b"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T01:20:01Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "100-flesh-planet-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "42da8920-1b0a-41da-ba5d-9df0831e2fc9",
+        "generation_id": "bf9d94cc-9a9c-4dda-afbb-d24cbe4e607d"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-r-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\39-ajaju-idle-r-try2-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\idle-animate-r-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "d69a2bf1-d83b-4cf1-b387-7afbebed266d",
+    "generation_id": "6ece2475-3418-443a-b680-2a8ca301263d"
+  }
+}

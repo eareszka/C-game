@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-cholla_sprites_v4",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art small desert shrub made of chains of short oval green segments, branching like coral or antlers from a short stubby dark trunk, segments joined end to end, fuzzy, no big central column, retro NES style, black outline",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIElEQVR4nGNkQAKsR6wQnNMIptzRP3A2E7IGYgDtNQAAaXEDtWe3ZTYAAAAASUVORK5CYII=",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "cholla-4.png"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "run": "fly-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\75-makalala-fly-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\75-makalala-fly-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\75-makalala-fly-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\75-makalala-fly-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\75-makalala-fly-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-animate-D\\fly-animate-d\\animations\\v1\\fly-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "e9ee8ad7-69d7-4d74-9009-34308ea5fe68",
+    "generation_id": "9a0af611-8201-4454-aaf1-eef7bce85e4d"
+  }
+}

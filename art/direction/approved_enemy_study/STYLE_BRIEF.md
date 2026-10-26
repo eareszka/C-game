@@ -74,9 +74,11 @@ front-facing roar, broad bat-wing spread, large head/mane, stubby legs,
 right-curving tail and grounded baseline. Keep the original sheet and
 previous draft intact, and save a separate PixelLab revision.
 
-The user's explicit exceptions are **red outlines, black skin and a demonic
-appearance**. Use restrained charcoal form shading to make the black hide
-readable. These exceptions apply to RO only; all other Bible constraints
+The user's explicit exception is **black skin**: RO is the game's only black
+enemy. Since 2026-10-18 it keeps the black outline like everything else; the
+hide is a charcoal ramp and red is only an accent (eyes, mouth, wing veins).
+The earlier red outlines were dropped for readability on dark backdrops.
+This exception applies to RO only; all other Bible constraints
 still apply. Do not recolor the reference roster or modify the Art Bible.
 
 RO was generated through PixelLab CLI after explicit per-call approval. The

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 936 characters>",
+      "format": "png"
+    },
+    "action": "<elided 552 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ac462f09-bb61-4dec-976f-b14b5c580930",
+    "generation_id": "36b6f61a-f86d-4b44-9d66-6cedbd0d567f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ayotochtli-idle-dr-00.png",
+    "ayotochtli-idle-dr-01.png",
+    "ayotochtli-idle-dr-02.png",
+    "ayotochtli-idle-dr-03.png",
+    "ayotochtli-idle-dr-04.png"
+  ]
+}

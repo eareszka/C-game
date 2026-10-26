@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "48-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1436 characters>",
+      "format": "png"
+    },
+    "action": "a huge polar bear king walking upright on its hind legs, a heavy lumbering waddle, body swaying side to side, legs stepping in turn, arms swinging, walking to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "218c42be-4bee-4c0c-bba2-d191b7e2a0ef",
+    "generation_id": "dce07352-90d5-4c09-890f-2f54be5ff69d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

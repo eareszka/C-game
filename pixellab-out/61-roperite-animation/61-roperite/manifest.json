@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "61-roperite",
+  "generated": "2026-10-18T19:57:00Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "61-roperite_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "roperite-views-south-00.png",
+        "roperite-views-south-east-01.png",
+        "roperite-views-east-02.png",
+        "roperite-views-north-east-03.png",
+        "roperite-views-north-04.png",
+        "roperite-views-north-west-05.png",
+        "roperite-views-west-06.png",
+        "roperite-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "26139b9a-2fc9-4f76-b119-f7f064ec4b2e",
+        "generation_id": "3a6c406a-7a10-4ad7-a3fc-99857a44d303"
+      }
+    }
+  ]
+}

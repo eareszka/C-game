@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "55-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 480 characters>",
+      "format": "png"
+    },
+    "action": "a small red furry inchworm-like critter humping along like an inchworm: arching its back up high, then stretching its body out flat along the ground, then arching again, moving toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "93ba8e36-9084-46a6-a915-4b40c15c6109",
+    "generation_id": "85d1c833-0cc2-49b7-9e98-dfda0aea9af0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "inchd-00.png",
+    "inchd-01.png",
+    "inchd-02.png",
+    "inchd-03.png",
+    "inchd-04.png"
+  ]
+}

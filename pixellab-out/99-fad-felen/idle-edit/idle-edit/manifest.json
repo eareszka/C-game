@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T00:49:02Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "99-fad-felen-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "ce4686b2-fadf-4335-8c7f-450112f18c1e",
+        "generation_id": "de8a471b-78a2-411a-94af-c5fe4188b9ac"
+      }
+    }
+  ]
+}

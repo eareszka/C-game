@@ -10,15 +10,20 @@
 // tilemap_landmarks_opened: read here into the map, written from it), and
 // which dungeons' chests (dungeon_chest_records).
 // Written only from the TAB menu's SAVE.
-// ponytail: the world itself is not saved -- it regrows from the seed, so
-// harvested nodes, broken gravestones and dungeon maps come back; their
-// chests stay open (the records above). Add a flags block here when bosses and
-// quests need one, and bump SAVE_VERSION.
+// The world itself is not saved -- it regrows from the seed -- but what the
+// player took out of it is (include/persist.h, since version 18): harvested
+// tiles, broken gravestones and oilblooms, and each dungeon's beaten enemies
+// and broken nodes, all laid back over the regrown world. Chests stay open
+// (the records above), and the story's flags are kept. Bump SAVE_VERSION for
+// any new block.
 bool save_write(unsigned seed, float x, float y, const Player& p,
                 const uint8_t explored[EXPLORE_H][EXPLORE_W]);
 // False with no file, or one this build did not write (another version, cut
 // short): such a save is refused, never misread.
 bool save_read(unsigned* seed, float* x, float* y, Player* p,
                uint8_t explored[EXPLORE_H][EXPLORE_W]);
+// True after a save_read that refused the file because it was played in
+// another world (WORLDGEN_VERSION, tilemap.h): the title says so.
+bool save_refused_old_world(void);
 
 #endif

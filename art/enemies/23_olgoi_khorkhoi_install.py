@@ -6,6 +6,7 @@ prints.
 
     assets/enemies/23_olgoi_khorkhoi.png        12 frames a direction, one row a direction (giant), all eight the front view
     assets/enemies/23_olgoi_khorkhoi_spin.png   the same, the head and blades spinning, the body pumping (the row's `alt`)
+    assets/enemies/23_olgoi_khorkhoi_spinup.png 11 frames, played once between them: the spin firing up (the row's `flap`)
 
     python art/enemies/23_olgoi_khorkhoi_install.py
 """
@@ -22,7 +23,8 @@ ff, A, PAL, W, H = D.ff, D.A, D.PAL, D.W, D.H
 
 
 def main():
-    sheets = {'23_olgoi_khorkhoi': (D.build(), D.DRAFT), '23_olgoi_khorkhoi_spin': (D.build(spin=True), D.SPIN_DRAFT)}
+    sheets = {'23_olgoi_khorkhoi': (D.build(), D.DRAFT), '23_olgoi_khorkhoi_spin': (D.build(spin=True), D.SPIN_DRAFT),
+              '23_olgoi_khorkhoi_spinup': (D.build(spin='up'), D.SPINUP_DRAFT)}
     pics = {name: [ff.image(g, PAL, W, H) for g in frames] for name, (frames, draft) in sheets.items()}
     for name, (frames, draft) in sheets.items():
         assert ff.same_as_draft(draft.with_suffix('.aseprite'), pics[name]), f'{draft.name} is not the design: it was edited, read it back before installing'
@@ -31,12 +33,13 @@ def main():
     shutil.copy2(ROOT / 'assets/enemies/built.json', backup)
     for name in sheets:
         out = enemy_sheet.sheet_of({'D': pics[name]}, True)
-        tags = enemy_sheet.install(out, ROOT / f'assets/enemies/{name}.png', D.N, rows=True, ms=D.MS, palette=list(PAL.values()), backup=backup)
-        print(f'installed {name}: {out.width}x{out.height}, frame {W}x{H}, {D.N} frames at {D.MS} ms, tags {tags}')
+        n = len(pics[name])
+        tags = enemy_sheet.install(out, ROOT / f'assets/enemies/{name}.png', n, rows=True, ms=D.MS, palette=list(PAL.values()), backup=backup)
+        print(f'installed {name}: {out.width}x{out.height}, frame {W}x{H}, {n} frames at {D.MS} ms, tags {tags}')
     print('old sheet in', backup)
     mx, my = A.MOUTH[0] + D.OX, A.MOUTH[1] + D.OY
     print(f'  for the fight, in frame pixels (the frame\'s middle is {W / 2:g}, {H / 2:g}): the middle of its mouth ({mx}, {my}), '
-          f'{D.BOB[4]} rows lower on the idle\'s frames 4-5; the sand line is row {D.SAND_ROW + D.OY}, the arch\'s top row {D.TOP + D.OY}; '
+          f'{D.BOB[4]} rows lower on the idle\'s frames 4-5; the ground row is {D.SAND_ROW + D.OY}, the arch\'s top row {D.TOP + D.OY}; '
           f'the blades sweep {D.BLADE_TIP:g} px round the mouth on the spin sheet')
 
 

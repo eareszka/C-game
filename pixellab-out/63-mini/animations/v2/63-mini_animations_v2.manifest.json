@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "63-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2272 characters>",
+      "format": "png"
+    },
+    "action": "a shaggy cone-shaped fur creature creeping forward stealthily, sliding along low, its shaggy fur hem swaying side to side, its long hooked claws flexing and curling, creeping toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6f949e6c-8da4-4d4e-9ca3-b43ff84ec654",
+    "generation_id": "72bde570-c756-42aa-a0e4-bb4606e5bb6e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "creepd-00.png",
+    "creepd-01.png",
+    "creepd-02.png",
+    "creepd-03.png",
+    "creepd-04.png"
+  ]
+}

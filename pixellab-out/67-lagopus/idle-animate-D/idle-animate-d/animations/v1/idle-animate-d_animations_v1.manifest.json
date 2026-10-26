@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1136 characters>",
+      "format": "png"
+    },
+    "action": "<elided 432 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "20a45acd-420c-4370-a961-9c947dadbb7a",
+    "generation_id": "5edc429b-e5c6-45cb-882c-46edc4129fd6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "67-lagopus-idle-d-00.png",
+    "67-lagopus-idle-d-01.png",
+    "67-lagopus-idle-d-02.png",
+    "67-lagopus-idle-d-03.png",
+    "67-lagopus-idle-d-04.png"
+  ]
+}

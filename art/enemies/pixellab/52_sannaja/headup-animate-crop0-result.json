@@ -1,0 +1,26 @@
+{
+  "run": "headup-animate-crop0_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\52-sannaja-headup-crop0-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-animate-crop0\\headup-animate-crop0\\animations\\v1\\headup-animate-crop0_animations_v1.manifest.json",
+  "cost": {
+    "generations": 8.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a89a9689-50ff-4526-b122-ef74ae1fc399",
+    "generation_id": "d4ee89b3-9d42-4a8e-bda3-9a6108f7b5fe"
+  }
+}

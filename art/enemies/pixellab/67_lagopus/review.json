@@ -1,0 +1,51 @@
+{
+  "raw": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-edit\\idle-edit\\sprites\\v1\\67-lagopus-idle-frame0.png",
+  "cleaned": "art\\enemies\\pixellab\\67_lagopus\\idle_frame0_clean.png",
+  "size": [
+    62,
+    45
+  ],
+  "source_bounds": [
+    3,
+    14,
+    54,
+    44
+  ],
+  "draft_bounds": [
+    3,
+    14,
+    54,
+    44
+  ],
+  "opaque_colors": 9,
+  "color_budget_ok": true,
+  "raw_off_palette_pixels": 652,
+  "cleaned_off_palette_pixels": 0,
+  "partial_alpha_pixels": 0,
+  "palette": [
+    "000000",
+    "1e1e24",
+    "292931",
+    "474751",
+    "595965",
+    "848694",
+    "b6433d",
+    "bcbeca",
+    "fcfcfc"
+  ],
+  "palette_merges": [],
+  "alignment_offset": [
+    0,
+    7
+  ],
+  "originals_unchanged": true,
+  "approved": true,
+  "installed": false,
+  "visual_review_required": [
+    "anatomy and silhouette",
+    "pose and scale",
+    "outlines",
+    "shading"
+  ],
+  "approval_scope": "first-frame design; animation review pending"
+}

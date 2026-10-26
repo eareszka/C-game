@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "lower-neck",
+  "generated": "2026-10-19T16:25:36Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "lower-neck_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-lower-neck.png"
+      ],
+      "ids": {
+        "background_job_id": "e9e9f3b6-89ad-40cf-9819-2772a3bc0ef3",
+        "generation_id": "7c245773-ff73-4bc3-928e-7cd673d10a8e"
+      }
+    }
+  ]
+}

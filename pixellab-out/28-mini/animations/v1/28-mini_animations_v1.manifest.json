@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "28-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1352 characters>",
+      "format": "png"
+    },
+    "action": "trotting toward the viewer on four legs",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "bf1105f1-73db-4748-91d4-e062b35e0763",
+    "generation_id": "173d6f55-6599-4aeb-97ec-afc51839c1ac"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "28-mini-walkd-00.png",
+    "28-mini-walkd-01.png",
+    "28-mini-walkd-02.png",
+    "28-mini-walkd-03.png",
+    "28-mini-walkd-04.png"
+  ]
+}

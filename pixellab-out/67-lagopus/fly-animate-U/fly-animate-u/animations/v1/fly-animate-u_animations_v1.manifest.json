@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "fly-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 984 characters>",
+      "format": "png"
+    },
+    "action": "<elided 539 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c5beac27-8b41-4c38-aed0-81a8eb049750",
+    "generation_id": "ec629fda-30b1-4ee3-b786-8896582b10d4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "67-lagopus-fly-u-00.png",
+    "67-lagopus-fly-u-01.png",
+    "67-lagopus-fly-u-02.png",
+    "67-lagopus-fly-u-03.png",
+    "67-lagopus-fly-u-04.png"
+  ]
+}

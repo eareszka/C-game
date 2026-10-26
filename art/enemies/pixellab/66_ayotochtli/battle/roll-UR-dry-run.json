@@ -1,0 +1,21 @@
+{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAjCAYAAADSQImyAAABq0lEQVR4nGNgGAWjYBSMglEwkgEjDcz8T0/7GKnt8E3zYrBK+iUtoYm9jLR2+O2znxmKp25EkUfyDCOlljPS0vEwxxIRK4wD4YH/IIehJQ2cgFaeYKSG4/E5DiaH7NHebH8GVWNeFHXkuoeFVA3Ill44UMFg4NBBlHpseWATnqRHyxgAh76ckgzc8dgcgi/tI6sBAZA6WGYn1U1MDGQAmONBFlMSipuoEANM5IT+o3tPGKgNiiGhD7aD5jFAK9Cb7U+ynkHhgSnTjpHl+EHjgV1n7pGtd0A94ActhcgNfYrqAXIBcoW2CamSI9cTZNUDDBQA9Fr4NrT8B4mTUw+Q5QGYZeQ24mDgNqLyIttNA5YHQI6HAVCA0LMUYoSFGrIjsAFiW6ogQE7yoSgGkNIsVoCvgwPzeDEFaZ9SDzDCLAeFMsxRyI4DAZg8suMHG/jfm+0PKpXIxm4mSv8HRZ8YBGDJATlDovNBYOfJy9hqX8YB79QjF4swRxPiwwC5+YCqnXpcTQPkzI6tuHQO1YR1jujqAXDfALlEIdIuqg58MZKqAQmgO4QWo3wEAQB6QOqS0Wbo+gAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "action": "Seamless continuous forward tumbling of this compact curled armored shell ball, in place and facing the same travel direction. Quarter-turn steps: broad shell seams rotate around the round ball surface to show genuine end-over-end rolling, returning to the starting orientation. Head, long ears, legs and tail stay tucked tightly into the ball throughout; do not stand up or run. Keep a stable round silhouette and tiny ground contact bob, exact native scale, black one-pixel outlines and simple flat tan shell palette. Transparent background, no motion trails, smoke, camera motion, drifting or extra objects.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

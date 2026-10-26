@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "64-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3540 characters>",
+      "format": "png"
+    },
+    "action": "a squat crocodile crawling low on its belly, short splayed legs stepping in a sprawling walk, its body swaying side to side, its tail club swinging, crawling toward the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ea048ca6-6e26-4d60-8dc6-d51adb2a2292",
+    "generation_id": "c96250f4-2e0c-4e95-933d-41a0028c375a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "crawld-00.png",
+    "crawld-01.png",
+    "crawld-02.png",
+    "crawld-03.png",
+    "crawld-04.png"
+  ]
+}

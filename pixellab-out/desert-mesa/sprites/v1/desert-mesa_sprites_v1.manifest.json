@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-mesa_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art small desert mesa rock formation, flat top, steep layered sandstone cliff sides with horizontal strata, rubble at the base, seen from the front at a slight high angle, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 96,
+      "height": 96
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIklEQVR4nGNkQAKb5sXA2dcuLYGzDx4XgrOZkDUQA2ivAQC5BAWa5iKwwQAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "mesa-1.png"
+  ]
+}

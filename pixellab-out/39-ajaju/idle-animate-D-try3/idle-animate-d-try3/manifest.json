@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d-try3",
+  "generated": "2026-10-19T01:05:51Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d-try3_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "39-ajaju-idle-d-try3-00.png",
+        "39-ajaju-idle-d-try3-01.png",
+        "39-ajaju-idle-d-try3-02.png",
+        "39-ajaju-idle-d-try3-03.png",
+        "39-ajaju-idle-d-try3-04.png",
+        "39-ajaju-idle-d-try3-05.png",
+        "39-ajaju-idle-d-try3-06.png",
+        "39-ajaju-idle-d-try3-07.png",
+        "39-ajaju-idle-d-try3-08.png"
+      ],
+      "ids": {
+        "background_job_id": "500cbf1c-3838-4752-9de5-8759a3594632",
+        "generation_id": "89985fe6-bc66-4f8e-8918-56bd89ed1a63"
+      }
+    }
+  ]
+}

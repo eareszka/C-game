@@ -1,0 +1,19 @@
+{
+  "run": "headup-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-edit\\headup-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-edit\\headup-edit\\sprites\\v1\\52-sannaja-headup-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\headup-edit\\headup-edit\\sprites\\v1\\headup-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "7aa6a1d3-70b8-445f-a02b-ed957347f8b9",
+    "generation_id": "8acf4a76-2f83-477a-80bb-a124f9db9e4c"
+  },
+  "route": "edit-images-v2"
+}

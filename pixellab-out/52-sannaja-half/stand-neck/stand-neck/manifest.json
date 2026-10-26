@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "stand-neck",
+  "generated": "2026-10-19T16:24:31Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "stand-neck_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-stand-neck.png"
+      ],
+      "ids": {
+        "background_job_id": "35f40841-56b7-49af-8734-b1299979b3c4",
+        "generation_id": "f01f75b4-ed06-4581-98c4-5a490f77a9f8"
+      }
+    }
+  ]
+}

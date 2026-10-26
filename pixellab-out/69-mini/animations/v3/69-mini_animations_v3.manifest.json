@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "69-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2392 characters>",
+      "format": "png"
+    },
+    "action": "a round plump bird spirit flying in place, its ragged feathered wings flapping up and down in big beats, hovering in the air, its thin legs dangling, flying to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e79e73a3-1306-4932-82dc-4d0ac60e4418",
+    "generation_id": "2c3ee9a6-e192-4752-80ba-431f7ff1a753"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyl-00.png",
+    "flyl-01.png",
+    "flyl-02.png",
+    "flyl-03.png",
+    "flyl-04.png"
+  ]
+}

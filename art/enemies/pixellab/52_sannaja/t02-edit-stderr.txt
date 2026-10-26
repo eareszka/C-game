@@ -1,0 +1,2 @@
+edit-images-v2 is a Pro Tools route: about 30 generations.
+could not reach PixelLab: [Errno 11001] getaddrinfo failed (arguments={'method': 'edit_with_reference', 'edit_images': [{'image': {'type': 'base64', 'base64': '<elided 13308 characters>', 'format': 'png'}, 'width': 354, 'height': 225}], 'image_size': {'width': 354, 'height': 225}, 'description': '<elided 1249 characters>', 'reference_image': {'image': {'type': 'base64', 'base64': '<elided 9432 characters>', 'format': 'png'}, 'width': 354, 'height': 225}, 'no_background': True}, route='edit-images-v2')

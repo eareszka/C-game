@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "plains-pots",
+  "generated": "2026-10-26T11:32:18Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "plains-pots_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pots.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

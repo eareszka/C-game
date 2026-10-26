@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "24-mini_sprites_v2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 524 characters>",
+      "format": "png"
+    },
+    "description": "simplify into a chunky small map sprite of the same red-hot snake in the same pose: bigger flat colour shapes, fewer details, orange body, dark red underside, white-hot blade tip, bold black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "35bd7dce-9260-41c2-967c-ae887b246ebe",
+    "generation_id": "935b9e3b-6d6f-47c8-8237-077764456eb6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "24-mini-coil-u.png"
+  ]
+}

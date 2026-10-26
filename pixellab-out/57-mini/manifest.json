@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "subject": "57-mini",
+  "generated": "2026-10-25T01:41:28Z",
+  "spent": {
+    "calls": 5,
+    "generations": 5.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "57-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "flyl-00.png",
+        "flyl-01.png",
+        "flyl-02.png",
+        "flyl-03.png",
+        "flyl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "007b1860-04c1-4256-bc19-2ac7625c4699",
+        "generation_id": "5889b5ee-4395-4cc8-9120-f4dadcd1a012"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "57-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "flyd-00.png",
+        "flyd-01.png",
+        "flyd-02.png",
+        "flyd-03.png",
+        "flyd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "f5aadacd-212c-40e4-8817-57b8c0a8d9a0",
+        "generation_id": "a4c5fcf9-fab0-4eca-b324-3675e3cd47a0"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "57-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "flyu-00.png",
+        "flyu-01.png",
+        "flyu-02.png",
+        "flyu-03.png",
+        "flyu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "5df1f600-bbf4-4d56-8dde-9d572402f830",
+        "generation_id": "b1c5df15-9fcb-42ea-a255-e02f43fa1f86"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "57-mini_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "flysw-00.png",
+        "flysw-01.png",
+        "flysw-02.png",
+        "flysw-03.png",
+        "flysw-04.png"
+      ],
+      "ids": {
+        "background_job_id": "4e807dfb-882a-4ed4-a8c6-81f5c6333a1a",
+        "generation_id": "80eb015d-1ff1-45e2-b548-cf1c163b8958"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "57-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "8b570637-4af1-4a42-bfd9-46d45e7e65b0",
+        "generation_id": "e51999d6-07ea-47ed-b722-0e1f309828c7"
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "47-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1580 characters>",
+      "format": "png"
+    },
+    "action": "a long-necked sea turtle crawling on land, pulling itself along with its four flippers in turn, shell steady, long neck swaying, crawling away from the viewer",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dde9d7f9-e74c-416e-a170-35110604c118",
+    "generation_id": "bf4636bd-304b-4646-8c03-f7efb5c0e3f6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "crawlu-00.png",
+    "crawlu-01.png",
+    "crawlu-02.png",
+    "crawlu-03.png",
+    "crawlu-04.png"
+  ]
+}

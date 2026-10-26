@@ -1,0 +1,22 @@
+{
+  "run": "fly-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\67-lagopus-fly-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\67-lagopus-fly-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\67-lagopus-fly-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\67-lagopus-fly-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\67-lagopus-fly-ur-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\fly-animate-UR\\fly-animate-ur\\animations\\v1\\fly-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "c1f8d439-b0d5-42f0-97ab-bbed412429a5",
+    "generation_id": "59e232cb-e5d2-4f1c-b14e-17db34ba5a12"
+  }
+}

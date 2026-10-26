@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-barrel_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art barrel cactus, round squat ribbed green barrel with a ring of small pink flowers on its crown, front view, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIUlEQVR4nGNkQAKs/VZwttzRP3D2TYU6OJsJWQMxgPYaALs2BCymhCkcAAAAAElFTkSuQmCC",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "barrel-1.png"
+  ]
+}

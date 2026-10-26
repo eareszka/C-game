@@ -1,0 +1,26 @@
+{
+  "run": "standing-animate-d-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\99-fad-felen-standing-d-try2-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\standing-animate-D-try2\\standing-animate-d-try2\\animations\\v1\\standing-animate-d-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "95ad9394-9751-4d67-a21b-72c0f96b5ee5",
+    "generation_id": "f54447e7-a894-4ef3-9dae-2e5f7841a822"
+  }
+}

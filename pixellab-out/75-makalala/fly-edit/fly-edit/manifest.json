@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "fly-edit",
+  "generated": "2026-10-19T00:28:23Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "fly-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "75-makalala-fly-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "ceda0689-93b9-45ef-9e24-65cf17d76bc1",
+        "generation_id": "e859f49e-17a3-4ebd-95e3-3ee94f716c23"
+      }
+    }
+  ]
+}

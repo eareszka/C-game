@@ -8,6 +8,10 @@
 #define MAP_WIDTH  3000
 #define MAP_HEIGHT 3000
 #define TILE_SIZE  32
+// The world a seed grows. Bump it whenever generation changes what a seed
+// grows: a save names the version it was played in, and one from another is
+// refused (save.cpp), since its dungeons, landmarks and ground have moved.
+enum { WORLDGEN_VERSION = 3 };   // 3: the props (2026-10-26)
 
 // The shape of the world. Two opposite edges are hard borders -- the ocean and
 // the mountain edge across from it -- and the other two are joined: walk off
@@ -35,8 +39,8 @@ enum TileId {
     TILE_CLIFF_EDGE_4 = 15, // south face: drop from elev 4 → 3
     TILE_CLIFF_EDGE_5 = 16, // south face: drop from elev 5 → 4
     TILE_SAND         = 17, // desert biome ground
-    TILE_SNOW         = 18, // snow biome (map edges)
-    TILE_WASTELAND    = 19, // wasteland biome (map edges)
+    TILE_SNOW         = 18, // snow biome: one blob, far out on the mountain half
+    TILE_WASTELAND    = 19, // wasteland biome: one blob, against the cliff peak
     TILE_LAVA         = 20, // lava pools/streams inside wasteland
     TILE_MEADOW       = 21, // open plains biome (sparse trees)
     TILE_POND         = 22, // small water features inside meadows
@@ -397,6 +401,9 @@ int tilemap_door_at(const Tilemap* map, float px, float py);
 // drawn as it shakes, at this zoom; 0 once the shake has run out.
 int tilemap_shake_px(Uint64 hit_at, float zoom);
 // Shake a tile as if struck, without harming it (the woodcutter's swings).
+// A tile's one number, y * MAP_WIDTH + x: what struck and destroyed tiles are
+// kept by (persist.h).
+inline uint32_t tilemap_tile_key(int x, int y) { return (uint32_t)y * MAP_WIDTH + (uint32_t)x; }
 void tilemap_jitter_tile(int tx, int ty);
 // The sheet cell's, or null for a cell that has none.
 const ArtCellDepth* tilemap_art_depth(int sheet_id);

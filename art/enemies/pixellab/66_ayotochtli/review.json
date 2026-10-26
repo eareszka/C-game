@@ -1,0 +1,88 @@
+{
+  "raw": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-drafts\\66-ayotochtli\\sprites\\v1\\66-ayotochtli-frame0-draft.png",
+  "cleaned": "art\\enemies\\pixellab\\66_ayotochtli\\frame0_review.png",
+  "size": [
+    48,
+    35
+  ],
+  "source_bounds": [
+    15,
+    12,
+    34,
+    35
+  ],
+  "draft_bounds": [
+    15,
+    7,
+    34,
+    35
+  ],
+  "opaque_colors": 9,
+  "color_budget_ok": true,
+  "raw_off_palette_pixels": 219,
+  "cleaned_off_palette_pixels": 0,
+  "partial_alpha_pixels": 0,
+  "palette": [
+    "000000",
+    "235436",
+    "463422",
+    "8d6b4f",
+    "b29e5c",
+    "c9a433",
+    "d0c078",
+    "d7a175",
+    "f0b890"
+  ],
+  "palette_merges": [
+    {
+      "from": [
+        44,
+        108,
+        68
+      ],
+      "to": [
+        35,
+        84,
+        54
+      ]
+    },
+    {
+      "from": [
+        150,
+        116,
+        72
+      ],
+      "to": [
+        141,
+        107,
+        79
+      ]
+    },
+    {
+      "from": [
+        120,
+        88,
+        48
+      ],
+      "to": [
+        141,
+        107,
+        79
+      ]
+    }
+  ],
+  "alignment_offset": [
+    1,
+    4
+  ],
+  "originals_unchanged": true,
+  "approved": true,
+  "installed": false,
+  "visual_review_required": [
+    "anatomy and silhouette",
+    "pose and scale",
+    "outlines",
+    "shading"
+  ],
+  "approval_scope": "first-frame design; battle animations pending"
+}

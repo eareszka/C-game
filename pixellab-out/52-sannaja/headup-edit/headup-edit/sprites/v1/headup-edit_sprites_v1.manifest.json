@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "headup-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 3904 characters>",
+          "format": "png"
+        },
+        "width": 354,
+        "height": 225
+      }
+    ],
+    "image_size": {
+      "width": 354,
+      "height": 225
+    },
+    "description": "<elided 1058 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 11320 characters>",
+        "format": "png"
+      },
+      "width": 354,
+      "height": 225
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7aa6a1d3-70b8-445f-a02b-ed957347f8b9",
+    "generation_id": "8acf4a76-2f83-477a-80bb-a124f9db9e4c"
+  },
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-headup-frame0.png"
+  ]
+}

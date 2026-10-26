@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "32-mini_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1756 characters>",
+      "format": "png"
+    },
+    "description": "the same olive-gold serpent uncoiled, side view facing left, slithering along the ground in a long S-curve, head raised on its neck, green eyes, cream belly bands, no skulls, keep colours and black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2a838418-ec70-4795-ad45-6bf082fa7958",
+    "generation_id": "f352ab47-f4d4-4946-bb1d-294b56e11fb3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "init-front-edited.png"
+  ]
+}

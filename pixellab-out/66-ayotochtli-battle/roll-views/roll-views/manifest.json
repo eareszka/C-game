@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "roll-views",
+  "generated": "2026-10-18T20:44:41Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "roll-views_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "ayotochtli-roll-views-south-00.png",
+        "ayotochtli-roll-views-south-east-01.png",
+        "ayotochtli-roll-views-east-02.png",
+        "ayotochtli-roll-views-north-east-03.png",
+        "ayotochtli-roll-views-north-04.png",
+        "ayotochtli-roll-views-north-west-05.png",
+        "ayotochtli-roll-views-west-06.png",
+        "ayotochtli-roll-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "f733e912-bacd-476b-80ff-7e92f36e5f97",
+        "generation_id": "7e5c45f0-ab34-4c4d-a2b8-43280e0b5a40"
+      }
+    }
+  ]
+}

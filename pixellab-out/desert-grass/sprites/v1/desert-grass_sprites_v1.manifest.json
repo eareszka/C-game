@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-grass_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art small clump of dry desert grass, tuft of thin straw-yellow blades fanning up and out from one base, a few blades bent, side view, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAECAIAAAA1REndAAAAHUlEQVR4nGNkQAInlxjD2fuOvYGzmZAV4QLUUwQABooEGPbscSUAAAAASUVORK5CYII=",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "grass-1.png"
+  ]
+}

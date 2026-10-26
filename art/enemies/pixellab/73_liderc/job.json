@@ -1,0 +1,53 @@
+{
+  "id": 73,
+  "name": "73-liderc",
+  "dir": "art/enemies/pixellab/73_liderc",
+  "description": "Liderc: a creepy ghost hen made of fire, dark charcoal body on two long thin bird legs, head, wings and tail burning as a few bold flame tongues in red, orange and yellow. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/73_liderc.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 260,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Burning idle in place, facing the same direction: the flames of its head, wings and tail flicker, then at the midpoint flare up tall and bright, then die back down. Body and legs stay still. Same size, black one-pixel outlines, flat fills, three fire tones. No sparks, smoke or walking.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4,
+          6,
+          8
+        ],
+        "D": [
+          0,
+          2,
+          4,
+          5,
+          8
+        ]
+      },
+      "despeckle": 4,
+      "clear_below": {
+        "row": 50,
+        "colors": [
+          "e8e0c0",
+          "f0bc3c",
+          "fc9838",
+          "b6433d"
+        ]
+      }
+    }
+  }
+}

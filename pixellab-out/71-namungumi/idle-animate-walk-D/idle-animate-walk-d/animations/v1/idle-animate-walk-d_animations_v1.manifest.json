@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-walk-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1256 characters>",
+      "format": "png"
+    },
+    "action": "Shuffles sideways in place, facing the viewer: the four webbed limbs step in turn while the dome rocks slightly side to side and the eye stays level. Same size, black one-pixel outlines, flat fills. No effects.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3d9fa6ee-3eab-4666-b5b1-cba169f59c1d",
+    "generation_id": "6c300907-5449-4930-8209-c976752cd6e1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "71-namungumi-idle-walk-d-00.png",
+    "71-namungumi-idle-walk-d-01.png",
+    "71-namungumi-idle-walk-d-02.png",
+    "71-namungumi-idle-walk-d-03.png",
+    "71-namungumi-idle-walk-d-04.png",
+    "71-namungumi-idle-walk-d-05.png",
+    "71-namungumi-idle-walk-d-06.png",
+    "71-namungumi-idle-walk-d-07.png",
+    "71-namungumi-idle-walk-d-08.png"
+  ]
+}

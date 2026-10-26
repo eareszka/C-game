@@ -99,6 +99,9 @@ bool item_use_antidote(Player* p);
 bool item_equip_swift_boots(Player* p, bool equip);
 bool item_footwear_equipped(const Player* p, Item it);
 bool item_equip_footwear(Player* p, Item it, bool equip);
+// The raft: worn, water is walkable and walking onto it sails (overworld.cpp).
+bool item_raft_worn(const Player* p);
+bool item_equip_raft(Player* p, bool equip);
 // Where a thing that is not a material comes from, for the menu to say: "FOUND
 // IN CATACOMBS", "SOLD IN A TOWN BOOK SHOP". Null for a material.
 const char* item_source(Item it);

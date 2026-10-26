@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-10-19T17:44:34Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "67-lagopus-idle-ur-00.png",
+        "67-lagopus-idle-ur-01.png",
+        "67-lagopus-idle-ur-02.png",
+        "67-lagopus-idle-ur-03.png",
+        "67-lagopus-idle-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "04948e77-9f90-4649-bd76-3894fbf68857",
+        "generation_id": "2b6296ef-4053-4b54-81b4-46c731404b43"
+      }
+    }
+  ]
+}

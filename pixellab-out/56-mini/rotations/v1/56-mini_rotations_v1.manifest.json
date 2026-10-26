@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "56-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1448 characters>",
+      "format": "png"
+    },
+    "description": "Moskitto, a giant mosquito crossed with a bumblebee: yellow and black striped fuzzy body, big red eyes, a long pale needle proboscis, a stinger, two large pale blue-grey wings, always flying, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "32568bf6-3f01-4edb-9143-63495dc3beee",
+    "generation_id": "85fd0eef-1795-4872-a320-9840d96238a3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

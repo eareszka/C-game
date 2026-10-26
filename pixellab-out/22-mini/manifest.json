@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "subject": "22-mini",
+  "generated": "2026-10-23T00:49:26Z",
+  "spent": {
+    "calls": 5,
+    "generations": 5.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "22-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "22-mini-walkd-00.png",
+        "22-mini-walkd-01.png",
+        "22-mini-walkd-02.png",
+        "22-mini-walkd-03.png",
+        "22-mini-walkd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "78f0e0b6-5c20-4723-bc5c-e1139aa7b372",
+        "generation_id": "e23dfbc3-fd5d-4aad-9a18-a2bc8f84b568"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "22-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "22-mini-walku-00.png",
+        "22-mini-walku-01.png",
+        "22-mini-walku-02.png",
+        "22-mini-walku-03.png",
+        "22-mini-walku-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1f368767-71f3-46b0-876a-2585cf6bbed5",
+        "generation_id": "5f0610c8-b677-461a-a6d5-ad7b99f4eed8"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "22-mini_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "22-mini-walkl-00.png",
+        "22-mini-walkl-01.png",
+        "22-mini-walkl-02.png",
+        "22-mini-walkl-03.png",
+        "22-mini-walkl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "c51d1895-1267-4916-a486-6adced929f69",
+        "generation_id": "a09e386d-b595-48db-9c05-a24cfb599bf5"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "22-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "22-mini-rot-south-00.png",
+        "22-mini-rot-south-east-01.png",
+        "22-mini-rot-east-02.png",
+        "22-mini-rot-north-east-03.png",
+        "22-mini-rot-north-04.png",
+        "22-mini-rot-north-west-05.png",
+        "22-mini-rot-west-06.png",
+        "22-mini-rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "de8c01e9-0cc4-4ee4-be30-149bbd940c98",
+        "generation_id": "8bc509af-123d-4234-a95e-034f9ce09672"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "22-mini_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "22-mini-stand.png"
+      ],
+      "ids": {
+        "background_job_id": "b8225945-f623-47b6-bcdd-fed87bf2915f",
+        "generation_id": "d20a7c33-9956-46ec-8bc5-3f76320420a8"
+      }
+    }
+  ]
+}

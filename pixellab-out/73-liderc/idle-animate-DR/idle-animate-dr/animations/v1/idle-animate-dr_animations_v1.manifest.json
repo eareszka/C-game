@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 964 characters>",
+      "format": "png"
+    },
+    "action": "<elided 286 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f0b69e52-9db0-420d-8646-cfa56f22937f",
+    "generation_id": "6195dd51-c1c6-4a94-82d4-434b95233b55"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "73-liderc-idle-dr-00.png",
+    "73-liderc-idle-dr-01.png",
+    "73-liderc-idle-dr-02.png",
+    "73-liderc-idle-dr-03.png",
+    "73-liderc-idle-dr-04.png",
+    "73-liderc-idle-dr-05.png",
+    "73-liderc-idle-dr-06.png",
+    "73-liderc-idle-dr-07.png",
+    "73-liderc-idle-dr-08.png"
+  ]
+}

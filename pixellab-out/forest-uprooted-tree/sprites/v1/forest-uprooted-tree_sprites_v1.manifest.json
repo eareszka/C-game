@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "forest-uprooted-tree_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art fallen uprooted tree lying on the ground, thick trunk with a big round tangle of roots and earth at one end, no leaves, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABwAAAAECAIAAAAS6sg1AAAAMUlEQVR4nGNkQAIJARpw9rMnv+Ds5+9fwdmZgTZw9qMnL+Dsi/cfwdlMyIZSCwwdQwFo+Qya9mi2IQAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "uprooted-tree.png"
+  ]
+}

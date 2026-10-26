@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "forest-uprooted-tree",
+  "generated": "2026-10-26T11:09:31Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "forest-uprooted-tree_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "uprooted-tree.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

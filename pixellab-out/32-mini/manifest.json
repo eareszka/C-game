@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "subject": "32-mini",
+  "generated": "2026-10-23T03:58:45Z",
+  "spent": {
+    "calls": 2,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "32-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "slitherl-00.png",
+        "slitherl-01.png",
+        "slitherl-02.png",
+        "slitherl-03.png",
+        "slitherl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "192282d8-229f-4fe5-91c4-4b80a3e0514a",
+        "generation_id": "083718ba-5200-4f0b-8d35-44c0383415a6"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "32-mini_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "init-front-edited.png"
+      ],
+      "ids": {
+        "background_job_id": "2a838418-ec70-4795-ad45-6bf082fa7958",
+        "generation_id": "f352ab47-f4d4-4946-bb1d-294b56e11fb3"
+      }
+    }
+  ]
+}

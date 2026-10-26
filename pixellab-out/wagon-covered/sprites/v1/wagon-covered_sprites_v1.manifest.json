@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "wagon-covered_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-bitforge",
+  "arguments": {
+    "description": "<elided 285 characters>",
+    "image_size": {
+      "width": 48,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "style_image": {
+      "type": "base64",
+      "base64": "<elided 664 characters>",
+      "format": "png"
+    },
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABwAAAAECAIAAAAS6sg1AAAAMUlEQVR4nGNkQALTSjzg7EdPXsDZF+8/grM3H30FZ5+6cA+h5vQFOJsJ2VBqgaFjKADtEg3g4MZ+rAAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "covered-48-1.png"
+  ]
+}

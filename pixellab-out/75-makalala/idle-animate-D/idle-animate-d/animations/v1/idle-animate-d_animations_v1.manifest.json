@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1088 characters>",
+      "format": "png"
+    },
+    "action": "<elided 287 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ed4a2a8f-bc75-4009-96dd-3250d9a1004c",
+    "generation_id": "401b9d6f-0056-45aa-b735-ce828a456423"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "75-makalala-idle-d-00.png",
+    "75-makalala-idle-d-01.png",
+    "75-makalala-idle-d-02.png",
+    "75-makalala-idle-d-03.png",
+    "75-makalala-idle-d-04.png",
+    "75-makalala-idle-d-05.png",
+    "75-makalala-idle-d-06.png",
+    "75-makalala-idle-d-07.png",
+    "75-makalala-idle-d-08.png"
+  ]
+}

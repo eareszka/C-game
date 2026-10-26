@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-dr",
+  "generated": "2026-10-18T20:46:18Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-dr_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "ayotochtli-idle-dr-00.png",
+        "ayotochtli-idle-dr-01.png",
+        "ayotochtli-idle-dr-02.png",
+        "ayotochtli-idle-dr-03.png",
+        "ayotochtli-idle-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "ac462f09-bb61-4dec-976f-b14b5c580930",
+        "generation_id": "36b6f61a-f86d-4b44-9d66-6cedbd0d567f"
+      }
+    }
+  ]
+}

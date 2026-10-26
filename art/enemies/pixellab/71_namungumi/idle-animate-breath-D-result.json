@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-breath-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\71-namungumi-idle-breath-d-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\71-namungumi\\idle-animate-breath-D\\idle-animate-breath-d\\animations\\v1\\idle-animate-breath-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "cd0aaa4c-f1b0-409f-ad2a-61a80648843d",
+    "generation_id": "1d67f7f4-0dbd-44a5-934f-a7226816dffb"
+  }
+}

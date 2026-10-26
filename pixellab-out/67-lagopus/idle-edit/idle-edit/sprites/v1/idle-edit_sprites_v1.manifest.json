@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 764 characters>",
+          "format": "png"
+        },
+        "width": 62,
+        "height": 45
+      }
+    ],
+    "image_size": {
+      "width": 62,
+      "height": 45
+    },
+    "description": "<elided 1565 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d69fb5c8-47ea-4066-8d30-9172234cbc26",
+    "generation_id": "3fc94a4c-f907-4b12-bdce-14aef189f958"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "67-lagopus-idle-frame0.png"
+  ]
+}

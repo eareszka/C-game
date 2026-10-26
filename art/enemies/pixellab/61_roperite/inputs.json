@@ -1,0 +1,14 @@
+{
+  "cli_version": "0.7.0",
+  "status": "design and running animation approved and installed 2026-10-18; assets/enemies/redraws/61_roperite.png; 61 marked done; originals and saved review preserved; installed duplicate front frame omitted; build and 12-second battle-render check passed",
+  "sha256": {
+    "assets/enemies/61_roperite.aseprite": "5dff15407918445c451d3f4388764db1e363a838f582a2ec89104eb0e618edb6",
+    "assets/enemies/61_roperite.png": "2f0c03b19ebaeda340253aa8e54e24745060962a9efaf320cfcd4fc794edec76",
+    "art/enemies/redraw_status.json": "d5a6cf73874af3d8649dcb4e49a2d324c5cfdff667e6f62da6ffde11338b250e",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png": "1fb1b19cae804a51cc02c75d6fed057829c6c2cd98e35e5cef126a70da40cac2",
+    "art/direction/approved_enemy_study/STYLE_BRIEF.md": "9cc75bd372dff93532177b433c92405d870a9505585c84066333039cfd42ff9d",
+    "art/direction/game_palette.gpl": "9f711e004bdcbb71978a4061ab871c56ca8234d0b11b042f9d6ec85ef2894caa",
+    "art/enemies/pixellab/61_roperite/source_frame0.png": "15c8ad93effdc40b42a62a57fab0a54b61b9a9f00451d5f22e255df7b82824ce",
+    "art/enemies/pixellab/61_roperite/prompt.txt": "ddb18504ff99ef6e31396121028c6d9ed19c8c46be4e06d27cf1181d14edd323"
+  }
+}

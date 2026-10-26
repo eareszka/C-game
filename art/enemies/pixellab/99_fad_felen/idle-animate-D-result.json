@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\99-fad-felen-idle-d-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\99-fad-felen\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "b6b35e45-332c-4fd2-8d53-629de4ee073a",
+    "generation_id": "a129a425-5933-497e-a895-f5ec7162a7e7"
+  }
+}

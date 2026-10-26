@@ -3,6 +3,7 @@
 #include "battle.h"
 #include "core.h"
 #include "fc_palette.h"
+#include "audio.h"
 #include <SDL2/SDL_image.h>
 #include <algorithm>
 #include <sstream>
@@ -171,6 +172,14 @@ namespace {
         row+=down-up;
         m->sel=list[std::max(0,std::min(row,n-1))];
     }
+    // What's worn rather than used: the boots or fins, and the raft.
+    bool wearable(Item it){return it==ITEM_SWIFT_BOOTS||it==ITEM_DIVING_FINS||it==ITEM_RAFT;}
+    bool worn(const Player* p,Item it){return it==ITEM_RAFT?item_raft_worn(p):item_footwear_equipped(p,it);}
+    bool wear(Player* p,Item it,bool on){return it==ITEM_RAFT?item_equip_raft(p,on):item_equip_footwear(p,it,on);}
+    // Why it can't come off now: only the raft, and only while it holds you up.
+    const char* wear_block(const GameMenu* m,const Player* p,Item it){
+        return it==ITEM_RAFT&&worn(p,it)?m->raft_block:nullptr;
+    }
     const char* medical_block(const GameMenu* m,const Player* p,Item it){
         if(m->healing_block)return m->healing_block;
         if(p->stats.hp<=0)return "CANNOT USE WHILE DEFEATED";
@@ -215,9 +224,11 @@ namespace {
             const char* why=medical_block(m,p,it);
             out[n++] = { it==ITEM_ANTIDOTE?CURE_ACTION:HEAL_ACTION,!why,why,-1,"USE" };
         }
-        else if(m->cmd==ITEMS&&!entries[m->sel].weapon&&(entries[m->sel].id==ITEM_SWIFT_BOOTS||entries[m->sel].id==ITEM_DIVING_FINS)){
-            out[n] = { FOOTWEAR_ACTION,true,"",-1,"" };
-            SDL_strlcpy(out[n++].label,item_footwear_equipped(p,(Item)entries[m->sel].id)?"UNEQUIP":"EQUIP",sizeof(out[0].label));
+        else if(m->cmd==ITEMS&&!entries[m->sel].weapon&&wearable((Item)entries[m->sel].id)){
+            Item it=(Item)entries[m->sel].id;
+            const char* why=wear_block(m,p,it);
+            out[n] = { FOOTWEAR_ACTION,!why,why?why:"",-1,"" };
+            SDL_strlcpy(out[n++].label,worn(p,it)?"UNEQUIP":"EQUIP",sizeof(out[0].label));
         }
         return n;
     }
@@ -241,12 +252,19 @@ namespace {
         }
     }
 }
+// What a note means, by its words: the few that report success ring, every
+// other one is a refusal.
+static bool happy_note(const char* n){
+    return n&&(SDL_strcmp(n,"DONE")==0||SDL_strcmp(n,"BOOK PURCHASED")==0||SDL_strcmp(n,"HEALTH RESTORED")==0||SDL_strcmp(n,"POISON CURED")==0);
+}
 void game_menu_say(GameMenu* m,const char* note){
     m->note=note;
     m->note_t=1.8f;
+    audio_play(happy_note(note)?SFX_DONE:SFX_DENY);
 }
 void game_menu_toggle(GameMenu* m){
     m->open=!m->open;
+    audio_play(m->open?SFX_CONFIRM:SFX_BACK);
     m->shop=false;
     m->focus=FOCUS_COMMANDS;
     m->sel=0;
@@ -264,8 +282,7 @@ void game_menu_open_shop(GameMenu* m,const Item* stock,int n){
     int list[most];
     m->sel=column(0,list,m,nullptr)||column(1,list,m,nullptr)?list[0]:0;
 }
-void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
-    if(!m->open)return;
+static void menu_step(GameMenu* m,Player* p,const Input* in,float dt){
     m->note_t=std::max(0.0f,m->note_t-dt);
     bool up=input_pressed(in,SDL_SCANCODE_UP),down=input_pressed(in,SDL_SCANCODE_DOWN),left=input_pressed(in,SDL_SCANCODE_LEFT),right=input_pressed(in,SDL_SCANCODE_RIGHT),ok=input_pressed(in,SDL_SCANCODE_Z)||input_pressed(in,SDL_SCANCODE_RETURN),back=input_pressed(in,SDL_SCANCODE_X);
     if(m->shop){
@@ -346,7 +363,7 @@ void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
     bool done=false;
     if(chosen.ready){
         if(chosen.kind==EQUIP_ACTION)done=craft_equip(p,(WeaponType)entries[m->sel].id);
-        else if(chosen.kind==FOOTWEAR_ACTION)done=item_equip_footwear(p,(Item)entries[m->sel].id,!item_footwear_equipped(p,(Item)entries[m->sel].id));
+        else if(chosen.kind==FOOTWEAR_ACTION)done=wear(p,(Item)entries[m->sel].id,!worn(p,(Item)entries[m->sel].id));
         else if(chosen.kind==CURE_ACTION)done=item_use_antidote(p);
         else if(chosen.kind==HEAL_ACTION)done=entries[m->sel].id==ITEM_MEDKIT?item_use_medkit(p):item_use_band_aid(p);
         else if(chosen.kind==ESCAPE_ACTION){
@@ -359,6 +376,23 @@ void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
         }
     }
     game_menu_say(m,done?(chosen.kind==HEAL_ACTION?"HEALTH RESTORED":chosen.kind==CURE_ACTION?"POISON CURED":"DONE"):chosen.why);
+}
+// The step, then its sound from what changed: closing or a step out is BACK,
+// a step in or a request made is CONFIRM, a moved selection is CURSOR. A note
+// set this frame has already sounded (game_menu_say).
+void game_menu_update(GameMenu* m,Player* p,const Input* in,float dt){
+    if(!m->open)return;
+    MenuFocus f0=m->focus;
+    int sel0=m->sel,cmd0=m->cmd,act0=m->act,shop0=m->shop_cmd;
+    bool save0=m->save_request,esc0=m->escape_request;
+    float note0=m->note_t;
+    menu_step(m,p,in,dt);
+    if(m->note_t>note0)return;
+    if(!m->open)audio_play(SFX_BACK);
+    else if((m->save_request&&!save0)||(m->escape_request&&!esc0))audio_play(SFX_CONFIRM);
+    else if(m->focus>f0)audio_play(SFX_CONFIRM);
+    else if(m->focus<f0)audio_play(SFX_BACK);
+    else if(m->sel!=sel0||m->cmd!=cmd0||m->act!=act0||m->shop_cmd!=shop0)audio_play(SFX_CURSOR);
 }
 void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
     if(!m->open)return;
@@ -419,7 +453,7 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
         else{
             Item it=(Item)entries[i].id;
             SDL_strlcpy(line,item_name(it),sizeof(line));
-            if(item_footwear_equipped(p,it))SDL_strlcpy(quantity,"WORN",sizeof(quantity));
+            if(worn(p,it))SDL_strlcpy(quantity,"WORN",sizeof(quantity));
             const Craft* recipe=made_by(it);
             if(item_is_material(it)||(recipe&&recipe->max==999))
                 SDL_snprintf(quantity,sizeof(quantity),"x%d",item_count(p,it));
@@ -506,12 +540,14 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
                 }
                 wrapped(r,nu?b:"NOTHING YET",LST_X+14,273,LST_W-28,3);
             }
-            if(it==ITEM_SWIFT_BOOTS||it==ITEM_DIVING_FINS){
-                bool worn=item_footwear_equipped(p,it);
-                const char* action=worn?"UNEQUIP":"EQUIP";
+            if(wearable(it)){
+                bool on=worn(p,it);
+                const char* block=wear_block(m,p,it);
+                const char* action=on?"UNEQUIP":"EQUIP";
                 if(m->focus==FOCUS_ACTIONS)text(r,GLYPH_CURSOR,LST_X+12,314,2,yellow);
-                text(r,m->focus==FOCUS_ACTIONS?action:worn?"Z: CHOOSE, THEN UNEQUIP":"Z: CHOOSE, THEN EQUIP",LST_X+28,314,2,white);
-                text(r,worn?"EQUIPPED":"NOT EQUIPPED",LST_X+14,338,2,grey);
+                text(r,m->focus==FOCUS_ACTIONS?action:on?"Z: CHOOSE, THEN UNEQUIP":"Z: CHOOSE, THEN EQUIP",LST_X+28,314,2,block?grey:white);
+                if(block)fitted(r,block,LST_X+14,338,LST_W-28,2,grey);
+                else text(r,on?"EQUIPPED":"NOT EQUIPPED",LST_X+14,338,2,grey);
             }
             if(it==ITEM_ESCAPE_CHARM||it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE){
                 const char* block=it==ITEM_ESCAPE_CHARM?m->escape_block:medical_block(m,p,it);

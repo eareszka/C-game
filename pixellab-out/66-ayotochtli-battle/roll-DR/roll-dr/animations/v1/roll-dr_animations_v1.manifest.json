@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "roll-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 756 characters>",
+      "format": "png"
+    },
+    "action": "<elided 610 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "34f3c7ff-640b-44da-8eaf-fd1bdedab80c",
+    "generation_id": "b3c9c329-f38a-4cef-a949-59504e58f0cf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ayotochtli-roll-dr-00.png",
+    "ayotochtli-roll-dr-01.png",
+    "ayotochtli-roll-dr-02.png",
+    "ayotochtli-roll-dr-03.png",
+    "ayotochtli-roll-dr-04.png"
+  ]
+}

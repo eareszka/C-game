@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "standing-animate-d-try2_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1888 characters>",
+      "format": "png"
+    },
+    "action": "<elided 479 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "95ad9394-9751-4d67-a21b-72c0f96b5ee5",
+    "generation_id": "f54447e7-a894-4ef3-9dae-2e5f7841a822"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "99-fad-felen-standing-d-try2-00.png",
+    "99-fad-felen-standing-d-try2-01.png",
+    "99-fad-felen-standing-d-try2-02.png",
+    "99-fad-felen-standing-d-try2-03.png",
+    "99-fad-felen-standing-d-try2-04.png",
+    "99-fad-felen-standing-d-try2-05.png",
+    "99-fad-felen-standing-d-try2-06.png",
+    "99-fad-felen-standing-d-try2-07.png",
+    "99-fad-felen-standing-d-try2-08.png"
+  ]
+}

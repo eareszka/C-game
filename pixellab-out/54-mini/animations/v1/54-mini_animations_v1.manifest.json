@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "54-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 832 characters>",
+      "format": "png"
+    },
+    "action": "a beaver-like creature bounding like a kangaroo: crouched, then a big leap off its long hind legs stretched out in the air with its flat tail out behind, then landing crouched, leaping to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a9b509c5-f71b-42b7-87d5-3d4b7b19eadb",
+    "generation_id": "776d4e77-9724-4970-9a36-605422044a96"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "leapl-00.png",
+    "leapl-01.png",
+    "leapl-02.png",
+    "leapl-03.png",
+    "leapl-04.png"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "id": 44,
+  "name": "44-itqiirpak",
+  "dir": "art/enemies/pixellab/44_itqiirpak",
+  "match": "art/enemies/pixellab/boss_reference_boiuna.png",
+  "description": "Itqiirpak: a giant monstrous tan flesh hand standing palm-out, mouths on every fingertip and a gaping mouth in the palm.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/44_itqiirpak.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 8,
+      "ground": true,
+      "despeckle": 3,
+      "action": "The giant hand stands palm-out in place: its fingers slowly flex and spread, the fingertip mouths gnash open and shut, and the big palm mouth opens wide and closes. The wrist stays planted. Same size, black one-pixel outlines, flat fills. No effects.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
+      }
+    }
+  }
+}

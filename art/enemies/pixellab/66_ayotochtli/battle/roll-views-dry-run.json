@@ -1,0 +1,20 @@
+{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAjCAYAAADSQImyAAAB/klEQVR4nO1XzUrDQBDejV49S1E8CBU8Cz6Eh/YFBKFXj0HoO4g326Mg9AWag2BPPQmKQsGDYCAHUcSzD7AyS6edbCchm91EhXwQkkw2u9+385cI0aBBgwYNGvxjyArmVHWuK6sgPpv2F8a35D01qNMbeV0/EH6goqvjBXkgjYcJHDc/q78gQAHpnd1tfcORNj3gU0TggzzuNhAyQiSF+Ol7xRY5ilj3ETYm8kRwuDjtinAwVmVyQvoiD7sbDsb6OktY3ph4+UzWnsS4+Mv1mT7aa62UF+AabEeHe/o52nygjAfYeAVirc0t8fn1IfZPztnniJuHVy044nNGVp4DpvuRBJCncY3AsEGAJ8JBuiIRT1rlgksSs4DdB/JAcomutlMv+ELgczIIDUCa/Or9rwvo9EbicniXsmFc09ChADvmBgrNqlC15ACImPQS4YoOSeJ5P7B6v3QO0OQDEubCuNtc3NOx0XwerktXVka5RmVb17lGBrBtZqU8AIu1DzZW7FkduKjYsKZOLGGhsi7nEDvM5VRGfYiIS4aOqwDtBSSAJIoIwvJL3zOgbD6vXX/pVN4nAweuT4TkPVJKZV3/xIoSy2tm3LPQsNVShYqSy8Lt/bOYPCZZXrDa1MpCqEiouBD3BfgnBhGLM0lC9qBjZ9O+VcJycPaA5bzceCcOPxgHMwHRqLdYAAAAAElFTkSuQmCC",
+      "format": "png"
+    },
+    "description": "The same Ayotochtli curled into a compact spherical armored tan shell ball, head ears legs and tail tucked inside, broad shell seams, flat black outlines. Do not uncurl the ball or invent a face or limbs.",
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T00:27:00Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "75-makalala-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "b65b8f06-462d-4d55-b863-712cdd0ea6aa",
+        "generation_id": "51c939b7-1ea3-4902-8b00-283a34ed151c"
+      }
+    }
+  ]
+}

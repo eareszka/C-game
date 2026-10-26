@@ -1,0 +1,21 @@
+﻿{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAGIAAABBCAYAAAAqnXGWAAADw0lEQVR4nO2cv0scQRTHZyVNOotUIURIYyAQUtgEFFLYXCMhRSBgESwtQsr4F5gmYJVSLAKCRRAJ2FgEFNJYSCAQG0EJqVKkS7nhO7fvnJ2buduVA79vfR849/Z2lZ33vffTvXPOMAzDMAzDMAzDMAzDMAzDmDyF6yaltjWquMi2Apx8fecuzn65+w/uuSfP3qtYK/XFXUUAICKE26WVT9TrnXL6KSEAHvs72/4FGB2e8OP4cHBSJVIYsowJi1Cur874bWXo0Nh+H8f2NpfjY8akhTi5FCF7XiSWMWkR1ldnmhiX3ivU54jey1dNTiskZ9x5POMYoa0ixgBP8E/WPp43XYdP6qAqaanWPqXZE3rNvKEGSlnGCkqtECBo1hqB8hZ9BSNsQpSJEjRr1L3N5VZ/XDxI+g1jhBB/D+b9Y1w5GvUNqcfQ76BqYi1jqRKWc67cr548PZh304tHuWusjTRSRDMmiOB3JDSxJexbjoui1/cKv4Pt9OJRGRo0nimliPJAGb/GGJrYcoTnW98T/FZEEWSymhNBDC3zp9hrcKxFyXujhSh6lQgITwE+vIwSAKxsHPqkDIPjXIQgGQhi/yol700MTUMgT4wLRSF/vp+7xTfbbvPtgvu8d+yk8WOvmKjcM07avSAUNQXGf7E057dbuz9r43FQhSW6tVNdTIRPsmGvUP1zxzOuh4AQYPbuP3oRKC8oYFByigipfREnJYx4hfD6+UPZp1s33QUFlDAcwgyMjVj/aG5h8K9PICIg/CAp58QQWEVgrZpqwNgQJOwFZCuG39jYdTkgJPhydhmiGGEWogjDSgrxlFGIR6CaYvUGFeVrDrkx4PT37ZECjBOTBXYhiibDORgb4SuRD+IkTQu7EBKifOJ2O9uDxgyJ27nzrKElr0Svl6zhSYMQNUZ1xmL83DFmr2BO1kPE+QCJWozLbuhOCdGEVIjSIBBlvExQilHDkYV4ScrQ4bnBaIN2zVpyRJGrnmDs8F2fSdKUxlcdmk6jPJHrIyDIqOTNBv07JaJfxkYEM6TacebZknqP2IryQRdE0JQjWlVB2kRQ6RGJ+D9k8OoY1X1LnRQiB0bdqKLwqKaydDeSdUaI2crQCQqMusOeAWJo8Q51Qgg5MfAjFCM4j1qMKY2fiRiDF+ND/x41L0rD37tWNAnRBh+mZGTOelNZJ4RYa3HbZNvPUVwHaoVoQnTHN3Vfoa6ha0FoeGoR1HnEWn2c3Sk0CVGEO0HDZlwTpXyTgKbOuYuU8hm4hl//oAL6JJag7NBaDEfGfxyl76imhX8RAAAAAElFTkSuQmCC",
+      "format": "png"
+    },
+    "action": "Looping sprint in place, facing the same direction throughout. Alternate two long bird legs through contact, push-off, flight and recovery, with small body bob and a trailing rattle tail. Rope snout lasso bounces as one clear loop with one forward flick near the middle. Preserve creature anatomy, scale, tiny pixel clusters, black outlines and flat colors; no camera motion or translation.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

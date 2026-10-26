@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "headup-edit",
+  "generated": "2026-10-19T02:48:21Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "headup-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-headup-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "7aa6a1d3-70b8-445f-a02b-ed957347f8b9",
+        "generation_id": "8acf4a76-2f83-477a-80bb-a124f9db9e4c"
+      }
+    }
+  ]
+}

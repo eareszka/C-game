@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-r_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\67-lagopus-idle-r-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\67-lagopus-idle-r-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\67-lagopus-idle-r-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\67-lagopus-idle-r-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\67-lagopus-idle-r-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\67-lagopus\\idle-animate-R\\idle-animate-r\\animations\\v1\\idle-animate-r_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "05301bd0-f78c-43a8-8909-fb1035632188",
+    "generation_id": "2d7144d4-f329-4068-91e4-a06042ee1b2d"
+  }
+}

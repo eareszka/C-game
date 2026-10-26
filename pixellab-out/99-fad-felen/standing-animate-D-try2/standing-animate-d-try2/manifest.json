@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "standing-animate-d-try2",
+  "generated": "2026-10-19T01:01:41Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "standing-animate-d-try2_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "99-fad-felen-standing-d-try2-00.png",
+        "99-fad-felen-standing-d-try2-01.png",
+        "99-fad-felen-standing-d-try2-02.png",
+        "99-fad-felen-standing-d-try2-03.png",
+        "99-fad-felen-standing-d-try2-04.png",
+        "99-fad-felen-standing-d-try2-05.png",
+        "99-fad-felen-standing-d-try2-06.png",
+        "99-fad-felen-standing-d-try2-07.png",
+        "99-fad-felen-standing-d-try2-08.png"
+      ],
+      "ids": {
+        "background_job_id": "95ad9394-9751-4d67-a21b-72c0f96b5ee5",
+        "generation_id": "f54447e7-a894-4ef3-9dae-2e5f7841a822"
+      }
+    }
+  ]
+}

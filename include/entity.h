@@ -267,6 +267,9 @@ typedef struct {
     int poisoned;
     float poison_timer;
     int footwear; // Footwear: one pair worn, 0/1 retains the original boots save layout.
+    // The raft in use (item_raft_worn): only a worn raft floats. Put on when
+    // crafted; taken off from ITEMS, never while afloat. Save version 18.
+    int raft_worn;
 } Player;
 
 // Active gameplay only: lose 1 HP per second while poisoned, never below 1.

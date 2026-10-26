@@ -1,5 +1,6 @@
 #include "fc_palette.h"
 #include "core.h"
+#include "audio.h"
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
@@ -197,6 +198,20 @@ SDL_Rect draw_speech(SDL_Renderer* ren, const char* text, int part, float t, Spe
         if (k + 1 < b) acc += speech_pause(at(k), next(k));
     }
     if (state) *state = shown < b ? SPEECH_TYPING : b == off[n] ? SPEECH_END : SPEECH_WAIT;
+    // The typing heard: a blip as letters arrive (the clip's own minimum gap
+    // thins it to every other one), none for a space. Followed across frames
+    // by the text's address and part, so a new page starts its own count.
+    {
+        static const char* blip_text = nullptr;
+        static int blip_part = -1, blip_shown = 0;
+        if (text != blip_text || part != blip_part) { blip_text = text; blip_part = part; blip_shown = a; }
+        if (shown > blip_shown) {
+            bool letters = false;
+            for (int k = blip_shown; k < shown && !letters; k++) letters = at(k) != ' ';
+            if (letters) audio_play(SFX_TEXT_BLIP);
+            blip_shown = shown;
+        }
+    }
     // Stepped: a beat, then a third of a line a jump.
     int lift = slide < 0.0f ? 0 : (int)(slide / SPEECH_SCROLL_T * SPEECH_SCROLL_STEPS) * LINE / SPEECH_SCROLL_STEPS;
 

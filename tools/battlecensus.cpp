@@ -188,7 +188,7 @@ int main(int argc, char** argv) {
     const float drain = en->max_hp / fight;
     float home_x = ARENA_W * 0.5f, home_y = ARENA_H - 80.0f;
     if (const char* hm = getenv("HOME_AT")) sscanf(hm, "%f,%f", &home_x, &home_y);   // where the bot drifts back to
-    int hits = 0, peak = 0, cap_frames = 0, close_spawns = 0;
+    int hits = 0, peak = 0, cap_frames = 0, close_spawns = 0, poison_hits = 0;
     float tight = 1e9f, tight_t = 0.0f, min_spawn = 1e9f;
     bool was_active[MAX_ENEMY_BULLETS] = {};
     float t = 0.0f;
@@ -550,13 +550,15 @@ int main(int argc, char** argv) {
         if (bs._bp.hp < hp0) {
             bool body = !hitter;   // a laser counts like a body: once a touch
             if (!(body && body_last)) hits++;
+            if (hitter && hitter->poison) poison_hits++;
             body_last = body;
             printf("  HIT t=%.2f enemy hp %.0f%% player (%.0f,%.0f) enemy (%.0f,%.0f) bullets %d"
-                   " | shot r%.1f speed %.0f age %.2f%s\n",
+                   " | shot r%.1f speed %.0f age %.2f%s%s\n",
                    t, 100.0f * en->hp / en->max_hp, bs._bp.x, bs._bp.y, en->x, en->y, act,
                    hitter ? hitter->radius : 0.0f, hitter ? hypotf(hitter->vx, hitter->vy) : 0.0f,
                    hitter ? hitter->age : 0.0f,
-                   !hitter ? (laser ? " LASER" : " BODY") : hitter->half_len > 0 ? " log" : hitter->launch_speed > 0 ? " mine" : "");
+                   !hitter ? (laser ? " LASER" : " BODY") : hitter->half_len > 0 ? " log" : hitter->launch_speed > 0 ? " mine" : "",
+                   hitter && hitter->poison ? " POISON" : "");
             if (shots && hits <= 4) shot(hits);
         }
         // env TELE_LOG=1: each frame's telegraph lines (H/V, stage, fade, length).
@@ -613,6 +615,7 @@ int main(int argc, char** argv) {
            id, en->name(), seed, t, hits, peak, MAX_ENEMY_BULLETS, cap_frames,
            close_spawns, min_spawn, tight, tight_t);
     printf("  enemy nearest %.0f px, passes within 60 px: %d\n", near_min, near_passes);
+    if (poison_hits) printf("  poison hits %d, player poisoned after: %s\n", poison_hits, player.poisoned ? "yes" : "NO");
     if (!door_moves.empty()) {
         std::sort(door_moves.begin(), door_moves.end());
         printf("  walls %zu, door moves px: min %.0f median %.0f p90 %.0f max %.0f\n", door_moves.size() + 1,

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "roll-d",
+  "generated": "2026-10-18T20:48:37Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "roll-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "ayotochtli-roll-d-00.png",
+        "ayotochtli-roll-d-01.png",
+        "ayotochtli-roll-d-02.png",
+        "ayotochtli-roll-d-03.png",
+        "ayotochtli-roll-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "0c9fd200-354f-4842-9a9c-83dd7aa0a1a6",
+        "generation_id": "ea2c6cb1-7322-4288-b1a4-59b73cf1c38b"
+      }
+    }
+  ]
+}

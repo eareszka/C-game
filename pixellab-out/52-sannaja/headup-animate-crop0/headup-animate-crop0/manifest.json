@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "headup-animate-crop0",
+  "generated": "2026-10-19T13:43:25Z",
+  "spent": {
+    "calls": 1,
+    "generations": 8.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "headup-animate-crop0_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "52-sannaja-headup-crop0-00.png",
+        "52-sannaja-headup-crop0-01.png",
+        "52-sannaja-headup-crop0-02.png",
+        "52-sannaja-headup-crop0-03.png",
+        "52-sannaja-headup-crop0-04.png",
+        "52-sannaja-headup-crop0-05.png",
+        "52-sannaja-headup-crop0-06.png",
+        "52-sannaja-headup-crop0-07.png",
+        "52-sannaja-headup-crop0-08.png"
+      ],
+      "ids": {
+        "background_job_id": "a89a9689-50ff-4526-b122-ef74ae1fc399",
+        "generation_id": "d4ee89b3-9d42-4a8e-bda3-9a6108f7b5fe"
+      }
+    }
+  ]
+}

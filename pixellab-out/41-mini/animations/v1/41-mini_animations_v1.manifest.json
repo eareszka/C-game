@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "41-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1940 characters>",
+      "format": "png"
+    },
+    "action": "a big bear lumbering to the left on all fours, heavy walk, legs stepping in turn, head low",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b8d5e534-d06d-4924-b1be-f35d1148182f",
+    "generation_id": "09fb38e1-9e3a-4738-b8d3-f5a3548628fa"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

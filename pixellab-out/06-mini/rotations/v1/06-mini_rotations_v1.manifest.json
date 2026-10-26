@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "06-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 6992 characters>",
+      "format": "png"
+    },
+    "description": "giant seven-headed brown boar, each head one glowing yellow eye and pale tusks, bamboo and a blue stream on its back, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3926818d-3e44-43e3-b942-3d5ccf0800ae",
+    "generation_id": "d3441c2f-886b-4d96-8b9c-ee014923929f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "06-mini-rot-south-00.png",
+    "06-mini-rot-south-east-01.png",
+    "06-mini-rot-east-02.png",
+    "06-mini-rot-north-east-03.png",
+    "06-mini-rot-north-04.png",
+    "06-mini-rot-north-west-05.png",
+    "06-mini-rot-west-06.png",
+    "06-mini-rot-south-west-07.png"
+  ]
+}

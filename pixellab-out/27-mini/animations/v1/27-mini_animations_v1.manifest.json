@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "27-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2392 characters>",
+      "format": "png"
+    },
+    "action": "slithering forward to the left like a snake, its long body undulating in waves along the ground, head raised",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "acc06681-c8f5-4e34-8ca4-7417676dd786",
+    "generation_id": "f7a11f31-0f3d-43dd-81af-97a6afdae88c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "27-mini-slitherl-00.png",
+    "27-mini-slitherl-01.png",
+    "27-mini-slitherl-02.png",
+    "27-mini-slitherl-03.png",
+    "27-mini-slitherl-04.png"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "side-edit",
+  "generated": "2026-10-19T00:58:42Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "side-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "39-ajaju-side-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "28e979c6-eb97-4106-b335-11604e46b232",
+        "generation_id": "75cbfbab-f65a-4760-882e-2bf07db7fa98"
+      }
+    }
+  ]
+}

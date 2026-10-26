@@ -1,0 +1,32 @@
+{
+  "id": 52,
+  "name": "52-sannaja-close",
+  "dir": "art/enemies/pixellab/52_sannaja/half",
+  "description": "",
+  "prompts": {
+    "cbody": "prompt_cbody.txt",
+    "chead": "prompt_chead.txt"
+  },
+  "sheets": {
+    "cbody": {
+      "png": "art/enemies/pixellab/52_sannaja/half/cell_cbody.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "cref"
+    },
+    "chead": {
+      "png": "art/enemies/pixellab/52_sannaja/half/cell_chead.png",
+      "frames": 1,
+      "rows": true,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "cref"
+    }
+  }
+}

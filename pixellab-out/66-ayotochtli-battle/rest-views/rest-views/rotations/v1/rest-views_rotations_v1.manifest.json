@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "rest-views_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 720 characters>",
+      "format": "png"
+    },
+    "description": "<elided 267 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "be9d6c0e-e373-4cac-b272-987363f0cfa0",
+    "generation_id": "ee2dffb2-0451-4e7b-9e9f-693f197f9959"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ayotochtli-rest-views-south-00.png",
+    "ayotochtli-rest-views-south-east-01.png",
+    "ayotochtli-rest-views-east-02.png",
+    "ayotochtli-rest-views-north-east-03.png",
+    "ayotochtli-rest-views-north-04.png",
+    "ayotochtli-rest-views-north-west-05.png",
+    "ayotochtli-rest-views-west-06.png",
+    "ayotochtli-rest-views-south-west-07.png"
+  ]
+}

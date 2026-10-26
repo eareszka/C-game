@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "run": "idle-ur_animations_v2",
+  "provider": "pixellab",
+  "route": "background-job",
+  "collected": "0f6b16cc-1dbc-4c24-9c5e-d82c7a2bfc06",
+  "ids": {
+    "job_id": "0f6b16cc-1dbc-4c24-9c5e-d82c7a2bfc06"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ayotochtli-idle-ur-00.png",
+    "ayotochtli-idle-ur-01.png",
+    "ayotochtli-idle-ur-02.png",
+    "ayotochtli-idle-ur-03.png",
+    "ayotochtli-idle-ur-04.png"
+  ]
+}

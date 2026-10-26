@@ -1,6 +1,8 @@
 #include "overworld.h"
 #include "resource_node.h"
 #include "collision.h"
+#include "crafting.h"   // item_raft_worn: only a worn raft floats
+#include "persist.h"    // a destroyed gravestone or oilbloom stays gone
 #include <math.h>
 
 // float_ok: the player has a raft, so water is somewhere to be, not a wall.
@@ -121,10 +123,16 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     weapon_swing_update(&ow->swing, player, in, dt, hx, hy, resources, map,
                        cam, -1, h);
 
-    // Any destroyed gravestone may have been hiding a dungeon entrance.
+    // Any destroyed gravestone may have been hiding a dungeon entrance. And
+    // whatever node broke stays broken (persist.h): an oilbloom by its site,
+    // anything else by the tile it stood on.
     if (harvest_any_destroyed(h)) {
         for (int i = 0; i < resources->count; i++) {
             ResourceNode* n = &resources->nodes[i];
+            if (!n->alive) {
+                if (n->site >= 0) persist_oilbloom_add(n->site);
+                else persist_tile_add(tilemap_tile_key((int)(n->x / TILE_SIZE), (int)(n->y / TILE_SIZE)));
+            }
             if (n->type == RESOURCE_GRAVESTONE &&
                 !n->alive && n->hides_entrance && n->reveal_tx >= 0) {
                 map->tiles[n->reveal_ty][n->reveal_tx] = n->reveal_tile_id;
@@ -141,7 +149,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     float anim_speed;
 
     auto feet_on_water = [&]() {
-        return player->raft > 0 && !player->at_sea &&
+        return item_raft_worn(player) && !player->at_sea &&
                tilemap_pixel_water(map, ow->x + (HB_X1 + HB_X2) * 0.5f, ow->y + (HB_Y1 + HB_Y2) * 0.5f);
     };
 
@@ -167,7 +175,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         if (!feet_on_water()) ow->sailing = false;   // landed
         player->is_moving = 0;
     } else if (dx != 0.0f || dy != 0.0f) {
-        OWCollCtx ctx = { map, resources, player->raft > 0 || player->at_sea != 0, player->at_sea != 0 };
+        OWCollCtx ctx = { map, resources, item_raft_worn(player) || player->at_sea != 0, player->at_sea != 0 };
         float speed = player->at_sea ? BOAT_SPEED : ow->speed;   // the boat is quicker than a walk
         if (noclip) {
             ow->x += dx * speed * dt;

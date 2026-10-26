@@ -1,0 +1,237 @@
+{
+  "id": 52,
+  "name": "52-sannaja",
+  "dir": "art/enemies/pixellab/52_sannaja",
+  "description": "",
+  "prompts": {
+    "t00": "prompt_t00.txt",
+    "t01": "prompt_t01.txt",
+    "t02": "prompt_t02.txt",
+    "t03": "prompt_t03.txt",
+    "t04": "prompt_t04.txt",
+    "t05": "prompt_t05.txt",
+    "t06": "prompt_t06.txt",
+    "t07": "prompt_t07.txt",
+    "t08": "prompt_t08.txt",
+    "t09": "prompt_t09.txt",
+    "t10": "prompt_t10.txt",
+    "t11": "prompt_t11.txt",
+    "t12": "prompt_t12.txt",
+    "t13": "prompt_t13.txt",
+    "t14": "prompt_t14.txt",
+    "t15": "prompt_t15.txt",
+    "t16": "prompt_t16.txt",
+    "t17": "prompt_t17.txt"
+  },
+  "sheets": {
+    "t00": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "legs0"
+    },
+    "t01": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t00"
+    },
+    "t02": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t01"
+    },
+    "t03": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t02"
+    },
+    "t04": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t03"
+    },
+    "t05": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t04"
+    },
+    "t06": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t05"
+    },
+    "t07": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t06"
+    },
+    "t08": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t07"
+    },
+    "t09": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t08"
+    },
+    "t10": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t09"
+    },
+    "t11": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t10"
+    },
+    "t12": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t11"
+    },
+    "t13": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t12"
+    },
+    "t14": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t13"
+    },
+    "t15": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t14"
+    },
+    "t16": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t15"
+    },
+    "t17": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "t16"
+    },
+    "legs0": {
+      "png": "assets/enemies/redraws/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 133,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": null
+    }
+  }
+}

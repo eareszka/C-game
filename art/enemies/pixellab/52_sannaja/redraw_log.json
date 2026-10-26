@@ -1,0 +1,50 @@
+[
+ {
+  "frame": "t03",
+  "try": 5,
+  "ok": true,
+  "checks": {
+   "colours<=9": true,
+   "on palette": true,
+   "outline": true,
+   "interior 9.35-14.49": true,
+   "isolated<1%": true,
+   "feet": true,
+   "ground": true,
+   "bounds": true,
+   "similar>=0.93": true
+  }
+ },
+ {
+  "frame": "t04",
+  "try": 1,
+  "ok": false,
+  "checks": {
+   "colours<=9": true,
+   "on palette": true,
+   "outline": true,
+   "interior 9.35-14.49": true,
+   "isolated<1%": true,
+   "feet": false,
+   "ground": true,
+   "bounds": true,
+   "similar>=0.93": false
+  }
+ },
+ {
+  "frame": "t04",
+  "try": 2,
+  "ok": false,
+  "checks": {
+   "colours<=9": true,
+   "on palette": true,
+   "outline": true,
+   "interior 9.35-14.49": true,
+   "isolated<1%": true,
+   "feet": true,
+   "ground": true,
+   "bounds": true,
+   "similar>=0.93": false
+  }
+ }
+]

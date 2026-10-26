@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "stand-edit",
+  "generated": "2026-10-19T15:38:19Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "stand-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-half-stand-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "6be562fd-70d3-489d-8a1c-17be3f000675",
+        "generation_id": "588a1b37-3540-4d1f-84ba-e53de3f4c4cf"
+      }
+    }
+  ]
+}

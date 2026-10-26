@@ -1,0 +1,9 @@
+{
+  "id": 49, "name": "49-physeter", "dir": "art/enemies/pixellab/49_physeter",
+  "description": "Physeter: huge grey sperm-whale monster, blunt head, amber eyes, short pale horns, twin water spout, wide jaw of big teeth.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/redraws/49_physeter.png", "frames": 8, "rows": true, "ms": 260,
+    "views": ["D"], "make": "breathe", "pivot": 105, "breathe": [0, 0, 1, 1, 0, 0, 2, 2]
+  }}
+}

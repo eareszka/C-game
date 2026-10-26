@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "74-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1308 characters>",
+      "format": "png"
+    },
+    "description": "Bes Rap, a crouching pink pig spirit like a gargoyle, a long pig snout with a bright pink nose and bared teeth, grey spikes down its back, long thin arms, big haunches, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b85d7367-0f8d-42f0-9e93-db122e88488b",
+    "generation_id": "fad6a067-3db7-458e-a0a7-8645bf814f2d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

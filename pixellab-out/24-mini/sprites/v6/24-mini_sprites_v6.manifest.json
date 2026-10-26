@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "24-mini_sprites_v6",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 364 characters>",
+      "format": "png"
+    },
+    "description": "simplify into a chunky small map sprite of the same red-hot snake in the same pose: bigger flat colour shapes, fewer details, orange body, dark red underside, white-hot blade tip, bold black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "1eca4b52-6858-4e97-90d1-42072a3f4644",
+    "generation_id": "ca2e7e97-cd20-4023-a83e-dfef08328d26"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "24-mini-dash-l.png"
+  ]
+}

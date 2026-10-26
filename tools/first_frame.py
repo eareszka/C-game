@@ -89,11 +89,12 @@ def game_palette():
     return out
 
 
-def checks(g, pal, w, h, open_ok=lambda p, c: False, old=None, cap=44, max_colours=8):
+def checks(g, pal, w, h, open_ok=lambda p, c: False, old=None, cap=44, max_colours=8, right_open=False):
     """Asserts what must hold of a frame and returns the numbers to show with it.
-    open_ok(p, c): a colour pixel allowed to meet empty space (a plume, a claw, a point)."""
+    open_ok(p, c): a colour pixel allowed to meet empty space (a plume, a claw, a point).
+    right_open: the drawing runs on out of the frame's right edge (cut there, open, no line)."""
     out, RGB = [], rgb(pal)
-    assert all(1 <= x < w - 1 and 1 <= y < h for x, y in g), 'a part touches the canvas side or the top row'
+    assert all(1 <= x < w - (0 if right_open else 1) and 1 <= y < h for x, y in g), 'a part touches the canvas side or the top row'
     used = set(g.values())
     assert all(RGB[c] in game_palette() for c in used), 'off-palette colour'
     assert len(used - {'K'}) <= max_colours
@@ -106,7 +107,7 @@ def checks(g, pal, w, h, open_ok=lambda p, c: False, old=None, cap=44, max_colou
                + (f'; old {old}' if old else ''))
     assert max(ys) - min(ys) + 1 <= cap, 'taller than its tier'
     open_px = sorted(p for p, c in g.items() if c != 'K' and any((p[0] + dx, p[1] + dy) not in g for dx, dy in N4))
-    stray = [p for p in open_px if not open_ok(p, g[p])]
+    stray = [p for p in open_px if not open_ok(p, g[p]) and not (right_open and p[0] == w - 1)]
     assert not stray, f'outline open at {stray}'
     out.append(f'outline: closed ({len(open_px)} colour px on the edge, all on parts drawn without one)')
     edge = {p for p in g if any((p[0] + dx, p[1] + dy) not in g for dx, dy in N4)}
@@ -126,6 +127,13 @@ def draw_plugin(g, pal, w, h, base):
     sys.path.insert(0, str(ROOT / 'art/direction'))
     from mcpc import Pixel
     base, RGB = Path(base), rgb(pal)
+    if plugin_missing():
+        aseprite_frames([g], pal, w, h, base.with_suffix('.aseprite'))
+        image(g, pal, w, h).save(base.with_suffix('.png'))
+        rows = [''.join(g.get((x, y), '.') for x in range(w)) for y in range(h)]
+        base.with_suffix('.json').write_text(json.dumps({'pal': pal, 'width': w, 'height': h, 'frame0': rows}, indent=2) + '\n')
+        print(f'{base.name}: {len(g)} pixels, through the Aseprite command line, read back the same', flush=True)
+        return saved(base.with_suffix('.aseprite'))
     px = Pixel()
     try:
         source = px.call('create_canvas', width=w, height=h, color_mode='rgb')['file_path']
@@ -187,6 +195,10 @@ def draw_frames(frames, pal, w, h, base, ms, tags):
     sys.path.insert(0, str(ROOT / 'art/direction'))
     from mcpc import Pixel
     ase, inv = Path(base).with_suffix('.aseprite').as_posix(), {v: k for k, v in rgb(pal).items()}
+    if plugin_missing():
+        aseprite_frames(frames, pal, w, h, ase, ms, tags)
+        print(f'{Path(base).name}.aseprite: {len(frames)} frames, {ms} ms each, tags {" ".join(tags)}, through the Aseprite command line, read back the same', flush=True)
+        return
     px = Pixel()
     try:
         src = px.call('create_canvas', width=w, height=h, color_mode='rgb')['file_path']
@@ -272,3 +284,47 @@ def review(panels, out, scale=6):
         labels.text((px, 1), label, fill=(252, 252, 252, 255))
         panel.alpha_composite(im, (px, 13 + hh - im.height))
     panel.resize((panel.width * scale, panel.height * scale), Image.Resampling.NEAREST).save(out)
+
+
+def plugin_missing():
+    sys.path.insert(0, str(ROOT / 'art/direction'))
+    import mcpc, os
+    return not os.path.exists(mcpc.EXE)
+
+
+LUA = """local p = app.params
+local w, h, n, ms = tonumber(p.w), tonumber(p.h), tonumber(p.n), tonumber(p.ms)
+local spr = Sprite(w, h, ColorMode.RGB)
+local pal = Palette(0)
+for hex in string.gmatch(p.pal, "%x+") do
+  pal:resize(#pal + 1)
+  pal:setColor(#pal - 1, Color{ r = tonumber(hex:sub(1, 2), 16), g = tonumber(hex:sub(3, 4), 16), b = tonumber(hex:sub(5, 6), 16) })
+end
+spr:setPalette(pal)
+for i = 1, n do
+  if i > 1 then spr:newEmptyFrame() end
+  spr:newCel(spr.layers[1], spr.frames[i], Image{ fromFile = p.dir .. "/" .. i .. ".png" }, Point(0, 0))
+  spr.frames[i].duration = ms / 1000
+end
+for tag in string.gmatch(p.tags, "[^;]+") do
+  local name, a, b = tag:match("([^,]+),(%d+),(%d+)")
+  spr:newTag(tonumber(a), tonumber(b)).name = name
+end
+spr:saveAs(p.out)
+"""
+
+
+def aseprite_frames(frames, pal, w, h, ase, ms=100, tags=None):
+    """The pixel plugin's job done by Aseprite's own command line (the plugin is not installed): the frames as PNGs,
+    put into one sprite by a script, with the palette, the frame time and the tags; read back and compared."""
+    with tempfile.TemporaryDirectory() as d:
+        for i, g in enumerate(frames, 1):
+            image(g, pal, w, h).save(Path(d) / f'{i}.png')
+        lua = Path(d) / 'make.lua'; lua.write_text(LUA)
+        tag = ';'.join(f'{k},{a},{b}' for k, (a, b) in (tags or {}).items())
+        cmd = [ASEPRITE, '-b']
+        for k, v in {'w': w, 'h': h, 'n': len(frames), 'ms': ms, 'pal': ' '.join(pal.values()), 'dir': Path(d).as_posix(),
+                     'tags': tag, 'out': Path(ase).as_posix()}.items():
+            cmd += ['--script-param', f'{k}={v}']
+        subprocess.run(cmd + ['--script', str(lua)], check=True, stdout=subprocess.DEVNULL)
+    assert same_as_draft(ase, [image(g, pal, w, h) for g in frames]), f'{Path(ase).name}: Aseprite\'s save differs from the design'

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "run": "stand-inpaint_sprites_v1",
+  "provider": "pixellab",
+  "route": "inpaint-v3",
+  "arguments": {
+    "description": "<elided 519 characters>",
+    "inpainting_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 4528 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 177,
+        "height": 113
+      }
+    },
+    "mask_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 364 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 177,
+        "height": 113
+      }
+    },
+    "no_background": true,
+    "crop_to_mask": false
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a1b36365-ffe7-4fea-bb0a-2ca364714250",
+    "generation_id": "036255ba-cf14-4bf8-a539-ab8e362e9b1d"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-half-stand-inpaint.png"
+  ]
+}

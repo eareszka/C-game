@@ -1,0 +1,19 @@
+{
+  "run": "side-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\side-edit\\side-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\side-edit\\side-edit\\sprites\\v1\\39-ajaju-side-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\39-ajaju\\side-edit\\side-edit\\sprites\\v1\\side-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "28e979c6-eb97-4106-b335-11604e46b232",
+    "generation_id": "75cbfbab-f65a-4760-882e-2bf07db7fa98"
+  },
+  "route": "edit-images-v2"
+}

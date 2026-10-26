@@ -1,0 +1,19 @@
+{
+  "run": "lower-neck_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\lower-neck\\lower-neck\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\lower-neck\\lower-neck\\sprites\\v1\\52-sannaja-half-lower-neck.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-half\\lower-neck\\lower-neck\\sprites\\v1\\lower-neck_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "e9e9f3b6-89ad-40cf-9819-2772a3bc0ef3",
+    "generation_id": "7c245773-ff73-4bc3-928e-7cd673d10a8e"
+  },
+  "route": "inpaint-v3"
+}

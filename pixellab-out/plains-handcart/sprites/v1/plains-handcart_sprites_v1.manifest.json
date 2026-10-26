@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "plains-handcart_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art small wooden two-wheeled farm handcart with long handles resting on the ground, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABwAAAAECAIAAAAS6sg1AAAAMUlEQVR4nGNkQALTSjzg7EdPXsDZF+8/grMbchXh7H3H3sDZBtMewtlMyIZSCwwdQwGWNAu/hGhpJwAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "handcart.png"
+  ]
+}

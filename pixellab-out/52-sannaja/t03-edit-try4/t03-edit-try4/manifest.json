@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "t03-edit-try4",
+  "generated": "2026-10-19T15:14:47Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "t03-edit-try4_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-t03-frame0-try4.png"
+      ],
+      "ids": {
+        "background_job_id": "8efb8995-9f1d-4abb-b2b6-e91c70bdf297",
+        "generation_id": "c2c78d45-d207-40dc-8917-a44422dc29d3"
+      }
+    }
+  ]
+}

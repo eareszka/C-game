@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "75-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "action": "a tall giant ground bird sprinting like an ostrich, long thin legs striding far apart, its neck stretched forward, its folded wings bouncing, running to the left",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "53bb00f9-fbe6-466c-a475-9e0595f05171",
+    "generation_id": "205f753b-fb32-498c-bbb7-0d128f254a08"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runl-00.png",
+    "runl-01.png",
+    "runl-02.png",
+    "runl-03.png",
+    "runl-04.png"
+  ]
+}

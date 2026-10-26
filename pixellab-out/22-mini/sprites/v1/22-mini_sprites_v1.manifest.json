@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "22-mini_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 752 characters>",
+      "format": "png"
+    },
+    "description": "the same cat standing up on all four legs mid-stride, walking toward the viewer, tail raised behind, keep colours and black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b8225945-f623-47b6-bcdd-fed87bf2915f",
+    "generation_id": "d20a7c33-9956-46ec-8bc5-3f76320420a8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "22-mini-stand.png"
+  ]
+}

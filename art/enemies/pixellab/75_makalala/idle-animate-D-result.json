@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\75-makalala-idle-d-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "ed4a2a8f-bc75-4009-96dd-3250d9a1004c",
+    "generation_id": "401b9d6f-0056-45aa-b735-ce828a456423"
+  }
+}

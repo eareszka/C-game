@@ -1,0 +1,47 @@
+{
+  "approved": false,
+  "installed": false,
+  "frame_size": [
+    62,
+    45
+  ],
+  "sheets": {
+    "idle": {
+      "frames": 3,
+      "size": [
+        1488,
+        45
+      ],
+      "aseprite": "art\\enemies\\pixellab\\67_lagopus\\67_lagopus_idle_review.aseprite",
+      "png": "art\\enemies\\pixellab\\67_lagopus\\idle_sheet.png",
+      "round_trip_exact": true,
+      "sha256": {
+        "art\\enemies\\pixellab\\67_lagopus\\idle_sheet.png": "c568c905c4ab6213dc33f36fef5db6d9d8d93cb136a59029f225471af4b268a5",
+        "art\\enemies\\pixellab\\67_lagopus\\67_lagopus_idle_review.aseprite": "9fa9902d654faafc3bafcd622084e804e7b7d24e1ebe577d80cefc67a53bc0c6"
+      }
+    },
+    "fly": {
+      "frames": 4,
+      "size": [
+        1984,
+        45
+      ],
+      "aseprite": "art\\enemies\\pixellab\\67_lagopus\\67_lagopus_fly_review.aseprite",
+      "png": "art\\enemies\\pixellab\\67_lagopus\\fly_sheet.png",
+      "round_trip_exact": true,
+      "sha256": {
+        "art\\enemies\\pixellab\\67_lagopus\\fly_sheet.png": "70c2f61702684ef62d4dc7b8d518cd4179e0223e768667533e90a30706ebd6cb",
+        "art\\enemies\\pixellab\\67_lagopus\\67_lagopus_fly_review.aseprite": "5b29c86b1ebcdefd18c430bdb51f5ad79837829b2f1172b332838d1d2468b08c"
+      }
+    }
+  },
+  "originals_unchanged": true,
+  "reported_animation_generations": 9.0,
+  "battle_check": {
+    "seed": 3872026,
+    "seconds": 12,
+    "logs_equal": true,
+    "before": "build_tmp\\lagopus_battle_review\\before",
+    "after": "build_tmp\\lagopus_battle_review\\after"
+  }
+}

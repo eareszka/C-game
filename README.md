@@ -8,7 +8,7 @@ the same world.
 <!-- Add a gameplay screenshot or GIF here, e.g. docs/screenshots/overworld.png -->
 
 **Status:** `0.1.0-beta`. The beta covers the starting island, the town of Bloom, the
-mainland and the first three bosses. There's no music or sound yet. See
+mainland and the first three bosses. There's no music yet; the sound effects are synthesized in code. See
 [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
@@ -27,6 +27,9 @@ mainland and the first three bosses. There's no music or sound yet. See
 - **Permanent consequences.** Nothing grows back: trees you cut and enemies you beat
   stay gone across saves.
 - **Versioned saves.** The save format is on version 18, and older saves still load.
+- **Sound without a sound library.** A small mixer on SDL's audio callback plays
+  effects synthesized at start-up from oscillator recipes; a WAV of the same name in
+  `assets/sound/` replaces any of them.
 
 ## Building
 
@@ -91,7 +94,9 @@ window. They check the game's rules across many seeds. Build any of them with
 | `battlecensus` | Plays a fight headless with a dodge bot: hits taken, bullet peak vs. the cap, point-blank spawns |
 | `spawncensus` | Dungeon difficulty quantiles and which enemies spawn where |
 | `dngcensus` | Dungeon archetype distribution across many world seeds |
+| `biomecensus` | Biome land share and region count per seed, a one-pixel-per-tile map, and a gate on the three far biomes |
 | `shot` / `dngshot` | Headless overworld and cave screenshots |
+| `sfxdump` | Writes every synthesized sound effect to `build_tmp/sfx/` and fails on a silent, clipping or NaN clip |
 
 ## Engineering notes
 

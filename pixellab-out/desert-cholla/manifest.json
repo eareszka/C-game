@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "subject": "desert-cholla",
+  "generated": "2026-10-26T05:18:12Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-cholla_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "cholla-1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-cholla_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "cholla-2.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-cholla_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "cholla-3.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-cholla_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "cholla-4.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

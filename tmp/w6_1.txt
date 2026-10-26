@@ -1,0 +1,12 @@
+  HIT t=176.38 enemy hp 45% player (58,269) enemy (356,159) bullets 132 | shot r0.0 speed 0 age 0.00 BODY
+  HIT t=176.42 enemy hp 45% player (47,301) enemy (356,159) bullets 132 | shot r0.0 speed 0 age 0.00 BODY
+  HIT t=176.47 enemy hp 45% player (33,355) enemy (356,159) bullets 131 | shot r2.5 speed 90 age 2.82
+  HIT t=245.87 enemy hp 23% player (74,210) enemy (356,159) bullets 240 | shot r0.0 speed 0 age 0.00 BODY
+  HIT t=245.88 enemy hp 23% player (66,228) enemy (356,159) bullets 240 | shot r0.0 speed 0 age 0.00 BODY
+  HIT t=246.07 enemy hp 23% player (19,431) enemy (356,159) bullets 246 | shot r2.5 speed 90 age 3.57
+  HIT t=298.24 enemy hp 6% player (39,459) enemy (356,159) bullets 238 | shot r3.0 speed 90 age 8.10 mine
+  HIT t=304.27 enemy hp 4% player (59,235) enemy (356,159) bullets 225 | shot r2.5 speed 90 age 2.13
+  HIT t=304.42 enemy hp 4% player (25,392) enemy (356,159) bullets 246 | shot r3.0 speed 137 age 3.42
+  HIT t=304.50 enemy hp 4% player (20,464) enemy (356,159) bullets 243 | shot r2.5 speed 90 age 6.35
+enemy 6 WAKMANGGANCHI ARAGONDI seed 1: 318.5s, hits 8, peak bullets 322/1024, frames at cap 0, spawns <40px 0 (closest 124.9), tightest pass -1.4px at t=304.42
+  enemy nearest 226 px, passes within 60 px: 0

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-19T17:28:53Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "67-lagopus-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "d69fb5c8-47ea-4066-8d30-9172234cbc26",
+        "generation_id": "3fc94a4c-f907-4b12-bdce-14aef189f958"
+      }
+    }
+  ]
+}

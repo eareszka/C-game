@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "28-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1240 characters>",
+      "format": "png"
+    },
+    "action": "trotting away from the viewer on four legs",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "278f3fdd-12af-41e6-bb4d-d7dddb1226fe",
+    "generation_id": "6df73aca-bfb7-4442-8a84-ea577d8d1045"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "28-mini-walku-00.png",
+    "28-mini-walku-01.png",
+    "28-mini-walku-02.png",
+    "28-mini-walku-03.png",
+    "28-mini-walku-04.png"
+  ]
+}

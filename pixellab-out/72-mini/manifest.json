@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "72-mini",
+  "generated": "2026-10-25T10:26:00Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "72-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "swiml-00.png",
+        "swiml-01.png",
+        "swiml-02.png",
+        "swiml-03.png",
+        "swiml-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e19ed3d2-490e-4b82-b4e7-94f47141a5d0",
+        "generation_id": "034d171a-90ff-481f-9d54-24803556909e"
+      }
+    }
+  ]
+}

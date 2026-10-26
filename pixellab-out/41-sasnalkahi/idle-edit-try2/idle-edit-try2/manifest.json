@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit-try2",
+  "generated": "2026-10-19T00:01:54Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit-try2_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "41-sasnalkahi-idle-frame0-try2.png"
+      ],
+      "ids": {
+        "background_job_id": "91d1a78b-8f12-4f9e-861d-76e8505c2d85",
+        "generation_id": "c976a564-b617-4dbd-b10d-64a4157dd246"
+      }
+    }
+  ]
+}

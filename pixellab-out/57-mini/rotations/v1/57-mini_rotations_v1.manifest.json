@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "57-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1616 characters>",
+      "format": "png"
+    },
+    "description": "Dingbat, an owl-like hybrid of bird and mammal: a short round feathered tan body with a pale cream belly, two big round eyes, short pale antlers, very large brown wings spread wide, grey feet, always flying, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "8b570637-4af1-4a42-bfd9-46d45e7e65b0",
+    "generation_id": "e51999d6-07ea-47ed-b722-0e1f309828c7"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

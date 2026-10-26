@@ -1,0 +1,19 @@
+{
+  "run": "turn2-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\turn2-edit\\turn2-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\turn2-edit\\turn2-edit\\sprites\\v1\\52-sannaja-turn2-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\turn2-edit\\turn2-edit\\sprites\\v1\\turn2-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "01e410eb-769a-43e5-84d0-a21495a8106a",
+    "generation_id": "544c0b9f-a289-49a7-9c06-0522cc0a0764"
+  },
+  "route": "edit-images-v2"
+}

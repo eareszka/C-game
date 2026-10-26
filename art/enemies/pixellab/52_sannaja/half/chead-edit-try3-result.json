@@ -1,0 +1,19 @@
+{
+  "run": "chead-edit-try3_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-close\\chead-edit-try3\\chead-edit-try3\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-close\\chead-edit-try3\\chead-edit-try3\\sprites\\v1\\52-sannaja-close-chead-frame0-try3.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja-close\\chead-edit-try3\\chead-edit-try3\\sprites\\v1\\chead-edit-try3_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "6acbbda4-1bd7-4d94-bd43-61d2a4ee9aa3",
+    "generation_id": "1ed49e8e-a1ba-4d73-9dbc-30c27cc7d65d"
+  },
+  "route": "edit-images-v2"
+}

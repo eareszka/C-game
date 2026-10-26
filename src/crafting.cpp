@@ -234,6 +234,7 @@ bool craft_make(Player* p, const Craft& c) {
     if (!craft_ready(p, c) || !pay(p, craft_recipe(p, c, -1))) return false;
     item_slot(p, c.item)++;
     item_mark_found(p, c.item);
+    if (c.item == ITEM_RAFT) p->raft_worn = 1;   // made to be used: worn at once
     return true;
 }
 
@@ -374,8 +375,16 @@ bool item_equip_swift_boots(Player* p, bool equip) {
     return item_equip_footwear(p,ITEM_SWIFT_BOOTS,equip);
 }
 
+bool item_raft_worn(const Player* p) { return p->raft_worn && p->raft > 0; }
+bool item_equip_raft(Player* p, bool equip) {
+    if (equip && p->raft <= 0) return false;
+    p->raft_worn = equip ? 1 : 0;
+    return true;
+}
+
 const char* item_description(Item it) {
     switch (it) {
+        case ITEM_RAFT: return "WHILE WORN, CARRIES YOU OVER WATER.";
         case ITEM_BAND_AID: return "RESTORES 1 HEALTH BAR. EXPLORATION ONLY.";
         case ITEM_MEDKIT: return "RESTORES FULL HEALTH. EXPLORATION ONLY.";
         case ITEM_ANTIDOTE: return "CURES POISON. EXPLORATION ONLY.";

@@ -69,6 +69,23 @@ static void part_at(float ex, float ey, const float tx[8], const float ty[8], in
     *ox = ex + (tx[d] - 49.0f) * 2.0f; *oy = ey + (ty[d] - 32.5f) * 2.0f;
 }
 
+// The same for a small 20 px wide sheet, fh tall (the starters): the part in
+// the view facing the player, and every bullet of a volley leaving from it.
+static void small_part_at(float ex, float ey, const float tx[8], const float ty[8], float fh,
+                          float px, float py, float* ox, float* oy) {
+    int d = face8(facing_toward(px - ex, py - ey));
+    *ox = ex + (tx[d] + 0.5f - 10.0f) * 2.0f; *oy = ey + (ty[d] + 0.5f - fh * 0.5f) * 2.0f;
+}
+static int from_part(BulletSpawn out[], int n, float ox, float oy) {
+    for (int i = 0; i < n; i++) { out[i].from = true; out[i].ox = ox; out[i].oy = oy; }
+    return n;
+}
+// Every shot of a volley made POISON (BulletSpawn::poison): a hit poisons.
+static int poisoned(BulletSpawn out[], int n) {
+    for (int i = 0; i < n; i++) out[i].poison = true;
+    return n;
+}
+
 // A diamond outline for shape_shots: 16 spots, 4 corners and 3 along each
 // side, r tall and 0.7 r wide (the Grootslang's gems, the Nanabolele's scales).
 static const int GEM_SPOTS = 16;
@@ -165,7 +182,7 @@ class Skvader : public Enemy {
         return n;
     }
 public:
-    Skvader() : Enemy(320, Hopper::HOME_Y, 240, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
+    Skvader() : Enemy(320, Hopper::HOME_Y, 180, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
     const char* name()          const override { return "SKVADER"; }
     float       fire_interval() const override { return ENRAGED ? 0.11f : 0.55f; }
     void update(float dt, float, float) override {
@@ -174,15 +191,20 @@ public:
         hop.update(dt, x, y);
     }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
-        if (!ENRAGED) return antler_fan(a, out);
+        // Its head, where the antlers grow, in each view (D DR R UR U UL L DL).
+        static const float HX[8] = { 10, 14, 15, 14, 10, 5, 4, 5 };
+        static const float HY[8] = {  6,  6,  6,  5,  5, 5, 6, 6 };
+        float hx, hy;
+        small_part_at(x, y, HX, HY, 17.0f, px, py, &hx, &hy);
+        float a = aim_at(hx,hy,px,py);
+        if (!ENRAGED) return from_part(out, antler_fan(a, out), hx, hy);
         if (hop.airborne()) return 0;   // nothing while airborne
         if (hop.landed) {
             hop.landed = false;
-            return antler_fan(a, out);
+            return from_part(out, antler_fan(a, out), hx, hy);
         }
         out[0] = mk(a + 0.6f * sinf(sweep * 3.0f), 210.0f, 2.5f, 5.0f);
-        return 1;
+        return from_part(out, 1, hx, hy);
     }
 };
 
@@ -206,14 +228,19 @@ public:
         hop.update(dt, x, y);
     }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
+        // Its head, under the antlers, in each view (D DR R UR U UL L DL).
+        static const float HX[8] = { 10, 14, 15, 14, 10, 5, 4, 5 };
+        static const float HY[8] = {  8,  8,  9,  8,  7, 8, 9, 8 };
+        float hx, hy;
+        small_part_at(x, y, HX, HY, 19.0f, px, py, &hx, &hy);
+        float a = aim_at(hx,hy,px,py);
         if (!ENRAGED) {
             float off = (volley++ & 1) ? 0.11f : 0.0f;
             int n = 0;
             for (int layer = 0; layer < 2; layer++)
                 for (int i = -2; i <= 2; i++)
                     out[n++] = mk(a + off + i * 0.22f, layer ? 195.0f : 150.0f, 2.5f, 5.0f);
-            return n;
+            return from_part(out, n, hx, hy);
         }
         if (hop.airborne()) return 0;   // nothing while airborne
         if (hop.landed) {
@@ -221,10 +248,10 @@ public:
             float base = ernd() * TAU;
             for (int i = 0; i < 16; i++)
                 out[i] = mk(base + i * (TAU / 16.0f), 120.0f, 3.0f, 5.0f);
-            return 16;
+            return from_part(out, 16, hx, hy);
         }
         out[0] = mk(a + 0.6f * sinf(sweep * 3.0f), 210.0f, 2.5f, 5.0f);
-        return 1;
+        return from_part(out, 1, hx, hy);
     }
 };
 
@@ -251,25 +278,31 @@ class Treesqueak : public Enemy {
         return n;
     }
 public:
-    Treesqueak() : Enemy(320, 160, 320, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
+    Treesqueak() : Enemy(320, 160, 240, {1.25f,0.75f,1.25f,0.75f,1.0f,1.25f,1.5f}) {}
     const char* name()          const override { return "TREESQUEAK"; }
     float       fire_interval() const override { return ENRAGED ? 0.45f : 1.1f; }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
+        // Its mouth, the squeak, in each view (D DR R UR U UL L DL); from
+        // behind, the top of its head.
+        static const float MX[8] = { 10, 12, 15, 14, 10, 6, 4, 7 };
+        static const float MY[8] = {  6,  6,  5,  4,  4, 4, 5, 6 };
+        float mx, my;
+        small_part_at(x, y, MX, MY, 19.0f, px, py, &mx, &my);
+        float a = aim_at(mx,my,px,py);
         if (!ENRAGED) {
             gap = (ernd() * 2.0f - 1.0f) * (PI / 3.0f);
-            return ring(a + gap, out);
+            return from_part(out, ring(a + gap, out), mx, my);
         }
         if (volley++ % 2 == 0) {
             // Next gap 45 degrees on, either way, kept within reach.
             gap += ernd() < 0.5f ? PI / 4.0f : -PI / 4.0f;
             if (gap >  PI / 3.0f) gap -= PI / 2.0f;
             if (gap < -PI / 3.0f) gap += PI / 2.0f;
-            return ring(a + gap, out);
+            return from_part(out, ring(a + gap, out), mx, my);
         }
         for (int i = 0; i < 3; i++)
             out[i] = mk(a + (i - 1) * 0.12f, 140.0f, 4.0f, 5.0f);
-        return 3;
+        return from_part(out, 3, mx, my);
     }
 };
 
@@ -466,17 +499,24 @@ public:
 //            left pair, middle three, right pair, every turn of its cycle.
 //   Drool -- its mouths drool all the while: a drip falling straight from
 //            each in turn -- seven fixed lanes to learn.
+//   Tusks -- every TUSK_EVERY s a low head slashes its scimitar tusks: a
+//            curved blade of shots bowed at the player, turning as it flies
+//            -- step out past its tip, across the drool lanes.
 // Stage 2 -- SEVEN MOONS (66% to 33%): its eyes shine.
 //   Crescents -- every MOON_EVERY s the next eye along throws a CRESCENT
 //            moon -- an arc of shots, spinning -- at the player.
 //   Full moons -- and when the turn has gone round all seven, every eye at
-//            once swells a ring: seven full moons spreading into each other.
+//            once swells a ring: seven full moons spreading into each other,
+//            each spinning against its neighbours, half a gap round from
+//            them -- a woven flower, passed where the gaps meet.
 //   The snapping goes on (thinner fans) and the drool.
 // Stage 3 -- THE STREAMS BURST (33% on): the streams on its back flood down
 //   both flanks -- from each a fan of streams, in dashes, rolling like water,
 //   swinging across the floor; its heads snap faster (the whole beast
 //   quickens), the crescents come quicker, the full moons still rise; the
-//   drool stops.
+//   drool stops. And the fields are laid waste: each stream in turn flings
+//   seeds out over the field that settle, wait, and spring at the player
+//   one by one, under the flood.
 // All fight long -- THE BITE (the user, 2026-10-10): its two lowest heads
 //   guard its sides, and they only jut out at a player PAST THE POINT OF NO
 //   RETURN (the user): at the arena's far side on that head's side (within
@@ -501,13 +541,22 @@ public:
 class WakmangganchiAragondi : public Enemy {
     static constexpr float SPEED = 90.0f, DROOL_EVERY = 0.16f, MOON_EVERY = 1.1f, MOON_EVERY3 = 0.8f, MOON_R = 16.0f, FLOOD_EVERY = 0.09f, CLEAR = 60.0f;
     static constexpr int   HEADS = 7, CRESCENT_N = 9, FULL_N = 10;
+    // The scimitar: a curved blade of TUSK_N shots, TUSK_R round, slashed at
+    // the player from a low head's tusks and turning as it flies.
+    static constexpr float TUSK_EVERY = 1.6f, TUSK_R = 60.0f, TUSK_ARC = 0.7f, TUSK_SPIN = 1.5f;
+    static constexpr int   TUSK_N = 9;
+    static constexpr float MOON_SPIN = 0.35f;                   // the full moons turn, each against its neighbours
+    // The fields laid waste: seeds thrown off the streams settle in the
+    // field, wait, and spring at the player one by one.
+    static constexpr float SEED_EVERY = 1.5f, SEED_T = 0.7f, SEED_WAIT = 1.2f, SEED_STAGGER = 0.2f, SEED_FAN = 0.9f;
+    static constexpr int   SEED_N = 4;
     // Art px of each head's mouth, in the order their jaws snap: the left
     // pair (frame 4), the middle three (frame 5), the right pair (frame 6).
     // Each eye is 21 art px above its mouth.
     static constexpr float MX[HEADS] = {  90.0f,  94.0f, 150.0f, 210.0f, 230.0f,  56.0f, 206.0f };
     static constexpr float MY[HEADS] = {  54.0f, 105.0f, 101.0f,  54.0f,  90.0f,  89.0f, 116.0f };
-    float t = 0.0f, drool_t = 0.0f, moon_t = 0.0f, flood_t = 0.0f;
-    int   drools = 0, moons = 0, flood_k = 0;
+    float t = 0.0f, drool_t = 0.0f, moon_t = 0.0f, flood_t = 0.0f, tusk_t = 0.0f, seed_t = 0.0f;
+    int   drools = 0, moons = 0, flood_k = 0, tusks = 0, seeds = 0;
     // The bite.
     static constexpr int   NECK_W[2] = { 82, 88 };              // each neck's drawing, art px long: its length at full reach, level (art/enemies/06_bite_pose.py)
     static constexpr int   CW = 42, CH = 53;                    // a bite cell; columns 0-7 the idle, 8 mouth wide, 9 shut, 10 a length of neck
@@ -525,6 +574,7 @@ class WakmangganchiAragondi : public Enemy {
     // Art px (302x166, drawn 2x about its middle) -> screen.
     void at(float fx, float fy, float* ox, float* oy) const { *ox = x + (fx - 151.0f) * 2.0f; *oy = y + (fy - 83.0f) * 2.0f; }
     int  stage() const { float f = (float)hp / max_hp; return f > 0.66f ? 1 : f > 0.33f ? 2 : 3; }
+    int  phase_lines(float out[], int) const override { out[0] = 0.66f; out[1] = 0.33f; return 2; }
     // A biting head's home: the middle of its cell.
     void home(int h, float* hx, float* hy) const {
         static const float AX[2] = { 76.0f, 182.0f }, AY[2] = { 73.0f, 84.0f };
@@ -572,8 +622,9 @@ public:
     }
     void update(float dt, float px, float py) override {
         t += dt; drool_t += dt;
+        if (stage() == 1) tusk_t += dt;
         if (stage() >= 2) moon_t += dt;
-        if (stage() >= 3) flood_t += dt;
+        if (stage() >= 3) { flood_t += dt; seed_t += dt; }
         if (shove_t > 0.0f) shove_t -= dt;
         lx = px; ly = py;
         for (int h = 0; h < 2; h++) {                           // the two guards
@@ -654,12 +705,57 @@ public:
                     at(MX[e], MY[e] - 21.0f, &ex, &ey);
                     if (hypotf(ex - px, ey - py) < CLEAR) continue;
                     for (int k = 0; k < FULL_N; k++) {
+                        // Each moon spinning against its neighbours, half a gap
+                        // round from them: a woven flower, pass where the gaps meet.
                         float a = (k + (e & 1) * 0.5f) * (TAU / FULL_N);
                         BulletSpawn b = mk(a, SPEED, 2.5f, 5.0f);
-                        b.from = true; b.ox = ex + cosf(a) * 8.0f; b.oy = ey + sinf(a) * 8.0f;
+                        b.orbit_w = (e & 1) ? -MOON_SPIN : MOON_SPIN;
+                        b.from = true; b.ox = ex; b.oy = ey;
                         out[n++] = b;
                     }
                 }
+            }
+        }
+        if (st == 1 && tusk_t >= TUSK_EVERY && n + TUSK_N <= max) {
+            // A scimitar slash from the tusks of one of the low heads in turn:
+            // a curved blade, bowed toward the player, turning as it comes --
+            // step out past its tip.
+            static const int LOW[4] = { 1, 2, 6, 4 };
+            tusk_t = 0.0f;
+            int h = LOW[tusks++ % 4];
+            float mx, my;
+            at(MX[h], MY[h] + 6.0f, &mx, &my);
+            if (hypotf(mx - px, my - py) >= CLEAR) {
+                static float sx[TUSK_N], sy[TUSK_N];
+                static bool built = false;
+                if (!built) {
+                    built = true;
+                    for (int k = 0; k < TUSK_N; k++) {
+                        float a = -TUSK_ARC + k * (2.0f * TUSK_ARC / (TUSK_N - 1));
+                        sx[k] = cosf(a) * TUSK_R - TUSK_R; sy[k] = sinf(a) * TUSK_R;
+                    }
+                }
+                float spin = (tusks & 1) ? TUSK_SPIN : -TUSK_SPIN;
+                n += shape_shots(mx, my, aim_at(mx, my, px, py), SPEED, spin, 0.3f, sx, sy, TUSK_N, out + n);
+            }
+        }
+        if (st >= 3 && seed_t >= SEED_EVERY && n + SEED_N <= max) {
+            // The fields laid waste: a stream flings seeds out over the field,
+            // where they settle, wait, and spring at the player one by one.
+            seed_t = 0.0f;
+            int side = (seeds++ & 1) ? 1 : -1;
+            float rx, ry;
+            at(side < 0 ? 84.0f : 201.0f, side < 0 ? 75.0f : 80.0f, &rx, &ry);
+            for (int k = 0; k < SEED_N; k++) {
+                float a = PI / 2 - side * (0.2f + SEED_FAN * (k + ernd()) / SEED_N);
+                float reach = 120.0f + 50.0f * k, v0 = 2.0f * reach / SEED_T;
+                BulletSpawn b = mk(a, v0, 3.0f, 5.0f);
+                b.orbit_w = 0.0001f;                            // on an orbit, so it travels while it waits
+                b.accel = -v0 / SEED_T; b.min_speed = 0.5f;
+                b.delay = SEED_T + SEED_WAIT + k * SEED_STAGGER;
+                b.launch_speed = SPEED;
+                b.from = true; b.ox = rx; b.oy = ry;
+                out[n++] = b;
             }
         }
         while (st >= 3 && flood_t >= FLOOD_EVERY && n + 6 <= max) {
@@ -705,22 +801,38 @@ public:
 
 // ── Forest enemies (IDs 7–13) ─────────────────────────────────────────────────
 
-// Great fiery dragon "glowing like an electric fire", always in flight.
-// Phase 1, Fire Breath: it hovers and breathes a stream of flame that sweeps
-//   across where the player was when it drew breath -- one way, then back
-//   the other the next time -- the flames flickering at mixed speeds, so the
-//   stream has gaps to slip through; then a breath's rest.
-// Phase 2 (half HP), Electric Fire: it glides about the top of the arena,
-//   breathing quicker, and at the end of every breath spits an ember that
-//   drifts across and bursts into rings as it goes.
+// Great flying dragon "glowing like an electric fire" (the user).
+// Pattern A -- crossing flame sweeps: one stream slows into lingering lanes;
+//              sparse sparks in the faster stream ricochet back off the walls.
+// Pattern B -- fresh fans of electric sparks home briefly, then commit:
+//              change direction late while threading A. Both run in phase 1.
+// Phase 2 (half HP, next cycle) adds shedding embers at each breath's end,
+// and every other breath chains into LIGHTNING: a mouth-fired beam with two
+// wall reflections. All three segments are marked before any hurts. It hovers
+// facing the locked path while charging/firing, wings still beating; the next
+// breath's A+B overlap the lightning and delayed ember rings (the user:
+// harder, using the bullet types). Wider glide, shorter rests, faster sweeps.
 class Alber : public Enemy {
-    float cyc   = 0.0f;    // seconds into the breath-and-rest cycle
-    float t     = 0.0f;    // glide clock (phase 2)
-    int   n     = -1;      // which cycle this is, to notice a new one
-    int   dir   = 1;       // this breath sweeps clockwise (1) or back (-1)
-    float lock  = 0.0f;    // aim at the player when the breath was drawn
-    bool  embers = false;  // this cycle's ember spat
-    int   idle_f = 0;      // the flying frame shown
+    static constexpr float BREATH = 1.6f, REST1 = 0.8f, REST2 = 0.5f;
+    static constexpr float CADENCE1 = 0.10f, CADENCE2 = 0.08f, FAN_EVERY = 0.4f;
+    static constexpr float GLIDE1 = 120.0f, GLIDE2 = 170.0f, GLIDE_RATE = 0.55f;
+    static constexpr float SWEEP = 0.8f, CROSS_GAP = 0.12f, FAN_GAP = 0.38f;
+    static constexpr float SLOW = 190.0f, FAST = 240.0f, FAN_SPEED = 185.0f;
+    static constexpr float RADIUS = 3.0f, DAMAGE = 5.0f;
+    static constexpr float EMBER_SPEED = 120.0f, SHED_EVERY = 0.8f, SHED_SPEED = 100.0f;
+    static constexpr int SHED_N = 8, SHED_TIMES = 2, RICOCHET_EVERY = 3;
+    static constexpr float FLAME_DECEL = -100.0f, FLAME_FLOOR = 85.0f;
+    static constexpr float HOME_T = 1.2f, SPARK_LIFE = 6.0f, CLEAR = 64.0f;
+    static constexpr float BEAM_MARK = 0.35f, BEAM_WARN = 0.95f, BEAM_HOT = 0.55f, BEAM_FADE = 0.2f;
+    static constexpr float BEAM_WIDTH = 3.5f, EPS = 0.001f;
+    static constexpr int BEAM_SEGMENTS = 3, BEAM_EVERY = 2;
+    TeleLine beam[BEAM_SEGMENTS] = {};
+    float beam_t = -1.0f;
+    int beam_face = FACE_DOWN, breaths2 = 0, sparks = 0;
+    bool breathing = true, started = false, cycle2 = false, ember_due = false;
+    float state_t = 0.0f, glide_t = 0.0f, sweep_t = 0.0f, fan_t = 0.0f;
+    float lock = 0.0f, glide_width = GLIDE1;
+    int dir = 1, idle_f = 0;
 
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (72x64, drawn 2x about its middle) -> screen
         *ox = x + (fx - 36.0f) * 2.0f; *oy = y + (fy - 32.0f) * 2.0f;
@@ -735,44 +847,126 @@ class Alber : public Enemy {
         int d = face8(f);
         at(MX[d], MY[d] + RISE[idle_f % 6], ox, oy);
     }
-    float breath_t() const { return ENRAGED ? 1.1f : 1.4f; }
-    float rest_t()   const { return ENRAGED ? 0.7f : 1.0f; }
-    bool  breathing() const { return fmodf(cyc, breath_t() + rest_t()) < breath_t(); }
+    void begin_breath(float px, float py) {
+        cycle2 = ENRAGED;
+        float mx, my;
+        mouth(beam_active() ? beam_face : facing_toward(px - x, py - y), &mx, &my);
+        lock = aim_at(mx, my, px, py);
+        dir = -dir;
+        sweep_t = fan_t = 0.0f;
+        started = true;
+    }
+    bool beam_active() const { return beam_t >= 0.0f; }
+    void lightning(float px, float py) {
+        float bx, by;
+        beam_face = facing_toward(px - x, py - y);
+        mouth(beam_face, &bx, &by);
+        if (hypotf(px - bx, py - by) < CLEAR) return;
+        float a = aim_at(bx, by, px, py), ux = cosf(a), uy = sinf(a);
+        // Trace the full path once. Every reflected segment shares its warning
+        // and activation time; it never retargets after showing the marks.
+        for (int k = 0; k < BEAM_SEGMENTS; ++k) {
+            float dx = fabsf(ux) < EPS ? 1.0f / EPS / EPS
+                : ((ux > 0.0f ? ARENA_W : 0.0f) - bx) / ux;
+            float dy = fabsf(uy) < EPS ? 1.0f / EPS / EPS
+                : ((uy > 0.0f ? ARENA_H : 0.0f) - by) / uy;
+            float d = fminf(dx, dy);
+            float nx = fminf(fmaxf(bx + ux * d, 0.0f), ARENA_W);
+            float ny = fminf(fmaxf(by + uy * d, 0.0f), ARENA_H);
+            beam[k] = { bx, by, nx, ny };
+            if (dx <= dy + EPS) ux = -ux;
+            if (dy <= dx + EPS) uy = -uy;
+            bx = nx; by = ny;
+        }
+        beam_t = 0.0f;
+    }
+
 public:
     Alber() : Enemy(320, 140, 780, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
-    const char* name()          const override { return "ALBER"; }
-    float       fire_interval() const override { return breathing() ? 0.07f : 0.1f; }
-    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }   // the frame its mouth is read on
-    void update(float dt, float, float) override {
-        cyc += dt;
-        if (!ENRAGED) return;
-        t += dt;
-        x = 320.0f + 170.0f * sinf(t * 0.55f);
-        y = 140.0f +  35.0f * sinf(t * 1.1f);
+    const char* name() const override { return "ALBER"; }
+    float fire_interval() const override { return 1.0f / 60.0f; }
+    int move_facing() const override { return beam_active() ? beam_face : -1; }
+    int telegraphs(TeleLine out[], int max) const override {
+        if (!beam_active()) return 0;
+        bool warn = beam_t < BEAM_WARN, hot = !warn && beam_t < BEAM_WARN + BEAM_HOT;
+        int n = 0;
+        for (; n < BEAM_SEGMENTS && n < max; ++n) {
+            out[n] = beam[n];
+            out[n].stage = warn ? (beam_t < BEAM_MARK ? 3 : 0) : hot ? 1 : 2;
+            out[n].hurt_w = hot ? BEAM_WIDTH : 0.0f;
+            out[n].fade = warn || hot ? 0.0f : (beam_t - BEAM_WARN - BEAM_HOT) / BEAM_FADE;
+        }
+        return n;
     }
-    int fire(float px, float py, BulletSpawn out[], int) override {
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }
+    void update(float dt, float px, float py) override {
+        if (!started) begin_breath(px, py);
+        if (beam_active()) {
+            beam_t += dt;
+            if (beam_t >= BEAM_WARN + BEAM_HOT + BEAM_FADE) beam_t = -1.0f;
+        } else {
+            glide_t += dt;
+            // Pause the glide while the mouth holds the warned beam's root.
+            glide_width = fminf(cycle2 ? GLIDE2 : GLIDE1, glide_width + (GLIDE2 - GLIDE1) * dt);
+            x = 320.0f + glide_width * sinf(glide_t * GLIDE_RATE);
+        }
+        state_t += dt;
+        if (breathing) {
+            sweep_t -= dt; fan_t -= dt;
+            if (state_t >= BREATH) {
+                state_t -= BREATH;
+                breathing = false;
+                ember_due = cycle2;
+                if (cycle2 && ++breaths2 % BEAM_EVERY == 0) lightning(px, py);
+            }
+        } else if (state_t >= (cycle2 ? REST2 : REST1)) {
+            state_t -= cycle2 ? REST2 : REST1;
+            breathing = true;
+            begin_breath(px, py);
+        }
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
         float mx, my;
-        mouth(facing_toward(px - x, py - y), &mx, &my);         // flame and embers leave its mouth
-        float a = aim_at(mx,my,px,py);
-        int now = (int)(cyc / (breath_t() + rest_t()));
-        if (now != n) { n = now; lock = a; dir = -dir; embers = false; }
-        float k = fmodf(cyc, breath_t() + rest_t());
-        if (k < breath_t()) {
-            // From 0.8 one side of the locked aim to 0.8 the other.
-            float sweep = lock + dir * 0.8f * (2.0f * k / breath_t() - 1.0f);
-            out[0] = mk(sweep + (ernd() - 0.5f) * 0.12f, 170.0f + ernd() * 70.0f, 3.0f, 5.0f);
-            out[0].from = true; out[0].ox = mx; out[0].oy = my;
-            return 1;
+        mouth(beam_active() ? beam_face : facing_toward(px - x, py - y), &mx, &my);
+        float a = aim_at(mx, my, px, py);
+        int n = 0;
+        auto emit = [&](BulletSpawn b) {
+            if (n >= max || hypotf(px - mx, py - my) < CLEAR) return;
+            b.from = true; b.ox = mx; b.oy = my;
+            out[n++] = b;
+        };
+        if (ember_due) {
+            BulletSpawn b = mk(a, EMBER_SPEED, RADIUS, DAMAGE);
+            b.shed_first = b.shed_every = SHED_EVERY;
+            b.shed_times = SHED_TIMES; b.shed_n = SHED_N;
+            b.shed_spread = TAU * (SHED_N - 1.0f) / SHED_N;
+            b.shed_speed = SHED_SPEED;
+            emit(b);
+            ember_due = false;
         }
-        if (ENRAGED && !embers) {
-            embers = true;
-            // One ember, a little off the aim: it crosses the arena in
-            // about three seconds, two or three rings on the way.
-            out[0] = mksp(a + (ernd() < 0.5f ? -0.4f : 0.4f), 120.0f, 1.2f);
-            out[0].from = true; out[0].ox = mx; out[0].oy = my;
-            return 1;
+        if (!breathing) return n;
+        if (sweep_t <= 0.0f) {
+            sweep_t += cycle2 ? CADENCE2 : CADENCE1;
+            float offset = dir * SWEEP * (2.0f * state_t / BREATH - 1.0f);
+            BulletSpawn flame = mk(lock + offset, SLOW, RADIUS, DAMAGE);
+            flame.accel = FLAME_DECEL; flame.min_speed = FLAME_FLOOR;
+            emit(flame);
+            if (fabsf(2.0f * offset) >= CROSS_GAP) {
+                BulletSpawn spark = mk(lock - offset, FAST, RADIUS, DAMAGE);
+                spark.bouncing = ++sparks % RICOCHET_EVERY == 0;
+                spark.life = SPARK_LIFE; spark.fade_out = true;
+                emit(spark);
+            }
         }
-        return 0;
+        if (fan_t <= 0.0f) {
+            fan_t += FAN_EVERY;
+            for (int i = -1; i <= 1; ++i) {
+                BulletSpawn spark = mk(a + i * FAN_GAP, FAN_SPEED, RADIUS, DAMAGE);
+                spark.homing = true; spark.homing_timer = HOME_T;
+                emit(spark);
+            }
+        }
+        return n;
     }
 };
 
@@ -2173,38 +2367,290 @@ public:
     }
 };
 
-// Redrawn 2026-10-14 to the user's reference (one front view, frame 152x124):
-// the ringed body arches up behind and the head lunges at us, a maw of four
-// toothed lobes round a mouth, whip feelers, a barbed blade out of each side.
-// Its idle heaves, leans, dips the head with the lobes spreading; its `alt`
-// sheet, shown while ENRAGED, has the head and blades spinning and the body
-// pumping. Its rings leave the mouth (the user: shots from the part that
-// makes them), not the sprite's middle.
+// Olgoi-Khorkhoi: the user's four-lobed maw and two barbed side blades on a
+// ringed body that arches up and runs off the screen's right edge; all of it
+// is the target, and touching it hurts. Three phases (the user), with shots
+// from their parts.
+// Pattern A -- mouth-fired venom fans: waving drops slow into lanes; step
+//              aside from fresh aim while reading the lingering poison.
+// Pattern B -- short pink bars launch laid on the white blades (the user),
+//              on the displayed frame, following their bob and spin. Each
+//              forms first, held on its blade and blinking for HOLD s (harmless),
+//              then fires; they slow, turn before the wall and return through
+//              the previous dodge.
+// Phase 1 (to 66% HP): a short venom breath while the bars form, then the
+// returning blades.
+// Phase 2 (66% to 33%): the head spins up (a sheet of its own, from the idle's
+// first frame, the turn speeding up to the spin's) and then spins (the user's
+// sheet), joined where the spin-up leaves off; A runs continuously
+// and B overlaps it. The centre venom drop homes briefly before committing;
+// acid globules now shed rings among the returning blades.
+// Phase 3 (last 33%): all of that continues while the mouth charges a fork
+// of electric death. The fork is marked, then glows harmlessly, already
+// turning so its sweep can be read. Walk a gap while the blades return and
+// acid spreads; it always sweeps toward the far side, away from a near wall.
+// The beast's charge (the user) runs through its parts too:
+// - charged blades: while a pair of bars forms, an arc is marked between the
+//   blade tips, then goes live, a laser right across the head turning with the
+//   spin -- keep out of the blades' reach until the bars fly.
+// - the fork jumps: as it is marked, thin arcs show it reaching to each bar in
+//   flight; while it burns, every one of them sparks, a ball that hurts.
 class OlgoiKhorkhoi : public Enemy {
-    // The mouth's middle on the sheet: frame pixel (62, 62) of 152x124, drawn 2x
-    // about the frame's middle (76, 62) -- 28 px left of the enemy's middle.
-    void mouth(BulletSpawn& b) const { b.from = true; b.ox = x + (62.0f - 76.0f) * 2.0f; b.oy = y + (62.0f - 62.0f) * 2.0f; }
+    static constexpr float PHASE2 = 0.66f, PHASE3 = 0.33f;
+    static constexpr float TICK = 1.0f / 60.0f, CYCLE = 3.2f, BREATH = 1.2f;
+    static constexpr float VENOM_EVERY = 0.20f, VENOM_SPEED = 190.0f, VENOM_GAP = 0.26f;
+    static constexpr float VENOM_DECEL = -55.0f, VENOM_FLOOR = 100.0f;
+    static constexpr float WAVE = 0.12f, WAVE_W = 4.0f;
+    static constexpr float RADIUS = 3.0f, DAMAGE = 5.0f, CLEAR = 70.0f;
+    static constexpr float BLADE_EVERY = 1.8f, BLADE_SPEED = 260.0f, BLADE_HALF = 12.0f;
+    static constexpr float BLADE_SPIN = 2.0f, BLADE_EXTRA = 50.0f, EDGE = 16.0f;
+    static constexpr float BLADE_CLEAR = 100.0f;
+    static constexpr float BLADE_LIFE = 7.0f;
+    static constexpr float HOLD = 2.0f, BLINK = 0.1f, BLINK_FAST = 0.05f, FAST_AT = 1.4f;
+    static constexpr float SEG = 15.0f;                       // native length of a blade's outer white segment
+    static constexpr float SPIN_RATE = 6.28318530f / (12 * 0.170f);   // the spin sheet's clockwise turn, 30 degrees a frame
+    // The spin-up sheet (the flap sheet): UP_FRAMES frames, starting on the
+    // idle's first frame and ending where the spin sheet's frame UP_TO goes on.
+    static constexpr int UP_FRAMES = 11, UP_TO = 6;
+    // Native white tip pixels, measured on the 152x124 sheets: each frame's
+    // head lean/heave and the spinning sheet's raster rounding. The sheets are
+    // 320 wide now (the body runs off the screen), the drawing moved 84 px in
+    // so the head is where it was: these, about the old middle 76, still hold.
+    static constexpr int IDLE_TIPS[2][12][2] = {
+        {{15,55},{15,55},{16,54},{16,55},{15,56},{15,56},{15,56},{15,55},{14,55},{14,55},{15,55},{15,55}},
+        {{121,54},{121,54},{122,53},{122,54},{121,55},{121,55},{121,55},{121,54},{120,54},{120,54},{121,54},{121,54}}
+    };
+    static constexpr int SPIN_TIPS[2][12][2] = {
+        {{4,54},{16,25},{40,5},{70,3},{98,16},{117,39},{120,68},{108,97},{84,117},{54,119},{26,106},{7,83}},
+        {{120,51},{118,80},{101,105},{73,119},{43,118},{17,100},{4,71},{6,42},{23,17},{51,3},{81,4},{107,22}}
+    };
+    static constexpr float RING_EVERY = 2.8f, GLOB_SPEED = 100.0f;
+    static constexpr float SHED_T = 1.4f, RING_SPEED = 140.0f;
+    static constexpr int RING_N = 18;
+    static constexpr float BOLT_EVERY = 3.6f, BOLT_MARK = 0.3f, BOLT_WARN = 0.9f;
+    static constexpr float BOLT_HOT = 1.1f, BOLT_FADE = 0.25f, BOLT_GAP = 0.32f;
+    static constexpr float BOLT_TURN = 0.13f, HOME_T = 0.8f;
+    static constexpr float BOLT_WIDTH = 3.0f, BOLT_REACH = 900.0f, EPS = 0.001f;
+    static constexpr int BOLTS = 3;
+    static constexpr float ARC_MARK = 0.5f, ARC_HOT = 1.0f, ARC_FADE = 0.25f, ARC_WIDTH = 4.0f;
+    static constexpr float SPARK_R = 18.0f;
+    static constexpr int MAX_SEEN = 32;
+    float cycle_t = 0.0f, venom_t = 0.0f, blade_t = 0.0f, ring_t = 0.0f;
+    float bolt_wait = 0.0f, bolt_t = -1.0f, bolt_aim = 0.0f, bx = 0.0f, by = 0.0f;
+    float hold_t = -1.0f;   // the bars forming on the blades: s so far (< 0: none)
+    float arc_fade = -1.0f; // the blade arc breaking up after its bars fly: s so far (< 0: none)
+    Seen seen[MAX_SEEN];    // its bars in flight (see_bars)
+    int n_seen = 0;
+    int idle_f = 0, last_stage = 1, bolt_dir = 1;
+    int up_n = -1;          // idle frames shown since the spin-up began (< 0: not begun)
+    bool blade_due = false;
+
+    bool winding() const { return up_n >= 0 && up_n < UP_FRAMES; }   // the spin-up playing
+    bool spinning() const { return up_n >= UP_FRAMES; }               // the spin sheet showing
+    int stage() const { return hp >= max_hp * PHASE2 ? 1 : hp >= max_hp * PHASE3 ? 2 : 3; }
+    int phase_lines(float out[], int) const override { out[0] = PHASE2; out[1] = PHASE3; return 2; }
+    void mouth(float* ox, float* oy) const {
+        // Drawn 2x. The idle mouth dips two rows on frames 4-5; the spinning
+        // sheets hold its centre at (62,62) of the old 152-wide frame.
+        *ox = x - 28.0f;
+        *oy = y + (up_n < 0 && (idle_f == 4 || idle_f == 5) ? 4.0f : 0.0f);
+    }
+    void blade(int side, float* ox, float* oy, float* ang) const {
+        // The middle of the blade's outer white segment and its angle, so the
+        // bar is laid on it. Spinning, each blade is a line through the pivot
+        // (62,62); idle, the segment runs a fixed step in from the tip.
+        const int* tip = spinning() ? SPIN_TIPS[side < 0 ? 0 : 1][idle_f % 12]
+                                    : IDLE_TIPS[side < 0 ? 0 : 1][idle_f % 12];
+        float ix, iy;
+        if (spinning()) {
+            float dx = 62.0f - tip[0], dy = 62.0f - tip[1], d = hypotf(dx, dy);
+            ix = tip[0] + dx / d * SEG; iy = tip[1] + dy / d * SEG;
+        } else {
+            ix = tip[0] + (side < 0 ? 12.0f : -15.0f); iy = tip[1] + 3.0f;
+        }
+        *ox = x + ((tip[0] + ix) * 0.5f - 76.0f) * 2.0f;
+        *oy = y + ((tip[1] + iy) * 0.5f - 62.0f) * 2.0f;
+        *ang = atan2f(tip[1] - iy, tip[0] - ix);
+    }
+    void tip(int side, float* ox, float* oy) const {   // a spinning blade's white tip
+        const int* t = SPIN_TIPS[side < 0 ? 0 : 1][idle_f % 12];
+        *ox = x + (t[0] - 76.0f) * 2.0f;
+        *oy = y + (t[1] - 62.0f) * 2.0f;
+    }
+    static float edge_distance(float ox, float oy, float ux, float uy) {
+        // Stop the returning blade inside the arena, even from a blade tip
+        // pointing down near the floor. No culling before its return journey.
+        float reach = BOLT_REACH;
+        if (ux > EPS) reach = fminf(reach, (ARENA_W - EDGE - ox) / ux);
+        if (ux < -EPS) reach = fminf(reach, (EDGE - ox) / ux);
+        if (uy > EPS) reach = fminf(reach, (ARENA_H - EDGE - oy) / uy);
+        if (uy < -EPS) reach = fminf(reach, (ARENA_TOP + EDGE - oy) / uy);
+        return reach;
+    }
+    int blade_bars(float px, float py, BulletSpawn out[], int max) const {
+        int n = 0;
+        for (int side = -1; side <= 1; side += 2) {
+            float ox, oy, ba; blade(side, &ox, &oy, &ba);
+            float d = hypotf(px - ox, py - oy), a = aim_at(ox, oy, px, py);
+            if (d < BLADE_CLEAR) continue;   // focus speed can clear the full rotating bar
+            float reach = fminf(d + BLADE_EXTRA, edge_distance(ox, oy, cosf(a), sinf(a)));
+            if (reach < CLEAR) continue;
+            BulletSpawn b = mk(a, BLADE_SPEED, RADIUS, DAMAGE);
+            b.accel = -BLADE_SPEED * BLADE_SPEED / (2.0f * reach);
+            b.max_speed = BLADE_SPEED;
+            b.half_len = BLADE_HALF; b.ang = ba;   // on the white blade, as drawn
+            b.spin = spinning() ? SPIN_RATE : side * BLADE_SPIN;   // spinning, it keeps the blade's turn
+            b.life = BLADE_LIFE; b.fade_out = true;
+            if (n < max) { b.from = true; b.ox = ox; b.oy = oy; out[n++] = b; }
+        }
+        return n;
+    }
+
 public:
-    OlgoiKhorkhoi() : Enemy(320, 160, 165, {0.4f,1.0f,0.4f,0.75f,1.0f,1.0f,1.5f}) {}
-    const char* name()          const override { return "OLGOI-KHORKHOI"; }
-    float       fire_interval() const override { return ENRAGED ? 1.4f : 2.0f; }
-    int   move_facing() const override { return FACE_DOWN; }      // one view
-    bool  alt_pose()    const override { return ENRAGED; }        // the spinning head
-    int fire(float px, float py, BulletSpawn out[], int) override {
-        if (ENRAGED) {
-            float off = ernd() * TAU;
-            for (int i = 0; i < 16; i++) {
-                out[i] = mk(off + i * TAU/16.0f, 115.0f, 4.5f, 1.4f);
-                mouth(out[i]);
+    OlgoiKhorkhoi() : Enemy(320, 160, 1200, {0.4f,1.0f,0.4f,0.75f,1.0f,1.0f,1.5f}) {}
+    const char* name() const override { return "OLGOI-KHORKHOI"; }
+    float fire_interval() const override { return TICK; }
+    float phase2_at() const override { return PHASE2; }
+    int move_facing() const override { return FACE_DOWN; }
+    bool alt_pose() const override { return spinning(); }
+    // The spin-up: the flap sheet, once, frame by idle frame.
+    float flap_phase() const override { return winding() ? (up_n + 0.5f) / UP_FRAMES : -1.0f; }
+    // Then the spin loop, from the frame the spin-up leads into.
+    int anim_frame() const override { return spinning() ? (UP_TO + up_n - UP_FRAMES) % 12 : -1; }
+    float contact_damage() const override { return DAMAGE; }
+    bool sprite_hitbox() const override { return true; }
+    int on_idle_frame(int frame, float px, float py, BulletSpawn out[], int max) override {
+        // Enraged, the spin-up waits for the idle's first frame (it starts on
+        // it); the frames are counted here, so the sheets change on the beat.
+        if (up_n >= 0) up_n = spinning() ? UP_FRAMES + (up_n + 1 - UP_FRAMES) % 12 : up_n + 1;
+        else if (ENRAGED && frame == 0) { up_n = 0; hold_t = -1.0f; blade_due = false; }   // bars forming on the still blades: dropped
+        idle_f = spinning() ? anim_frame() : frame;
+        if (winding() || !blade_due) return 0;   // none fly while it spins up
+        // fire() precedes the frame callback: release here so a frame change
+        // cannot leave a bar at the previous frame's blade position.
+        blade_due = false;   // the next pair starts forming as this one flies (fire)
+        if (stage() == 3) arc_fade = 0.0f;
+        return blade_bars(px, py, out, max);
+    }
+    void update(float dt, float px, float py) override {
+        int st = stage();
+        float before = cycle_t;
+        cycle_t += dt;
+        if (cycle_t >= CYCLE) cycle_t -= CYCLE;
+        venom_t -= dt;
+        if (st == 1 && cycle_t < before && hold_t < 0.0f) hold_t = 0.0f;   // they form with the breath
+        if (hold_t >= 0.0f && (hold_t += dt) >= HOLD) { hold_t = -1.0f; blade_due = true; }
+        if (arc_fade >= 0.0f && (arc_fade += dt) >= ARC_FADE) arc_fade = -1.0f;
+        if (st >= 2) {
+            blade_t -= dt; ring_t -= dt;
+            if (last_stage == 1) { blade_t = 0.0f; ring_t = RING_EVERY * 0.5f; }
+        }
+        if (st == 3) {
+            bolt_wait -= dt;
+            if (last_stage < 3) bolt_wait = 0.0f;
+            if (bolt_t >= 0.0f) {
+                bolt_t += dt;
+                if (bolt_t >= BOLT_WARN + BOLT_HOT + BOLT_FADE) bolt_t = -1.0f;
             }
-            return 16;
+            if (bolt_wait <= 0.0f && bolt_t < 0.0f) {
+                mouth(&bx, &by);
+                bolt_wait = BOLT_EVERY;
+                if (hypotf(px - bx, py - by) >= CLEAR) {
+                    bolt_t = 0.0f;
+                    bolt_aim = aim_at(bx, by, px, py);
+                    bolt_dir = (px < ARENA_W * 0.5f ? -1 : 1) * (py >= by ? 1 : -1);
+                }
+            }
         }
-        float off = ernd() * TAU;
-        for (int i = 0; i < 10; i++) {
-            out[i] = mk(off + i * TAU/10.0f, 95.0f, 4.5f, 1.2f);
-            mouth(out[i]);
+        last_stage = st;
+    }
+    int held(Held out[], int max) const override {
+        // Blinking on the blades as they form, quicker just before they fly.
+        // Held solid in the moment between that and the frame it leaves on.
+        if (hold_t < 0.0f && !blade_due) return 0;
+        float step = hold_t < FAST_AT ? BLINK : BLINK_FAST;
+        if (!blade_due && (int)(hold_t / step) % 2) return 0;
+        int n = 0;
+        for (int side = -1; side <= 1 && n < max; side += 2) {
+            float ox, oy, ba; blade(side, &ox, &oy, &ba);
+            out[n++] = { ox, oy, ba, BLADE_HALF, RADIUS };
         }
-        return 10;
+        return n;
+    }
+    void see_bars(const Seen* bars, int n) override {
+        n_seen = n < MAX_SEEN ? n : MAX_SEEN;
+        for (int i = 0; i < n_seen; i++) seen[i] = bars[i];
+    }
+    int telegraphs(TeleLine out[], int max) const override {
+        int n = 0;
+        // The charged blades: tip to tip across the head, marked, then live
+        // until the bars fly, then breaking up.
+        if (stage() == 3 && n < max) {
+            float x0, y0, x1, y1;
+            tip(-1, &x0, &y0); tip(1, &x1, &y1);
+            float ht = blade_due ? HOLD : hold_t;
+            if (ht >= ARC_MARK || arc_fade >= 0.0f) {
+                TeleLine& L = out[n++];
+                L = { x0, y0, x1, y1 };
+                if (arc_fade >= 0.0f && ht < ARC_MARK) { L.stage = 2; L.fade = arc_fade / ARC_FADE; }
+                else if (ht < ARC_HOT) L.stage = 3;
+                else { L.stage = 1; L.hurt_w = ARC_WIDTH; }
+            }
+        }
+        if (bolt_t < 0.0f) return n;
+        bool warn = bolt_t < BOLT_WARN, hot = !warn && bolt_t < BOLT_WARN + BOLT_HOT;
+        // The fork jumps to its bars in flight: thin arcs to each as it is
+        // marked, then each one sparks while the fork burns.
+        if (bolt_t >= BOLT_MARK && (warn || hot)) {
+            for (int i = 0; i < n_seen && n < max; i++) {
+                TeleLine& L = out[n++];
+                if (warn) { L = { bx, by, seen[i].x, seen[i].y }; L.stage = 3; }
+                else { L = { seen[i].x, seen[i].y, seen[i].x, seen[i].y }; L.stage = 1; L.orb = SPARK_R; L.hurt_w = SPARK_R - 4.0f; }
+            }
+        }
+        for (int k = 0; k < BOLTS && n < max; ++k, ++n) {
+            float turn = bolt_dir * BOLT_TURN * fmaxf(0.0f, fminf(bolt_t, BOLT_WARN + BOLT_HOT) - BOLT_MARK);
+            float a = bolt_aim + turn + (k - BOLTS / 2) * BOLT_GAP;
+            out[n] = { bx, by, bx + cosf(a) * BOLT_REACH, by + sinf(a) * BOLT_REACH };
+            out[n].stage = warn ? (bolt_t < BOLT_MARK ? 3 : 0) : hot ? 1 : 2;
+            out[n].hurt_w = hot ? BOLT_WIDTH : 0.0f;
+            out[n].fade = warn || hot ? 0.0f : (bolt_t - BOLT_WARN - BOLT_HOT) / BOLT_FADE;
+        }
+        return n;
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0, st = stage();
+        float mx, my; mouth(&mx, &my);
+        auto emit = [&](BulletSpawn b, float ox, float oy) {
+            if (n >= max || hypotf(px - ox, py - oy) < CLEAR) return;
+            b.from = true; b.ox = ox; b.oy = oy;
+            out[n++] = b;
+        };
+        if (venom_t <= 0.0f) {
+            venom_t = VENOM_EVERY;
+            if (st >= 2 || cycle_t < BREATH) {
+                float a = aim_at(mx, my, px, py);
+                for (int k = -1; k <= 1; ++k) {
+                    BulletSpawn b = mk(a + k * VENOM_GAP, VENOM_SPEED, RADIUS, DAMAGE);
+                    b.accel = VENOM_DECEL; b.min_speed = VENOM_FLOOR;
+                    b.wave = k == 0 ? WAVE : -k * WAVE; b.wave_w = WAVE_W;
+                    if (st >= 2 && k == 0) {
+                        b.wave = 0.0f; b.homing = true; b.homing_timer = HOME_T;
+                    }
+                    emit(b, mx, my);
+                }
+            }
+        }
+        if (st >= 2 && spinning() && blade_t <= 0.0f && hold_t < 0.0f && !blade_due) { hold_t = 0.0f; blade_t = BLADE_EVERY; }
+        if (st >= 2 && ring_t <= 0.0f) {
+            ring_t = RING_EVERY;
+            BulletSpawn b = mk(aim_at(mx, my, px, py), GLOB_SPEED, RADIUS, DAMAGE);
+            b.shed_first = b.shed_every = SHED_T; b.shed_times = 1;
+            b.shed_n = RING_N; b.shed_spread = TAU * (RING_N - 1.0f) / RING_N;
+            b.shed_speed = RING_SPEED;
+            emit(b, mx, my);
+        }
+        return n;
     }
 };
 
@@ -2431,29 +2877,214 @@ public:
     }
 };
 
+// A reflected beam: segs segments from (bx, by) along a, each reflected
+// where the last meets the arena's edge -- traced once and never retargeted,
+// so every mark shows the beam's whole path (Alber's lightning, the
+// Myrmecoleon's pit walls, the Angont's tongue).
+static void reflect_beam(float bx, float by, float a, int segs, Enemy::TeleLine* seg) {
+    const float EPS = 0.001f;
+    float ux = cosf(a), uy = sinf(a);
+    for (int k = 0; k < segs; ++k) {
+        float dx = fabsf(ux) < EPS ? 1.0f / EPS / EPS : ((ux > 0.0f ? ARENA_W : 0.0f) - bx) / ux;
+        float dy = fabsf(uy) < EPS ? 1.0f / EPS / EPS : ((uy > 0.0f ? ARENA_H : (float)ARENA_TOP) - by) / uy;
+        float d = fminf(dx, dy);
+        float nx = fminf(fmaxf(bx + ux * d, 0.0f), (float)ARENA_W);
+        float ny = fminf(fmaxf(by + uy * d, (float)ARENA_TOP), (float)ARENA_H);
+        seg[k] = { bx, by, nx, ny };
+        if (dx <= dy + EPS) ux = -ux;
+        if (dy <= dx + EPS) uy = -uy;
+        bx = nx; by = ny;
+    }
+}
+
+// The ant-lion of the bestiaries, from straight in front (the user): a lion
+// for a father and an ant for a mother, so it can eat neither meat nor grain,
+// and starves. The real ant-lion waits at the bottom of a sand funnel and
+// snaps at whatever slides in. SEVERE tier, 680 HP, sand-gold bullets. BIG
+// sheet (98x79, one view, 5 frames): the ant abdomen wagging behind the mane,
+// the mouth shutting and opening, a drop of drool falling on frame 3. It
+// never moves -- it is the bottom of its pit.
+// Pattern A -- SAND FUNNEL: two families of grains spiral off the abdomen,
+//              one turning each way: interlocking spiral arms, a lattice of
+//              diamond cells to weave through. The turn sways, so no lane
+//              stays open.
+// Pattern B -- LEG SNARE: the four knees whip beaded, curling streams down
+//              and in, left and right mirrored, scissoring across the floor:
+//              slip between the beads as they pass. Hollow ricochets off the
+//              outer knees fold the side walls back in.
+// Pattern C -- DROOL: during the funnel every other drop that falls lands as
+//              three mines on an arc under the jaw, launching one by one at
+//              the player: sidesteps while weaving.
+// Phase 2 (half HP) -- STARVING: funnel and snare run at once (fewer arms,
+// the outer knees alone, a faster turn). Every third cycle is the PIT: the
+// jaws hold open for mirrored pairs of beams that reflect twice off the walls
+// (marked, then hot), the funnel still turning, the safe wedge between them
+// moving from pair to pair. Its drool rings the pit with eight mines.
+// Eased after the user's first F4 run (20.6 hits/min, above every BOSS1):
+// slower grains and whips, wider bead gaps, sparser ricochets and mines --
+// the same shapes (the user: "i love the style tho").
 class Myrmecoleon : public Enemy {
-    float ring_rot = 0.0f;
+    static constexpr float CX = 49.0f, CY = 39.5f;                 // the frame's middle, art px
+    static constexpr float BALL_X = 48.0f, BALL_Y = 10.0f;         // the abdomen
+    static constexpr float MOUTH_X = 49.0f, MOUTH_Y = 52.0f;
+    static constexpr float DROOL_X = 52.0f, DROOL_Y = 58.0f;       // frame 3's fallen drop
+    static constexpr float HALF_PI = 1.5707963f;
+    static constexpr float FUNNEL_T = 4.0f, SNARE_T = 3.0f, REST1 = 0.6f;
+    static constexpr float CYCLE2 = 4.0f, REST2 = 0.5f, BEAM2_AT = 2.0f;
+    static constexpr int   ARMS1 = 3, ARMS2 = 2, PIT_EVERY = 3;
+    static constexpr float GRAIN_EVERY = 0.09f, GRAIN_SPEED = 95.0f;
+    static constexpr float SPIN1 = 1.5f, SPIN2 = 1.9f, SWAY = 0.5f, SWAY_W = 0.9f;
+    static constexpr float BEAD_EVERY = 0.08f, WHIP_SPEED = 115.0f, WHIP_CURL = 0.45f;
+    static constexpr int   BEAD_ON = 4, BEAD_LEN = 9;               // beads on, of each run: the rest is the gap
+    static constexpr float WHIP_FROM = 2.67f, WHIP_TO = 1.73f;      // the left knees' heading over a cycle (down-left to down)
+    static constexpr float INNER_TILT = 0.3f;                       // the inner knees aim that much nearer straight down
+    static constexpr float RICO_EVERY = 0.7f, RICO_SPEED = 150.0f, RICO_AIM = 2.5f, RICO_GAP = 0.18f;
+    static constexpr int   DROOL_N1 = 3, DROOL_N2 = 8, RING_EVERY = 3, DROP_EVERY = 2;
+    static constexpr float DROOL_R1 = 60.0f, DROOL_ARC = 0.6f, DROOL_R2 = 110.0f, RING_DROP = 20.0f;
+    static constexpr float MINE_WAIT = 1.1f, MINE_STAGGER = 0.25f, RING_STAGGER = 0.12f, MINE_SPEED = 170.0f;
+    static constexpr float BEAM_MARK = 0.35f, BEAM_WARN = 0.95f, BEAM_HOT = 0.55f, BEAM_FADE = 0.2f;
+    static constexpr float BEAM_WIDTH = 3.5f, SPLAY0 = 0.45f, SPLAY_STEP = 0.3f;
+    static constexpr int   BEAM_SEGMENTS = 3, SPLAYS = 3;
+    static constexpr float RADIUS = 3.0f, MINE_R = 4.0f, DAMAGE = 5.0f, CLEAR = 64.0f;
+    enum Mode { FUNNEL, SNARE, STARVE, PIT, REST };
+    TeleLine beam[2 * BEAM_SEGMENTS] = {};
+    Mode mode = FUNNEL, last = FUNNEL;
+    int cycles2 = 0, drops = 0, idle_f = 0, beads = 0, splay_k = 0, beams_fired = 0;
+    float step_t = 0.0f, clock = 0.0f, spin = 0.0f, grain_t = 0.0f, bead_t = 0.0f, rico_t = 0.0f, beam_t = -1.0f;
+    bool drop_due = false;
+
+    bool beam_active() const { return beam_t >= 0.0f; }
+    bool funnel_on() const { return mode == FUNNEL || mode == STARVE || mode == PIT; }
+    bool snare_on() const { return mode == SNARE || mode == STARVE; }
+    float length(Mode m) const {
+        return m == FUNNEL ? FUNNEL_T : m == SNARE ? SNARE_T : m == REST ? (ENRAGED ? REST2 : REST1) : CYCLE2;
+    }
+    // Art px (drawn 2x about its middle) -> screen, riding its breath: the
+    // whole of it sinks on its planted feet (25_myrmecoleon_design.py).
+    void at(float ax, float ay, float* ox, float* oy) const {
+        static const float SINK[5] = { 0, 1, 2, 1, 0 };
+        float s = beam_active() ? 0.0f : SINK[idle_f % 5];
+        *ox = x + (ax - CX) * 2.0f; *oy = y + (ay + s - CY) * 2.0f;
+    }
+    void knee(int k, float* ox, float* oy) const {   // outer left, inner left, outer right, inner right
+        static const float KX[4] = { 10, 14, 87, 83 }, KY[4] = { 18, 38, 18, 38 };
+        at(KX[k], KY[k], ox, oy);
+    }
+    // The pit walls: a mirrored pair out of the open jaws, splayed wider each
+    // pair, so the wedge left between them moves.
+    void pit_beams(float px, float py) {
+        ++beams_fired;
+        float mx, my;
+        at(MOUTH_X, MOUTH_Y, &mx, &my);
+        if (hypotf(px - mx, py - my) < CLEAR) return;
+        float splay = SPLAY0 + SPLAY_STEP * (splay_k++ % SPLAYS);
+        reflect_beam(mx, my, HALF_PI - splay, BEAM_SEGMENTS, beam);
+        reflect_beam(mx, my, HALF_PI + splay, BEAM_SEGMENTS, beam + BEAM_SEGMENTS);
+        beam_t = 0.0f;
+    }
+    void advance(float px, float py) {
+        if (mode != REST) { last = mode; mode = REST; }
+        else if (ENRAGED) mode = ++cycles2 % PIT_EVERY == 0 ? PIT : STARVE;
+        else mode = last == FUNNEL ? SNARE : FUNNEL;
+        step_t = 0.0f;
+        beams_fired = 0;
+        if (mode == PIT) pit_beams(px, py);
+    }
+
 public:
-    Myrmecoleon() : Enemy(320, 160, 190, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
+    Myrmecoleon() : Enemy(320, 160, 680, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
     const char* name()          const override { return "MYRMECOLEON"; }
     int         move_facing()   const override { return FACE_DOWN; }   // one drawn view
-    float       fire_interval() const override { return ENRAGED ? 1.0f : 1.5f; }
-    int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
-        if (ENRAGED) {
-            out[0] = mk(a,         220.0f, 4.5f, 1.7f);
-            out[1] = mk(a - 0.2f,  200.0f, 4.0f, 1.4f);
-            out[2] = mk(a + 0.2f,  200.0f, 4.0f, 1.4f);
-            for (int i = 0; i < 8; i++)
-                out[i+3] = mk(ring_rot + i * TAU/8.0f, 100.0f, 3.5f, 1.0f);
-            ring_rot += PI / 8.0f;
-            return 11;
+    float       fire_interval() const override { return 1.0f / 60.0f; }
+    int         anim_frame()    const override { return beam_active() ? 0 : -1; }   // the jaws held open
+    int telegraphs(TeleLine out[], int max) const override {
+        if (!beam_active()) return 0;
+        bool warn = beam_t < BEAM_WARN, hot = !warn && beam_t < BEAM_WARN + BEAM_HOT;
+        int n = 0;
+        for (; n < 2 * BEAM_SEGMENTS && n < max; ++n) {
+            out[n] = beam[n];
+            out[n].stage = warn ? (beam_t < BEAM_MARK ? 3 : 0) : hot ? 1 : 2;
+            out[n].hurt_w = hot ? BEAM_WIDTH : 0.0f;
+            out[n].fade = warn || hot ? 0.0f : (beam_t - BEAM_WARN - BEAM_HOT) / BEAM_FADE;
         }
-        out[0] = mk(a, 200.0f, 4.0f, 1.4f);
-        for (int i = 0; i < 6; i++)
-            out[i+1] = mk(ring_rot + i * TAU/6.0f, 85.0f, 3.5f, 0.9f);
-        ring_rot += PI / 6.0f;
-        return 7;
+        return n;
+    }
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override {
+        idle_f = frame;
+        if (frame == 3) drop_due = ENRAGED ? ++drops % RING_EVERY == 0 : mode == FUNNEL && ++drops % DROP_EVERY == 0;
+        return 0;
+    }
+    void update(float dt, float px, float py) override {
+        clock += dt; step_t += dt;
+        spin += dt * ((ENRAGED ? SPIN2 : SPIN1) + SWAY * sinf(clock * SWAY_W));
+        grain_t -= dt; bead_t -= dt; rico_t -= dt;
+        if (!funnel_on()) grain_t = 0.0f;
+        if (!snare_on()) { bead_t = rico_t = 0.0f; beads = 0; }
+        if (beam_active() && (beam_t += dt) >= BEAM_WARN + BEAM_HOT + BEAM_FADE) beam_t = -1.0f;
+        if (mode == PIT && beams_fired < 2 && step_t >= BEAM2_AT) pit_beams(px, py);
+        if (step_t >= length(mode)) advance(px, py);
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        auto emit = [&](BulletSpawn b, float ox, float oy) {
+            if (n >= max || hypotf(px - ox, py - oy) < CLEAR) return;
+            b.from = true; b.ox = ox; b.oy = oy;
+            out[n++] = b;
+        };
+        if (funnel_on() && grain_t <= 0.0f) {
+            grain_t += GRAIN_EVERY;
+            int arms = ENRAGED ? ARMS2 : ARMS1;
+            float bx, by;
+            at(BALL_X, BALL_Y, &bx, &by);
+            for (int i = 0; i < arms; ++i)
+                for (int turn = -1; turn <= 1; turn += 2) {
+                    float a = turn * spin + i * TAU / arms + (turn > 0 ? 0.0f : PI / arms);
+                    emit(mk(a, GRAIN_SPEED, RADIUS, DAMAGE), bx, by);
+                }
+        }
+        if (snare_on() && bead_t <= 0.0f) {
+            bead_t += BEAD_EVERY;
+            if (beads++ % BEAD_LEN < BEAD_ON) {
+                float f = fminf(step_t / length(mode), 1.0f);
+                float left = WHIP_FROM + (WHIP_TO - WHIP_FROM) * f;
+                for (int k = 0; k < 4; k += mode == STARVE ? 2 : 1) {   // starving, the outer knees alone
+                    bool right = k >= 2, inner = k & 1;
+                    float a = left - (inner ? INNER_TILT : 0.0f);
+                    BulletSpawn w = mk(right ? PI - a : a, WHIP_SPEED, RADIUS, DAMAGE);
+                    w.orbit_w = right ? WHIP_CURL : -WHIP_CURL;   // both curl in toward the floor's middle
+                    float kx, ky;
+                    knee(k, &kx, &ky);
+                    emit(w, kx, ky);
+                }
+            }
+        }
+        if (snare_on() && rico_t <= 0.0f) {
+            rico_t += RICO_EVERY;
+            for (int k = 0; k <= 2; k += 2) {
+                float kx, ky;
+                knee(k, &kx, &ky);
+                for (int i = -1; i <= 1; ++i) {
+                    float a = RICO_AIM + i * RICO_GAP;
+                    emit(mkb(k ? PI - a : a, RICO_SPEED, RADIUS, DAMAGE), kx, ky);
+                }
+            }
+        }
+        if (drop_due) {
+            drop_due = false;
+            float dx, dy;
+            at(DROOL_X, DROOL_Y, &dx, &dy);
+            int m = ENRAGED ? DROOL_N2 : DROOL_N1;
+            for (int i = 0; i < m; ++i) {
+                float a = ENRAGED ? spin + i * TAU / m : HALF_PI + (i - 1) * DROOL_ARC;
+                float r = ENRAGED ? DROOL_R2 : DROOL_R1;
+                float cx = ENRAGED ? x : dx, cy = ENRAGED ? y + RING_DROP : dy;
+                BulletSpawn mine = mk(a, 0.0f, MINE_R, DAMAGE);
+                mine.delay = MINE_WAIT + i * (ENRAGED ? RING_STAGGER : MINE_STAGGER);
+                mine.launch_speed = MINE_SPEED;
+                emit(mine, cx + cosf(a) * r, cy + sinf(a) * r);
+            }
+        }
+        return n;
     }
 };
 
@@ -2770,7 +3401,7 @@ public:
 // "thunder camel", ten times the size of an elephant, that could not fit into
 // Noah's Ark and survives in the netherworld. In the game the player finds
 // what looks like a pyramid; at a touch it rises out of the sand -- the
-// pyramid is its hump. BOSS (tier 1), 1500 HP, sand-gold bullets. GIANT
+// pyramid is its hump. BOSS (tier 1), 2000 HP (the user: a marathon), sand-gold bullets. GIANT
 // sheet (302x166, drawn 2x: it fills the top of the arena; one row a
 // direction, eight frames, breathing), standing 3/4 right, never moving.
 // Every shot leaves from the part of it that makes it (the user): its
@@ -2831,9 +3462,10 @@ class Dajna : public Enemy {
         *ox = x + (fx - 151.0f) * 2.0f; *oy = y + (fy + drop * sit - 83.0f) * 2.0f;
     }
     int  stage() const { float f = (float)hp / max_hp; return f > 0.66f ? 1 : f > 0.33f ? 2 : 3; }
+    int  phase_lines(float out[], int) const override { out[0] = 0.66f; out[1] = 0.33f; return 2; }
     float bolt_every() const { return stage() >= 3 ? BOLT_EVERY3 : BOLT_EVERY; }
 public:
-    Dajna() : Enemy(320, 171, 1500, {1.25f,1.5f,2.0f,0.75f,0.75f,1.5f,1.0f}) {}
+    Dajna() : Enemy(320, 171, 2000, {1.25f,1.5f,2.0f,0.75f,0.75f,1.5f,1.0f}) {}
     const char* name()          const override { return "DAJNA"; }
     float       fire_interval() const override { return 0.02f; }   // everything on its own clock
     float       phase2_at()     const override { return 0.66f; }
@@ -2996,22 +3628,159 @@ public:
     }
 };
 
+// The Angont of Huron lore: a monstrous venomous serpent of damp places --
+// lakes, swamps, dark woods -- whose poison brought sickness and death.
+// ELITE tier, 780 HP, pale poison-green bullets. BIG sheet (98x65, one view,
+// 5 frames): coiled in a mound of three coils, the head rearing out of the
+// top, three poison skulls drifting up off its skin. It never moves.
+// The first enemy with POISON shots (BulletSpawn::poison, lavender cores; the
+// user): the few to dodge first -- a hit costs its bar and poisons, and the
+// poison outlasts the fight. Only the skulls and the venom carry it.
+// Pattern A -- COIL RINGS (plain): the coils breathe out flattened rings in
+//              turn, top, middle, bottom, each turning against the last:
+//              woven bands rolling down -- pass where the gaps line up.
+// Pattern B -- POISON RINGS: the skulls on its skin take turns loosing a
+//              spinning ring of poison shots (the user: round, not a skull)
+//              that forms, drifts at the player and steers (giving up
+//              close), two doors in it coming round, one shot on its rim
+//              spitting spores like a sprinkler -- sidestep the slow ring,
+//              or step in through a door and let it pass over you.
+// Pattern C -- VENOM (poison): the fangs drip: drops spray out, slow to a
+//              stop in a scattered swamp, then launch at the player one by
+//              one -- keep moving.
+// Phase 2 (half HP) -- SICKNESS (the user: it was easier than phase 1): the
+// bands come faster and fuller; a ring still spits spores AND BURSTS into
+// them when its drift is done; the fangs drip at every gape. No lasers (the
+// user: its forked-tongue beams are gone).
 class Angont : public Enemy {
-public:
-    Angont() : Enemy(320, 160, 272, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
-    const char* name()          const override { return "ANGONT"; }
-    float       fire_interval() const override { return ENRAGED ? 1.0f : 1.5f; }
-    int fire(float px, float py, BulletSpawn out[], int) override {
-        float a = aim_at(x,y,px,py);
-        if (ENRAGED) {
-            for (int i = 0; i < 9; i++)
-                out[i] = mk(a + (i-4)*0.28f, 195.0f, 4.0f, 1.5f);
-            out[9]  = mk(a,         270.0f, 4.5f, 2.0f);
-            return 10;
+    static constexpr float CX = 49.0f, CY = 32.5f;                  // the frame's middle, art px
+    static constexpr float FANG_Y = 23.0f;
+    static constexpr float HALF_PI = 1.5707963f;
+    static constexpr float CYCLE = 5.0f, SKULL_AT2 = 2.5f;          // a skull at each cycle's start and halfway
+    static constexpr int   COILS = 3, SKULLS = 3;
+    static constexpr float RING_EVERY1 = 0.9f, RING_EVERY2 = 0.7f, RING_SPEED = 85.0f;
+    static constexpr float RING_TURN = 0.25f, RING_SQUASH = 0.45f, RING_LIFE = 5.0f;   // a ring turns whole: slow, or its edge whips
+    static constexpr int   RING_N1 = 20, RING_N2 = 22;
+    static constexpr int   PRING_SLOTS = 12, PRING_SHOTS = 10, PRING_SPITTER = 0;   // two opposite slots left open: the doors
+    static constexpr float PRING_R = 40.0f, PRING_SPIN = 1.2f;      // its rim ~48 px/s: a door comes round slow enough to step through
+    static constexpr float SKULL_FORM = 0.6f, SKULL_DRIFT = 55.0f, SKULL_HOME = 3.0f;
+    static constexpr float SPORE_EVERY = 0.8f, SPORE_SPREAD = 1.2f, SPORE_SPEED = 80.0f;
+    static constexpr float BURST_T = 3.2f, BURST_SPREAD = 3.14159265f; // two spores off each shot, either side
+    static constexpr int   SPORE_N = 3, BURST_N = 2;
+    static constexpr int   VENOM_FRAME = 2, VENOM_EVERY = 2, VENOM_EVERY2 = 1, DROPS = 3;   // phase 2 drips at every gape
+    static constexpr float DROP_FAN = 0.45f, DROP_REACH0 = 70.0f, DROP_REACH_STEP = 50.0f, DROP_T = 0.8f, DROP_JITTER = 0.2f;
+    static constexpr float DROP_TURN = 0.0001f;                     // on an orbit, so it travels while it waits
+    static constexpr float VENOM_WAIT = 1.4f, VENOM_STAGGER = 0.25f, VENOM_SPEED = 150.0f;
+    static constexpr float RADIUS = 3.0f, POISON_R = 4.0f, DAMAGE = 5.0f, CLEAR = 64.0f;
+    int coil = 0, skull = 0, drips = 0;
+    float cycle_t = 0.0f, ring_t = 0.0f, ring_rot = 0.0f;
+    bool half_done = false, skull_due = false, venom_due = false;
+
+    void at(float ax, float ay, float* ox, float* oy) const {       // art px (drawn 2x about its middle) -> screen
+        *ox = x + (ax - CX) * 2.0f; *oy = y + (ay - CY) * 2.0f;
+    }
+    void skull_at(int k, float* ox, float* oy) const {
+        static const float SX[SKULLS] = { 29, 72, 14 }, SY[SKULLS] = { 20, 17, 48 };
+        at(SX[k], SY[k], ox, oy);
+    }
+    // A ring for shape_shots, radius r: PRING_SLOTS spots round it, two
+    // opposite ones left out (the doors). PRING_SHOTS spots.
+    static void ring_points(float r, float sx[PRING_SHOTS], float sy[PRING_SHOTS]) {
+        int n = 0;
+        for (int i = 0; i < PRING_SLOTS; ++i) {
+            if (i % (PRING_SLOTS / 2) == PRING_SLOTS / 4) continue;
+            float a = i * TAU / PRING_SLOTS;
+            sx[n] = r * cosf(a); sy[n] = r * sinf(a); ++n;
         }
-        for (int i = 0; i < 7; i++)
-            out[i] = mk(a + (i-3)*0.3f, 170.0f, 4.0f, 1.3f);
-        return 7;
+    }
+
+public:
+    Angont() : Enemy(320, 160, 780, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
+    const char* name()          const override { return "ANGONT"; }
+    int         move_facing()   const override { return FACE_DOWN; }   // one drawn view
+    float       fire_interval() const override { return 1.0f / 60.0f; }
+    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override {
+        if (frame == VENOM_FRAME && ++drips % (ENRAGED ? VENOM_EVERY2 : VENOM_EVERY) == 0) venom_due = true;   // the jaws gape, the venom drips
+        return 0;
+    }
+    void update(float dt, float, float) override {
+        ring_t -= dt;
+        if ((cycle_t += dt) >= CYCLE) {
+            cycle_t -= CYCLE;
+            half_done = false;
+            skull_due = true;
+        } else if (!half_done && cycle_t >= SKULL_AT2) {
+            half_done = true;
+            skull_due = true;
+        }
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        auto clear = [&](float ox, float oy) { return hypotf(px - ox, py - oy) >= CLEAR; };
+        if (ring_t <= 0.0f) {
+            ring_t += ENRAGED ? RING_EVERY2 : RING_EVERY1;
+            static const float ROW[COILS] = { 37, 46, 55 };          // top, middle, bottom coil
+            int m = ENRAGED ? RING_N2 : RING_N1;
+            float ox, oy;
+            at(CX, ROW[coil], &ox, &oy);
+            float turn = coil % 2 ? -RING_TURN : RING_TURN;
+            coil = (coil + 1) % COILS;
+            ring_rot += PI / m;                                       // each ring's gaps half a gap round
+            if (clear(ox, oy) && n + m <= max)
+                for (int i = 0; i < m; ++i) {
+                    BulletSpawn b = mk(ring_rot + i * TAU / m, RING_SPEED, RADIUS, DAMAGE);
+                    b.orbit_w = turn; b.orbit_squash = RING_SQUASH;
+                    b.life = RING_LIFE; b.fade_out = true;
+                    b.from = true; b.ox = ox; b.oy = oy;
+                    out[n++] = b;
+                }
+        }
+        if (skull_due) {
+            skull_due = false;
+            float ox, oy, sx[PRING_SHOTS], sy[PRING_SHOTS];
+            skull_at(skull, &ox, &oy);
+            skull = (skull + 1) % SKULLS;
+            if (clear(ox, oy) && n + PRING_SHOTS <= max) {
+                ring_points(PRING_R, sx, sy);
+                BulletSpawn* s = out + n;
+                n += poisoned(s, shape_shots(ox, oy, aim_at(ox, oy, px, py), SKULL_DRIFT, PRING_SPIN,
+                                             SKULL_FORM, sx, sy, PRING_SHOTS, s));
+                for (int i = 0; i < PRING_SHOTS; ++i) {
+                    s[i].radius = POISON_R;
+                    s[i].homing = true; s[i].homing_timer = SKULL_HOME;
+                    if (ENRAGED && i != PRING_SPITTER) {              // the rest of the ring bursts at the end of its drift
+                        s[i].shed_first = s[i].shed_every = BURST_T;
+                        s[i].shed_times = 1; s[i].shed_dies = true;
+                        s[i].shed_n = BURST_N; s[i].shed_spread = BURST_SPREAD; s[i].shed_speed = SPORE_SPEED;
+                    }
+                }
+                BulletSpawn& j = s[PRING_SPITTER];                    // one rim shot spits spores as it comes round, both phases
+                j.shed_first = j.shed_every = SPORE_EVERY;
+                j.shed_n = SPORE_N; j.shed_spread = SPORE_SPREAD; j.shed_speed = SPORE_SPEED;
+            }
+        }
+        if (venom_due) {
+            venom_due = false;
+            static const float FANG_X[2] = { 42, 56 };
+            for (int f = 0; f < 2; ++f) {
+                float ox, oy;
+                at(FANG_X[f], FANG_Y, &ox, &oy);
+                if (!clear(ox, oy)) continue;
+                for (int i = 0; i < DROPS && n < max; ++i) {
+                    // Sprayed out and down, the far ones further out to the fang's side.
+                    float a = HALF_PI + (f ? -1.0f : 1.0f) * DROP_FAN * (i + 0.5f) + (ernd() - 0.5f) * DROP_JITTER;
+                    float reach = DROP_REACH0 + DROP_REACH_STEP * i, v0 = 2.0f * reach / DROP_T;
+                    BulletSpawn d = mk(a, v0, POISON_R, DAMAGE);
+                    d.orbit_w = DROP_TURN; d.accel = -v0 / DROP_T; d.min_speed = 0.5f;
+                    d.delay = DROP_T + VENOM_WAIT + (f * DROPS + i) * VENOM_STAGGER;
+                    d.launch_speed = VENOM_SPEED;
+                    d.poison = true;
+                    d.from = true; d.ox = ox; d.oy = oy;
+                    out[n++] = d;
+                }
+            }
+        }
+        return n;
     }
 };
 
@@ -3921,11 +4690,61 @@ public:
 };
 
 // Vast creature of Tibet whose gaze kills whatever it sees -- unless that
-// sees it first. BOSS tier 2, mountains.
+// sees it first. BOSS tier 2, mountains. A living mountain: rock pillars
+// bound by flesh. The fight turns on a clock (the user):
+//   LEGS -- all you see of it is its legs; it can be fought.
+//   DOWN -- it walks backwards to the right, legs stepping in diagonal pairs,
+//           then lowers its head into view from above (the turn sheet, 18
+//           frames, played forward).
+//   SHUT -- the head hangs, eyes shut: the warning to look away.
+//   GAZE -- the eyes open (empty voids; their glints, the parts sheet, turned
+//           on the player). Face any of the three ways up -- and firing faces
+//           you at it -- and the arena washes white for BLIND_T s, the shots
+//           only ghosts; look again and it starts over.
+//   UP   -- it lifts its head and steps back over you (the turn sheet,
+//           played backward), and the legs come round again.
 class Sannaja : public Enemy {
+    enum Stage { LEGS, DOWN, SHUT, GAZE, UP };
+    static constexpr float STAGE1_T = 12.0f, TRANS_T = 2.4f, SHUT_T = 1.0f, GAZE_T = 6.4f, BLIND_T = 5.0f;
+    static constexpr int   EYES = 2;
+    static constexpr float EX[EYES] = { 133.0f, 107.5f }, EY[EYES] = { 145.5f, 157.0f };   // eye middles, art px (354x225, drawn 2x about its middle)
+    static constexpr float LOOK[EYES] = { 3.5f, 3.0f };                                   // how far a glint moves off its middle, art px
+    static constexpr int   GLINT_W = 7, LID_X = 7, LID_W = 24;                            // parts sheet: the glint, then each eye's shut lid
+    static constexpr float LX[EYES] = { 133.0f, 107.0f }, LY[EYES] = { 145.0f, 157.0f };   // each lid cell's middle, art px
+    Stage stage = LEGS;
+    float st = 0.0f, white_t = 0.0f;
+    float lx = 0.0f, ly = 0.0f;                                                            // where the player is
 public:
     Sannaja() : Enemy(320, 150, 1800, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "SANNAJA"; }
+    float flap_phase() const override {
+        if (stage == DOWN) return fminf(st / TRANS_T, 0.999f);
+        if (stage == UP)   return fminf(1.0f - st / TRANS_T, 0.999f);
+        return -1.0f;
+    }
+    bool  alt_pose() const override { return stage == SHUT || stage == GAZE; }   // the head is down
+    float blind()    const override { return white_t > 0.0f ? 1.0f : 0.0f; }
+    void see_facing(int f) override {
+        if (stage == GAZE && (f == FACE_UP || f == FACE_UP_LEFT || f == FACE_UP_RIGHT)) white_t = BLIND_T;
+    }
+    void update(float dt, float px, float py) override {
+        lx = px; ly = py;
+        white_t = fmaxf(white_t - dt, 0.0f);
+        st += dt;
+        static const float LONG[5] = { STAGE1_T, TRANS_T, SHUT_T, GAZE_T, TRANS_T };
+        if (st >= LONG[stage]) { st -= LONG[stage]; stage = (Stage)((stage + 1) % 5); }
+    }
+    int parts(Part out[], int max) const override {
+        if ((stage != SHUT && stage != GAZE) || max < EYES) return 0;
+        for (int i = 0; i < EYES; i++) {
+            float ex = x + (EX[i] - 177.0f) * 2.0f, ey = y + (EY[i] - 112.5f) * 2.0f;
+            if (stage == SHUT) { out[i] = { x + (LX[i] - 177.0f) * 2.0f, y + (LY[i] - 112.5f) * 2.0f, LID_X + i * LID_W, 0, LID_W, LID_W }; continue; }
+            float dx = lx - ex, dy = ly - ey, d = sqrtf(dx * dx + dy * dy);
+            float k = d > 1e-3f ? LOOK[i] * 2.0f / d : 0.0f;
+            out[i] = { ex + dx * k, ey + dy * k, 0, 0, GLINT_W, GLINT_W };
+        }
+        return EYES;
+    }
     float       fire_interval() const override { return 1.2f; }
     int fire(float, float, BulletSpawn out[], int) override {
         float turn = ernd() * TAU;
@@ -6258,9 +7077,11 @@ class Namungumi : public Enemy {
 
     float every() const { return ENRAGED ? 0.8f : 1.3f; }
     static bool dash(int k, int phase) { return (k + phase) % 8 < 4; }   // 4 on, 4 off: 64 px gaps
-    // Its eye, on the sprite: one front view, and the pupil is frame pixel
-    // (49, 42) on every frame -- 1 px right of its middle and 20 below.
-    void eye(float& ex, float& ey) const { ex = x + 1.0f; ey = y + 20.0f; }
+    // Its eye, on the sprite: one front view, the pupil at frame pixel (49, PUPIL_Y)
+    // -- 1 px right of its middle; it rises with the breath (highest on 2) and
+    // sinks as it squats into its steps (7-11). Drawn 2x about (49, 32.5).
+    static constexpr int PUPIL_Y[12] = {42, 44, 41, 41, 41, 44, 42, 47, 46, 45, 45, 45};
+    void eye(float& ex, float& ey) const { ex = x + 1.0f; ey = y + (PUPIL_Y[cur] + 0.5f - 32.5f) * 2.0f; }
     // How far the beam has shot out: fast, then slowing (ease-out).
     static float grown(const Beam& b) { float k = fminf(b.t / GROW_T, 1.0f); return 1.0f - (1.0f - k) * (1.0f - k); }
     static TeleLine line(const Beam& b, int dir) {
@@ -6306,7 +7127,7 @@ public:
         for (Beam& b : beams) if (b.on) { b.t += dt; eye(b.ox, b.oy); }   // a live beam stays on the eye as it shuffles (the user)
         // Its wounds heal: once it's gone REGEN_AFTER s without being hurt.
         if (hp < last_hp) quiet = 0.0f; else quiet += dt;
-        if (ENRAGED && quiet >= REGEN_AFTER && hp > 0.0f) hp = fminf(hp + REGEN * dt, max_hp * 0.5f - 1.0f);   // never back into phase 1
+        if (ENRAGED && quiet >= REGEN_AFTER && hp > 0.0f) hp = fminf(hp + REGEN * max_hp / 520.0f * dt, max_hp * 0.5f - 1.0f);   // REGEN at its base 520 HP, scaled with its tier's   // never back into phase 1
         last_hp = hp;
     }
     int fire(float, float, BulletSpawn out[], int) override {
@@ -6775,11 +7596,11 @@ class Makalala : public Enemy {
     // The glowing club: pinned at (49, 15) in every frame of the fly sheet
     // (the user), drawn 2x about the frame's middle (49, 32.5).
     void club(float* ox, float* oy) const { *ox = x; *oy = y + (15.0f - 32.5f) * 2.0f; }
-    // Its beak, where the idle sheet draws it (from the front, the one view):
-    // the tip, closed, or the middle of its gape in the scream (frame 2).
+    // Its beak, where the idle sheet draws it (three-quarter, facing left; the one view):
+    // the hooked tip, closed, or the middle of its gape in the scream (frame 2).
     // Art px in the 98x65 frame, drawn 2x about the frame's middle.
     void beak(float, float, bool scream, float* ox, float* oy) const {
-        *ox = x + (49.5f - 49.0f) * 2.0f; *oy = y + ((scream ? 16.5f : 21.5f) - 32.5f) * 2.0f;
+        *ox = x + ((scream ? 42.5f : 40.5f) - 49.0f) * 2.0f; *oy = y + ((scream ? 17.0f : 20.5f) - 32.5f) * 2.0f;
     }
     // A phase-1 shot: out of the beak at (ox, oy).
     BulletSpawn from_beak(float a, float r, float ox, float oy) const {
@@ -8088,7 +8909,42 @@ public:
 
 // ── Factory ───────────────────────────────────────────────────────────────────
 
+// HP by tier: every enemy's own HP (its constructor, tuned within its tier)
+// times its tier's multiplier. The weapon grows faster than the roster's HP --
+// ore +50% a rung, oil up to 8x the damage a second, +5% a level -- so from
+// emerald on, fights ended in seconds (the user). Measured 2026-10-19: the
+// knife in each tier's expected gear (playtest_gear, src/playtest.cpp), fired
+// throughout from the start point, median time to kill per tier against a
+// target that grows with the tier (the user: ~15-20 s LOW up to 60 s BOSS2):
+//   LOW 22 s (20)  MEDIUM 16 (22)  UPPER 10 (26)  HARD 10 (30)  SEVERE 5 (36)
+//   BOSS1 7 (42)  ELITE 4 (48)  BOSS2 2 (60)  BOSS3 16 (60)
+// SEVERE and BOSS2 have no ready enemies yet: measured on their prototypes.
+// Re-measure after a gear or weapon change rather than tuning by hand.
+static const float TIER_HP_MULT[] = {
+    1.0f,    // T_UNSET
+    1.0f,    // T_STARTER
+    1.0f,    // T_LOW
+    1.35f,   // T_MEDIUM
+    2.6f,    // T_UPPER
+    2.9f,    // T_HARD
+    6.7f,    // T_SEVERE
+    11.4f,   // T_ELITE
+    5.8f,    // T_BOSS1
+    31.0f,   // T_BOSS2
+    3.8f,    // T_BOSS3
+};
+static_assert(sizeof(TIER_HP_MULT) / sizeof(TIER_HP_MULT[0]) == T_BOSS3 + 1, "an HP multiplier per EnemyTier");
+
+static Enemy* enemy_build(int id);
+
 Enemy* enemy_create(int id) {
+    Enemy* e = enemy_build(id);
+    e->max_hp *= TIER_HP_MULT[enemy_tier(id)];
+    e->hp = e->max_hp;
+    return e;
+}
+
+static Enemy* enemy_build(int id) {
     switch (id) {
         case  0: return new Skvader();
         case  1: return new Wolpertinger();
@@ -8277,8 +9133,10 @@ static const BulletRGB ENEMY_BULLET_RGB[] = {
     { 82, 232, 224, 192 },   // Nadubi: its bone barbs
     { 22, 232, 224, 160 },   // Cactus cat: its pale thorns
     { 24, 248,  88,   0 },   // Zoureg: red-hot orange
+    { 25, 240, 188,  60 },   // Myrmecoleon: sand gold, its lit hide brightened
     { 26, 248, 216, 120 },   // Akhekh: sun gold
     { 28, 232, 184,  48 },   // Opimachus: its gold beak
+    { 32, 168, 240, 188 },   // Angont: its poison skulls' pale green
     { 30, 240, 208, 128 },   // Dajna: desert sand
     {  6, 250, 228, 136 },   // Wakmangganchi Aragondi: its moon eyes
     { 16, 220, 240, 255 },   // Kamaitachi: wind white

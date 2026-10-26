@@ -6,6 +6,7 @@
 #include "story.h"
 #include "tilemap.h"
 #include "towns.h"     // TOWN1_HALL_DOOR_*
+#include "crafting.h"  // the worm errand's glands
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,10 @@ int main(int argc, char** argv) {
     for (int i = 0; i < STORY_BOSS_COUNT; i++) g_map.boss_sites[i] = { (short)(MAP_WIDTH / 2), (short)(MAP_HEIGHT / 2) };
     story_set_stage(STORY_ARC1);
     assert(story_site_active(&g_map, 0) && story_site_active(&g_map, 3) && !story_site_active(&g_map, 4) && !story_site_active(&g_map, STORY_ANAYE));
+    assert(!story_site_active(&g_map, 1) && "the worm stays under until the bell");
+    story_flags()->worm = STORY_W_RUNG;
+    assert(story_site_active(&g_map, 1));
+    story_flags()->worm = 0;
     story_set_stage(STORY_TURN);
     assert(story_site_active(&g_map, 4) && story_site_active(&g_map, 6) && !story_site_active(&g_map, STORY_ANAYE));
     story_mark_beaten(44);
@@ -127,6 +132,56 @@ int main(int argc, char** argv) {
             assert(tilemap_is_walkable(&g_map, tx, ty) && village_at(&g_map, tx, ty) == v && "a villager stands on the street");
         }
         printf("  %d villages, every speaker on the street\n", g_map.num_villages);
+        // The worm's errand: a village to set it, near the site; clues on
+        // walkable ground; and the whole errand played through by talk.
+        {
+            int wv = story_worm_village(&g_map);
+            assert(wv >= 0 && "a village sets the worm's errand");
+            const VillagePlacement& v = g_map.villages[wv];
+            int vx, vy;
+            story_village_npc_tile(&g_map, wv, &vx, &vy);
+            int dx = wrap_dx(g_map.boss_sites[1].x - vx), dy = wrap_dy(g_map.boss_sites[1].y - vy);
+            bool sand = v.biome == TILE_SAND || v.ground == TILE_SAND;
+            int den = story_worm_den(&g_map);
+            printf("  worm village %d (%s) %d tiles from the site; den %s\n", wv, sand ? "sand" : "NOT sand",
+                   (int)sqrtf((float)dx * dx + (float)dy * dy), den >= 0 ? "found" : "none");
+            for (int k = 0; k < STORY_WORM_CLUES; k++) {
+                int tx, ty;
+                assert(story_worm_clue_tile(&g_map, k, &tx, &ty) && tilemap_is_walkable(&g_map, tx, ty) && "a clue lies where it can be reached");
+            }
+            story_set_stage(STORY_ARC1);
+            story_flags()->worm = 0;
+            Player pl = {};
+            StoryWhere where = { STATE_OVERWORLD, &g_map, -1, -1, &pl, false };
+            StoryNpcPos people[32];
+            int count = story_npcs_here(where, people, 32), speaker = -1, other = -1;
+            for (int j = 0; j < count; j++)
+                if (people[j].village == wv) speaker = j; else if (people[j].village >= 0 && other < 0) other = j;
+            assert(speaker >= 0);
+            if (other >= 0) printf("    rumour: %s\n", story_npc_line(people[other], where));
+            printf("    elder: %s\n", story_npc_line(people[speaker], where));
+            assert(story_flags()->worm == STORY_W_ASKED);
+            item_slot(&pl, ITEM_POISON_GLAND) = STORY_WORM_GLANDS;
+            printf("    elder: %s\n", story_npc_line(people[speaker], where));
+            assert((story_flags()->worm & STORY_W_GLANDS) && item_count(&pl, ITEM_POISON_GLAND) == 0 && item_count(&pl, ITEM_ANTIDOTE) == 2);
+            for (int k = 0; k < STORY_WORM_CLUES; k++) {
+                StoryNotePos ns[16];
+                int nn = story_notes_here(where, nullptr, ns, 16), found = -1;
+                for (int j = 0; j < nn; j++) if (ns[j].idx == story_note_count() + k) found = j;
+                assert(found >= 0 && "the next clue lies out");
+                printf("    clue %d: %s\n", k + 1, story_note_take(ns[found].idx, where));
+            }
+            assert(!story_site_active(&g_map, 1));
+            printf("    elder: %s\n", story_npc_line(people[speaker], where));
+            assert(story_flags()->worm & STORY_W_BELL);
+            BossSite s = g_map.boss_sites[1];
+            float px = (s.x + 0.5f) * TILE_SIZE, py = (s.y + 0.5f) * TILE_SIZE;
+            assert(story_worm_can_ring(&g_map, px, py) && !story_worm_can_ring(&g_map, px + 20 * TILE_SIZE, py));
+            story_worm_ring();
+            assert(story_site_active(&g_map, 1) && story_site_touch(&g_map, px, (s.y + 1.0f) * TILE_SIZE - 4) == 1 && "the worm rises under the boy");
+            story_flags()->worm = 0;
+            story_flags()->first_village_plus1 = 0;
+        }
         // Town 0 has exactly its two standing residents, on clear ground,
         // in addition to every village speaker even when all villages exist.
         {

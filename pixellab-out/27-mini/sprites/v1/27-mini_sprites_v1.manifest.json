@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "27-mini_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2348 characters>",
+      "format": "png"
+    },
+    "description": "the same elephant-headed grey serpent uncoiled and slithering toward the viewer, its head raised, its long snake body curving behind in an S, rattle tail at the end, keep colours and black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "765485fa-86ed-4147-81b2-a42f0ba32197",
+    "generation_id": "29883c91-7f61-4a90-b896-c00056ff9107"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "27-mini-slither.png"
+  ]
+}

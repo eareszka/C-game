@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "63-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2088 characters>",
+      "format": "png"
+    },
+    "description": "Hidebehind, a faceless shaggy creature like a tall cone of dark brown fur with a pointed top, two thin arms raised at its sides ending in fans of long pale hooked claws, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "56be2882-d3ac-49b5-b0bc-56581b5a225d",
+    "generation_id": "28136c8b-2ce2-422e-aa2a-d40b0e886baf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "32-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2624 characters>",
+      "format": "png"
+    },
+    "action": "slithering to the left like a snake, its body undulating in side-to-side waves along the ground, head raised",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "192282d8-229f-4fe5-91c4-4b80a3e0514a",
+    "generation_id": "083718ba-5200-4f0b-8d35-44c0383415a6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slitherl-00.png",
+    "slitherl-01.png",
+    "slitherl-02.png",
+    "slitherl-03.png",
+    "slitherl-04.png"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "job": "6da72a50-20bb-4e4a-b9e9-52c7de6fb826",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r-04.png"
+  ],
+  "settled": null,
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "6da72a50-20bb-4e4a-b9e9-52c7de6fb826"
+  },
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-R\\roll-r\\animations\\v2\\ayotochtli-roll-r.manifest.json",
+  "recovered": true
+}

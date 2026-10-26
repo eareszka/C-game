@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "54-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 648 characters>",
+      "format": "png"
+    },
+    "description": "Billdad, a tan beaver-like creature with long kangaroo hind legs, short forelegs, a hawk-like bill and a big flat brown beaver tail, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "79b00104-a3c0-4a01-8d43-e9e274228c8c",
+    "generation_id": "4fb7213a-9c5a-45f5-9736-4e03301a1aa4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

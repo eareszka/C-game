@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "66-ayotochtli",
+  "generated": "2026-10-18T20:32:31Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "66-ayotochtli_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "66-ayotochtli-frame0-draft.png"
+      ],
+      "ids": {
+        "background_job_id": "cf0fc9c0-201e-4006-af5d-30199d910001",
+        "generation_id": "31da95a9-3a3b-4fb1-ba9d-3a089197308d"
+      }
+    }
+  ]
+}

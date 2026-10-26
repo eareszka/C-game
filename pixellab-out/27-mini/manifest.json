@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "subject": "27-mini",
+  "generated": "2026-10-23T01:47:26Z",
+  "spent": {
+    "calls": 3,
+    "generations": 3.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "27-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "27-mini-slitherl-00.png",
+        "27-mini-slitherl-01.png",
+        "27-mini-slitherl-02.png",
+        "27-mini-slitherl-03.png",
+        "27-mini-slitherl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "acc06681-c8f5-4e34-8ca4-7417676dd786",
+        "generation_id": "f7a11f31-0f3d-43dd-81af-97a6afdae88c"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "27-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "27-mini-rot-south-00.png",
+        "27-mini-rot-south-east-01.png",
+        "27-mini-rot-east-02.png",
+        "27-mini-rot-north-east-03.png",
+        "27-mini-rot-north-04.png",
+        "27-mini-rot-north-west-05.png",
+        "27-mini-rot-west-06.png",
+        "27-mini-rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "6343e215-9dac-4ac9-aaa9-f1c7aa04f5a8",
+        "generation_id": "a2d7888b-8d2e-419e-ba39-6d16be648731"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "27-mini_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "27-mini-slither.png"
+      ],
+      "ids": {
+        "background_job_id": "765485fa-86ed-4147-81b2-a42f0ba32197",
+        "generation_id": "29883c91-7f61-4a90-b896-c00056ff9107"
+      }
+    }
+  ]
+}

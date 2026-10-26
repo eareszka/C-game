@@ -1,0 +1,45 @@
+{
+  "id": 52,
+  "name": "52-sannaja",
+  "dir": "art/enemies/pixellab/52_sannaja",
+  "description": "",
+  "match": "art/enemies/pixellab/boss_reference_boiuna.png",
+  "prompts": {
+    "lids": "prompt_lids.txt"
+  },
+  "sheets": {
+    "lids": {
+      "png": "assets/enemies/redraws/52_sannaja_body.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "none",
+      "from": "headup"
+    },
+    "headup": {
+      "png": "assets/enemies/52_sannaja.png",
+      "frames": 8,
+      "rows": true,
+      "ms": 260,
+      "views": [
+        "D"
+      ],
+      "make": "breathe",
+      "from": "idle",
+      "pivot": 40,
+      "breathe": [
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        2,
+        2
+      ]
+    }
+  }
+}

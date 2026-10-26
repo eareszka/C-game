@@ -1,0 +1,22 @@
+{
+  "run": "roll-dr_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\ayotochtli-roll-dr-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\ayotochtli-roll-dr-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\ayotochtli-roll-dr-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\ayotochtli-roll-dr-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\ayotochtli-roll-dr-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\66-ayotochtli-battle\\roll-DR\\roll-dr\\animations\\v1\\roll-dr_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "34f3c7ff-640b-44da-8eaf-fd1bdedab80c",
+    "generation_id": "b3c9c329-f38a-4cef-a949-59504e58f0cf"
+  }
+}

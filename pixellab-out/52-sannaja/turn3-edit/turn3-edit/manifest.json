@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "turn3-edit",
+  "generated": "2026-10-19T13:43:50Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "turn3-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-turn3-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "c9408855-0aa1-497b-8bcc-af0ab9404bb8",
+        "generation_id": "6f8b734d-11bb-4c89-a14c-3a97208a905e"
+      }
+    }
+  ]
+}

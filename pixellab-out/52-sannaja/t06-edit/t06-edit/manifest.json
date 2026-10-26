@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "t06-edit",
+  "generated": "2026-10-19T15:29:14Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "t06-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-t06-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "5e9b5f64-1746-4010-906f-a6addb43cf8b",
+        "generation_id": "1b2a81de-082c-47ea-a695-e47a01d49698"
+      }
+    }
+  ]
+}

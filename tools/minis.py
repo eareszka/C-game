@@ -10,7 +10,7 @@ plugin into art/enemies/minis/NN_name_mini.aseprite, then installed into assets/
 """
 from pathlib import Path
 from collections import Counter
-import json, math, re, subprocess, sys, tempfile
+import json, math, os, re, subprocess, sys, tempfile
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,7 +24,9 @@ TIER_H = {'medium': 12, 'big': 16, 'giant': 24}       # a mini's height, outline
 GRASS = (0x4e, 0xdc, 0x4a, 255)
 RUN = 240.0          # PLAYER_RUN_SPEED (include/entity.h), world px a second; an art px is 2 of them
 PACE = 180.0         # CHASER_SPEED (src/main.cpp), 1.5x the player's walk: what chase_speed() is a share of
+HOVER_UP = 6         # how far a flier's mini is drawn over its shadow, art px (HOVER_UP, src/main.cpp)
 TOUCH = 22.0         # ACTOR_TOUCH (src/main.cpp): this near, the battle starts
+OPEN = os.environ.get('MINIS_OPEN') == '1'   # open the review and GIFs on this PC (the user reviews on their phone now)
 CONFIRMED = HERE / 'confirmed.json'                    # the ids the user confirmed, the only ones in the sheet
 SHEET = ROOT / 'assets/enemies/minis.png'             # 5 enemies a row, 8 cells each: D1 D2 U1 U2 L1 L2 R1 R2 (src/main.cpp)
 
@@ -32,7 +34,7 @@ SHEET = ROOT / 'assets/enemies/minis.png'             # 5 enemies a row, 8 cells
 def sheet_row(nn):
     """ENEMY_SHEETS row nn: (path, frames, rows)."""
     src = (ROOT / 'src/battle.cpp').read_text(encoding='utf-8')
-    rows = re.findall(r'\{ "(assets/enemies/(\d\d)_\w+\.png)",\s*\{[^}]*\}(?:, (\d+))?(?:, (true|false))?', src)
+    rows = re.findall(r'\{ "(assets/enemies/(?:redraws/)?(\d\d)_\w+\.png)",\s*\{[^}]*\}(?:, (\d+))?(?:, (true|false))?', src)
     for path, n, frames, r in rows:
         if int(n) == nn: return path, int(frames or 3), r == 'true'
     raise KeyError(nn)
@@ -52,11 +54,12 @@ def tier(views):
     return 'medium' if h <= 44 else 'big' if h <= 70 else 'giant'
 
 
-def shrink(im, height, letters):
+def shrink(im, height, letters, box=None):
     """The start of a mini: the view shrunk by blocks to `height` (outline included). letters: {'rrggbb': letter}
     for every colour but black; a block takes its most common colour, black lines left out, and is filled if
-    40% of it is. Returns {(x, y): letter}, feet on the bottom row, centred, outline redrawn."""
-    im = im.crop(im.getbbox())
+    40% of it is. Returns {(x, y): letter}, feet on the bottom row, centred, outline redrawn. box: crop to it
+    rather than the view's own bounds -- the bounds of all a view's frames, so they line up."""
+    im = im.crop(box or im.getbbox())
     s = (height - 2) / im.height
     w, h = max(1, round(im.width * s)), height - 2
     g = {}
@@ -70,6 +73,34 @@ def shrink(im, height, letters):
             if cols: g[x, y] = letters[cols.most_common(1)[0][0]]
     dx, dy = W // 2 - w // 2, H - 1 - h
     return ff.outline({(x + dx, y + dy): c for (x, y), c in g.items()})
+
+
+def snap(im, pal):
+    """A PixelLab drawing (art/enemies/pixellab/NN_name/mini) on the mini's palette: each opaque pixel the nearest
+    of pal ({'K': '000000', ...}), so shrink() can read it; half-clear pixels clear."""
+    cols = [tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) for h in pal.values()]
+    out = Image.new('RGBA', im.size)
+    for y in range(im.height):
+        for x in range(im.width):
+            p = im.getpixel((x, y))
+            if p[3] > 127: out.putpixel((x, y), min(cols, key=lambda c: sum((a - b) ** 2 for a, b in zip(c, p))) + (255,))
+    return out
+
+
+def recolour(im, tone, pal):
+    """A PixelLab drawing on the mini's palette by what each colour is, not which is nearest (nearest takes a
+    dark bamboo green to brown, a tan eye to green): tone(h, s, v) -> a letter of pal, h in degrees, s and v 0-1.
+    Half-clear pixels clear."""
+    import colorsys
+    rgb = {k: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) for k, c in pal.items()}
+    out = Image.new('RGBA', im.size)
+    for y in range(im.height):
+        for x in range(im.width):
+            p = im.getpixel((x, y))
+            if p[3] > 127:
+                h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in p[:3]))
+                out.putpixel((x, y), rgb[tone(h * 360, s, v)] + (255,))
+    return out
 
 
 def clean(g, passes=2):
@@ -97,9 +128,10 @@ def hop(g):
 
 
 def steps(views):
-    """{view: [frame, ...]}: one frame a view (it hops as it moves) or two (it steps between them instead)."""
+    """{view: [frame, ...]}: one frame a view (it hops as it moves), or two or three (it steps through them
+    instead; three go in a strip of their own, mini_frames() in src/main.cpp)."""
     out = {v: g if isinstance(g, list) else [g] for v, g in views.items()}
-    assert len({len(f) for f in out.values()}) == 1 and len(out['D']) in (1, 2)
+    assert len({len(f) for f in out.values()}) == 1 and len(out['D']) in (1, 2, 3)
     return out
 
 
@@ -145,11 +177,12 @@ def make(nn, name, views, pal, ref=None, cap=None, cell=(W, H), colours=3):
     out = HERE / f'{nn:02d}_review.png'
     rev.resize((rev.width * 6, rev.height * 6), Image.Resampling.NEAREST).save(out)
     on = lambda g: ff.image(g, pal, W, H, bg=GRASS)
-    walk = [on(g) for v in 'DLUR' for g in (views[v] if n == 2 else [views[v][0], hop(views[v][0])])]
+    walk = [on(g) for v in 'DLUR' for g in (views[v] if n > 1 else [views[v][0], hop(views[v][0])])]
     gif = HERE / f'{nn:02d}_hop.gif'
     big = [p.resize((W * 6, H * 6), Image.Resampling.NEAREST) for p in walk]
     big[0].save(gif, save_all=True, append_images=big[1:], duration=150, loop=0, disposal=1)
-    for p in (out, gif): subprocess.Popen(['cmd', '/c', 'start', '', str(p)])
+    if OPEN:
+        for p in (out, gif): subprocess.Popen(['cmd', '/c', 'start', '', str(p)])
     print('review', out, '\ngif', gif)
 
 
@@ -170,17 +203,27 @@ def chase_speed(style, t):
     if style == 'flee': return 1.1                                 # running from you, a little slower than you run
     if style == 'surf': return 2.0 if t % 1.0 < 0.4 else 0.2       # a lunge through the water, then a glide
     if style == 'plod': return 0.8                                 # slow and steady
+    if style == 'thrust': return 0.0 if t % 0.9 < 0.55 else 2.5    # coiled and still, then thrown straight at you
+    if style == 'scuttle': return 1.0                              # an ant's scuttle, never stopping
     if style == 'spring': return 1.7 if t % 0.5 < 0.2 else 0.5     # sprung off its coils, then gathering
+    if style == 'inch': return 1.5 if t % 0.6 < 0.35 else 0.2      # an inchworm: reaching out, then humped up gathering
+    if style == 'buzz': return 1.15                                # an insect's buzz, weaving (chase_bend)
+    if style == 'roll': return 1.7 - 1.5 * (t % 1.0)               # kicked off fast in its ball, rolling out, kicked off again
+    if style == 'drift': return 0.7                                # a great fish that can barely move, swimming slow
+    if style == 'streak': return 0.5 if t % 0.85 < 0.6 else 2.0   # a marsh light drifting, then a shooting star
     return 1.0                                                     # straight at the player
 
 
-def chase_frame(style, t):
-    """As chase_frame() in src/main.cpp: which of its two frames its chase shows t seconds in, or None to step
-    between them every 150 ms."""
+def chase_frame(style, t, n=2):
+    """As chase_frame() in src/main.cpp: which of its n frames its chase shows t seconds in, or None to step
+    through them every 150 ms."""
+    if style == 'flop' and n == 3: return 1 if t % 0.55 < 0.1 else 2 if t % 0.55 < 0.25 else 0   # heaved up, flopping down, lying
     if style == 'bound': return 0 if t % 0.6 < 0.3 else 1       # stretched out in the leap, gathered on landing
     if style == 'pounce': return 0 if t % 0.85 < 0.5 else 1     # standing still, then in the air
     if style == 'flop': return 1 if t % 0.55 < 0.25 else 0      # in the air in the flop, lying between
     if style == 'spring': return 1 if t % 0.5 < 0.2 else 0      # up in the air in the spring
+    if style == 'thrust': return 0 if t % 0.9 < 0.55 else 1     # coiled while it waits, uncoiled in the thrust
+    if style == 'inch': return 1 if t % 0.6 < 0.35 else 0       # stretched out reaching, arched gathering
     return None
 
 
@@ -195,13 +238,27 @@ def chase_bend(style, t):
     if style == 'gust': return 0.0 if t % 0.8 < 0.35 else 2 * math.pi * (t % 0.8 - 0.35) / 0.45   # straight, then one loop round
     if style == 'skirt': return 1.2 if t % 1.1 < 0.8 else 0.0               # circling wide, then straight in
     if style == 'flee': return math.pi                                      # straight away from you
+    if style == 'scuttle': return 0.35 * math.sin(t * 2 * math.pi / 0.5)  # weaving a little on its long legs
+    if style == 'buzz': return 0.8 * math.sin(t * 2 * math.pi / 0.45)     # weaving side to side as it buzzes in
+    if style == 'drift': return 0.4 * math.sin(t * 2 * math.pi / 1.6)    # its slow swim weaving a little
     return 0.0
 
 
-def chase_gif(nn, style, views, pal, spin=False, cell=(W, H)):
+def shadow(frame, cx, gy, rx):
+    """A flier's shadow on the ground, as draw_chaser() in src/main.cpp draws it: an ellipse rx art px across each
+    way and 2 down, centred on (cx, gy), half its pixels black by the ordered dither (fc_bayer)."""
+    M = ((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))
+    for y in range(-2, 3):
+        for x in range(-rx, rx + 1):
+            if x * x * 4 + y * y * rx * rx <= rx * rx * 4 and M[(y + 2) & 3][(x + rx) & 3] < 8:
+                if 0 <= cx + x < frame.width and 0 <= gy + y < frame.height: frame.putpixel((cx + x, gy + y), (0, 0, 0, 255))
+
+
+def chase_gif(nn, style, views, pal, spin=False, cell=(W, H), hover=0):
     """Its mini chasing a standing player across grass, 25 frames a second, by chase_speed() and chase_bend();
     returns how fast it closes on the player on average, a share of the player's running speed. One that flees
-    (bend pi) is run down instead: the player starts near it and runs at it."""
+    (bend pi) is run down instead: the player starts near it and runs at it. hover: a flier's shadow's half width
+    (mini_hover() in src/main.cpp): it is drawn HOVER_UP art px over its shadow, a pixel lower on its second frame."""
     dt, fw, fh = 0.04, 220, 130
     cw, ch = cell
     me, cells = ff.player(), {v: [ff.image(g, pal, cw, ch) for g in gs] for v, gs in steps(views).items()}
@@ -219,10 +276,13 @@ def chase_gif(nn, style, views, pal, spin=False, cell=(W, H)):
         if spin: face = 'DRUL'[int(t / 0.12) % 4]   # it spins whichever way it goes (draw_chaser in src/main.cpp)
         frame = Image.new('RGBA', (fw, fh), GRASS)
         frame.alpha_composite(me, (int(P[0] / 2) - 7, int(P[1] / 2) + 3 - me.height))
-        step = v > 0 and int(t / 0.15) % 2          # moving: its second frame, or a hop if it has one frame
-        two = len(cells[face]) == 2
-        if two and chase_frame(style, t) is not None: step = chase_frame(style, t)
-        frame.alpha_composite(cells[face][step if two else 0], (int(x / 2) - cw // 2, int(y / 2) + 4 - ch - (step and not two)))
+        n = len(cells[face])
+        step = int(t / 0.15) % max(n, 2) if v > 0 or hover else 0   # moving (or hovering, its wings never still): its next frame, or a hop
+        two = n > 1
+        if two and chase_frame(style, t, n) is not None: step = chase_frame(style, t, n)
+        lift = HOVER_UP - (step if two else 0) if hover else 0
+        if hover: shadow(frame, int(x / 2), int(y / 2) + 4 - 2, hover)
+        frame.alpha_composite(cells[face][step if two else 0], (int(x / 2) - cw // 2, int(y / 2) + 4 - ch - (step and not two) - lift))
         frames.append(frame)
         x, y, t = x + mx * v * dt, y + my * v * dt, t + dt
         if flees: P = (P[0] - ux * RUN * dt, P[1] - uy * RUN * dt)     # the player running it down
@@ -230,7 +290,7 @@ def chase_gif(nn, style, views, pal, spin=False, cell=(W, H)):
     big = [f.resize((fw * 4, fh * 4), Image.Resampling.NEAREST) for f in frames]
     out = HERE / f'{nn:02d}_chase.gif'
     big[0].save(out, save_all=True, append_images=big[1:], duration=int(dt * 1000), loop=0, disposal=1)
-    subprocess.Popen(['cmd', '/c', 'start', '', str(out)])
+    if OPEN: subprocess.Popen(['cmd', '/c', 'start', '', str(out)])
     run = sum(chase_speed(style, i / 100) * math.cos(chase_bend(style, i / 100)) for i in range(1000)) / 1000
     print(f'chase {style}: ' + ('run down by the player in' if flees else 'reaches a standing player in') + f' {t:.2f} s; over 10 s it closes at {run:.2f} of the chase '
           f'pace on average; gif {out}')
@@ -259,7 +319,7 @@ def sheet(confirm):
     for nn in done:
         ase, = HERE.glob(f'{nn:02d}_*_mini.aseprite')
         strip = drawn(ase)
-        if strip.height != H:                     # too big for a cell: a strip of its own, 8 cells (src/main.cpp)
+        if strip.height != H or strip.width == W * 12:   # too big for a cell, or three frames a view: a strip of its own (src/main.cpp)
             strip.save(SHEET.parent / f'minis_{nn:02d}.png')
             continue
         k = strip.width // W                      # 4: one frame a view (cells 0 2 4 6, it hops); 8: two
@@ -271,7 +331,7 @@ def sheet(confirm):
     for nn in done:
         ase, = HERE.glob(f'{nn:02d}_*_mini.aseprite')
         strip = drawn(ase)
-        if strip.height != H:
+        if strip.height != H or strip.width == W * 12:
             assert Image.open(SHEET.parent / f'minis_{nn:02d}.png').convert('RGBA').tobytes() == strip.tobytes()
             continue
         k = strip.width // W
@@ -289,7 +349,7 @@ if __name__ == '__main__':
     t = tier(views)
     cols = Counter('%02x%02x%02x' % p[:3] for im in views.values() for p in im.get_flattened_data() if p[3] and p[:3] != (0, 0, 0))
     print(f'{nn:02d}: tier {t} -> {TIER_H[t]} px tall; battle colours', ' '.join(f'{c} {n}' for c, n in cols.most_common()))
-    letters = dict(a.split('=') for a in sys.argv[2:]) or {c: 'ABCDEFGHIJ'[i] for i, (c, _) in enumerate(cols.most_common())}
+    letters = dict(a.split('=') for a in sys.argv[2:]) or {c: 'ABCDEFGHIJLMNOPQRSTUVWXYZ'[i] for i, (c, _) in enumerate(cols.most_common())}
     print('letters', letters)
     for v, _ in VIEWS:
         print(v); print(ascii(shrink(views[v], TIER_H[t], letters)))

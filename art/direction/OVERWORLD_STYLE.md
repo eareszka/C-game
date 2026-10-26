@@ -277,6 +277,39 @@ meet without a line; they differ by tone. Ground has none.
 - A texture stretched or sheared to fit a slanted face.
 - A side face lighter than the front it turns from.
 
+## Props
+
+The scenery each biome is laid with, every one of them breakable. The table is
+`art/structures/props/props.py`, one row a prop: its biome, the groups it comes
+in, its cells, how it stands, what breaks it, what it drops. It is the only place
+any of that is written. `gen_entrance_art.py --tables --props` packs every prop
+into the sheet's rows 226-245 and writes `src/props.inc`; then
+`tools/palette_pass.py --write`. The checker reads every prop from the same table.
+
+- **Standing.** A prop is entrance art, laid whole. A column's lowest pixel is its
+  ground line, so the player is drawn behind it above that line. Its feet meet
+  the prop on the bottom few rows of each column (`stand` in pixels), on all of
+  it if the prop is low (a log), or not at all if it lies flat (tufts, skulls,
+  pebbles). A column whose lowest pixel stands well above the prop's own is open
+  beneath, as the arch is.
+- **Groups, never mixed.** Worldgen ("Props", `lay_props`) lays them as small
+  groups of one theme each, about every 30-40 tiles:
+  - desert: cactus stand, rock country, old trail
+  - forest: deadfall, woodcutter's camp, undergrowth
+  - plains (the meadow ground): farmstead, Mayan ruins
+
+  The theme's anchor stands at a group's middle, with 2-7 fillers thrown round it
+  a tile apart, thinning toward the edge. A group holds at most two of a small
+  thing and one of a bigger one. A neutral few stray alone between the groups.
+- **The two plains countries.** Ruins ring every step pyramid, 12-60 tiles out,
+  in the woods as on the meadow. Elsewhere a ruin field stands only where a slow
+  noise runs high. Farms keep 70 tiles from a pyramid and 50 from any ruin
+  group, so hay and statues never stand together.
+- **Breaking.** A prop takes each blow at its block's top left, and it shakes
+  whole. A blade crossing several of its cells deals one blow. When it breaks,
+  every cell goes and stays gone (`persist.h`), and it pays its drops through
+  `item_slot`. `make propcheck` proves this on one prop of each kind of blow.
+
 ## How to check
 
 ```
@@ -510,3 +543,11 @@ every 0.7 s, plain and then each of three nuggets, every vein on a clock of
 its own (`vein_frame`); the stone rock is still. A node is stood as the
 desert's things are -- solid on its bottom three rows, walked behind above
 them -- and shakes when struck, as everything farmable does.
+
+**A tuft of dry grass is drawn as the ground draws a tuft** (the user,
+2026-10-26, over the same tufts outlined as objects, where the line round
+blades a pixel wide was most of the drawing): the desert's grass
+(`art/structures/props/desert/grass_design.py`) is the villages' thatch, two
+tones, blades a pixel wide fanned by hand, no line round it, black dots in the
+sand under its root as under the grass cells' tufts. It is walked over. The
+checker reads it as an object and counts its `out`; that one is expected.

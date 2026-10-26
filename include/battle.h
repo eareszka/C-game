@@ -121,6 +121,7 @@ struct Bullet {
     bool  flash_in;       // flashes white for its first moment
     bool  fade_out;       // with a life: fades over its last moments, harmless
     bool  behind;         // drawn behind the enemy
+    bool  poison;         // a hit poisons the player too (BulletSpawn::poison)
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
     int   weapon;         // WeaponType
@@ -145,6 +146,45 @@ enum BattlePhase {
     BATTLE_PHASE_FIGHTING,
     BATTLE_PHASE_VICTORY,
     BATTLE_PHASE_DEFEAT,
+    BATTLE_PHASE_TRIAL_END,  // a difficulty trial's time is up: the rating card
+};
+
+// ── Difficulty trial ──────────────────────────────────────────────────────────
+
+// A difficulty trial (F4 in test mode, src/playtest.cpp): a real fight with
+// the knife, in the ore, oil and level a player has by the enemy's tier
+// (playtest_gear), so a human's hits a minute can be compared across enemies.
+// Under the knife the enemy's HP also drains, all of it over TRIAL_DRAIN_SECS,
+// so every fight reaches its phase line and ends. The player can't die,
+// nothing is paid and nothing touches the save.
+static const float TRIAL_DRAIN_SECS = 120.0f;
+static const int   TRIAL_MAX_HITS = 256;
+
+struct TrialHit {
+    float t, x, y;   // seconds into the fight, where the player was
+    char  src;       // 'b' a shot, 'l' a laser, 'p' a part, 'c' its body
+    bool  enraged;   // past its phase line (Enemy::phase2_at)
+};
+
+// The trial's weapon: the knife in this ore, with this much oil, at this level.
+struct TrialGear {
+    Material ore;
+    int      oil, level;
+};
+
+struct TrialStats {
+    float    secs   = 0.0f;   // seconds to kill it
+    float    p2_at  = -1.0f;  // seconds in when it crossed its phase line (-1: never)
+    int      hits   = 0, hits_p1 = 0, hits_p2 = 0;   // frames hurt: shots landing together are one hit
+    int      bars   = 0;      // HP bars those hits took (several shots at once take one each)
+    int      grazes = 0;
+    int      shots  = 0, shots_hit = 0;   // the player's, for accuracy
+    TrialGear gear  = {};
+    int      by_src[4] = {};  // shot, laser, part, body
+    int      rating = 0;      // the player's 1-5, 0 skipped
+    bool     quit   = false;  // Esc on the card: end the run after this one
+    int      n_log  = 0;
+    TrialHit log[TRIAL_MAX_HITS];
 };
 
 // ── Player in battle ──────────────────────────────────────────────────────────
@@ -203,6 +243,12 @@ public:
     BattleScene(Player* player, int enemy_id,
                 bool chained = false, float from_x = 0.0f, float from_y = 0.0f);
 
+    // Make this fight a difficulty trial (before the intro ends): the knife in
+    // gear, the enemy also draining over drain_secs.
+    void  set_trial(float drain_secs, const TrialGear& gear);
+    bool  is_trial() const { return _trial; }
+    const TrialStats& trial() const { return _ts; }
+
     // More of the pack waits after this fight: a win ends without fading out.
     void  set_more_after(bool more) { _more_after = more; }
     float player_x() const { return _bp.x; }
@@ -211,6 +257,8 @@ public:
     float hud_hp()      const { return _bp.hp; }
     float hud_max_hp()  const { return _bp.max_hp; }
     float hud_stamina() const;   // 0..1, the weapon's cooldown refilling
+    // Poisoned: the save's own status, or (a trial) this fight's.
+    bool  hud_poisoned() const { return _trial ? _trial_poisoned : _player_ref->poisoned != 0; }
     // Test mode only: the keys that cheat (R: drop the enemy to its next stage).
     static inline bool debug_keys = false;
     float hud_swap_t()   const { return _swap_t; }    // seconds since the weapon was swapped
@@ -221,7 +269,7 @@ public:
     int   hud_exp()      const { return _phase == BATTLE_PHASE_VICTORY ? 0 : _hits + _grazes; }
     float hud_hit_t()    const { return _hit_t; }     // seconds since the player was last hit
     int   hud_hit_bars() const { return _hit_bars; }  // how many bars that hit took
-    const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY ? nullptr : _enemy; }
+    const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY || _phase == BATTLE_PHASE_TRIAL_END ? nullptr : _enemy; }
     float player_y() const { return _bp.y; }
     // A textbox goes near the top, where it covers least of the dodging --
     // unless the player is up there, when it mirrors to the bottom.
@@ -258,6 +306,13 @@ private:
     int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
     int          _hit_bars = 0;      // bars that hit took
+    bool         _trial    = false;  // a difficulty trial (set_trial)
+    float        _trial_secs = TRIAL_DRAIN_SECS;
+    bool         _trial_poisoned = false;   // a trial's poison: its own HP drains, never the save's
+    float        _trial_poison_t = 0.0f;
+    Weapon       _trial_weapon = {};   // the knife a trial fights with, in place of the arsenal's
+    int          _trial_level  = 1;
+    TrialStats   _ts;
     // What the win paid, by Item, for the victory panel.
     int          _won[INVENTORY_ITEM_CAPACITY]    = {};
     // The score -- EXP is hits + grazes + the defeat bonus, paid on the win.
@@ -265,6 +320,8 @@ private:
     int          _grazes     = 0;   // enemy shots that passed close without hitting
     int          _exp_gain   = 0;   // what the win paid
     int          _levels     = 0;   // levels that gained
+    bool         _enraged_seen = false;   // the enemy's phase line crossed: SFX_ENRAGE, once
+    int          _picked       = 0;       // pickups collected this win: each rings a step higher
     bool         _won_new[INVENTORY_ITEM_CAPACITY] = {};   // which of them the player had never held before
     // The win in the speech box, the chest's way: the EXP, a line per item
     // (its icon in _reward_icons, by line), a level-up. Typed out after VICTORY.
@@ -328,6 +385,15 @@ private:
     mutable bool   _solid_tried = false;
     bool   _blocked(float px, float py) const;      // would the player stand on the enemy there?
     void   _walk(float nx, float ny);               // move the player there: kept in the arena, and off a solid enemy
+    // A sprite-shaped hitbox (Enemy::sprite_hitbox): the frame last drawn, and
+    // each of its sheets' opaque pixels, read once.
+    mutable SDL_Rect _drawn_src{}, _drawn_dst{};
+    mutable int      _drawn_sheet = -1;             // 0 the idle sheet, 1 flap, 2 alt; -1 not drawn yet
+    mutable bool     _drawn_mirror = false;
+    mutable Uint8*   _mask[3] = {};
+    mutable int      _mask_w[3] = {}, _mask_h[3] = {};
+    mutable bool     _mask_tried[3] = {};
+    bool   _on_sprite(float x, float y, float r) const;   // is (x, y), or a point r round it, on the drawn sprite?
     float  _shot_scale(const Bullet& bl) const;   // size against the sprite, as drawn
     float  _shot_edge_gap(const Bullet& bl) const; // centre to the edge it is heading for
     void _win();

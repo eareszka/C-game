@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-u_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\41-sasnalkahi-idle-u-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\41-sasnalkahi\\idle-animate-U\\idle-animate-u\\animations\\v1\\idle-animate-u_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "f5cfc0ab-0a68-4a94-b6d0-28afefa135a9",
+    "generation_id": "6f84ab27-07b3-4394-8047-c439e7f57e69"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "stand-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 4604 characters>",
+          "format": "png"
+        },
+        "width": 177,
+        "height": 113
+      }
+    ],
+    "image_size": {
+      "width": 177,
+      "height": 113
+    },
+    "description": "<elided 1252 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 6412 characters>",
+        "format": "png"
+      },
+      "width": 177,
+      "height": 113
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6be562fd-70d3-489d-8a1c-17be3f000675",
+    "generation_id": "588a1b37-3540-4d1f-84ba-e53de3f4c4cf"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-half-stand-frame0.png"
+  ]
+}

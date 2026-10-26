@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit-try8",
+  "generated": "2026-10-19T01:51:28Z",
+  "spent": {
+    "calls": 1,
+    "generations": 15.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit-try8_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-idle-frame0-try8.png"
+      ],
+      "ids": {
+        "background_job_id": "5ff4146e-f89a-497f-a735-97fc39b871e7",
+        "generation_id": "ea8c7c2d-f5cc-4913-bf78-6993ce08ca91"
+      }
+    }
+  ]
+}

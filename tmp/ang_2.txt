@@ -1,0 +1,8 @@
+  HIT t=44.93 enemy hp 50% player (27,163) enemy (320,160) bullets 140 | shot r3.0 speed 102 age 3.55
+  HIT t=49.62 enemy hp 45% player (102,54) enemy (320,160) bullets 191 | shot r3.0 speed 54 age 3.93
+  HIT t=50.65 enemy hp 44% player (27,85) enemy (320,160) bullets 200 | shot r3.0 speed 123 age 4.27
+  HIT t=51.22 enemy hp 43% player (28,110) enemy (320,160) bullets 188 | shot r3.0 speed 58 age 4.13
+  HIT t=51.32 enemy hp 43% player (29,125) enemy (320,160) bullets 214 | shot r3.0 speed 73 age 3.53
+  HIT t=87.55 enemy hp 3% player (22,252) enemy (320,160) bullets 225 | shot r3.0 speed 118 age 4.07
+enemy 32 ANGONT seed 2: 90.0s, hits 6, peak bullets 260/1024, frames at cap 0, spawns <40px 0 (closest 176.4), tightest pass -3.3px at t=24.25
+  enemy nearest 224 px, passes within 60 px: 0

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "72-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1184 characters>",
+      "format": "png"
+    },
+    "action": "a long green lizard monster swimming fast to the left, its body and long tail undulating side to side in an S wave, its short legs tucked and paddling, its back plates upright",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e19ed3d2-490e-4b82-b4e7-94f47141a5d0",
+    "generation_id": "034d171a-90ff-481f-9d54-24803556909e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "swiml-00.png",
+    "swiml-01.png",
+    "swiml-02.png",
+    "swiml-03.png",
+    "swiml-04.png"
+  ]
+}

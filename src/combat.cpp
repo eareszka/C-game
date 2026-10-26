@@ -5,6 +5,8 @@
 #include "tilemap.h"
 #include "dungeon.h"    // material_color
 #include "collision.h"  // HB_*: where the feet are in the player's frame
+#include "audio.h"
+#include "crafting.h"   // item_slot: a prop's drops
 #include "player_swing.inc"   // SWING_HAND: the hand in each swing frame
 #include <SDL2/SDL_image.h>
 #include <math.h>
@@ -55,6 +57,8 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
     if (ws->tool_cd > 0.0f) ws->tool_cd -= dt;
 
     Weapon weapon = equipped_weapon(player);
+    float cd_before   = ws->tool_cd;    // a swing this frame sets it: heard below
+    int   hits_before = out->count;     // and what it struck is what was added
 
     if (ws->tool_cd <= 0.0f
      && (input_down(in, SDL_SCANCODE_SPACE)
@@ -116,6 +120,8 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
             }
         }
     }
+
+    if (cd_before <= 0.0f && ws->tool_cd > 0.0f) audio_play(SFX_SWING);
 
     if (ws->slash_t >= 0.0f && (ws->slash_t += dt) > SLASH_SECONDS) ws->slash_t = -1.0f;
 
@@ -180,17 +186,31 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
         }
     }
 
+    // Heard: a strike landing, and the break if anything broke -- one sound a
+    // frame however many a sweep crossed.
+    if (out->count > hits_before) {
+        bool broke = false;
+        for (int i = hits_before; i < out->count; i++) if (out->hits[i].destroyed) broke = true;
+        audio_play(broke ? SFX_NODE_BREAK : SFX_NODE_HIT);
+    }
+
     // Paid when a thing breaks, its whole yield at once. Rock broken in a
-    // cave is that cave's ore. Every resource mined is also 1 EXP.
+    // cave is that cave's ore; a prop pays its own drops. Every resource
+    // mined is also 1 EXP.
     for (int i = 0; i < out->count; i++) {
         const HarvestHit& hit = out->hits[i];
+        if (hit.item >= 0 && hit.destroyed) {
+            item_slot(player, (Item)hit.item) += hit.amount;
+            if (player_gain_exp(player, hit.amount) > 0) audio_play(SFX_LEVEL_UP);
+            continue;
+        }
         if (hit.resource < 0 || !hit.destroyed) continue;
         int n = harvest_yield(hit.resource);
         if (hit.resource == RESOURCE_ROCK && cave_ore >= 0)
             ore_count(player, (Material)cave_ore) += n;
         else
             player->inventory[hit.resource] += n;
-        player_gain_exp(player, n);
+        if (player_gain_exp(player, n) > 0) audio_play(SFX_LEVEL_UP);
     }
 
     // The walk's phase as player_frame() reads it: step, standing, step, standing.

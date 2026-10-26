@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "desert-skull",
+  "generated": "2026-10-26T10:41:58Z",
+  "spent": {
+    "calls": 2,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-skull_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "skull-1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "desert-skull_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "skull-2.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

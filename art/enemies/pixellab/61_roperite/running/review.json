@@ -1,0 +1,302 @@
+{
+  "frames_per_direction": 5,
+  "directions": [
+    "D",
+    "DR",
+    "R",
+    "UR",
+    "U",
+    "UL",
+    "L",
+    "DL"
+  ],
+  "frame_ms": 260,
+  "sheet_size": [
+    3920,
+    65
+  ],
+  "palette": [
+    "000000",
+    "142e1f",
+    "605028",
+    "876a1f",
+    "b29e5c",
+    "b70000",
+    "d0c078",
+    "f0bc3c"
+  ],
+  "approved_front_preserved": true,
+  "aseprite_round_trip": true,
+  "attack_frame": 2,
+  "views": {
+    "D": {
+      "raw_frames": [
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-00.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-01.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-02.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-03.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-04.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-05.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-06.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-07.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-d\\animations\\v1\\roperite-run-d-08.png"
+      ],
+      "sampled_indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "bounds": [
+        [
+          35,
+          14,
+          63,
+          64
+        ],
+        [
+          33,
+          12,
+          64,
+          61
+        ],
+        [
+          32,
+          9,
+          63,
+          61
+        ],
+        [
+          32,
+          12,
+          63,
+          61
+        ],
+        [
+          33,
+          11,
+          63,
+          64
+        ]
+      ]
+    },
+    "DR": {
+      "raw_frames": [
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-00.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-01.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-02.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-03.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-04.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-05.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-06.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-07.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-dr\\animations\\v1\\roperite-run-dr-08.png"
+      ],
+      "sampled_indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "bounds": [
+        [
+          31,
+          11,
+          65,
+          64
+        ],
+        [
+          27,
+          10,
+          68,
+          64
+        ],
+        [
+          28,
+          10,
+          71,
+          60
+        ],
+        [
+          27,
+          10,
+          69,
+          60
+        ],
+        [
+          28,
+          8,
+          68,
+          58
+        ]
+      ]
+    },
+    "R": {
+      "raw_frames": [
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-00.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-01.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-02.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-03.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-04.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-05.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-06.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-07.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-r\\animations\\v1\\roperite-run-r-08.png"
+      ],
+      "sampled_indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "bounds": [
+        [
+          31,
+          7,
+          68,
+          64
+        ],
+        [
+          27,
+          6,
+          67,
+          64
+        ],
+        [
+          27,
+          9,
+          68,
+          63
+        ],
+        [
+          29,
+          5,
+          66,
+          60
+        ],
+        [
+          29,
+          5,
+          69,
+          61
+        ]
+      ]
+    },
+    "UR": {
+      "raw_frames": [
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-00.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-01.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-02.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-03.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-04.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-05.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-06.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-07.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-ur\\animations\\v1\\roperite-run-ur-08.png"
+      ],
+      "sampled_indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "bounds": [
+        [
+          38,
+          10,
+          67,
+          64
+        ],
+        [
+          36,
+          5,
+          65,
+          63
+        ],
+        [
+          36,
+          9,
+          64,
+          60
+        ],
+        [
+          36,
+          6,
+          63,
+          62
+        ],
+        [
+          36,
+          8,
+          67,
+          63
+        ]
+      ]
+    },
+    "U": {
+      "raw_frames": [
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-00.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-01.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-02.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-03.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-04.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-05.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-06.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-07.png",
+        "pixellab-out\\61-roperite-animation\\61-roperite-run-u\\animations\\v1\\roperite-run-u-08.png"
+      ],
+      "sampled_indices": [
+        0,
+        2,
+        4,
+        6,
+        8
+      ],
+      "bounds": [
+        [
+          31,
+          7,
+          63,
+          64
+        ],
+        [
+          32,
+          3,
+          65,
+          65
+        ],
+        [
+          35,
+          4,
+          61,
+          63
+        ],
+        [
+          32,
+          6,
+          63,
+          62
+        ],
+        [
+          34,
+          5,
+          64,
+          61
+        ]
+      ]
+    }
+  },
+  "sha256": {
+    "art\\enemies\\pixellab\\61_roperite\\running\\61_roperite_running.png": "fa05a0f66c38e843e7ba42eec8742447b0998bcfd94a4f37b2a2222b524d173b",
+    "art\\enemies\\pixellab\\61_roperite\\running\\61_roperite_running.aseprite": "b5e28fa2aa41034f9333d3532078a6130befe362c48dd915b14e13d19a0a4157"
+  },
+  "installed": true,
+  "approved": true,
+  "approval_date": "2026-10-18",
+  "installed_png": "assets/enemies/redraws/61_roperite.png",
+  "installed_aseprite": "assets/enemies/redraws/61_roperite.aseprite"
+}

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-crop0_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 5680 characters>",
+      "format": "png"
+    },
+    "action": "<elided 258 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0818ed55-bf67-4f8e-854f-30a2c8c8a8c3",
+    "generation_id": "0dd78cc4-6507-452b-9323-565dc173253c"
+  },
+  "cost": {
+    "generations": 6.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "52-sannaja-idle-crop0-00.png",
+    "52-sannaja-idle-crop0-01.png",
+    "52-sannaja-idle-crop0-02.png",
+    "52-sannaja-idle-crop0-03.png",
+    "52-sannaja-idle-crop0-04.png",
+    "52-sannaja-idle-crop0-05.png",
+    "52-sannaja-idle-crop0-06.png",
+    "52-sannaja-idle-crop0-07.png",
+    "52-sannaja-idle-crop0-08.png"
+  ]
+}

@@ -73,6 +73,7 @@ bool story_site_active(const Tilemap* map, int i) {
     if (i < 0 || i >= STORY_BOSS_COUNT || map->boss_sites[i].x < 0) return false;
     if ((s_flags.beaten >> i) & 1u) return false;
     StoryStage st = story_stage();
+    if (i == 1)                        return (s_flags.worm & STORY_W_RUNG) != 0;   // the worm: only once the bell has called it
     if (i < STORY_TIER1)               return true;
     if (i < STORY_TIER1 + STORY_TIER2) return st >= STORY_TURN;
     if (i == STORY_ANAYE)              return st == STORY_DESCENT;
@@ -236,6 +237,121 @@ static void keeper_line(const StoryWhere& w, char* buf, int n) {
         snprintf(buf, n, "She is ready at the end of the wharf. Out there something sinks boats. %s Go and see what it is.", sea);
     } else {
         snprintf(buf, n, "You came back. Nobody comes back from that. The sea is yours, boy.");
+    }
+}
+
+// ── The sand village's errand: up to the worm ───────────────────────────────
+
+int story_worm_village(const Tilemap* map) {
+    const BossSite& s = map->boss_sites[1];
+    if (s.x < 0) return -1;
+    int best = -1; bool best_sand = false; long best_d2 = 0;
+    for (int v = 0; v < map->num_villages; v++) {
+        const VillagePlacement& vp = map->villages[v];
+        bool sand = vp.biome == TILE_SAND || vp.ground == TILE_SAND;
+        int tx, ty;
+        story_village_npc_tile(map, v, &tx, &ty);
+        long dx = wrap_dx(s.x - tx), dy = wrap_dy(s.y - ty), d2 = dx * dx + dy * dy;
+        if (best < 0 || (sand && !best_sand) || (sand == best_sand && d2 < best_d2)) { best = v; best_sand = sand; best_d2 = d2; }
+    }
+    return best;
+}
+
+int story_worm_den(const Tilemap* map) {
+    int v = story_worm_village(map);
+    if (v < 0) return -1;
+    int tx, ty, best = -1;
+    long best_d2 = 0;
+    story_village_npc_tile(map, v, &tx, &ty);
+    for (int i = 0; i < map->num_dungeon_entrances; i++) {
+        const DungeonEntrance& e = map->dungeon_entrances[i];
+        if (e.type != DUNGEON_ENT_OASIS && e.type != DUNGEON_ENT_PYRAMID) continue;
+        long dx = wrap_dx(e.x - tx), dy = wrap_dy(e.y - ty), d2 = dx * dx + dy * dy;
+        if (best < 0 || d2 < best_d2) { best = i; best_d2 = d2; }
+    }
+    return best;
+}
+
+bool story_worm_pin(const Tilemap* map, unsigned map_seed, unsigned dungeon_seed) {
+    if (!(s_flags.worm & STORY_W_ASKED) || (s_flags.worm & STORY_W_GLANDS)) return false;
+    int den = story_worm_den(map);
+    return den >= 0 && dungeon_wiring_for(map, map_seed, den).seed == dungeon_seed;
+}
+
+static bool nearest_walkable(const Tilemap* map, int* x, int* y, int r);
+// The clues lie a quarter, a half and most of the way from the village's
+// well to the soft sand, each on the nearest walkable tile.
+bool story_worm_clue_tile(const Tilemap* map, int k, int* tx, int* ty) {
+    static const float AT[STORY_WORM_CLUES] = { 0.25f, 0.5f, 0.85f };
+    int v = story_worm_village(map);
+    if (v < 0 || k < 0 || k >= STORY_WORM_CLUES) return false;
+    int vx, vy;
+    story_village_npc_tile(map, v, &vx, &vy);
+    int dx = wrap_dx(map->boss_sites[1].x - vx), dy = wrap_dy(map->boss_sites[1].y - vy);
+    *tx = wrap_x(vx + (int)(dx * AT[k])); *ty = wrap_y(vy + (int)(dy * AT[k]));
+    return nearest_walkable(map, tx, ty, 8);
+}
+
+bool story_worm_can_ring(const Tilemap* map, float pcx, float pcy) {
+    if ((s_flags.worm & (STORY_W_BELL | STORY_W_RUNG)) != STORY_W_BELL || story_beaten(23)) return false;
+    const BossSite& s = map->boss_sites[1];
+    if (s.x < 0) return false;
+    // the site's 7x5 patch (tilemap.cpp, the boss-site stage), and a tile round it
+    float dx = wrap_dpx(pcx - (s.x + 0.5f) * TILE_SIZE), dy = wrap_dpy(pcy - (s.y - 1.5f) * TILE_SIZE);
+    return fabsf(dx) <= 4.5f * TILE_SIZE && fabsf(dy) <= 3.5f * TILE_SIZE;
+}
+void story_worm_ring() { s_flags.worm |= STORY_W_RUNG; }
+
+// What the sand village's speaker says in the first arc: the errand, step by
+// step. The glands are taken and the antidotes given on the talk that brings
+// enough; the bell on the talk after the staff is found.
+static const int WORM_ANTIDOTES = 2;
+static void worm_line(const StoryWhere& w, int village, char* buf, int n) {
+    Player* pl = w.player;
+    uint8_t& q = s_flags.worm;
+    int vx, vy;
+    story_village_npc_tile(w.map, village, &vx, &vy);
+    char where[96], site[96];
+    story_lead(w.map, vx, vy, 23, site, sizeof(site));
+    if (!(q & STORY_W_GLANDS)) {
+        int have = item_count(pl, ITEM_POISON_GLAND);
+        snprintf(where, sizeof(where), "in the desert ruins, somewhere.");
+        if (int d = story_worm_den(w.map); d >= 0) {
+            const DungeonEntrance& e = w.map->dungeon_entrances[d];
+            dir_text(wrap_dx(e.x - vx), wrap_dy(e.y - vy), e.type == DUNGEON_ENT_OASIS ? "in the oasis" : "in the pyramid", where, sizeof(where));
+        }
+        if (have < STORY_WORM_GLANDS) {
+            bool first = !(q & STORY_W_ASKED);
+            q |= STORY_W_ASKED;
+            if (first)
+                snprintf(buf, n, "Last spring something went under the sand and the goats went with it, every one. Our herder went after them. He has not come back. "
+                                 "Whatever it is, it spits like an asp. Bring me %d asp glands and I will make something against it. The asps nest %s",
+                         STORY_WORM_GLANDS, where);
+            else
+                snprintf(buf, n, "%d asp glands, for the antidote. You have %d. The asps nest %s", STORY_WORM_GLANDS, have, where);
+            return;
+        }
+        item_slot(pl, ITEM_POISON_GLAND) -= STORY_WORM_GLANDS;
+        int& anti = item_slot(pl, ITEM_ANTIDOTE);
+        anti = anti + WORM_ANTIDOTES > ITEM_MAX ? ITEM_MAX : anti + WORM_ANTIDOTES;
+        q |= STORY_W_ASKED | STORY_W_GLANDS;
+        int cx, cy;
+        if (story_worm_clue_tile(w.map, 0, &cx, &cy)) dir_text(wrap_dx(cx - vx), wrap_dy(cy - vy), "at the edge of the dunes", where, sizeof(where));
+        else snprintf(where, sizeof(where), "somewhere in the dunes.");
+        snprintf(buf, n, "That is enough. Here, take two; you will need them. Now find the herder. His trail went out %s", where);
+    } else if (!(q & STORY_W_CLUE3)) {
+        int k = !(q & STORY_W_CLUE1) ? 0 : !(q & STORY_W_CLUE2) ? 1 : 2, cx, cy;
+        if (story_worm_clue_tile(w.map, k, &cx, &cy)) dir_text(wrap_dx(cx - vx), wrap_dy(cy - vy), "out in the sand", where, sizeof(where));
+        else snprintf(where, sizeof(where), "somewhere in the dunes.");
+        snprintf(buf, n, k == 0 ? "The herder's trail. It went out %s" : "Keep on after him. The trail goes on %s", where);
+    } else if (!(q & STORY_W_BELL)) {
+        q |= STORY_W_BELL;
+        snprintf(buf, n, "His staff. Then he is gone too. Take his bell. He rang it to call the goats home, and something under the sand heard it. "
+                         "Ring it on the soft sand and it will come for you. %s", site);
+    } else if (!(q & STORY_W_RUNG)) {
+        snprintf(buf, n, "Ring the herder's bell on the soft sand. %s", site);
+    } else {
+        snprintf(buf, n, "It is up out of the sand. %s Go, before it goes back under.", site);
     }
 }
 
@@ -651,6 +767,7 @@ static bool nearest_walkable(const Tilemap* map, int* x, int* y, int r) {
 }
 
 bool story_note_world_tile(const Tilemap* map, int idx, int* tx, int* ty) {
+    if (idx >= NOTE_COUNT) return story_worm_clue_tile(map, idx - NOTE_COUNT, tx, ty);
     const StoryNote& n = NOTES[idx];
     if (n.place == NP_OVERWORLD) {
         *tx = DNG_FIXED_CAVE_X + n.tx; *ty = DNG_FIXED_CAVE_Y + n.ty;
@@ -663,8 +780,22 @@ bool story_note_world_tile(const Tilemap* map, int idx, int* tx, int* ty) {
     return false;
 }
 
+// The worm's clues, as notes after the real ones (idx NOTE_COUNT + k): each
+// out once the one before is found, until found itself; their bits are the
+// errand's (StoryFlags::worm), not the notes'.
+static const uint8_t CLUE_BIT[STORY_WORM_CLUES] = { STORY_W_CLUE1, STORY_W_CLUE2, STORY_W_CLUE3 };
+static bool clue_shown(int k) {
+    uint8_t before = k == 0 ? STORY_W_GLANDS : CLUE_BIT[k - 1];
+    return (s_flags.worm & before) && !(s_flags.worm & CLUE_BIT[k]) && !story_beaten(23);
+}
+
 int story_notes_here(const StoryWhere& w, const DungeonMap* dmap, StoryNotePos out[], int max) {
     int n = 0;
+    for (int k = 0; k < STORY_WORM_CLUES && n < max && w.state == STATE_OVERWORLD; k++) {
+        int tx, ty;
+        if (clue_shown(k) && story_worm_clue_tile(w.map, k, &tx, &ty))
+            out[n++] = { NOTE_COUNT + k, (tx + 0.5f) * TILE_SIZE, (ty + 0.5f) * TILE_SIZE, false };
+    }
     for (int i = 0; i < NOTE_COUNT && n < max; i++) {
         const StoryNote& p = NOTES[i];
         if (!note_shown(i)) continue;
@@ -696,6 +827,24 @@ int story_notes_here(const StoryWhere& w, const DungeonMap* dmap, StoryNotePos o
 
 const char* story_note_take(int idx, const StoryWhere& w) {
     static char buf[512];
+    if (idx >= NOTE_COUNT) {   // a clue on the herder's trail: it points on to the next, the last home
+        int k = idx - NOTE_COUNT, tx = 0, ty = 0, nx = 0, ny = 0;
+        s_flags.worm |= CLUE_BIT[k];
+        story_worm_clue_tile(w.map, k, &tx, &ty);
+        char next[96] = "";
+        if (k + 1 < STORY_WORM_CLUES) {
+            if (story_worm_clue_tile(w.map, k + 1, &nx, &ny)) dir_text(wrap_dx(nx - tx), wrap_dy(ny - ty), k == 0 ? "into the dunes" : "toward the soft sand", next, sizeof(next));
+        } else if (int v = story_worm_village(w.map); v >= 0) {
+            story_village_npc_tile(w.map, v, &nx, &ny);
+            dir_text(wrap_dx(nx - tx), wrap_dy(ny - ty), "to the village", next, sizeof(next));
+        }
+        static const char* const CLUE_TEXT[STORY_WORM_CLUES] = {
+            "Goat tracks, a whole herd, and a man's boot prints among them. They run on %s",
+            "A goat bell's strap, torn through, half buried. Past it the boot prints go on alone, %s",
+            "The herder's staff, stood upright in the sand. Scratched into it: HE RANG FOR THEM. SOMETHING RANG BACK. Take it back %s" };
+        snprintf(buf, sizeof(buf), CLUE_TEXT[k], next);
+        return buf;
+    }
     const StoryNote& p = NOTES[idx];
     s_flags.notes |= 1u << idx;
     if (p.lead < 0) { snprintf(buf, sizeof(buf), "%s", p.text); return buf; }
@@ -720,15 +869,28 @@ const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
     static char buf[512];
     const StoryNpc& p = NPCS[pos.idx];
     StoryStage st = story_stage();
-    // The first village the boy asks in is the one that sent him; the rest
-    // know he has been told, and tell him again anyway, so no one is lost.
-    bool told_elsewhere = false;
-    if (p.place == SP_VILLAGE) {
-        if (s_flags.first_village_plus1 == 0) s_flags.first_village_plus1 = (uint8_t)(pos.village + 1);
-        told_elsewhere = s_flags.first_village_plus1 != pos.village + 1;
-    }
+    if (p.place == SP_VILLAGE && s_flags.first_village_plus1 == 0) s_flags.first_village_plus1 = (uint8_t)(pos.village + 1);
     if (p.place == SP_DEBUG) return nullptr;   // the dialogue list instead
     if (st == STORY_ARC1 && p.lead == 49) { keeper_line(w, buf, sizeof(buf)); return buf; }
+    // The worm: the sand village nearest it sets the errand; every other
+    // village sends the boy there.
+    if (st == STORY_ARC1 && p.lead == 23 && pos.village >= 0) {
+        int wv = story_worm_village(w.map);
+        if (wv >= 0 && story_beaten(23)) {
+            snprintf(buf, sizeof(buf), "%s", pos.village == wv ? "The sand is still again. The herder's bell can rest with him. Thank you." : p.lines[1]);
+            return buf;
+        }
+        if (wv == pos.village) { worm_line(w, wv, buf, sizeof(buf)); return buf; }
+        if (wv >= 0) {
+            int fx, fy, tx, ty;
+            story_village_npc_tile(w.map, pos.village, &fx, &fy);
+            story_village_npc_tile(w.map, wv, &tx, &ty);
+            char where[96];
+            dir_text(wrap_dx(tx - fx), wrap_dy(ty - fy), "by their well", where, sizeof(where));
+            snprintf(buf, sizeof(buf), "Something under the sand has been taking goats. Not ours: the sand village's. Ask there, %s", where);
+            return buf;
+        }
+    }
     if (st == STORY_ARC1) {
         if (p.lead >= 0 && !story_beaten(p.lead)) {
             // measured from the door the player came in by, or the villager's
@@ -738,7 +900,7 @@ const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
             else if (w.door >= 0 && w.door < w.map->num_doors) { tx = w.map->doors[w.door].x; ty = w.map->doors[w.door].y; }
             char lead[96];
             story_lead(w.map, tx, ty, p.lead, lead, sizeof(lead));
-            snprintf(buf, sizeof(buf), "%s %s", told_elsewhere ? "They told you already, did they. Well." : p.lines[0], lead);
+            snprintf(buf, sizeof(buf), "%s %s", p.lines[0], lead);
         } else
             snprintf(buf, sizeof(buf), "%s", p.lines[p.lead >= 0 ? 1 : 0]);
     } else
@@ -771,12 +933,14 @@ const char* story_npc_line(const StoryNpcPos& pos, const StoryWhere& w) {
 // Every line the people and the notes can say, each as the situation that
 // brings it on: a person (a = NPCS row) at a stage (b: 0 the lead, 1 the lead
 // beaten, 2 the turn, 3 the descent, 4 amnesia), the keeper's errand at step
-// b (in place of his stage 0), or note a.
-enum { DLG_PERSON, DLG_ERRAND, DLG_NOTE };
+// b (in place of his stage 0), the worm's errand at step b (the villager's
+// stage 0: the sand village's steps, then another village's rumour), or note a.
+enum { DLG_PERSON, DLG_ERRAND, DLG_WORM, DLG_NOTE };
 struct DlgCase { int kind, a, b; };
 static const char* const DLG_STAGE[5]   = { "ARC1", "ARC1 DONE", "TURN", "DESCENT", "AMNESIA" };
 static const char* const DLG_STEP[4]    = { "BRING WOOD", "WOOD ENOUGH", "THE SAIL", "BOAT READY" };
-enum { DLG_MAX = 64 };
+static const char* const DLG_WSTEP[7]   = { "ASKS GLANDS", "GLANDS SHORT", "GLANDS ENOUGH", "THE TRAIL", "THE STAFF", "RING IT", "RUMOUR" };
+enum { DLG_MAX = 96 };
 static int dlg_cases(DlgCase out[DLG_MAX]) {
     int n = 0;
     auto add = [&](int k, int a, int b) { if (n < DLG_MAX) out[n++] = { k, a, b }; };
@@ -784,10 +948,11 @@ static int dlg_cases(DlgCase out[DLG_MAX]) {
         if (NPCS[i].place == SP_DEBUG) { add(DLG_PERSON, i, 0); continue; }
         for (int v = 0; v < 5; v++) {
             if (v == 0 && NPCS[i].lead == 49) { for (int s = 0; s < 4; s++) add(DLG_ERRAND, i, s); continue; }
+            if (v == 0 && NPCS[i].lead == 23) { for (int s = 0; s < 7; s++) add(DLG_WORM, i, s); continue; }
             add(DLG_PERSON, i, v);
         }
     }
-    for (int i = 0; i < NOTE_COUNT; i++) add(DLG_NOTE, i, 0);
+    for (int i = 0; i < NOTE_COUNT + STORY_WORM_CLUES; i++) add(DLG_NOTE, i, 0);
     return n;
 }
 static DlgCase s_dlg[DLG_MAX];
@@ -807,12 +972,22 @@ const char* story_dialogue(int i, const StoryWhere& w, const char** label, bool*
     Player     keep_player = *w.player;
     const char* text;
     if (c.kind == DLG_NOTE) {
-        snprintf(lbl, sizeof(lbl), "NOTE %d", c.a);
-        *strike = NOTES[c.a].strike;
+        if (c.a < NOTE_COUNT) { snprintf(lbl, sizeof(lbl), "NOTE %d", c.a); *strike = NOTES[c.a].strike; }
+        else snprintf(lbl, sizeof(lbl), "WORM CLUE %d", c.a - NOTE_COUNT + 1);
         text = story_note_take(c.a, w);
     } else {
         const StoryNpc& p = NPCS[c.a];
-        if (c.kind == DLG_ERRAND) {
+        int village = p.place == SP_VILLAGE && w.map->num_villages > 0 ? 0 : -1;
+        if (c.kind == DLG_WORM) {
+            snprintf(lbl, sizeof(lbl), "%s %s", p.name, DLG_WSTEP[c.b]);
+            story_set_stage(STORY_ARC1);
+            static const uint8_t TRAIL = STORY_W_ASKED | STORY_W_GLANDS, CLUES = TRAIL | STORY_W_CLUE1 | STORY_W_CLUE2 | STORY_W_CLUE3;
+            static const uint8_t STEP_BITS[6] = { 0, STORY_W_ASKED, STORY_W_ASKED, TRAIL | STORY_W_CLUE1, CLUES, CLUES | STORY_W_BELL };
+            s_flags.worm = c.b < 6 ? STEP_BITS[c.b] : 0;
+            item_slot(w.player, ITEM_POISON_GLAND) = c.b == 1 ? 1 : c.b == 2 ? STORY_WORM_GLANDS : 0;
+            int wv = story_worm_village(w.map);
+            village = c.b < 6 ? wv : (wv == 0 && w.map->num_villages > 1 ? 1 : 0);
+        } else if (c.kind == DLG_ERRAND) {
             snprintf(lbl, sizeof(lbl), "%s %s", p.name, DLG_STEP[c.b]);
             story_set_stage(STORY_ARC1);
             s_flags.quest = c.b < 2 ? 0 : STORY_Q_BOAT_WOOD | STORY_Q_SAIL_TOLD;
@@ -823,7 +998,7 @@ const char* story_dialogue(int i, const StoryWhere& w, const char** label, bool*
             story_set_stage(c.b <= 1 ? STORY_ARC1 : c.b == 2 ? STORY_TURN : c.b == 3 ? STORY_DESCENT : STORY_AMNESIA);
             if (c.b == 1) story_mark_beaten(p.lead);
         }
-        StoryNpcPos pos = { c.a, 0.0f, 0.0f, p.place == SP_VILLAGE && w.map->num_villages > 0 ? 0 : -1 };
+        StoryNpcPos pos = { c.a, 0.0f, 0.0f, village };
         text = p.place == SP_DEBUG ? p.lines[0] : story_npc_line(pos, w);
     }
     s_flags     = keep_flags;

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-u",
+  "generated": "2026-10-19T00:14:40Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "41-sasnalkahi-idle-u-00.png",
+        "41-sasnalkahi-idle-u-01.png",
+        "41-sasnalkahi-idle-u-02.png",
+        "41-sasnalkahi-idle-u-03.png",
+        "41-sasnalkahi-idle-u-04.png",
+        "41-sasnalkahi-idle-u-05.png",
+        "41-sasnalkahi-idle-u-06.png",
+        "41-sasnalkahi-idle-u-07.png",
+        "41-sasnalkahi-idle-u-08.png"
+      ],
+      "ids": {
+        "background_job_id": "f5cfc0ab-0a68-4a94-b6d0-28afefa135a9",
+        "generation_id": "6f84ab27-07b3-4394-8047-c439e7f57e69"
+      }
+    }
+  ]
+}

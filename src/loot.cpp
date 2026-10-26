@@ -100,6 +100,9 @@ static const Drop DROPS[] = {
 void battle_loot(int enemy, int cancellations, const LootRolls& rolls, int out[ITEM_COUNT]) {
     std::fill(out, out + ITEM_COUNT, 0);
     for (const Drop& d : DROPS) if (d.enemy == enemy) out[d.item]++;
+    // The great bat drops a whole sail's worth (6): beaten once, it never
+    // roosts again (persist.h), and the sail must not be out of reach.
+    if (enemy == 12) out[ITEM_WING_SKIN] += 5;
     if (enemy == 31 || enemy == 33) {
         static const int chances[MAT_COUNT] = { 10000, 4000, 2000, 1000, 500, 200, 50 };
         for (int m = 0; m < MAT_COUNT; m++)

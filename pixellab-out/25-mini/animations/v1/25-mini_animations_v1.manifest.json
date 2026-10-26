@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "25-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3144 characters>",
+      "format": "png"
+    },
+    "action": "scuttling toward the viewer on its long insect legs",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "46c873ae-383c-4a7d-b841-a971a26eb4b9",
+    "generation_id": "a4fcd0c8-320e-4053-a0a3-c4d55fb4cc49"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "25-mini-walkd-00.png",
+    "25-mini-walkd-01.png",
+    "25-mini-walkd-02.png",
+    "25-mini-walkd-03.png",
+    "25-mini-walkd-04.png"
+  ]
+}

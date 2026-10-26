@@ -1,0 +1,41 @@
+{
+  "id": 39,
+  "name": "39-ajaju",
+  "dir": "art/enemies/pixellab/39_ajaju",
+  "description": "Ajaju: a green chameleon-like creature on very long thin straight pale-yellow bamboo-stalk legs, bulging eyes, small orange crest, curled tail, red forked tongues hanging from its mouth. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/39_ajaju.png",
+      "frames": 10,
+      "rows": false,
+      "ms": 130,
+      "views": [
+        "D",
+        "R",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "despeckle": 3,
+      "ground": true,
+      "action": "Standing perfectly still, facing the same direction. Only its red forked tongues move: they slide straight out of the mouth and hang longer, longest at frame 3, slide back in, then lengthen again at frame 7. The body, head, both bulging eyes, crest, tail and legs do not change at all in any frame; the tongues never touch the legs. Same size, black one-pixel outlines, flat fills. No effects.",
+      "map": {
+        "*": [
+          0,
+          0,
+          2,
+          3,
+          2,
+          4,
+          5,
+          5,
+          7,
+          0
+        ]
+      }
+    }
+  }
+}

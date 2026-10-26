@@ -2,3 +2,5 @@ Intructions:
 
 Enemy art: you will be creating the first frame for the enemys in game following the rules laid out in the "bible" created for a consistant non changing artstyle to fit the rest of the game. your job is to study the artstyle laid out in the bible first and then creating the first frame of the enemies i tell you too using pixel art plugin. once finished open it in apsrite for me to view. make sure the dimensions of the enemys remain similar to their orignal sprites
 
+Visible tracker (user instruction, 2026-10-18): every time an enemy sprite fix is approved and installed, immediately update the visible enemy_rating.png as well as art/enemies/redraw_status.json. Run python tools/enemy_redraw_sheet.py --complete ID after installation. Do not mark unapproved drafts complete. Keep sprite completion separate from the gameplay-ready list in include/ready.h.
+

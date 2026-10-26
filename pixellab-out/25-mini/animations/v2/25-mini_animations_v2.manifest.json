@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "25-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2640 characters>",
+      "format": "png"
+    },
+    "action": "scuttling away from the viewer on its long insect legs",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "937f6b85-ce1b-4fed-9121-2248fcc684bc",
+    "generation_id": "25cbc62c-5c76-4b30-9986-892a4bc517ba"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "25-mini-walku-00.png",
+    "25-mini-walku-01.png",
+    "25-mini-walku-02.png",
+    "25-mini-walku-03.png",
+    "25-mini-walku-04.png"
+  ]
+}

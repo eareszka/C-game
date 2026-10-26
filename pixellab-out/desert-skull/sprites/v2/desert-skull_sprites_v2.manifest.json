@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "desert-skull_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art bleached cattle skull lying on desert sand, longhorn steer skull seen from the front, wide curved horns, dark eye sockets and nose hole, retro NES style, black 1px outline, simple",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "high top-down",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAECAIAAAAI1ii7AAAAIklEQVR4nGNkQAIvHhyAs09tWwVn3776FM5mQtZADKC9BgDY2AdPpzvs0AAAAABJRU5ErkJggg==",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "skull-2.png"
+  ]
+}

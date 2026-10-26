@@ -37,6 +37,7 @@ struct GameMenu {
     const char* escape_block = "ONLY IN A DUNGEON";
     bool escape_request = false;
     const char* healing_block = nullptr; // exploration only, outside transitions
+    const char* raft_block = nullptr;    // set while the raft holds the player up: it can't come off
 
     // Icon sheets, loaded on the first draw (they need the renderer).
     SDL_Texture* items   = nullptr;   // assets/items.png, one 16px cell per Item

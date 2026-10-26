@@ -6,6 +6,8 @@
 #include "combat.h"          // weapon_swing_update/draw -- shared with the overworld harvest mechanic
 #include "crafting.h"        // Item, item_slot -- a dungeon's treasure
 #include "enemy.h"           // enemy_is_boss: bosses are placed, never spawned at random
+#include "ready.h"           // enemy_ready: only finished enemies are picked
+#include "persist.h"         // beaten enemies and broken nodes stay gone
 #include <SDL2/SDL_image.h>
 #include <string.h>
 #include <math.h>
@@ -2413,8 +2415,12 @@ static inline int dng_loot_budget(DungeonEntranceType type) {
 // A starting-island dungeon (dmap->starter) holds the island's own enemies,
 // all three of them: the first three spawners are these, Treesqueak first --
 // the vine for the raft has to be findable -- and any more are drawn from them.
-static const int STARTER_ENEMIES[] = { 2, 0, 1 };
+// Nothing respawns (persist.h), so each holds two Treesqueaks: the two
+// dungeons' four Vine are enough for the raft (3) with one to spare. Extras
+// past these are any of the three kinds.
+static const int STARTER_ENEMIES[] = { 2, 0, 1, 2 };
 static const int STARTER_COUNT = (int)(sizeof(STARTER_ENEMIES) / sizeof(STARTER_ENEMIES[0]));
+static const int STARTER_KINDS = 3;
 
 // Difficulty -> tier band. The cuts are QUANTILES of the dungeons' measured
 // difficulty (tools/spawncensus.cpp prints them), so each of the five common
@@ -2427,21 +2433,31 @@ static const EnemyTier BAND_TIER[5] = { T_LOW, T_MEDIUM, T_UPPER, T_HARD, T_SEVE
 static const float ELITE_DIFFICULTY = 0.510f;
 
 int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng) {
-    int band = 0;
-    while (band < 4 && difficulty >= TIER_CUTS[band]) band++;
-    EnemyTier tier = BAND_TIER[band], below = band > 0 ? BAND_TIER[band - 1] : T_STARTER;
+    int home = 0;
+    while (home < 4 && difficulty >= TIER_CUTS[home]) home++;
     int base = spawner_enemy_base(type);
     bool elites = type == DUNGEON_ENT_RUINS || difficulty >= ELITE_DIFFICULTY;
     // Weighted pool: the band's tier, the region's own enemies weighing most;
     // the tier below now and then, so a dungeon isn't one tier wall to wall;
-    // elites where they live.
+    // elites where they live. Only ready enemies (include/ready.h): a band
+    // with none falls back to the nearest band that has some, lower first.
     int pick[ENEMY_COUNT], weight[ENEMY_COUNT], n = 0, total = 0;
-    for (int e = 0; e < ENEMY_COUNT; e++) {
-        EnemyTier t = enemy_tier(e);
-        bool native = enemy_region(e) == base / 7;
-        int w = t == tier ? (native ? 4 : 2) : t == below ? 1 : (t == T_ELITE && elites) ? 2 : 0;
-        if (w) { pick[n] = e; weight[n] = w; n++; total += w; }
+    static const int STEPS[] = { 0, -1, 1, -2, 2, -3, 3, -4, 4 };
+    for (int s : STEPS) {
+        int band = home + s;
+        if (band < 0 || band > 4) continue;
+        EnemyTier tier = BAND_TIER[band], below = band > 0 ? BAND_TIER[band - 1] : T_STARTER;
+        n = total = 0;
+        for (int e = 0; e < ENEMY_COUNT; e++) {
+            if (!enemy_ready(e)) continue;
+            EnemyTier t = enemy_tier(e);
+            bool native = enemy_region(e) == base / 7;
+            int w = t == tier ? (native ? 4 : 2) : t == below ? 1 : (t == T_ELITE && elites) ? 2 : 0;
+            if (w) { pick[n] = e; weight[n] = w; n++; total += w; }
+        }
+        if (total > 0) break;
     }
+    if (total == 0) return STARTER_ENEMIES[rng_next(rng) % STARTER_KINDS];
     int r = (int)(rng_next(rng) % (uint32_t)total);
     for (int i = 0; i < n; i++) if ((r -= weight[i]) < 0) return pick[i];
     return pick[n - 1];
@@ -2484,16 +2500,18 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
             int eid = dungeon_pick_enemy(dmap->type, dmap->difficulty, rng);
             if (dmap->starter)
                 eid = dmap->num_spawners < STARTER_COUNT ? STARTER_ENEMIES[dmap->num_spawners]
-                    : STARTER_ENEMIES[rng_next(rng) % STARTER_COUNT];
+                    : STARTER_ENEMIES[rng_next(rng) % STARTER_KINDS];
             dmap->spawners[dmap->num_spawners++] = { best_tx, best_ty, eid, false };
         }
     }
 
-    // A starting dungeon too small for the grid to seat all three gets the
+    // A starting dungeon too small for the grid to seat all four gets the
     // rest on any floor tile clear of the portals and of the others, tried
     // from random spots so they spread out. Closer in than the grid allows --
     // the grid's clearance is what left no room -- but still a room's width.
-    const int FILL_PORTAL_CLEAR = 10, FILL_SPAWNER_CLEAR = 8;
+    // A second pass at half the clearances for the smallest of them.
+    static const int FILL_PORTAL_CLEAR[2] = { 10, 5 }, FILL_SPAWNER_CLEAR[2] = { 8, 4 };
+    for (int pass = 0; pass < 2; pass++)
     for (int tries = 0; dmap->starter && dmap->num_spawners < STARTER_COUNT && tries < 4000; tries++) {
         int tx = 1 + (int)(rng_next(rng) % (DMAP_W - 2));
         int ty = 1 + (int)(rng_next(rng) % (DMAP_H - 2));
@@ -2501,15 +2519,23 @@ static void place_spawners(DungeonMap* dmap, uint32_t* rng) {
         bool clear = true;
         for (int q = 0; q < dmap->num_portals && clear; q++) {
             int pdx = tx - dmap->portals[q].tx, pdy = ty - dmap->portals[q].ty;
-            if (pdx*pdx + pdy*pdy < FILL_PORTAL_CLEAR * FILL_PORTAL_CLEAR) clear = false;
+            if (pdx*pdx + pdy*pdy < FILL_PORTAL_CLEAR[pass] * FILL_PORTAL_CLEAR[pass]) clear = false;
         }
         for (int q = 0; q < dmap->num_spawners && clear; q++) {
             int sdx = tx - dmap->spawners[q].tx, sdy = ty - dmap->spawners[q].ty;
-            if (sdx*sdx + sdy*sdy < FILL_SPAWNER_CLEAR * FILL_SPAWNER_CLEAR) clear = false;
+            if (sdx*sdx + sdy*sdy < FILL_SPAWNER_CLEAR[pass] * FILL_SPAWNER_CLEAR[pass]) clear = false;
         }
         if (!clear) continue;
         dmap->spawners[dmap->num_spawners] = { tx, ty, STARTER_ENEMIES[dmap->num_spawners], false };
         dmap->num_spawners++;
+    }
+    // Still short of room: the Vine comes first. Two Treesqueaks, from the
+    // back, before the hares (the raft is the way off the island).
+    if (dmap->starter) {
+        int squeaks = 0;
+        for (int i = 0; i < dmap->num_spawners; i++) squeaks += dmap->spawners[i].enemy_id == 2;
+        for (int i = dmap->num_spawners - 1; i >= 0 && squeaks < 2; i--)
+            if (dmap->spawners[i].enemy_id != 2) { dmap->spawners[i].enemy_id = 2; squeaks++; }
     }
 }
 
@@ -3484,6 +3510,20 @@ void dungeon_generate(DungeonMap* dmap, DungeonEntranceType type, float difficul
                 dmap->loot[li].collected = true;
                 if (dmap->loot[li].node >= 0) { auto& node = dmap->dungeon_rocks.nodes[dmap->loot[li].node]; node.chest = 2; node.type = RESOURCE_TREE; node.hp = 3; }
             }
+    // Its beaten enemies and broken nodes, gone for good (persist.h). A broken
+    // ore vein left floor where it stood, as breaking it does below.
+    const DungeonDeadRecord dead = persist_dungeon(seed);
+    for (int si = 0; si < dmap->num_spawners && si < 64; si++)
+        dmap->spawners[si].dead = (dead.spawners >> si) & 1;
+    for (int ni = 0; ni < dmap->dungeon_rocks.count && ni < 64; ni++) {
+        if (!((dead.nodes >> ni) & 1)) continue;
+        ResourceNode& node = dmap->dungeon_rocks.nodes[ni];
+        node.alive = 0;
+        if (node.chest == 0 && node.type == RESOURCE_ROCK) {
+            int rtx = (int)(node.x / DMAP_TILE), rty = (int)(node.y / DMAP_TILE);
+            if (rtx >= 0 && rtx < DMAP_W && rty >= 0 && rty < DMAP_H) { dmap->tiles[rty][rtx] = DNG_FLOOR; dmap->art[rty][rtx] = 0; }
+        }
+    }
     build_regions(dmap);
     // The box the floor fills, a wall ring round it (the ring is where
     // dungeon_seat_portals later stands the ways out): the minimap's frame.
@@ -4332,6 +4372,13 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
             dp->picked_gold += lo.gold;
         }
     }
+    // A broken node -- an ore vein, an opened chest's wood -- stays broken
+    // (persist.h); a chest still shut is not broken, only opening.
+    if (harvest_any_destroyed(h))
+        for (int ni = 0; ni < dmap->dungeon_rocks.count && ni < 64; ni++) {
+            const ResourceNode& node = dmap->dungeon_rocks.nodes[ni];
+            if (!node.alive && node.chest != 1) persist_node_broken(dmap->seed, ni);
+        }
 
     player_animate(player, dt, anim_speed);
 

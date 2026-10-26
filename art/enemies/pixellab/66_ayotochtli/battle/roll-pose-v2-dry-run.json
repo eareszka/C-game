@@ -1,0 +1,22 @@
+{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAjCAYAAADSQImyAAAB4UlEQVR4nGNgGAWjYBSMglEwSMB/KKa2WryAiYE64P/1haUMIEyEw0hRSzcPwAEBh4EdT03ARE3DJMWlqapuQGIATyxQPfRp4gFCoUvN0KemBxg147tJ0gBVzzgokxA9ARMVzWIU8CggSiFUHcWhDwIsDLQFVKms6OqB5y+fgunebH+88tQCjLQIbVhx+VOeGS7J/vAvmEbL7IyDpilxcokxRnEJcjQMI3sGBKDq/w8GD/y/cKCCoXbCe5TQR08qsBiAyYPUn6SCJ6gSA4/uPWHYdeYeSXpA6l/+0qTYbko9AG4e+CUtYVAOMYML4qrUkMVB6v2SllDcKh2tyLaduoUSIvmT14JDFV0cxAeJg+TRxSkBVI0BULIApW1cjgKJg+SRk9tAg/+92f6w7iGoKAVjdHFkPrIaBlR1Ax8DURsgZT0ohIunboQXmSAaxIeFPEzdYAHgELy+sBRMb5oX8185xAyMkWMAJgaSR1bPQGE9QI2mBNgBsNCGFZXY0vndNacYsKlloMAd1GjMMWJrB2GrC3B0KRkpsZwaHvgPK2G8zNTgjsfWGgWJwzyBVFL9p8QTVElC6I4FZVhcAIdaxgEthZxDNVFoKGDEgsEAFlNeUJoSQK3+AHpJgs9cUtQSBAD+zOsOmCwBIAAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "description": "Curl this tan armored turtle-rabbit into a compact round shell ball. Tuck head, feet and tail inside; fold ears flat against the shell. Broad dark seams on a tan armored sphere, no visible legs or face. Keep the exact palette, one-pixel black outlines and flat shading. Transparent 48x35 canvas; ball about 19x19 pixels, centered at x24, grounded at y34. No effects or extra objects.",
+    "width": 48,
+    "height": 35,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

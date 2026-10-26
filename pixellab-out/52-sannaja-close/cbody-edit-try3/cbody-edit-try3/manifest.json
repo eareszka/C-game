@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "cbody-edit-try3",
+  "generated": "2026-10-19T16:59:02Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "cbody-edit-try3_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "52-sannaja-close-cbody-frame0-try3.png"
+      ],
+      "ids": {
+        "background_job_id": "10ca754c-99be-4cec-9afc-21e9f0ea6c37",
+        "generation_id": "9e6cac13-90d3-4e47-82a6-708e91f82af8"
+      }
+    }
+  ]
+}

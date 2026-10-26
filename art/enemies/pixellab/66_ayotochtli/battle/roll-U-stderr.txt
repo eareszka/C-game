@@ -1,0 +1,1 @@
+could not reach PixelLab: [Errno 11001] getaddrinfo failed (arguments={'first_frame': {'type': 'base64', 'base64': '<elided 580 characters>', 'format': 'png'}, 'action': '<elided 610 characters>', 'frame_count': 4, 'no_background': True}, route='animate-with-text-v3')

@@ -1,0 +1,31 @@
+﻿{
+  "input": "pixellab-out\\61-roperite-drafts\\61-roperite\\sprites\\v1\\61-roperite-frame0-draft.png",
+  "reviewed": "art\\enemies\\pixellab\\61_roperite\\61_roperite_frame0_clean.png",
+  "size": [
+    98,
+    65
+  ],
+  "size_ok": true,
+  "occupied_bounds": [
+    35,
+    14,
+    63,
+    64
+  ],
+  "opaque_colors": 8,
+  "off_palette_pixels": 0,
+  "partial_alpha_pixels": 0,
+  "transparent_pixels": 5674,
+  "black_pixels": 268,
+  "color_budget_ok": true,
+  "human_review_required": [
+    "rope-snout lasso",
+    "rattle tail",
+    "pose and scale",
+    "single-pixel outlines",
+    "flat material ramps",
+    "shading placement"
+  ],
+  "approved": false,
+  "originals_unchanged": true
+}

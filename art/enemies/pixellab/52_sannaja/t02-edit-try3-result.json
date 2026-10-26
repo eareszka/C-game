@@ -1,0 +1,19 @@
+{
+  "run": "t02-edit-try3_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t02-edit-try3\\t02-edit-try3\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t02-edit-try3\\t02-edit-try3\\sprites\\v1\\52-sannaja-t02-frame0-try3.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\52-sannaja\\t02-edit-try3\\t02-edit-try3\\sprites\\v1\\t02-edit-try3_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 15.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "fa14691a-9f13-460b-bff2-54aee8047298",
+    "generation_id": "6c18ec6f-bb8e-4659-8faf-4dadec8bc73c"
+  },
+  "route": "edit-images-v2"
+}

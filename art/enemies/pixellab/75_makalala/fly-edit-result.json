@@ -1,0 +1,19 @@
+{
+  "run": "fly-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-edit\\fly-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-edit\\fly-edit\\sprites\\v1\\75-makalala-fly-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\75-makalala\\fly-edit\\fly-edit\\sprites\\v1\\fly-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "ceda0689-93b9-45ef-9e24-65cf17d76bc1",
+    "generation_id": "e859f49e-17a3-4ebd-95e3-3ee94f716c23"
+  },
+  "route": "edit-images-v2"
+}

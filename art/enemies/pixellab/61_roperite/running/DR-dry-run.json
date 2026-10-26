@@ -1,0 +1,21 @@
+﻿{
+  "dry_run": true,
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAGIAAABBCAYAAAAqnXGWAAADkUlEQVR4nO2cv0scURDHZ+WadKmDnGBjIE0KG+ECKWyuEUkhCBYhpZVl/Au0tEopFgHBIsg111gEIqSxSBOITUgkpLZLkeKFeby5zC37+4z3nZf3geP2zr3z7Xx3fu4qUSKRSCQSiUQikUgkEomEeTKKG2fleGEXdhcCfHr/eurN8dkp7b/5DnnccAu6SwHY8MyT1WeTHfrLi/T0+SHcsUMtZkacFiCc+VOMjne8EAyaGAsUrwhZ/rHx6i3dfP3hH2jEIoSHDVyTA7wYiCzE5A2frz402d+LFD6Tr6oSHXEHu0tudLzjn1sYlsVrs/8/x7xHDLe2fQLuUpYe7C4RihjmhZgln7CIKPTIOOPQK7SF80l/GUcI8x4x3NrudGbzZ5DKWPMecdPemO7l5mO/Ic0dAuY9ot/BmHt7m1DeEIUQXUHyhiiEGJ+daqO6gkcpSPMmiEXMwMTQ+ZF3ztik95OwFMYdEDboWRdhpCaq+bjPhtY/FxqOQv4rIXToyNp+TrygKvFqkXhb+o6iMfk8mbdbutuLgd94uH7ZZj1+0FdX+bwbXdHKo1+TvuHo6Ny/ViLM+/gJZSFuHDbWLgYiRtW6Jp7QpvzMj76ljzg5/1L1u+4VhEW4cRBCKPEO34jN0gOwhwTjo9kAYxGkPKPAO6iLFxTBSfr65wMoT4DtI9aCZ0ju4FF1UxE4BFVdgUOatqJVTUI2DF7xcf3Si8HPLMa33qBWBDG+VFHcO7CAkpS5hGXQxhoaKPekXIj6HQxYJwIbPX+2sxicUzgMsRBSQaX7mlqIQaGyebGx2kgIHbp08yZiMMgiQOYI+nv7iz+Lm6BDTtntMsgioArhkTKzyTiiTDD2FP4exCopD/LinIQVTVG44vBUFMokTHFHjS4G7MKqxNDkGzRp+oquZyOONmAXVJW8iwTQ72tRwq0yhSDmC5Q+oopMGXnqQk+Jt/D+jjtoGfhZADZZl6BvKq4iY+FYDCtY8IhS2NgVIYjFqM0xKFjzCKGxgXXeQC5lrQrR9F5WH8aUAPIeHBZDk+sQbiCNb9kjHEWKNSHISvKNWQhX1rzFgCUhaj0DsWOOMlmfKC+ILURZEiLTL7hZo4gwG5oY3VVbDkvmhYiJKITYN+4N0QgRA6aFuA5j7lBBmU7epoUQ+AKQdTFMC7GirsDxtpq+Qv17hyaYTnCkjC2lrNzxh/T3cU0ws9AaXMTHlqB75A+hrI81rmuSAQAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "action": "Looping sprint in place, facing the same direction throughout. Alternate two long bird legs through contact, push-off, flight and recovery, with small body bob and a trailing orange segmented rattle tail. Rope snout lasso bounces as one clear loop with one forward flick at the middle of the cycle, then recoils into its original loop. Preserve creature anatomy, scale, tiny pixel clusters, one-pixel black outlines and flat colors; no camera motion or translation. No extra limbs, no trails or effects. Seamless loop.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "estimated_cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "estimated",
+    "seconds": null
+  }
+}

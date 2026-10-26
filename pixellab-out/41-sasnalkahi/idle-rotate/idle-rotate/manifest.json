@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "idle-rotate",
+  "generated": "2026-10-19T00:05:13Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "idle-rotate_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "41-sasnalkahi-idle-views-south-00.png",
+        "41-sasnalkahi-idle-views-south-east-01.png",
+        "41-sasnalkahi-idle-views-east-02.png",
+        "41-sasnalkahi-idle-views-north-east-03.png",
+        "41-sasnalkahi-idle-views-north-04.png",
+        "41-sasnalkahi-idle-views-north-west-05.png",
+        "41-sasnalkahi-idle-views-west-06.png",
+        "41-sasnalkahi-idle-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "915ff21f-7abd-4950-9762-10eeebcc089e",
+        "generation_id": "fb059c7c-23cd-4a0b-9443-b2b8512d3690"
+      }
+    }
+  ]
+}

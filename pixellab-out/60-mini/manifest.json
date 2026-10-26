@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "subject": "60-mini",
+  "generated": "2026-10-25T01:57:12Z",
+  "spent": {
+    "calls": 3,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "60-mini_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "lungel-00.png",
+        "lungel-01.png",
+        "lungel-02.png",
+        "lungel-03.png",
+        "lungel-04.png"
+      ],
+      "ids": {
+        "background_job_id": "316188bf-88c5-49a8-8e5c-64124860a694",
+        "generation_id": "70bbee01-ea24-4c47-b84c-c9f9179366ba"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "60-mini_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "lunged-00.png",
+        "lunged-01.png",
+        "lunged-02.png",
+        "lunged-03.png",
+        "lunged-04.png"
+      ],
+      "ids": {
+        "background_job_id": "549d5663-43bf-4a75-8fa8-9c43345a8b3d",
+        "generation_id": "81428794-e46e-41ce-ae09-28e25c60becb"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "60-mini_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "aade203a-2d4d-44cc-852c-e523ec38786f",
+        "generation_id": "407c3665-9187-4569-9702-9b8bae1ee782"
+      }
+    }
+  ]
+}
