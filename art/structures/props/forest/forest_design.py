@@ -403,21 +403,27 @@ def lean_to():
 
 # ---------------------------------------------------------------- 13. stump with a nest
 def nest_stump():
+    """Short and broad, a big nest on its broken top -- tall and thin, it read as a post
+    (redrawn 2026-10-27 after the in-world check)."""
     g = blank(16, 32)
-    for y in range(12, 30):
-        for x in range(4, 12):
-            jag = {4: 15, 5: 13, 6: 12, 7: 14, 8: 12, 9: 13, 10: 15, 11: 16}[x]
-            if y >= jag or (y >= 27 and True):
+    for y in range(19, 30):
+        for x in range(3, 13):
+            jag = {3: 22, 4: 20, 5: 19, 6: 21, 7: 19, 8: 20, 9: 19, 10: 21, 11: 20, 12: 22}[x]
+            if y >= jag:
                 g[y][x] = 'd' if x >= 10 or y >= 27 else 'm'
-    for y in (27, 28, 29):                                        # the roots
-        g[y][3] = g[y][12] = 'd'
-    nest = typed(["..tttttt..", ".tdtttdtt.", "..dddddd.."])
-    for j, r in enumerate(nest):
-        for i, c in enumerate(r):
-            if c != '.':
-                g[9 + j][3 + i] = c
-    for y in (12, 13, 14):                                        # bark split by the break
-        g[y][7] = 'd' if g[y][7] != '.' else '.'
+    for x in (2, 13):                                             # the roots
+        for y in (28, 29):
+            g[y][x] = 'd'
+    for x in (5, 8):                                              # bark split down the lit side
+        for y in range(22, 26):
+            g[y][x] = 'd'
+    rim, bowl = ellipse(7.5, 17.5, 5.6, 3.4), ellipse(7.5, 17.0, 3.4, 1.6)
+    for y in range(12, 23):
+        for x in range(16):
+            if bowl(x, y):
+                g[y][x] = 'd'                                     # the hollow of the nest
+            elif rim(x, y):
+                g[y][x] = 'm' if (x * 5 + y * 3) % 7 == 0 else 't'   # woven: twigs through the straw
     return outline(g), {'m': BARK[1], 'd': BARK[2], 't': THATCH[0]}
 
 
@@ -459,21 +465,23 @@ def leaf_litter():
 
 # ---------------------------------------------------------------- 16. sapling (4 frames)
 def sapling(frame=0):
-    sway = (0, 1, 0, -1)[frame]
+    """A young tree, bushy and low: a round crown on a short trunk, the old round tree's build --
+    a lollipop on a stick read as a pole (redrawn 2026-10-27 after the in-world check)."""
+    sway = (0, 1, 0, -1)[frame]                                    # only the crown's top stirs
     g = blank(16, 32)
-    for y in range(14, 30):                                        # the trunk: black, lit down its left
-        bend = sway * max(0, (22 - y)) / 8
-        x = int(7.5 + bend)
-        g[y][x] = 'K'
-        g[y][x - 1] = 'G'
-    for cx, cy, rx, ry in ((7.5, 10.5, 4.0, 4.3), (5.5, 16.5, 2.4, 2.5), (10.0, 16, 2.4, 2.5)):
-        cx += sway
+    for y in range(25, 30):                                        # the trunk, in the leaves' shade
+        g[y][7] = g[y][8] = 'G'
+    for cx, cy, rx, ry, s in ((7.5, 19.5, 5.2, 5.0, 0), (4.6, 22.5, 2.5, 2.4, 0), (10.4, 22.0, 2.5, 2.4, 0),
+                              (7.8, 14.0, 3.6, 3.2, sway)):
+        cx += s
         inside = ellipse(cx, cy, rx, ry)
         for y in range(32):
             for x in range(16):
                 if inside(x, y):
                     u, v = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
                     g[y][x] = 'G' if u + v > 0.6 else 'c' if u + v < -0.95 else 'g'
+    for x, y in ((5, 18), (9, 17), (7, 22), (11, 21)):           # leaf clumps broken by a line
+        g[y][x] = 'K'
     return outline(g), {'c': FOLIAGE[0], 'g': FOLIAGE[1], 'G': FOLIAGE[2]}
 
 

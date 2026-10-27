@@ -14,7 +14,7 @@ sprite"). The pool it stands at the shore of is a circle (stamp_dungeon_surround
 The water is not here. Every oasis grows its own pool of real pond tiles,
 north of the stamp, in a shape of its own (stamp_dungeon_surround in
 src/tilemap.cpp), and the game's shoreline draws its edge. What stands beside
-it is: the palms (palm_design.py) or the boulders, two cells out either side
+it is: the palms (trees/trees_design.py) or the boulders, two cells out either side
 of the well -- crown or top walked behind, trunk or foot solid -- and in snow,
 steam off the water (steam.aseprite, drawn by the game).
 """

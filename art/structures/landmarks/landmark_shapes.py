@@ -5,7 +5,7 @@ A landmark's export is its block -- stamp_w cells across, as tall as it stands
 (chest_design.py), laid there by the game (gen_entrance_art.py LANDMARKS).
 Each piece in it is either built (a Scene or a House) or an object typed as
 its fills: obj() lays the black line round it and stands it on its bottom
-rows, as the desert's things are stood (entrances/desert_design.py).
+rows, as the props are stood.
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))

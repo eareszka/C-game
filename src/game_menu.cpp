@@ -527,7 +527,7 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
             fitted(r,item_name(it),LST_X+14,218,LST_W-28,2,white);
             if(const char* desc=item_description(it)){
                 wrapped(r,desc,LST_X+14,250,LST_W-28,3);
-                if(it!=ITEM_ESCAPE_CHARM&&it!=ITEM_BAND_AID&&it!=ITEM_MEDKIT&&it!=ITEM_ANTIDOTE&&it!=ITEM_SWIFT_BOOTS&&it!=ITEM_DIVING_FINS&&((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_LAVA_CHARM||it==ITEM_PLAGUE_RESIDUE))text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
+                if(it!=ITEM_ESCAPE_CHARM&&it!=ITEM_BAND_AID&&it!=ITEM_MEDKIT&&it!=ITEM_ANTIDOTE&&it!=ITEM_SWIFT_BOOTS&&it!=ITEM_DIVING_FINS&&((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_PLAGUE_RESIDUE))text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
             }
             else{
                 text(r,"USED FOR:",LST_X+14,250,2,grey);

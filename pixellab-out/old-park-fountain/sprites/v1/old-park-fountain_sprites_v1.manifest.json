@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "old-park-fountain_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art grey stone town square fountain, wide round basin of blue water, a carved pedestal with a smaller upper bowl, water spraying from the top, low top down view",
+    "image_size": {
+      "width": 96,
+      "height": 80
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-grey-stone-town-square-fountain-wide-r.png"
+  ]
+}

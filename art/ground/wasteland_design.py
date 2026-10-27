@@ -1,4 +1,10 @@
-"""The wasteland's ground: cracked earth, laid out for tools/draw_views.py.
+"""The wasteland's ground, laid out for tools/draw_views.py.
+
+The user, 2026-10-27 (the wasteland overhaul, art/concept/wasteland/): the floor
+after the Yume Nikki references -- a flat red-brown with a rare clod, no
+cracks (a broad tan block beside it was tried and taken out the same day).
+Run with --png to write the PNG without the pixel plugin.
+
 
     python art/ground/wasteland_design.py <design.json> [fill]
     python tools/draw_views.py <design.json> art/ground/wasteland
@@ -19,7 +25,7 @@ import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'tools'))
 from overworld_style import MATERIALS
 
-CRACK, CLOD = '110000', '583518'                       # the near-black (the user: stronger cracks); dirt's light
+CRACK, CLOD = '110000', '583518'                       # cracks are gone (2026-10-27); clod and block are dirt's light
 CELLS = {
     'clump_l': """
 ................
@@ -112,31 +118,44 @@ ORDER = [['clump_l', 'clump_r', 'tuft_a'], ['tuft_b', 'tuft_c', 'plain']]   # th
 
 
 def block():
-    """The 48x32 block's rows of letters, '.' the fill."""
+    """The 48x32 block's rows of letters, '.' the fill; the old cracks drop to the fill."""
     cells = {k: v.strip('\n').split('\n') for k, v in CELLS.items()}
     for k, rows in cells.items():
         assert len(rows) == 16 and all(len(r) == 16 for r in rows), k
-    return [''.join(cells[k][y] for k in row) for row in ORDER for y in range(16)]
+    return [''.join(cells[k][y] for k in row).replace('C', '.') for row in ORDER for y in range(16)]
 
 
 def design(fill=None):
     fill = fill or MATERIALS['wasteland']['tones'][0]
     rows = [r.replace('.', 'B') for r in block()]
+    ground = rows
     n = 48 * 32
-    marks = sum(r.count('C') + r.count('L') for r in rows)
+    marks = sum(r.count('C') + r.count('L') for r in ground)
     assert (n - marks) / n >= 0.85, "the fill is under 85% of the block"
     lone = 0
-    for y, r in enumerate(rows):
+    for y, r in enumerate(ground):
         for x, c in enumerate(r):
-            if c != 'B' and not any(0 <= x + dx < 48 and 0 <= y + dy < 32 and rows[y + dy][x + dx] == c
+            if c != 'B' and not any(0 <= x + dx < 48 and 0 <= y + dy < 32 and ground[y + dy][x + dx] == c
                                     for dx in (-1, 0, 1) for dy in (-1, 0, 1) if dx or dy):
                 lone += 1
     assert lone / n <= 0.03, "lone pixels over 3%"
-    return {'pal': {'B': fill, 'C': CRACK, 'L': CLOD}, 'view_w': 48, 'order': ['wasteland'],
+    return {'pal': {'B': fill, 'L': CLOD}, 'view_w': 48, 'order': ['wasteland'],
             'views': {'wasteland': rows}}
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and '--png' in sys.argv:
+    from PIL import Image
+    d = design()
+    rows = d['views']['wasteland']
+    im = Image.new('RGBA', (len(rows[0]), len(rows)))
+    for y, r in enumerate(rows):
+        for x, c in enumerate(r):
+            h = d['pal'][c]
+            im.putpixel((x, y), (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255))
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wasteland.png')
+    im.save(out)
+    print('wrote', out)
+elif __name__ == '__main__':
     d = design(sys.argv[2] if len(sys.argv) > 2 else None)
     json.dump(d, open(sys.argv[1], 'w'))
     for r in d['views']['wasteland']:

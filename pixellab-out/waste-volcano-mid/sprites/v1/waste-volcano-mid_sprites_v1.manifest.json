@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "waste-volcano-mid_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art medium small red rock volcano cone, craggy uneven slopes with ridges and gullies, dark crater opening at the top, a few rocks at its foot, dark eerie wasteland, no lava",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-medium-small-red-rock-volcano-cone-cra.png"
+  ]
+}

@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 
 im = np.array(Image.open(sys.argv[1]).convert('RGB'))
-BROWN, INK, TREE = (136, 112, 0), (0, 0, 0), (0, 168, 0)
+BROWN, INK, TREE = (141, 107, 79), (0, 0, 0), (0, 168, 0)   # the islands' default base, 8d6b4f (2026-10-27)
 brown = np.all(im == BROWN, axis=2)
 ink = np.all(im == INK, axis=2)
 tree = np.all(im == TREE, axis=2)

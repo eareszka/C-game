@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "old-park-bench",
+  "generated": "2026-10-27T06:04:52Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "old-park-bench_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-wooden-park-bench-slatted-seat-and-bac.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

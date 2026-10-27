@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "snow-tent_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art abandoned expedition tent, brown hide stretched over wooden poles, snow drifted against it, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-abandoned-expedition-tent-brown-hide-s.png"
+  ]
+}

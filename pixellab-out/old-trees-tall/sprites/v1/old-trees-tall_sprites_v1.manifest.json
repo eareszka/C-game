@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "old-trees-tall_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art tall narrow leafy tree, crown of stacked rounded clumps, thin trunk, retro NES style, black 1px outline, simple bold shapes, single tree centered",
+    "image_size": {
+      "width": 32,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-tall-narrow-leafy-tree-crown-of-stacke.png"
+  ]
+}

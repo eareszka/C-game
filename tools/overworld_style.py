@@ -29,12 +29,15 @@ MATERIALS.update({
     'grass':     {'tones': ('4edc4a', '00881b'), 'joint': '000000'},
     'meadow':    {'tones': ('a8f0bc', 'fc74b4', '00a800'), 'joint': '000000'},
     'snow':      {'tones': ('fcfcfc', 'f0bc3c'), 'joint': '000000'},
+    'snowpack':  {'tones': ('fcfcfc', 'dcf0ff', 'a4aaba'), 'joint': '000000'},   # snow lying on a prop: white, its cold shade
+    'ice':       {'tones': ('dcf0ff', '84a7e9', '3e91cc'), 'joint': '000000'},   # the snow props' ice
     'sand':      {'tones': ('f0e880', 'e8e0c0', 'd0c078'), 'joint': '000000'},
     'water':     {'tones': ('5c94fc', 'fcfcfc'), 'joint': '000000'},
     'foliage':   {'tones': ('05c43a', '058f3a', '235436'), 'joint': '000000'},   # every tree's greens
     # not in the reference: each piece's own
-    'wasteland': {'tones': ('341e10', '110000', '583518'), 'joint': '000000'},   # cracked earth: fill, crack, clod (2026-10-14)
-    'lava':      {'tones': ('b70000', '7c0a1b'), 'joint': '000000'},
+    'wasteland': {'tones': ('3e1c0e', '583518'), 'joint': '000000'},   # red-brown fill, clod (2026-10-27)
+    'lava':      {'tones': ('2c0c47', '301b5a', '3b2a58'), 'joint': '000000'},   # drawn as the void (2026-10-27): fill, marks
+    'red rock':  {'tones': ('ec8476', 'b70000', '7c0a1b'), 'joint': '000000'},   # the wasteland's mini volcanoes
     # the interiors' bone (the catacombs' walls) with the roster's bone white above it: the desert's bones
     'bone':      {'tones': ('e8e0c0', 'b2966a', '8d6b4f'), 'joint': '000000'},
     # the villages' (art/structures/villages/): thatch on the grass cottages, rust on the wasteland huts' stovepipes
@@ -48,13 +51,16 @@ MATERIALS.update({
     'town pad':  {'tones': ('d7a175', '8d6b4f'), 'joint': '000000'},             # trail grass
     'trail meadow':    {'tones': ('b2966a', '967448'), 'joint': '000000'},
     'trail sand':      {'tones': ('cebe82', 'b29e5c'), 'joint': '000000'},
-    'trail wasteland': {'tones': ('463422', '110000'), 'joint': '000000'},
+    'trail wasteland': {'tones': ('2b190e', '110000'), 'joint': '000000'},
     'trail snow':      {'tones': ('c6ccda', 'a4aaba'), 'joint': '000000'},
     'oasis water': {'tones': ('84a7e9', '3e91cc'), 'joint': '000000'},
     # rock that holds ore is in its ore's ramp (gen_cave_entrances.py TONES);
     # this is stone's, and DEFAULT is the cliffs' with no cave in them
     'ore rock':   {'tones': ('bcbeca', '848694', '474751'), 'joint': '000000'},
-    'cliff rock': {'tones': ('b29e5c', '887000', '493712'), 'joint': '000000'},
+    'cliff rock': {'tones': ('b29e5c', '887000', '493712'), 'joint': '000000'},   # the desert's boulders and spire
+    'island rock': {'tones': ('b2966a', '8d6b4f', '583518'), 'joint': '000000'},   # an island with no ore (2026-10-27): ash taupe
+    'waste stone': {'tones': ('9797aa', '595965', '34343e'), 'joint': '000000'},
+    'void glow':   {'tones': ('b69cee', '664b95'), 'joint': '000000'},             # the void's light in the wasteland's remains (2026-10-27)   # built stone in the wasteland (2026-10-27)
     'gold':       {'tones': ('fae488', 'c9a433', '685018'), 'joint': '000000'},  # kharvite's: the gold ore vein's, the gold icon's
     'glass':  {'tones': ('5c94fc', 'b70000'), 'joint': '000000'},                # the church's windows
     'doorway': {'tones': ('241c0a',), 'joint': '000000'},                        # the pyramid's
@@ -78,7 +84,7 @@ for h in HOUSES:        # brick (and side face), its shade (and door), mortar (a
 # The rock texture is read as the game paints it: the packed rows of
 # src/cliff_texture.inc (art/cliffs/gen_cliff_texture.py, each stone one flat
 # tone), a digit a pixel -- crack, shade, base -- here in the cliffs' own ramp.
-CLIFF = ('000000', '493712', '887000')
+CLIFF = ('000000', '583518', '8d6b4f')
 
 # piece: (its drawing -- a PNG, (col, row, cols, rows) of the sheet's cells, or
 # (png, x, y, w, h) a piece of a PNG in pixels; its kind; the materials it is
@@ -99,7 +105,7 @@ PIECES = {
 PIECES.update({h: ('art/structures/houses/%s.png' % h, 'built', (h + ' brick', h + ' roof')) for h in HOUSES})
 REFERENCE = tuple(PIECES)
 PIECES.update({
-    'wasteland':   ('art/ground/wasteland.png', 'ground', ('wasteland',)),   # sheet cols 27-29 rows 4-5
+    'wasteland':   ((27, 4, 3, 2), 'ground', ('wasteland',)),   # sheet cols 27-29 rows 4-5
     'lava':        ((15, 0, 1, 1), 'ground', ('lava',)),
     'town pads':   ((0, 6, 15, 5), 'ground', ('town pad',)),
     'oasis water': ('art/structures/entrances/oasis_water.png', 'ground', ('oasis water',)),
@@ -115,7 +121,7 @@ PIECES.update({
     'oasis':       ('art/structures/entrances/oasis.png', 'built', ('ore rock', 'stone', 'foliage', 'snow')),
     'yard walls':  ('art/structures/entrances/yard_walls.png', 'built', ('wood', 'stone')),
     'cave mouth':  ('art/structures/cave_entrance.png', 'built', ('ore rock',)),
-    'cliff rock':  ('src/cliff_texture.inc', 'built', ('cliff rock',)),
+    'cliff rock':  ('src/cliff_texture.inc', 'built', ('island rock',)),
 })
 # the villages' sets (art/structures/villages/<set>_design.py): three houses and a well a strip,
 # each on its own cells, standing on the strip's bottom row
@@ -124,7 +130,7 @@ VILLAGE_SETS = {
     'meadow': ('yellow paint', 'white paint', 'red paint', 'green paint', 'slate', 'brick', 'stone', 'wood', 'dirt', 'foliage'),
     'sand':   ('sandstone', 'thatch', 'wood'),
     'snow':   ('wood', 'white paint', 'stone'),
-    'waste':  ('dark stone', 'slate', 'rust', 'wood'),
+    'waste':  ('waste stone', 'lava', 'rust', 'wood'),   # recoloured 2026-10-27: waste stone under the void's slate
 }
 VILLAGE_PIECES = {s: (('small', 0, 4), ('middle', 4, 5), ('large', 9, 6), ('well', 15, 2)) for s in VILLAGE_SETS}
 VILLAGE_PIECES['meadow'] = (('shed', 0, 4), ('cottage', 4, 5), ('farmhouse', 9, 6), ('barn', 15, 6), ('well', 21, 2), ('field', 23, 1))
@@ -133,11 +139,6 @@ for _set, _mats in VILLAGE_SETS.items():
     _png = 'art/structures/villages/%s.png' % _set
     for _name, _x, _w in VILLAGE_PIECES[_set]:
         PIECES['%s %s' % (_set, _name)] = ((_png, _x * 16, 0, _w * 16, VILLAGE_ROWS.get(_set, 5) * 16), 'built', _mats)
-# the desert's formations (art/structures/entrances/desert_design.py), a column of the strip each
-DESERT = (('saguaro', 'foliage'), ('saguaro small', 'foliage'), ('barrel cactus', 'foliage'), ('prickly pear', 'foliage'),
-          ('boulder', 'cliff rock'), ('boulders', 'cliff rock'), ('spire', 'cliff rock'), ('shrub', 'bark'),
-          ('skull', 'bone'), ('ribs', 'bone'))
-PIECES.update({n: (('art/structures/entrances/desert.png', 16 * i, 0, 16, 32), 'object', (m,)) for i, (n, m) in enumerate(DESERT)})
 # The country's landmarks (art/structures/landmarks/*_design.py; gen_entrance_art.py
 # LANDMARKS): the place, built or an object; every cache is the one chest, shut and open.
 PIECES.update({
@@ -148,7 +149,7 @@ PIECES.update({
     'camp fire':         (('art/structures/landmarks/camp.png', 48, 32, 16, 16), 'object', ('stone',)),
     'statue head':       (('art/structures/landmarks/statue.png', 0, 0, 32, 32), 'object', ('stone',)),
     'cairn':             (('art/structures/landmarks/cairn.png', 0, 0, 32, 32), 'object', ('stone', 'snow')),
-    'burnt wagon':       (('art/structures/landmarks/wagon.png', 0, 0, 48, 32), 'object', ('bark',)),
+    'lone gate':         (('art/structures/landmarks/gate.png', 0, 0, 48, 48), 'built', ('waste stone',)),   # the wasteland's landmark (2026-10-27), where the burnt wagon stood
     'wrecked boat':      (('art/structures/landmarks/boat.png', 0, 0, 48, 32), 'object', ('wood',)),
 })
 # The overworld's props (art/structures/props/props.py, laid by worldgen's "Props"), read from
@@ -157,8 +158,9 @@ PIECES.update({
 # draws its grass, with no line round it -- are let off the outline (TUFTS).
 PROP_BUILT = {'arch', 'balanced_rock', 'mesa', 'slab', 'wagon_covered', 'wagon_buried', 'woodpile',
               'lean_to', 'hay_bale', 'handcart', 'wheelbarrow', 'barrel', 'trough', 'field_gate',
-              'stele', 'serpent_head', 'jaguar', 'altar', 'ball_ring', 'fallen_block', 'chacmool'}
-TUFTS = ('grass_a', 'grass_b', 'leaf_litter', 'tall_grass_a', 'tall_grass_b')
+              'stele', 'serpent_head', 'jaguar', 'altar', 'ball_ring', 'fallen_block', 'chacmool',
+              'ice_block', 'icicle_rock', 'tent', 'crate', 'sled', 'fallen_wall', 'snapped_pillar'}
+TUFTS = ('grass_a', 'grass_b', 'leaf_litter', 'tall_grass_a', 'tall_grass_b', 'frozen_tufts_a', 'frozen_tufts_b')
 
 
 def _prop_pieces():

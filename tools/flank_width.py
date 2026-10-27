@@ -18,7 +18,7 @@ import sys
 import numpy as np
 from PIL import Image
 
-BROWN, INK = (136, 112, 0), (0, 0, 0)
+BROWN, INK = (141, 107, 79), (0, 0, 0)   # the islands' default base, 8d6b4f (2026-10-27)
 
 
 def runs(mask, axis):

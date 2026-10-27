@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "old-trees-conifer-tall",
+  "generated": "2026-10-27T03:07:17Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "old-trees-conifer-tall_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-tall-narrow-snowy-fir-tree-layered-bra.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

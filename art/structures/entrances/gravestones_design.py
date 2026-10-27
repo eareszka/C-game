@@ -98,6 +98,21 @@ STONES = {
 }
 
 
+def taller(rows, n=3):
+    """Each stone stretched n rows up its body -- the first ones were small enough to be lost
+    in a clearing (2026-10-27, the in-world check)."""
+    rows = list(rows)
+    for _ in range(n):
+        if rows[1] != E:
+            break
+        body = max(i for i, r in enumerate(rows) if r != E) - 4     # a row of the stone above its plinth
+        rows = rows[1:body + 1] + [rows[body]] + rows[body + 1:]
+    return rows
+
+
+STONES = {k: taller(v) for k, v in STONES.items()}
+
+
 def standing(g):
     """The plinth -- its last three rows, end to end -- is stood on; the plinth
     lies on the ground, each pixel on its own row, and the stone stands on the

@@ -23,16 +23,21 @@ stray, stand, breaks, drops)
            desert's proposed with the install)
 """
 
-DESERT, FOREST, PLAINS = 'PB_DESERT', 'PB_FOREST', 'PB_PLAINS'
+DESERT, FOREST, PLAINS, SNOW, WASTE = 'PB_DESERT', 'PB_FOREST', 'PB_PLAINS', 'PB_SNOW', 'PB_WASTE'
+BIOMES = [DESERT, FOREST, PLAINS, SNOW, WASTE]      # PropBiome's order; a new biome goes on the end
 
-# the groups, by biome; each enum value is a bit in a prop's themes
+# the groups, by biome; each enum value is a bit in a prop's themes. A new theme goes on the
+# end, so the ones before keep their bits.
 THEMES = {
     'TH_CACTUS': DESERT, 'TH_ROCK': DESERT, 'TH_TRAIL': DESERT,
     'TH_DEADFALL': FOREST, 'TH_CAMP': FOREST, 'TH_UNDERGROWTH': FOREST,
     'TH_FARM': PLAINS, 'TH_MAYAN': PLAINS,
+    'TH_ICE': SNOW, 'TH_EXPEDITION': SNOW, 'TH_MAMMOTH': SNOW,
+    'TH_VOLCANO': WASTE, 'TH_RUBBLE': WASTE, 'TH_REMAINS': WASTE,
 }
 
-D, F, P = 'desert/', 'forest/', 'plains/'
+D, F, P, S, W = 'desert/', 'forest/', 'plains/', 'snow/', 'wasteland/'
+SNOW_ALL = ['TH_ICE', 'TH_EXPEDITION', 'TH_MAMMOTH']
 PROPS = [
     # -- desert: cactus country, rock country, the old trail --
     ('saguaro',       D + 'saguaro_tall.png',     0, 2, 3, 1, DESERT, ['TH_CACTUS'], True,  1, 0, 5,       'axe',   [('VINE', 2)]),
@@ -98,6 +103,53 @@ PROPS = [
     ('clay_pots',     P + 'clay_pots.png',        0, 1, 1, 1, PLAINS, ['TH_MAYAN'], False, 3, 0, 'low',   'any',   [('STONE', 1)]),
     ('fallen_block',  P + 'fallen_block.png',     0, 2, 1, 1, PLAINS, ['TH_MAYAN'], False, 3, 0, 'low',   'stone', [('STONE', 2)]),
     ('maize',         P + 'maize.png',            0, 2, 2, 1, PLAINS, ['TH_MAYAN'], False, 3, 0, 5,       'axe',   [('VINE', 2), ('FLOWER', 1)]),
+
+    # -- snow: the ice field, an abandoned expedition's camp, a mammoth graveyard --
+    ('ice_spire',     S + 'ice_spire.png',        0, 2, 3, 4, SNOW, ['TH_ICE'], True,  1, 0, 6,           'stone', [('STONE', 3)]),
+    ('ice_cluster',   S + 'ice_cluster.png',      0, 1, 1, 1, SNOW, ['TH_ICE'], False, 3, 1, 'low',       'stone', [('STONE', 1)]),
+    ('ice_block',     S + 'ice_block.png',        0, 1, 1, 1, SNOW, ['TH_ICE'], False, 3, 0, 8,           'stone', [('STONE', 1)]),
+    ('snow_boulder',  S + 'snow_boulder.png',     0, 2, 2, 1, SNOW, ['TH_ICE'], False, 2, 0, 8,           'stone', [('STONE', 3)]),
+    ('icicle_rock',   S + 'icicle_rock.png',      0, 2, 2, 1, SNOW, ['TH_ICE'], False, 2, 0, 8,           'stone', [('STONE', 2)]),
+    ('frozen_tufts_a', S + 'frozen_tufts.png',    0, 1, 1, 1, SNOW, SNOW_ALL,   False, 2, 3, 'lying',     'any',   [('VINE', 1)]),
+    ('frozen_tufts_b', S + 'frozen_tufts.png',   16, 1, 1, 1, SNOW, SNOW_ALL,   False, 2, 3, 'lying',     'any',   [('VINE', 1)]),
+    ('tent',          S + 'tent.png',             0, 3, 2, 1, SNOW, ['TH_EXPEDITION'], True,  1, 0, 10,   'axe',   [('WOOD', 2), ('HIDE', 2)]),
+    ('sled',          S + 'sled.png',             0, 2, 1, 1, SNOW, ['TH_EXPEDITION'], False, 2, 0, 'low', 'axe',   [('WOOD', 2)]),
+    ('skis',          S + 'skis.png',             0, 1, 2, 1, SNOW, ['TH_EXPEDITION'], False, 2, 0, 3,     'axe',   [('WOOD', 1)]),
+    ('crate',         S + 'crate.png',            0, 1, 1, 1, SNOW, ['TH_EXPEDITION'], False, 3, 0, 8,     'axe',   [('WOOD', 2)]),
+    ('campfire',      S + 'campfire.png',         0, 2, 1, 1, SNOW, ['TH_EXPEDITION'], False, 1, 0, 'lying', 'any', [('STONE', 1), ('WOOD', 1)]),
+    ('snowman',       S + 'snowman.png',          0, 1, 2, 1, SNOW, ['TH_EXPEDITION'], False, 2, 0, 5,     'any',   [('WOOD', 1)]),
+    ('mammoth_skull', S + 'mammoth_skull.png',    0, 3, 2, 1, SNOW, ['TH_MAMMOTH'], True,  1, 0, 8,       'stone', [('BONE', 3), ('HORN', 2)]),
+    ('ribcage',       S + 'ribcage.png',          0, 2, 2, 1, SNOW, ['TH_MAMMOTH'], False, 2, 0, 6,       'stone', [('BONE', 2)]),
+    ('vertebrae',     S + 'vertebrae.png',        0, 2, 1, 1, SNOW, ['TH_MAMMOTH'], False, 3, 1, 'lying', 'any',   [('BONE', 1)]),
+    ('frost_bush',    S + 'frost_bush.png',       0, 1, 2, 1, SNOW, ['TH_MAMMOTH'], False, 3, 0, 4,       'axe',   [('WOOD', 1), ('VINE', 1)]),
+    ('snowy_log',     S + 'snowy_log.png',        0, 2, 1, 1, SNOW, ['TH_MAMMOTH'], False, 2, 0, 'low',   'axe',   [('WOOD', 3)]),
+    ('fur_thornbush', S + 'fur_thornbush.png',    0, 1, 1, 1, SNOW, ['TH_MAMMOTH'], False, 2, 0, 'low',   'axe',   [('WHITE_FUR', 1), ('VINE', 1)]),
+    # -- wasteland: the mini volcanoes, in dense groves where the dead trees stood (the user,
+    #    2026-10-27; wasteland/volcano_design.py, the mock-up art/concept/wasteland/) --
+    ('volcano_big',   W + 'volcano_big.png',      0, 2, 2, 1, WASTE, ['TH_VOLCANO'], True,  1, 0, 4,      'stone', [('STONE', 2)]),
+    ('volcano_mid',   W + 'volcano_mid.png',      0, 2, 2, 1, WASTE, ['TH_VOLCANO'], False, 3, 0, 3,      'stone', [('STONE', 2)]),
+    ('volcano_small', W + 'volcano_small.png',    0, 2, 1, 1, WASTE, ['TH_VOLCANO'], False, 4, 1, 3,      'stone', [('STONE', 1)]),
+    ('volcano_tiny',  W + 'volcano_tiny.png',     0, 1, 1, 1, WASTE, ['TH_VOLCANO'], False, 3, 2, 2,      'stone', [('STONE', 1)]),
+    # -- wasteland: the rubble round the void pools (stage 2, 2026-10-27; wasteland/rubble_design.py) --
+    ('rubble_pile',    W + 'rubble_pile.png',     0, 2, 1, 1, WASTE, ['TH_RUBBLE'], True,  1, 0, 3,       'stone', [('STONE', 3)]),
+    ('rubble_boulder', W + 'rubble_boulder.png',  0, 1, 1, 1, WASTE, ['TH_RUBBLE'], False, 3, 1, 3,       'stone', [('STONE', 1)]),
+    ('rubble_pebbles', W + 'rubble_pebbles.png',  0, 1, 1, 1, WASTE, ['TH_RUBBLE'], False, 3, 1, 'lying', 'stone', [('STONE', 1)]),
+    ('rubble_stub',    W + 'rubble_stub.png',     0, 1, 1, 1, WASTE, ['TH_RUBBLE'], False, 2, 0, 3,       'stone', [('STONE', 2)]),
+    ('rubble_bone',    W + 'rubble_bone.png',     0, 1, 1, 1, WASTE, ['TH_RUBBLE'], False, 2, 1, 'lying', 'any',   [('BONE', 1)]),
+    # -- wasteland: the roster filled out, and the remains, rare eerie groups away from the void
+    #    (approved by the user 2026-10-27; wasteland/waste_design.py) --
+    ('fissure_vent',     W + 'fissure_vent.png',     0, 1, 1, 1, WASTE, ['TH_VOLCANO'], False, 2, 1, 3,     'stone', [('STONE', 1)]),
+    ('cinder_shards',    W + 'cinder_shards.png',    0, 1, 1, 1, WASTE, ['TH_VOLCANO'], False, 2, 1, 3,     'stone', [('STONE', 1)]),
+    ('scorched_boulder', W + 'scorched_boulder.png', 0, 2, 1, 1, WASTE, ['TH_VOLCANO'], False, 2, 0, 4,     'stone', [('STONE', 2)]),
+    ('fallen_wall',      W + 'fallen_wall.png',      0, 3, 1, 1, WASTE, ['TH_RUBBLE'],  True,  1, 0, 5,     'stone', [('STONE', 3)]),
+    ('snapped_pillar',   W + 'snapped_pillar.png',   0, 1, 2, 1, WASTE, ['TH_RUBBLE'],  False, 2, 0, 4,     'stone', [('STONE', 2)]),
+    ('void_rock',        W + 'void_rock.png',        0, 1, 1, 1, WASTE, ['TH_RUBBLE'],  False, 2, 1, 3,     'stone', [('STONE', 1)]),
+    ('bone_pile',        W + 'bone_pile.png',        0, 1, 1, 1, WASTE, ['TH_RUBBLE', 'TH_REMAINS'], False, 2, 1, 'low', 'any', [('BONE', 2)]),
+    ('spine_arch',       W + 'spine_arch.png',       0, 3, 2, 1, WASTE, ['TH_REMAINS'], True,  1, 0, 3,     'any',   [('BONE', 3)]),
+    ('red_figure',       W + 'red_figure.png',       0, 1, 2, 1, WASTE, ['TH_REMAINS'], False, 1, 0, 3,     'stone', [('STONE', 2)]),
+    ('void_lantern',     W + 'void_lantern.png',     0, 1, 2, 1, WASTE, ['TH_REMAINS'], False, 2, 0, 4,     'stone', [('STONE', 2)]),
+    ('glyph_obelisk',    W + 'glyph_obelisk.png',    0, 1, 3, 1, WASTE, ['TH_REMAINS'], False, 1, 0, 4,     'stone', [('STONE', 3)]),
+    ('spike_row',        W + 'spike_row.png',        0, 2, 1, 1, WASTE, ['TH_REMAINS'], False, 2, 0, 3,     'any',   [('STONE', 1)]),
 ]
 
 CELL = 16

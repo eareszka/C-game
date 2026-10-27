@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "waste-new-pillar",
+  "generated": "2026-10-27T06:37:57Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "waste-new-pillar_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-grey-stone-column-snapped-off-at-chest.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

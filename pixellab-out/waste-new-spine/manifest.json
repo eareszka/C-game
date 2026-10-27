@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "waste-new-spine",
+  "generated": "2026-10-27T06:37:52Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "waste-new-spine_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-giant-creature-backbone-arching-out-of.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

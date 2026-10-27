@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "snow-mammoth-skull",
+  "generated": "2026-10-27T02:32:26Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "snow-mammoth-skull_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-mammoth-skull-lying-in-snow-with-two-l.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

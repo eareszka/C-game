@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "old-trees-conifer-small",
+  "generated": "2026-10-27T03:07:09Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "old-trees-conifer-small_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "pixel-art-small-snowy-pine-tree-snow-on-its-bran.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

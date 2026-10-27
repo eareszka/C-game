@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "old-park-bench_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art wooden park bench, slatted seat and backrest, iron armrests at each end, seen at an oblique three quarter angle, small town green",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-wooden-park-bench-slatted-seat-and-bac.png"
+  ]
+}

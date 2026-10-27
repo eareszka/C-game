@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "snow-icicle-rock_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art dark grey rock overhang with icicles hanging from it, snow on top, retro NES style, black 1px outline, simple bold shapes",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-dark-grey-rock-overhang-with-icicles-h.png"
+  ]
+}

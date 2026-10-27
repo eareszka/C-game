@@ -11,7 +11,7 @@
 // The world a seed grows. Bump it whenever generation changes what a seed
 // grows: a save names the version it was played in, and one from another is
 // refused (save.cpp), since its dungeons, landmarks and ground have moved.
-enum { WORLDGEN_VERSION = 3 };   // 3: the props (2026-10-26)
+enum { WORLDGEN_VERSION = 9 };   // 3: the props (2026-10-26); 4: the snow's props (2026-10-27); 5: the wasteland overhaul, void pools and volcanoes (2026-10-27); 6: its stage 2, walls, mazes, the gate, rubble; 7: wasteland rivers are void; 8: their change cut across the river; 9: the wasteland's roster filled out, its remains
 
 // The shape of the world. Two opposite edges are hard borders -- the ocean and
 // the mountain edge across from it -- and the other two are joined: walk off
@@ -412,7 +412,7 @@ const ArtCellDepth* tilemap_art_depth(int sheet_id);
 // world (wx, wy); the player's sprite box and feet_y as for
 // tilemap_draw_over_player. Only the part of the cell the sprite covers.
 void tilemap_draw_cell_over(SDL_Renderer* renderer, int sheet_id, int sx, int sy, int draw_size,
-                            float wx, float wy, float x, float y, float w, float h, float feet_y);
+                            float wx, float wy, float x, float y, float w, float h, float feet_y, int src_id = -1);
 // Debug overlay: thin lines around every TILE_SIZE grid cell in view, labeled
 // with the tileset (col,row) the tile draws from -- see definition for the
 // ground-cover-variant caveat.
@@ -480,6 +480,10 @@ bool tilemap_pixel_solid(const void* map, float px, float py);
 // pond -- along the same smoothed waterline the collision and the drawing use.
 // Not lava. What a raft floats on.
 bool tilemap_pixel_water(const Tilemap* map, float px, float py);
+// Whether pixel (px,py) is the void (TILE_LAVA, drawn as the wasteland's purple
+// liquid) along the same field, a deck over it not. A raft floats on it too
+// while the lava charm is held (overworld.cpp).
+bool tilemap_pixel_void(const Tilemap* map, float px, float py);
 
 // GRAVEYARD_SM entrances hide their entrance tile under gravestones.
 // Call this from the main thread (not the gen thread) when the player gets close.

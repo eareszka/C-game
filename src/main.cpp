@@ -1399,8 +1399,11 @@ int main(int argc, char *argv[])
             // Any corner of the feet in water counts: the box would be wedged.
             {
                 bool wet = ow.sailing;
-                for (int k = 0; k < 4 && !wet; k++)
-                    wet = tilemap_pixel_water(map, ow.x + ((k & 1) ? HB_X2 : HB_X1), ow.y + ((k & 2) ? HB_Y2 : HB_Y1));
+                const bool lava_ok = item_count(&player, ITEM_LAVA_CHARM) > 0;   // the void holds a raft up too
+                for (int k = 0; k < 4 && !wet; k++) {
+                    float cx = ow.x + ((k & 1) ? HB_X2 : HB_X1), cy = ow.y + ((k & 2) ? HB_Y2 : HB_Y1);
+                    wet = tilemap_pixel_water(map, cx, cy) || (lava_ok && tilemap_pixel_void(map, cx, cy));
+                }
                 menu.raft_block = state == STATE_OVERWORLD && !player.at_sea && wet ? "CAN'T WHILE ON WATER" : nullptr;
             }
             menu.healing_block = state == STATE_BATTLE ? "EXPLORATION ONLY"
@@ -1978,7 +1981,9 @@ int main(int argc, char *argv[])
                 // picture of it at 2x, while their feet are on water.
                 {
                     float fx = ow.x + (HB_X1 + HB_X2) * 0.5f, fy = ow.y + (HB_Y1 + HB_Y2) * 0.5f;
-                    if (item_raft_worn(&player) && !player.at_sea && tilemap_pixel_water(map, fx, fy)) {
+                    if (item_raft_worn(&player) && !player.at_sea &&
+                        (tilemap_pixel_water(map, fx, fy) ||
+                         (item_count(&player, ITEM_LAVA_CHARM) > 0 && tilemap_pixel_void(map, fx, fy)))) {
                         int size = (int)(32 * cam.zoom);
                         game_menu_draw_item(&menu, plat.renderer, ITEM_RAFT,
                                             cam_screen_x(&cam, fx) - size / 2,

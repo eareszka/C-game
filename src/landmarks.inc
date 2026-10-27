@@ -14,6 +14,6 @@ static const LandmarkKind LANDMARK_KINDS[] = {
     { LM_FOREST, 4, 176, 5, 3, 4, 2 },   // CAMP
     { LM_SAND, 10, 176, 3, 2, 2, 1 },   // STATUE
     { LM_SNOW, 14, 176, 3, 2, 2, 1 },   // CAIRN
-    { LM_WASTE, 18, 176, 4, 2, 3, 1 },   // WAGON
+    { LM_WASTE, 18, 176, 3, 4, 1, 3 },   // GATE
     { LM_COAST, 23, 176, 4, 2, 3, 1 },   // BOAT
 };

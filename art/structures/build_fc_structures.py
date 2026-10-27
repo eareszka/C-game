@@ -37,7 +37,7 @@ dark chevrons, a doubled dark right edge and a crease at every waist, on a
 three-pixel trunk with flared roots, one light pixel per lobe to keep it off
 our darker grass -- and the stacked-clumps tree the game had before it
 (restored from commit 830f1e1). The dead tree (col 20) is drawn the same way
-in bark (trees/dead_tree_design.py), the wasteland's.
+in bark (trees/trees_design.py), the wasteland's.
 
 The renderer picks cells as follows (src/tilemap.cpp, tilemap_draw_impl):
     (15,1)          the tree resource node (single tile)

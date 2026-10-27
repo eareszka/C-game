@@ -3,7 +3,9 @@
     python art/structures/landmarks/statue_design.py <design.json>
     python tools/draw_views.py <design.json> art/structures/landmarks/statue
 
-48x32: a great stone head sunk to its lip in the sand in the left two
+48x32: a great stone head sunk to its chin in the sand -- a helmeted colossal
+head, Olmec-like: the helmet's band, a heavy brow, broad nose and lips, a crack
+through the crown (redrawn 2026-10-27: the old low dome read as a slime). It stands in the left two
 columns; its cache stands at its foot in the third (the chest, laid by the
 game: chest_design.py). An object (the overworld bible): one black line round
 it, three tones and black, light high on the left, dark low on the right, in
@@ -16,23 +18,29 @@ from landmark_shapes import obj, at, export, main
 # tools/overworld_style.py MATERIALS: stone (lit, base, shade)
 PAL = {'K': '000000', 'L': 'c6ccda', 'M': '9797aa', 'D': '595965'}
 
-HEAD = [
-    ".........LLLLLLLL.........",
-    ".......LLLMMMMMMMMMM......",
-    ".....LLLMMMMMMMMMMMMMD....",
-    "....LLMMMMMMMMMMMMMMMMD...",
-    "...LLMMMMMMMMMMMMMMMMMDD..",
-    "...LMMMMMMMMMMMMMMMMMMDD..",
+HEAD = [                                     # an Olmec-like colossal head: helmet, its band, brow, eyes, broad nose, lips
+    "........LLLLLLLLLL........",
+    "......LLLMMMMMMKMMMM......",
+    "....LLLMMMMMMMKMMMMMMD....",
+    "...LLMMMMMMMMMKMMMMMMMD...",
+    "...LMMMMMMMMMKMMMMMMMMDD..",
     "..LLMMMMMMMMMMMMMMMMMMMDD.",
-    "..LMMDDDDDDMMMMDDDDDDMMDD.",
-    "..LMDKKKKKDMMMMDKKKKKDMDD.",
-    "..LMMDKKKDMMLMMMDKKKDMMDD.",
-    "..LMMMMMMMMMLMDMMMMMMMMDD.",
-    "..LMMMMMMMMLLMDMMMMMMMDDD.",
-    "..LMMMMMMMMLMMDDMMMMMMDDD.",
-    "..LMMMMMMMLLMMMDMMMMMMDDD.",
-    "..LMMMMMMMDDDDDDMMMMMDDDD.",
+    "..KKKKKKKKKKKKKKKKKKKKKKK.",
+    "..LLLLLLLLLLLLLLLLLLLLLDD.",
+    "..LMDMMMDMMMDMMMDMMMDMDDD.",
+    "..KKKKKKKKKKKKKKKKKKKKKKK.",
+    "..LMLLLLLLLMMMLLLLLLLLMDD.",
+    "..LMDDDDDDMMMMMDDDDDDMMDD.",
+    "..LMDKKKKDMLMMDKKKKKDMDDD.",
+    "..LMMDDDDMMLMMMDDDDDMMDDD.",
+    "..LMMMMMMMLLMDMMMMMMMMDDD.",
+    "..LMMKMMMLLMMMDMMMMMMDDDD.",
+    "..LMMMKMLLMMMMMDMMMMMDDDD.",
+    "..LMMMKMDKKDDKKDMMMMMDDDD.",
     "..LMMMMMMMMMMMMMMMMMMDDDD.",
+    "..LMMMMLLLLLLLLLMMMMDDDDD.",
+    "..LMMMMKKKKKKKKKMMMMDDDDD.",
+    "..LMMMMDDDDDDDDDMMMDDDDDD.",
     "..DDDDDDDDDDDDDDDDDDDDDDD.",            # where the sand closes over it
 ]
 

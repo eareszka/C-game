@@ -5,9 +5,9 @@
 // the sheet (col, row, w, h; an animation's frames side by side from there),
 // the blows it takes and to which weapons it is what (HarvestTarget), and its
 // drops (item, or -1, and how many).
-enum PropBiome { PB_DESERT, PB_FOREST, PB_PLAINS, PB_COUNT };
-enum PropTheme { TH_CACTUS, TH_ROCK, TH_TRAIL, TH_DEADFALL, TH_CAMP, TH_UNDERGROWTH, TH_FARM, TH_MAYAN, TH_COUNT };
-static const int PROP_THEME_BIOME[TH_COUNT] = { PB_DESERT, PB_DESERT, PB_DESERT, PB_FOREST, PB_FOREST, PB_FOREST, PB_PLAINS, PB_PLAINS };
+enum PropBiome { PB_DESERT, PB_FOREST, PB_PLAINS, PB_SNOW, PB_WASTE, PB_COUNT };
+enum PropTheme { TH_CACTUS, TH_ROCK, TH_TRAIL, TH_DEADFALL, TH_CAMP, TH_UNDERGROWTH, TH_FARM, TH_MAYAN, TH_ICE, TH_EXPEDITION, TH_MAMMOTH, TH_VOLCANO, TH_RUBBLE, TH_REMAINS, TH_COUNT };
+static const int PROP_THEME_BIOME[TH_COUNT] = { PB_DESERT, PB_DESERT, PB_DESERT, PB_FOREST, PB_FOREST, PB_FOREST, PB_PLAINS, PB_PLAINS, PB_SNOW, PB_SNOW, PB_SNOW, PB_WASTE, PB_WASTE, PB_WASTE };
 struct PropKind { int biome; unsigned themes; int anchor, weight, stray, col, row, w, h, frames, hp;
                   HarvestTarget target; int item[2], n[2]; };
 #define PROP_BAND_ROW0 226
@@ -72,4 +72,44 @@ static const PropKind PROP_KINDS[] = {
     { PB_PLAINS, 1u << TH_MAYAN, 0, 3, 0,  107, 226, 1, 1, 1,  2, HARVEST_OTHER, {ITEM_STONE, -1}, {1, 0} },   // clay_pots
     { PB_PLAINS, 1u << TH_MAYAN, 0, 3, 0,  108, 226, 2, 1, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // fallen_block
     { PB_PLAINS, 1u << TH_MAYAN, 0, 3, 0,  110, 226, 2, 2, 1,  3, HARVEST_TREE, {ITEM_VINE, ITEM_FLOWER}, {2, 1} },   // maize
+    { PB_SNOW, 1u << TH_ICE, 1, 1, 0,  112, 226, 2, 3, 4,  5, HARVEST_ROCK, {ITEM_STONE, -1}, {3, 0} },   // ice_spire
+    { PB_SNOW, 1u << TH_ICE, 0, 3, 1,  120, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // ice_cluster
+    { PB_SNOW, 1u << TH_ICE, 0, 3, 0,  121, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // ice_block
+    { PB_SNOW, 1u << TH_ICE, 0, 2, 0,  122, 226, 2, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {3, 0} },   // snow_boulder
+    { PB_SNOW, 1u << TH_ICE, 0, 2, 0,  124, 226, 2, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // icicle_rock
+    { PB_SNOW, 1u << TH_ICE | 1u << TH_EXPEDITION | 1u << TH_MAMMOTH, 0, 2, 3,  126, 226, 1, 1, 1,  2, HARVEST_OTHER, {ITEM_VINE, -1}, {1, 0} },   // frozen_tufts_a
+    { PB_SNOW, 1u << TH_ICE | 1u << TH_EXPEDITION | 1u << TH_MAMMOTH, 0, 2, 3,  127, 226, 1, 1, 1,  2, HARVEST_OTHER, {ITEM_VINE, -1}, {1, 0} },   // frozen_tufts_b
+    { PB_SNOW, 1u << TH_EXPEDITION, 1, 1, 0,  128, 226, 3, 2, 1,  5, HARVEST_TREE, {ITEM_WOOD, ITEM_HIDE}, {2, 2} },   // tent
+    { PB_SNOW, 1u << TH_EXPEDITION, 0, 2, 0,  131, 226, 2, 1, 1,  3, HARVEST_TREE, {ITEM_WOOD, -1}, {2, 0} },   // sled
+    { PB_SNOW, 1u << TH_EXPEDITION, 0, 2, 0,  133, 226, 1, 2, 1,  3, HARVEST_TREE, {ITEM_WOOD, -1}, {1, 0} },   // skis
+    { PB_SNOW, 1u << TH_EXPEDITION, 0, 3, 0,  134, 226, 1, 1, 1,  2, HARVEST_TREE, {ITEM_WOOD, -1}, {2, 0} },   // crate
+    { PB_SNOW, 1u << TH_EXPEDITION, 0, 1, 0,  135, 226, 2, 1, 1,  2, HARVEST_OTHER, {ITEM_STONE, ITEM_WOOD}, {1, 1} },   // campfire
+    { PB_SNOW, 1u << TH_EXPEDITION, 0, 2, 0,  137, 226, 1, 2, 1,  2, HARVEST_OTHER, {ITEM_WOOD, -1}, {1, 0} },   // snowman
+    { PB_SNOW, 1u << TH_MAMMOTH, 1, 1, 0,  138, 226, 3, 2, 1,  5, HARVEST_ROCK, {ITEM_BONE, ITEM_HORN}, {3, 2} },   // mammoth_skull
+    { PB_SNOW, 1u << TH_MAMMOTH, 0, 2, 0,  141, 226, 2, 2, 1,  3, HARVEST_ROCK, {ITEM_BONE, -1}, {2, 0} },   // ribcage
+    { PB_SNOW, 1u << TH_MAMMOTH, 0, 3, 1,  143, 226, 2, 1, 1,  2, HARVEST_OTHER, {ITEM_BONE, -1}, {1, 0} },   // vertebrae
+    { PB_SNOW, 1u << TH_MAMMOTH, 0, 3, 0,  145, 226, 1, 2, 1,  3, HARVEST_TREE, {ITEM_WOOD, ITEM_VINE}, {1, 1} },   // frost_bush
+    { PB_SNOW, 1u << TH_MAMMOTH, 0, 2, 0,  146, 226, 2, 1, 1,  3, HARVEST_TREE, {ITEM_WOOD, -1}, {3, 0} },   // snowy_log
+    { PB_SNOW, 1u << TH_MAMMOTH, 0, 2, 0,  148, 226, 1, 1, 1,  2, HARVEST_TREE, {ITEM_WHITE_FUR, ITEM_VINE}, {1, 1} },   // fur_thornbush
+    { PB_WASTE, 1u << TH_VOLCANO, 1, 1, 0,  149, 226, 2, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // volcano_big
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 3, 0,  151, 226, 2, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // volcano_mid
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 4, 1,  153, 226, 2, 1, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // volcano_small
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 3, 2,  155, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // volcano_tiny
+    { PB_WASTE, 1u << TH_RUBBLE, 1, 1, 0,  156, 226, 2, 1, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {3, 0} },   // rubble_pile
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 3, 1,  158, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // rubble_boulder
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 3, 1,  159, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // rubble_pebbles
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 2, 0,  160, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // rubble_stub
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 2, 1,  161, 226, 1, 1, 1,  2, HARVEST_OTHER, {ITEM_BONE, -1}, {1, 0} },   // rubble_bone
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 2, 1,  162, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // fissure_vent
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 2, 1,  163, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // cinder_shards
+    { PB_WASTE, 1u << TH_VOLCANO, 0, 2, 0,  164, 226, 2, 1, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // scorched_boulder
+    { PB_WASTE, 1u << TH_RUBBLE, 1, 1, 0,  166, 226, 3, 1, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {3, 0} },   // fallen_wall
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 2, 0,  169, 226, 1, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // snapped_pillar
+    { PB_WASTE, 1u << TH_RUBBLE, 0, 2, 1,  170, 226, 1, 1, 1,  2, HARVEST_ROCK, {ITEM_STONE, -1}, {1, 0} },   // void_rock
+    { PB_WASTE, 1u << TH_RUBBLE | 1u << TH_REMAINS, 0, 2, 1,  171, 226, 1, 1, 1,  2, HARVEST_OTHER, {ITEM_BONE, -1}, {2, 0} },   // bone_pile
+    { PB_WASTE, 1u << TH_REMAINS, 1, 1, 0,  172, 226, 3, 2, 1,  2, HARVEST_OTHER, {ITEM_BONE, -1}, {3, 0} },   // spine_arch
+    { PB_WASTE, 1u << TH_REMAINS, 0, 1, 0,  175, 226, 1, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // red_figure
+    { PB_WASTE, 1u << TH_REMAINS, 0, 2, 0,  176, 226, 1, 2, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {2, 0} },   // void_lantern
+    { PB_WASTE, 1u << TH_REMAINS, 0, 1, 0,  177, 226, 1, 3, 1,  3, HARVEST_ROCK, {ITEM_STONE, -1}, {3, 0} },   // glyph_obelisk
+    { PB_WASTE, 1u << TH_REMAINS, 0, 2, 0,  178, 226, 2, 1, 1,  2, HARVEST_OTHER, {ITEM_STONE, -1}, {1, 0} },   // spike_row
 };

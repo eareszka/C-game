@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "old-park-flowers_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art small round flower bed, green leafy bush with pink and red flowers, low mound of soil edge",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-small-round-flower-bed-green-leafy-bus.png"
+  ]
+}

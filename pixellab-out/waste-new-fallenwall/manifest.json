@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "waste-new-fallenwall",
+  "generated": "2026-10-27T06:39:21Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "waste-new-fallenwall_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "pixel-art-long-toppled-grey-stone-brick-wall-sec.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

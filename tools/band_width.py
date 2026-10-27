@@ -13,7 +13,7 @@ from PIL import Image
 im = np.array(Image.open(sys.argv[1]).convert('RGB'))
 if len(sys.argv) > 2 and sys.argv[2] == 'half':      # a game render, at 2x
     im = im[::2, ::2]
-BROWN, INK = (136, 112, 0), (0, 0, 0)
+BROWN, INK = (141, 107, 79), (0, 0, 0)   # the islands' default base, 8d6b4f (2026-10-27)
 rock = np.all(im == BROWN, axis=2) | np.all(im == INK, axis=2)
 
 

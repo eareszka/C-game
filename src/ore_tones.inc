@@ -2,7 +2,7 @@
 // Cliff/cave rock ramps: line, shade, base, lit. Row 0 the default (no ore),
 // row 1 + m Material m (include/entity.h order).
 static const unsigned char ORE_TONES[8][4][3] = {
-    { {0, 0, 0}, {73, 55, 18}, {136, 112, 0}, {178, 158, 92} },   // default
+    { {0, 0, 0}, {88, 53, 24}, {141, 107, 79}, {178, 150, 106} },   // default
     { {0, 0, 0}, {71, 71, 81}, {132, 134, 148}, {188, 190, 202} },   // stone
     { {0, 0, 0}, {52, 30, 16}, {129, 84, 35}, {216, 152, 48} },   // bronze
     { {0, 0, 0}, {35, 84, 54}, {79, 166, 103}, {168, 240, 188} },   // emerald

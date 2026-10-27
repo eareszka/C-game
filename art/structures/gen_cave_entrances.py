@@ -69,8 +69,9 @@ TONES = [
 ]
 # The cliff islands are painted in the same ramps (src/cliff_paint.cpp): an
 # island takes the tones of the ore of the cave inside it, and one with no cave
-# this default -- the brown of the Mother 1 cliffs, given a shade and a lit.
-DEFAULT = [K, (73, 55, 18), (136, 112, 0), (178, 158, 92)]
+# this default -- ash taupe (the user, 2026-10-27, after the Yume Nikki references: the
+# Mother 1 cliffs' olive was the loudest colour in the wasteland), apart from every ore's ramp.
+DEFAULT = [K, (0x58, 0x35, 0x18), (0x8d, 0x6b, 0x4f), (0xb2, 0x96, 0x6a)]
 TONES_INC = os.path.join(ROOT, "src", "ore_tones.inc")
 MOUTH = (0, 0, 48, 32)    # x, y, w, h in the export
 PIT = (48, 0, 16, 16)

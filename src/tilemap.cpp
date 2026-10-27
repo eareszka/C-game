@@ -15,6 +15,8 @@
 #include <math.h>
 #include <string.h>
 #include <algorithm>
+#include <queue>
+#include <functional>
 #include <unordered_map>
 #include <vector>
 #include <array>
@@ -112,8 +114,8 @@ static const TileStyle tile_styles[] =
     { 60,  40,  16,  100,  58,  24, glyph_cliff_edge }, // TILE_CLIFF_EDGE_5
     {195, 165,  90,  215, 190, 120, glyph_sand      }, // TILE_SAND
     {220, 235, 255,  180, 210, 240, glyph_snow      }, // TILE_SNOW
-    { 52,  30,  16,   70,  52,  34, glyph_wasteland }, // TILE_WASTELAND (the cracked earth's fill 341e10)
-    {180,  50,   0,  255, 140,   0, glyph_lava      }, // TILE_LAVA
+    { 62,  28,  14,   88,  53,  24, glyph_wasteland }, // TILE_WASTELAND (the red-brown fill 3e1c0e, block 583518)
+    { 44,  12,  71,   59,  42,  88, glyph_lava      }, // TILE_LAVA (the void 2c0c47, its marks 3b2a58)
     { 80, 160,  40,  255, 220,  50, glyph_meadow    }, // TILE_MEADOW
     { 30,  90, 200,   80, 160, 255, glyph_pond      }, // TILE_POND
     { 60,  55,  50,  255, 210,  40, glyph_gold_ore  }, // TILE_GOLD_ORE
@@ -768,6 +770,44 @@ static int yard_wall_piece(const Tilemap* map, int x, int y, bool top) {
 // frame of the moment. Collision and drawing both read this, so what the feet
 // meet is what is drawn.
 struct ArtAt { int id, shake_x, shake_y; };
+
+// The wasteland's built stone a step darker (the user, 2026-10-27, the
+// overhaul's stage 2): the stone yard walls and the ruins stand in other
+// biomes too, so tools/waste_stone.py copies their cells, recoloured, to
+// empty rows of the sheet, and a cell standing in the wasteland is drawn from
+// its copy. Drawing only -- its depth and its foot are still the original's.
+// (col, row, w, h) of the original, (col, row) of the copy; as COPIES there.
+static const int WASTE_COPIES[][6] = {
+    { 101, 20, 16, 2, 24, 199 },      // the stone yard walls
+    {   0, 20,  6, 5, 40, 194 },      // the large ruins
+    {   6, 20,  3, 3, 46, 194 },      // the small ruins
+};
+static bool waste_ground(int t) {
+    return t == TILE_WASTELAND || t == TILE_LAVA || t == TILE_WASTE_BRIDGE
+        || (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5);
+}
+// The cell to draw for art `id` on tile (x, y): its waste-stone copy if it is
+// one of WASTE_COPIES' and the wasteland lies round it (an entrance's own
+// stamp tiles are not wasteland, so its neighbours are asked), else itself.
+static int art_src(const Tilemap* map, int x, int y, int id) {
+    int rel = id - TILE_TOWN0_BASE;
+    if (rel < 0) return id;
+    int col = rel % TOWN0_SHEET_COLS, row = rel / TOWN0_SHEET_COLS;
+    for (const auto& c : WASTE_COPIES) {
+        if (col < c[0] || col >= c[0] + c[2] || row < c[1] || row >= c[1] + c[3]) continue;
+        int waste = 0, seen = 0;
+        for (int dy = -2; dy <= 2; dy++)
+            for (int dx = -2; dx <= 2; dx++) {
+                int nx = x + dx, ny = y + dy;
+                if (!in_world(&nx, &ny)) continue;
+                seen++;
+                waste += waste_ground(map->tiles[ny][nx]);
+            }
+        if (waste * 2 < seen) return id;
+        return TILE_TOWN0_BASE + (c[5] + row - c[1]) * TOWN0_SHEET_COLS + (c[4] + col - c[0]);
+    }
+    return id;
+}
 static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
     int n = 0;
     int bx = x, by = y + 1;
@@ -2398,7 +2438,9 @@ static void stamp_village(Tilemap* map, int tx, int ty, int biome, unsigned int 
     // and the run of road on out of the gate
     const int ly = ty + 18;
     const bool west = roll(2) == 0;
-    const bool back = roll(2) == 0 || set == VS_MEADOW;       // a second row behind a back street; a farm always, its barn there
+    // a second row behind a back street; a farm always, its barn there; never the
+    // wasteland's barracks, which stand in one row inside their compound's wall
+    const bool back = set != VS_WASTE && (roll(2) == 0 || set == VS_MEADOW);
     street_across(map, ly, west ? 'f' : 'c', west ? tx : tx + 1, west ? 'c' : 'f', west ? tx + 27 : tx + VILLAGE_W - 1);
     const int gdir = west ? -1 : 1;
     int end = west ? tx : tx + VILLAGE_W - 1;
@@ -2503,6 +2545,21 @@ static void stamp_village(Tilemap* map, int tx, int ty, int biome, unsigned int 
         if (first - 2 - (tx + 1) >= 2) fence(std::max(tx + 1, first - 6), first - 2);
         if ((tx + VILLAGE_W - 2) - (last + 2) >= 2) fence(last + 2, std::min(tx + VILLAGE_W - 2, last + 6));
     }
+    // The wasteland's barracks stand inside a compound (the user, 2026-10-27,
+    // the overhaul's stage 2; the mock-up art/concept/wasteland/): a wall of the
+    // stone yard walls round the row and its street, a parallelogram in the
+    // houses' projection as a graveyard's yard is (lay_yard), broken wherever a
+    // street or a road runs through it and wherever anything already stands.
+    if (set == VS_WASTE) {
+        auto wall = [&](int x, int y) {
+            int wx = x, wy = y;
+            if (!in_world(&wx, &wy)) return;
+            if (map->overlay[wy][wx] || map->route[wy][wx] != ROUTE_NONE || map->tiles[wy][wx] != G) return;
+            if (s_cliff_elev[wy][wx] || cliff_bars_overlay(wx, wy) || !overlay_site_dry(map, wx, wy)) return;
+            map->overlay[wy][wx] = YARD_WALL_MARK;
+        };
+        lay_yard(tx - 2, ly - 8, 27, 10, [](int, int) {}, wall);
+    }
     // a farm's fields south of the street: two of the field's cell side by
     // side with a lane between, each a yard as the graveyards' are (the user,
     // 2026-10-14: "the oblique projection fence similar to the picture") --
@@ -2538,8 +2595,15 @@ static void stamp_village(Tilemap* map, int tx, int ty, int biome, unsigned int 
             for (int k = 0; k < PROP_KIND_N; k++)
                 if ((PROP_KINDS[k].themes & (1u << TH_CACTUS)) && PROP_KINDS[k].w == 1 && PROP_KINDS[k].h == 2) pick[np++] = k;
             if (np) lay_prop(map, pick[roll(np)], x, y - 1);
+        } else if (set == VS_WASTE) {      // a little volcano of the wasteland's props, one cell
+            int pick[PROP_KIND_N], np = 0;
+            for (int k = 0; k < PROP_KIND_N; k++)
+                if ((PROP_KINDS[k].themes & (1u << TH_VOLCANO)) && PROP_KINDS[k].w == 1 && PROP_KINDS[k].h == 1) pick[np++] = k;
+            const int r = np ? roll(np) : 0;
+            if (np) lay_prop(map, pick[0], x, y);   // the tiny volcano, the first of them: not the vents and shards
+            (void)r;
         } else {
-            map->overlay[y][x] = set == VS_WASTE ? TILE_DEAD_TREE : TILE_TREE;
+            map->overlay[y][x] = TILE_TREE;
         }
         t++;
     }
@@ -3013,6 +3077,33 @@ static void stamp_dungeon_surround(Tilemap* map, DungeonEntranceType type, int b
                  [&](int x, int y) { safe_base(x, y, TILE_PATH); },
                  [&](int x, int y) { safe_ovl(x, y, WALL); });
     };
+
+    // The ruins in the wasteland stand at the heart of a maze of broken stone
+    // walls (the user, 2026-10-27, the overhaul's stage 2, after the Yume Nikki
+    // references): runs across and back at 45 degrees -- the only ways the yard
+    // walls join -- the doorway's own columns left open in front, dead ends to
+    // either side. Only on bare ground; the art is laid over it after.
+    if (type == DUNGEON_ENT_RUINS && biome == TILE_WASTELAND) {
+        auto wall = [&](int x, int y) {
+            int tx = x, ty = y;
+            if (!surround_tile(tx, ty) || map->overlay[ty][tx] || map->tiles[ty][tx] != TILE_WASTELAND) return;
+            safe_ovl(x, y, YARD_WALL_MARK);
+        };
+        auto run  = [&](int x0, int x1, int y) { for (int x = x0; x <= x1; x++) wall(ex + x, ey + y); };
+        auto back = [&](int x, int y, int n) { for (int i = 0; i <= n; i++) wall(ex + x + i, ey + y - i); };
+        if (sz >= 2) {                                      // the large ruins: art over ex-2..ex+3, ey-3..ey+1
+            run(-6, -2, 4);  run(3, 7, 4);                  // the front, open before the door
+            back(-6, 4, 3);  back(7, 4, 4);                 // its sides running back
+            run(-1, 5, -6);                                 // behind
+            run(-9, -7, 8);  run(6, 9, 8);                  // dead ends out in front
+            back(-10, 1, 2);                                // and one off to the west
+        } else {                                            // the small: art over ex-1..ex+1, ey-2..ey
+            run(-4, -2, 3);  run(2, 4, 3);
+            back(-4, 3, 2);  back(4, 3, 3);
+            run(0, 3, -4);
+            run(-7, -5, 6);
+        }
+    }
 
     switch (type) {
         case DUNGEON_ENT_GRAVEYARD_SM:
@@ -3668,7 +3759,8 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                                 if (!in_world(&px2, &py2)) continue;
                                 if (!is_raw_gap(px2, py2)) continue;
                                 if (in_moat(px2, py2)) continue;
-                                map->tiles[py2][px2]   = bridge_tile;
+                                // over the void a deck is a causeway, whoever lays it
+                                map->tiles[py2][px2]   = map->tiles[py2][px2] == TILE_LAVA ? (int)TILE_WASTE_BRIDGE : bridge_tile;
                                 map->overlay[py2][px2] = 0;
                                 deckline[(size_t)py2 * MAP_WIDTH + px2] = side ? 3 : back ? 2 : 1;
                             }
@@ -4375,9 +4467,10 @@ static void route_network(Tilemap* map, unsigned int route_seed,
 
 // --- Props: the country's things, laid in groups ---
 //
-// The desert's sand, the forest's grass and the plains' meadow are each laid
-// with their props (PROP_KINDS) as a scatter of small groups -- a stand of
-// cacti, a deadfall, a farmstead -- with the odd lone thing between. A group
+// The desert's sand, the forest's grass, the plains' meadow and the snow are
+// each laid with their props (PROP_KINDS) as a scatter of small groups -- a
+// stand of cacti, a deadfall, a farmstead, an ice field -- with the odd lone
+// thing between. A group
 // is one theme and nothing else, so a farm's hay never stands among a ruin's
 // statues. Group middles come off a jittered grid, one roll a GROUP_CELL and
 // some cells skipped, so groups fall thirty or forty tiles apart without
@@ -4399,7 +4492,7 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
     const int GROUP_CELL = 36, SKIP_PCT = 25, STRAY_ROLL = 32686;   // a lone thing about a tile in four hundred
     const int MAYAN_NEAR0 = 12, MAYAN_NEAR1 = 60, FARM_FROM_PYRAMID = 70, THEMES_APART = 50;
     const float RUIN_FIELD = 24500.0f;                             // the slow noise's cut: a ruin field away from any pyramid
-    const int TRAIL_PCT = 15, CAMP_PCT = 15;
+    const int TRAIL_PCT = 15, CAMP_PCT = 15, EXPEDITION_PCT = 20, REMAINS_PCT = 17;
     const int GROUPS_APART = 20, RING_GROUPS = 4, RING_TRIES = 24;  // any two groups' middles; a pyramid's ruins
     const int s = (int)seed;
 
@@ -4418,9 +4511,18 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
     };
     auto biome_at = [&](int x, int y) {
         int t = map->tiles[y][x];
-        return t == TILE_SAND ? PB_DESERT : t == TILE_GRASS ? PB_FOREST : t == TILE_MEADOW ? PB_PLAINS : -1;
+        return t == TILE_SAND ? PB_DESERT : t == TILE_GRASS ? PB_FOREST : t == TILE_MEADOW ? PB_PLAINS
+             : t == TILE_SNOW ? PB_SNOW : t == TILE_WASTELAND ? PB_WASTE : -1;
     };
     auto is_tree = [&](int ov) { return ov == TILE_TREE || ov == TILE_DEAD_TREE; };
+    auto void_near = [&](int x, int y, int r) {       // a void pool within r tiles: the wasteland's rubble lies there
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++) {
+                int nx = x + dx, ny = y + dy;
+                if (in_world(&nx, &ny) && map->tiles[ny][nx] == TILE_LAVA) return true;
+            }
+        return false;
+    };
     // Kept clear: towns, entrances (their art rises above the stamp), the
     // landmarks, the villages, the boss sites and the start's ring.
     auto kept_clear = [&](int x, int y) {
@@ -4451,7 +4553,8 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
     auto fits = [&](int k, int x, int y, int ground, bool fell) {
         const PropKind& p = PROP_KINDS[k];
         const EntranceArt* a = art[k];
-        const int m = p.w * p.h >= 4 ? 2 : 1;
+        // a volcano stands shoulder to shoulder with the next in its grove
+        const int m = p.biome == PB_WASTE ? 0 : p.w * p.h >= 4 ? 2 : 1;
         int cells = 0;
         for (int j = -m; j <= p.h + m - 1; j++)
             for (int i = -m; i <= p.w + m - 1; i++) {
@@ -4512,7 +4615,7 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
     auto group = [&](int x, int y, int theme, unsigned rs) {
         const int ground = map->tiles[y][x];
         // a camp clears its own ground; ruins in the woods stand among the trees
-        const bool fell = theme == TH_CAMP || (theme == TH_MAYAN && ground == TILE_GRASS);
+        const bool fell = theme == TH_CAMP || theme == TH_EXPEDITION || (theme == TH_MAYAN && ground == TILE_GRASS);
         auto roll = [&](int n) { rs = rs * 1664525u + 1013904223u; return (int)((rs >> 16) % (unsigned)n); };
         int ak = pick(theme, true, roll(1 << 15)), placed = 0;
         if (ak < 0) return false;
@@ -4522,14 +4625,17 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
             if (fits(ak, ox, oy, ground, fell)) { lay(ak, ox, oy, fell); placed = 1; }
         }
         if (!placed) return false;
-        const int want = theme == TH_CAMP ? 2 + roll(3) : 3 + roll(5);
-        const int R = 5 + roll(5);
+        // a volcano grove is dense, as the references' red groves are (the user, 2026-10-27:
+        // "make volcanoes larger/denser"): many cones packed close round the big one
+        const bool grove = theme == TH_VOLCANO;
+        const int want = theme == TH_CAMP ? 2 + roll(3) : grove ? 10 + roll(7) : 3 + roll(5);
+        const int R = grove ? 3 + roll(2) : 5 + roll(5);
         std::vector<int> used(PROP_KIND_N, 0);              // no more than two of a small thing, one of a bigger
         for (int t = 0; t < want * 8 && placed <= want; t++) {
             int k = pick(theme, false, roll(1 << 15));
             if (k < 0) break;
             const PropKind& p = PROP_KINDS[k];
-            if (used[k] >= (p.w * p.h == 1 ? 2 : 1)) continue;
+            if (used[k] >= (grove ? (p.w * p.h >= 4 ? 4 : 6) : p.w * p.h == 1 ? 2 : 1)) continue;
             int dx = roll(R + 1) - roll(R + 1), dy = (roll(R + 1) - roll(R + 1)) * 4 / 5;   // thinning toward the edge
             int ox = x + dx - p.w / 2, oy = y + dy - p.h + 1;
             if (fits(k, ox, oy, ground, fell)) { lay(k, ox, oy, fell); placed++; used[k]++; }
@@ -4564,11 +4670,15 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
             const int biome = biome_at(x, y);
             if (biome < 0 || near_group(x, y, GROUPS_APART, -1)) continue;
             const int r = tile_noise(x, y, s ^ 0x9A0B3) % 100;
-            const int pd = biome == PB_DESERT ? INT_MAX : pyramid_dist(x, y);
+            const int pd = biome == PB_DESERT || biome == PB_SNOW || biome == PB_WASTE ? INT_MAX : pyramid_dist(x, y);
             if (pd < MAYAN_NEAR0) continue;
             int theme;
             if (biome == PB_DESERT)
                 theme = r < TRAIL_PCT ? TH_TRAIL : cluster_noise(x, y, s ^ 0xF07) > 16000 ? TH_CACTUS : TH_ROCK;
+            else if (biome == PB_SNOW)
+                theme = r < EXPEDITION_PCT ? TH_EXPEDITION : cluster_noise(x, y, s ^ 0x9A0BA) > 16000 ? TH_ICE : TH_MAMMOTH;
+            else if (biome == PB_WASTE)
+                theme = void_near(x, y, 7) ? TH_RUBBLE : r < REMAINS_PCT ? TH_REMAINS : TH_VOLCANO;   // the remains away from the void
             else if (pd <= MAYAN_NEAR1)
                 theme = TH_MAYAN;                           // a pyramid's ruins, in the woods as on the plains
             else if (biome == PB_FOREST)
@@ -4603,8 +4713,9 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
         }
 
     if (getenv("PROP_STATS")) {
-        static const char* BN[PB_COUNT] = { "desert", "forest", "plains" };
-        static const char* TN[TH_COUNT] = { "cactus", "rock", "trail", "deadfall", "camp", "undergrowth", "farm", "mayan" };
+        static const char* BN[PB_COUNT] = { "desert", "forest", "plains", "snow", "wasteland" };
+        static const char* TN[TH_COUNT] = { "cactus", "rock", "trail", "deadfall", "camp", "undergrowth", "farm", "mayan",
+                                            "ice", "expedition", "mammoth", "volcano", "rubble", "remains" };
         int per_theme[TH_COUNT] = {};
         for (const Group& g : groups) per_theme[g.theme]++;
         for (int b = 0; b < PB_COUNT; b++) {
@@ -5177,6 +5288,164 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
 #undef LABEL
     }
 
+    GEN_STAGE(map, "before Wasteland rivers into void");
+    // --- Wasteland rivers into void ---
+    // A river or a pond that runs through the wasteland is the void there (the
+    // user, 2026-10-27: "natural rivers formed by world gen in the wasteland
+    // should be the purple color"), its liquid, crossed on the raft with the
+    // lava charm. Where it runs out of the wasteland it turns back to water,
+    // and the two liquids meet along the edge field as any two do. The sea and
+    // the ring round the start are never touched.
+    //
+    // The change goes straight across the river, bank to bank, never down its
+    // middle (the user: "it should go from one side to the other"). So a tile
+    // does not decide alone. Each votes -- is most of the land within
+    // VOID_RIVER_R wasteland -- and the river is cut into slabs lying across
+    // its channel: the fronts of a wave run down it from one end (a distance
+    // along the river, s), each slab the tiles of one band of s that touch.
+    // A slab goes by its tiles' vote, then by the slabs within VOID_SMOOTH_S of
+    // it along the river, so it changes once where it crosses the border and
+    // does not flicker. A pond goes whole, by its tiles' vote.
+    {
+        const int VOID_RIVER_R = 10, VOID_SLAB_S = 2, VOID_SMOOTH_S = 40;
+        auto votes_void = [&](int x, int y) {
+            int land = 0, waste = 0;
+            for (int dy = -VOID_RIVER_R; dy <= VOID_RIVER_R; dy += 2)
+                for (int dx = -VOID_RIVER_R; dx <= VOID_RIVER_R; dx += 2) {
+                    if (dx * dx + dy * dy > VOID_RIVER_R * VOID_RIVER_R) continue;
+                    int nx = x + dx, ny = y + dy;
+                    if (!in_world(&nx, &ny)) continue;
+                    int n = map->tiles[ny][nx];
+                    if (n == TILE_RIVER || n == TILE_POND || n == TILE_WATER || n == TILE_HUB || n == TILE_LAVA) continue;
+                    land++;
+                    waste += n == TILE_WASTELAND;
+                }
+            return land && waste * 2 >= land;
+        };
+        // the river's and the ponds' tiles, each its index here, and its vote
+        std::vector<int> at((size_t)MAP_WIDTH * MAP_HEIGHT, -1), cells;
+        std::vector<char> vote;
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                int t = map->tiles[y][x];
+                if (t != TILE_RIVER && t != TILE_POND) continue;
+                at[(size_t)y * MAP_WIDTH + x] = (int)cells.size();
+                cells.push_back(y * MAP_WIDTH + x);
+                vote.push_back(votes_void(x, y) ? 1 : 0);
+            }
+        const int N = (int)cells.size();
+        static const int D8[8][2] = { {1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1} };
+        auto each_nb = [&](int i, auto&& f) {          // a cell's 8 neighbours of the same water (river or pond)
+            int x = cells[i] % MAP_WIDTH, y = cells[i] / MAP_WIDTH;
+            int t = map->tiles[y][x];
+            for (int k = 0; k < 8; k++) {
+                int nx = x + D8[k][0], ny = y + D8[k][1];
+                if (!in_world(&nx, &ny)) continue;
+                int j = at[(size_t)ny * MAP_WIDTH + nx];
+                if (j >= 0 && map->tiles[ny][nx] == t) f(j, k < 4 ? 1.0f : 1.41421f);
+            }
+        };
+        // components
+        std::vector<int> comp(N, -1), members;
+        std::vector<char> turn(N, 0);
+        std::vector<float> dist(N, 0.0f);
+        std::vector<int> slab(N, -1);
+        for (int c0 = 0; c0 < N; c0++) {
+            if (comp[c0] >= 0) continue;
+            members.clear();
+            comp[c0] = c0;
+            members.push_back(c0);
+            for (size_t h = 0; h < members.size(); h++)
+                each_nb(members[h], [&](int j, float) { if (comp[j] < 0) { comp[j] = c0; members.push_back(j); } });
+            int x0 = cells[c0] % MAP_WIDTH, y0 = cells[c0] / MAP_WIDTH;
+            if (map->tiles[y0][x0] == TILE_POND) {            // a pond goes whole
+                int v = 0;
+                for (int i : members) v += vote[i];
+                for (int i : members) turn[i] = v * 2 >= (int)members.size();
+                continue;
+            }
+            // distance along the river: from any tile, then again from the farthest
+            auto dijkstra = [&](int src) {
+                for (int i : members) dist[i] = 1e30f;
+                typedef std::pair<float, int> QE;
+                std::priority_queue<QE, std::vector<QE>, std::greater<QE>> q;
+                dist[src] = 0.0f;
+                q.push({ 0.0f, src });
+                int farthest = src;
+                while (!q.empty()) {
+                    QE e = q.top(); q.pop();
+                    if (e.first > dist[e.second]) continue;
+                    if (e.first > dist[farthest]) farthest = e.second;
+                    each_nb(e.second, [&](int j, float w) {
+                        if (dist[e.second] + w < dist[j]) { dist[j] = dist[e.second] + w; q.push({ dist[j], j }); }
+                    });
+                }
+                return farthest;
+            };
+            dijkstra(dijkstra(c0));
+            // slabs: tiles of one band of s that touch
+            std::vector<int> slab_of_band;                    // per slab: its band, tiles, void tiles
+            std::vector<int> slab_n, slab_v, slab_band;
+            for (int i : members) {
+                if (slab[i] >= 0) continue;
+                int band = (int)(dist[i] / VOID_SLAB_S), id = (int)slab_n.size();
+                slab_n.push_back(0); slab_v.push_back(0); slab_band.push_back(band);
+                std::vector<int> st{ i };
+                slab[i] = id;
+                while (!st.empty()) {
+                    int k = st.back(); st.pop_back();
+                    slab_n[id]++; slab_v[id] += vote[k];
+                    each_nb(k, [&](int j, float) {
+                        if (slab[j] < 0 && (int)(dist[j] / VOID_SLAB_S) == band) { slab[j] = id; st.push_back(j); }
+                    });
+                }
+            }
+            // which slabs touch, and each slab's answer from the slabs within VOID_SMOOTH_S along it
+            const int S = (int)slab_n.size();
+            std::vector<std::vector<int>> adj(S);
+            for (int i : members)
+                each_nb(i, [&](int j, float) {
+                    int a2 = slab[i], b2 = slab[j];
+                    if (a2 != b2 && std::find(adj[a2].begin(), adj[a2].end(), b2) == adj[a2].end()) adj[a2].push_back(b2);
+                });
+            std::vector<char> answer(S, 0);
+            std::vector<int> seen(S, -1);
+            const int reach = VOID_SMOOTH_S / VOID_SLAB_S;
+            for (int a2 = 0; a2 < S; a2++) {
+                long n = 0, v = 0;
+                std::vector<int> st{ a2 };
+                seen[a2] = a2;
+                while (!st.empty()) {
+                    int k = st.back(); st.pop_back();
+                    n += slab_n[k]; v += slab_v[k];
+                    for (int b2 : adj[k])
+                        if (seen[b2] != a2 && abs(slab_band[b2] - slab_band[a2]) <= reach) { seen[b2] = a2; st.push_back(b2); }
+                }
+                answer[a2] = v * 2 >= n;
+            }
+            for (int i : members) turn[i] = answer[slab[i]];
+        }
+        std::vector<int> to_void;
+        for (int i = 0; i < N; i++)
+            if (turn[i]) to_void.push_back(cells[i]);
+        for (int i : to_void) map->tiles[i / MAP_WIDTH][i % MAP_WIDTH] = TILE_LAVA;
+        // The keepout was the water's: what is void now keeps nothing off its banks.
+        if (!to_void.empty()) {
+            const int CLIFF_CLEAR = 20;
+            memset(water_keepout, 0, sizeof(water_keepout));
+            for (int y = 0; y < MAP_HEIGHT; y++)
+                for (int x = 0; x < MAP_WIDTH; x++) {
+                    int t = map->tiles[y][x];
+                    if (t != TILE_RIVER && t != TILE_WATER) continue;
+                    for (int by = y - CLIFF_CLEAR; by <= y + CLIFF_CLEAR; by++)
+                        for (int bx = x - CLIFF_CLEAR; bx <= x + CLIFF_CLEAR; bx++) {
+                            int kx = bx, ky = by;
+                            if (in_world(&kx, &ky)) water_keepout[ky][kx] = true;
+                        }
+                }
+        }
+    }
+
     GEN_STAGE(map, "before Cliffs");
     // --- Cliffs ---
     if (s_gen_cancel) return;
@@ -5313,54 +5582,55 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     }
 
     GEN_STAGE(map, "before Lava streams and pools inside wasteland");
-    // --- Lava streams and pools inside wasteland ---
+    // --- Void pools inside wasteland ---
+    // TILE_LAVA is drawn as the void now (the user, 2026-10-27: "lava should be
+    // pools", shaped as the rest of the overworld's water): no streams, only
+    // pools, each one to three radius-2 brushes a short walk apart -- the
+    // ponds' brush -- so pools come in a few sizes. About one pool to every
+    // VOID_POOL_EVERY tiles of wasteland, none within VOID_POOL_APART tiles of
+    // another, so they stand apart as the references' pools do.
     {
+        const int VOID_POOL_EVERY = 600, VOID_POOL_APART = 6;
+        long waste = 0;
+        for (int y = iy0; y < iy1; y++)
+            for (int x = ix0; x < ix1; x++)
+                if (map->tiles[y][x] == TILE_WASTELAND) waste++;
+        const int want = (int)(waste / VOID_POOL_EVERY);
         unsigned int ls = seed ^ 0x1A4A1u;
-        for (int i = 0; i < 1200; i++) {
+        int laid = 0;
+        for (int i = 0; i < want * 40 && laid < want; i++) {
             ls = ls * 1664525u + 1013904223u;
             int lx = ix0 + (int)((ls >> 16) % (unsigned)(ix1 - ix0));
             ls = ls * 1664525u + 1013904223u;
             int ly = iy0 + (int)((ls >> 16) % (unsigned)(iy1 - iy0));
             if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
+            bool crowded = false;
+            for (int dy = -VOID_POOL_APART; dy <= VOID_POOL_APART && !crowded; dy++)
+                for (int dx = -VOID_POOL_APART; dx <= VOID_POOL_APART && !crowded; dx++) {
+                    int nx = lx + dx, ny = ly + dy;
+                    crowded = in_world(&nx, &ny) && map->tiles[ny][nx] == TILE_LAVA;
+                }
+            if (crowded) continue;
             ls = ls * 1664525u + 1013904223u;
-            float angle = (float)((ls >> 16) & 0xFFFF) / 65536.0f * 6.28318f;
-            ls = ls * 1664525u + 1013904223u;
-            // Long enough for several bends to play out. At this turn rate the
-            // heading holds a curve for roughly a dozen steps, so a short
-            // channel would end mid-bend and read as a bent line.
-            int len = 140 + (int)((ls >> 16) % 260);
-            march_wander(map, lx, ly, angle, ls,
-                         cx, cy, guard_r, 1, len, 0.035f, TILE_WASTELAND, TILE_LAVA);
-        }
-        ls = ls ^ 0xB00B5u;
-        for (int i = 0; i < 400; i++) {
-            ls = ls * 1664525u + 1013904223u;
-            int lx = ix0 + (int)((ls >> 16) % (unsigned)(ix1 - ix0));
-            ls = ls * 1664525u + 1013904223u;
-            int ly = iy0 + (int)((ls >> 16) % (unsigned)(iy1 - iy0));
-            if (map->tiles[ly][lx] != TILE_WASTELAND || water_keepout[ly][lx]) continue;
-            paint_stream_brush(map, lx, ly, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
-        }
-
-    }
-
-    GEN_STAGE(map, "before Dead trees scattered in wasteland");
-    // --- Dead trees scattered in wasteland (~2%) ---
-    {
-        for (int y = iy0; y < iy1; y++) {
-            for (int x = ix0; x < ix1; x++) {
-                if (map->tiles[y][x] != TILE_WASTELAND) continue;
-                // Off the water, and not under a wall -- two different masks.
-                if (water_keepout[y][x]) continue;
-                if (cliff_bars_overlay(x, y)) continue;
-                if (map->overlay[y][x] != 0) continue;
-                int ddx = x - cx, ddy = y - cy;
-                if (ddx*ddx + ddy*ddy <= hw*hw) continue;
-                if (tile_noise(x, y, (int)seed ^ 0xDEAD7) > 32200)
-                    map->overlay[y][x] = TILE_DEAD_TREE;
+            int n = 1 + (int)((ls >> 16) % 3u);
+            float angle = (float)((ls >> 8) & 0xFFFF) / 65536.0f * 6.28318f;
+            float px = (float)lx, py = (float)ly;
+            for (int k = 0; k < n; k++) {
+                int bx = (int)px, by = (int)py;
+                if (in_world(&bx, &by))
+                    paint_stream_brush(map, bx, by, 2, cx, cy, guard_r, TILE_WASTELAND, TILE_LAVA);
+                px += 2.2f * cosf(angle);
+                py += 2.2f * sinf(angle);
+                ls = ls * 1664525u + 1013904223u;
+                angle += ((float)((ls >> 16) % 1000u) / 1000.0f - 0.5f) * 1.4f;
             }
+            laid++;
         }
     }
+
+    // The wasteland's dead trees are gone (2026-10-27): its volcano groves
+    // stand there instead, laid with the other biomes' props (lay_props,
+    // TH_VOLCANO). TILE_DEAD_TREE is still drawn and struck if one is met.
 
     GEN_STAGE(map, "before Pond streams and pools inside meadows");
     // --- Pond streams and pools inside meadows ---
@@ -7192,15 +7462,18 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             int dx = wrap_dx(x - mcx), dy = wrap_dy(y - mcy);
             return dx*dx + dy*dy <= MOAT_REACH * MOAT_REACH;
         };
-        // Water is the gap a road bridges, lava is not: a road over a lava
-        // channel is a different thing and the wasteland has its own trails.
+        // Water is the gap a road bridges, and the void too since the
+        // wasteland's rivers became void (2026-10-27): a void river some 13
+        // wide would cut the roads apart, wider than a trail spans. Never the
+        // citadel's ring (road_forbidden). Over the void the deck is a causeway.
         auto road_gap = [&](int x, int y) {
             int t = map->tiles[y][x];
-            return t == TILE_WATER || t == TILE_RIVER || t == TILE_ROAD_BRIDGE;
+            return t == TILE_WATER || t == TILE_RIVER || t == TILE_ROAD_BRIDGE
+                || ((t == TILE_LAVA || t == TILE_WASTE_BRIDGE) && !road_forbidden(x, y));
         };
         auto road_raw_gap = [&](int x, int y) {
             int t = map->tiles[y][x];
-            return t == TILE_WATER || t == TILE_RIVER;
+            return t == TILE_WATER || t == TILE_RIVER || (t == TILE_LAVA && !road_forbidden(x, y));
         };
         // Ground a road may run on: open country, and nothing that is already
         // something. Cliffs are excluded outright — a road cannot climb a wall,
@@ -7559,6 +7832,15 @@ void tilemap_free_tile_cache(void) {
 }
 
 // Helper: copy a cached tile texture to the screen, falling back to immediate draw.
+// Whether a deck at (x, y) is a causeway over the void (the wasteland
+// overhaul, 2026-10-27): over a lava bridge's own tile, or anywhere on the
+// wasteland's ground -- a bank's end of one. Drawing only.
+static bool stone_deck_at(const Tilemap* map, int x, int y) {
+    int t = map->tiles[y][x];
+    return t == TILE_WASTE_BRIDGE || t == TILE_LAVA || t == TILE_WASTELAND
+        || (t >= TILE_CLIFF_WASTE_1 && t <= TILE_CLIFF_WASTE_5);
+}
+
 static void blit_tile(SDL_Renderer* renderer, int tile_id,
                       int screen_x, int screen_y, int draw_size) {
     if (tile_id >= TILE_TOWN0_BASE && s_town0_tex) {
@@ -7676,13 +7958,17 @@ static constexpr GroundCover COVER_SNOW = cover_tufts(
     sheet_cell(26, 3), TILE_SNOW);
 // Desert: the dune spans cols 21-22 over rows 0-1, with the two open sands
 // stacked in col 23.
-static constexpr GroundCover COVER_DESERT = cover_dunes(
+// Desert: the wasteland's sparse clods in sand, in the grass block's six roles
+// (art/ground/sand_design.py; the user, 2026-10-27: "have the ground speckle
+// pattern be the same for the desert" -- its grid of dots and dune swirls gone).
+static constexpr GroundCover COVER_DESERT = cover_tufts(
     sheet_cell(21, 0), sheet_cell(22, 0),
-    sheet_cell(21, 1), sheet_cell(22, 1),
-    sheet_cell(23, 0), sheet_cell(23, 1), TILE_SAND);
-// Wasteland: cracked earth in the grass block's six roles (art/ground/
-// wasteland_design.py; the user, 2026-10-14: the one near-black dotted cell
-// was the odd ground out, redrawn to the ground rule in a warm dark earth).
+    sheet_cell(23, 0), sheet_cell(21, 1), sheet_cell(22, 1),
+    sheet_cell(23, 1), TILE_SAND);
+// Wasteland: a flat red-brown in the grass block's six roles, a rare clod and
+// no cracks (art/ground/wasteland_design.py; the user, 2026-10-27, the
+// overhaul after the Yume Nikki references; its broad tan blocks taken out
+// again the same day: "get rid of the light brown streaks/blobs").
 static constexpr GroundCover COVER_WASTE = cover_tufts(
     sheet_cell(27, 4), sheet_cell(28, 4),
     sheet_cell(29, 4), sheet_cell(27, 5), sheet_cell(28, 5),
@@ -7794,10 +8080,10 @@ static GroundBiome s_biomes[] = {
     { { TILE_GRASS,     -1, -1, -1 },                  &COVER_GRASS,  false, false, false, 0,0,0,  -1,  -1,  -1, { 0x8d6b4f, 0xd7a175 } },
     { { TILE_MEADOW,    -1, -1, -1 },                  &COVER_MEADOW, false, false, false, 0,0,0,  -1,  -1,  -1, { 0x967448, 0xb2966a } },
     { { TILE_SAND,      -1, -1, -1 },                  &COVER_DESERT, false, false, false, 0,0,0,  -1,  -1,  -1, { 0xb29e5c, 0xcebe82 } },
-    { { TILE_WASTELAND, -1, -1, -1 },                  &COVER_WASTE,  false, false, false, 0,0,0,  -1,  -1,  -1, { 0x110000, 0x463422 } },
+    { { TILE_WASTELAND, -1, -1, -1 },                  &COVER_WASTE,  false, false, false, 0,0,0,  -1,  -1,  -1, { 0x110000, 0x2b190e } },   // a dark worn track (2026-10-27)
     { { TILE_SNOW,      -1, -1, -1 },                  &COVER_SNOW,   false, false, false, 0,0,0,  -1,  -1,  -1, { 0xa4aaba, 0xc6ccda } },
     { { TILE_WATER, TILE_RIVER, TILE_HUB, TILE_POND }, &COVER_WATER,  true,  true,  false, 0,0,0, 220, 240, 255, { 0, 0 } },
-    { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  -1,  -1,  -1, { 0, 0 } },
+    { { TILE_LAVA,      -1, -1, -1 },                  &COVER_LAVA,   true,  true,  false, 0,0,0,  17,   0,   0, { 0, 0 } },   // the void: a 1px 110000 rim on the land side
     // No tile of its own: biome_at hands an oasis's marked pond tiles here.
     // Keep it last -- OASIS_BIOME is its index.
     { { -1,             -1, -1, -1 },                  &COVER_OASIS,  true,  true,  false, 0,0,0, 220, 240, 255, { 0, 0 } },
@@ -8875,7 +9161,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                                                screen_x + tree_jox(art[i].shake_x, art[i].shake_y), screen_y,
                                                draw_size, ux * TILE_SIZE, uy * TILE_SIZE,
                                                ux * TILE_SIZE, uy * TILE_SIZE, TILE_SIZE, TILE_SIZE,
-                                               (uy + 2) * TILE_SIZE);
+                                               (uy + 2) * TILE_SIZE, art_src(map, x, y, art[i].id));
                 }
                 continue;
             }
@@ -9014,7 +9300,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 ArtAt art[3];
                 int n = art_cells_at(map, x, y, art);
                 for (int i = 0; i < n; i++)
-                    blit_tile(renderer, art[i].id, screen_x + tree_jox(art[i].shake_x, art[i].shake_y),
+                    blit_tile(renderer, art_src(map, x, y, art[i].id), screen_x + tree_jox(art[i].shake_x, art[i].shake_y),
                               screen_y, draw_size);
             }
             if (is_cave_mouth_cell(ov) || entrance_art_role(ov) != ART_NONE || is_yard_wall(ov) ||
@@ -9037,8 +9323,11 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 if (s_town0_tex) SDL_RenderCopy(renderer, s_town0_tex, &src_bot, &dst_bot);
             } else if (ov != 0) {
                 // Anything else in the overlay -- the signpost and the like --
-                // over the base, shaking when struck
-                blit_tile(renderer, ov, screen_x + tree_jox(x, y), screen_y, draw_size);
+                // over the base, shaking when struck. A deck in the wasteland
+                // is a causeway: the same cell in stone, a row down the sheet
+                // (tools/stone_deck.py).
+                int id = is_boardwalk(ov) && stone_deck_at(map, x, y) ? ov + TOWN0_SHEET_COLS : ov;
+                blit_tile(renderer, id, screen_x + tree_jox(x, y), screen_y, draw_size);
             }
             // A tree, rock or ore drawn over art sharing its tile -- the top of
             // a yard wall rising into it from the tile below -- and the art
@@ -9053,7 +9342,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                                            screen_x + tree_jox(art[i].shake_x, art[i].shake_y), screen_y,
                                            draw_size, ux * TILE_SIZE, uy * TILE_SIZE,
                                            ux * TILE_SIZE, uy * TILE_SIZE, TILE_SIZE, TILE_SIZE,
-                                           (uy + 1) * TILE_SIZE);
+                                           (uy + 1) * TILE_SIZE, art_src(map, x, y, art[i].id));
             }
         }
     }
@@ -9068,7 +9357,7 @@ void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* ren
 }
 
 void tilemap_draw_cell_over(SDL_Renderer* renderer, int id, int sx, int sy, int draw_size,
-                            float wx, float wy, float x, float y, float w, float h, float feet_y) {
+                            float wx, float wy, float x, float y, float w, float h, float feet_y, int src_id) {
     const ArtCellDepth* d = tilemap_art_depth(id);
     if (!d || !s_town0_tex) return;
     const float AP = TILE_SIZE / 16.0f;                          // world pixels an art pixel
@@ -9079,7 +9368,7 @@ void tilemap_draw_cell_over(SDL_Renderer* renderer, int id, int sx, int sy, int 
     if (ay1 > 16) ay1 = 16;
     if (ax0 < 0) ax0 = 0;
     if (ax1 > 16) ax1 = 16;
-    int rel = id - TILE_TOWN0_BASE;
+    int rel = (src_id >= 0 ? src_id : id) - TILE_TOWN0_BASE;    // drawn from src_id, if given; its depth is id's
     int col = rel % TOWN0_SHEET_COLS, row = rel / TOWN0_SHEET_COLS;
     for (int ay = ay0; ay < ay1; ay++) {
         auto front = [&](int px) {
@@ -9119,7 +9408,8 @@ void tilemap_draw_over_player(const Tilemap* map, const Camera* cam, SDL_Rendere
             int sx = cam_px(cam, ux * TILE_SIZE), sy = cam_py(cam, uy * TILE_SIZE);
             for (int i = 0; i < n; i++)
                 tilemap_draw_cell_over(renderer, art[i].id, sx + tile_shake(art[i].shake_x, art[i].shake_y, z),
-                                       sy, draw_size, ux * TILE_SIZE, uy * TILE_SIZE, x, y, w, h, feet_y);
+                                       sy, draw_size, ux * TILE_SIZE, uy * TILE_SIZE, x, y, w, h, feet_y,
+                                       art_src(map, tx, ty, art[i].id));
         }
     }
 }
@@ -9232,8 +9522,8 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
         { 60, 160,  60, 255}, // CLIFF_EDGE_5 → hidden
         {200, 170,  95, 255}, // SAND
         {220, 235, 255, 255}, // SNOW
-        { 52,  30,  16, 255}, // WASTELAND (its fill, 341e10)
-        {200,  70,   0, 255}, // LAVA
+        { 62,  28,  14, 255}, // WASTELAND (its fill, 3e1c0e)
+        { 44,  12,  71, 255}, // LAVA (the void, 2c0c47)
         { 80, 160,  40, 255}, // MEADOW
         { 30,  90, 200, 255}, // POND
         { 60,  55,  50, 255}, // GOLD_ORE → hidden (dark)
@@ -9923,6 +10213,18 @@ bool tilemap_pixel_water(const Tilemap* map, float px, float py) {
     if (map->tiles[ty][tx] == TILE_ROAD_BRIDGE) return false;   // on its deck, not in the water under it
     int owner = field_owner_at(map, tx, ty, px, py);
     return owner >= 0 && (owner == OASIS_BIOME || s_biomes[owner].cover == &COVER_WATER);
+}
+
+bool tilemap_pixel_void(const Tilemap* map, float px, float py) {
+    px = wrap_px(px);
+    py = wrap_py(py);
+    int tx = (int)floorf(px / TILE_SIZE);
+    int ty = (int)floorf(py / TILE_SIZE);
+    if (!in_bounds(tx, ty)) return false;
+    int t = map->tiles[ty][tx];
+    if (t == TILE_WASTE_BRIDGE || t == TILE_ROAD_BRIDGE) return false;   // on its deck, not in the void under it
+    int owner = field_owner_at(map, tx, ty, px, py);
+    return owner >= 0 && s_biomes[owner].cover == &COVER_LAVA;
 }
 
 bool tilemap_pixel_solid(const void* vmap, float px, float py) {

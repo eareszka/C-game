@@ -19,7 +19,9 @@ where the two meet, this one says so.
 
 (The user, 2026-10-12.)
 
-- **Ground**: the grass, meadow, snow and sand cells and the water cell.
+- **Ground**: the grass, meadow, snow and sand cells and the water cell. (The sand cells
+  were redrawn 2026-10-27 to the wasteland's sparse clods in sand, at the user's word:
+  "have the ground speckle pattern be the same for the desert"; `art/ground/sand_design.py`.)
 - **Objects**: the two ordinary trees, `art/structures/trees/`.
 - **Built**: the seven town houses, `art/structures/houses/`, and the stone
   entrances -- ruins, mausoleum, stonehenge, church.
@@ -86,7 +88,7 @@ The overworld's own, from the reference:
 | grass | `4edc4a`, tufts `00881b` |
 | meadow | `a8f0bc`, flowers `fc74b4`, stems `00a800` |
 | snow | `fcfcfc`, tufts `f0bc3c` |
-| sand | `f0e880`, dune `e8e0c0` `d0c078` |
+| sand | `f0e880`, clods `d0c078` (the dunes' `e8e0c0` gone from the ground, 2026-10-27) |
 | water | `5c94fc`, foam `fcfcfc` |
 | foliage | `05c43a` `058f3a` `235436` |
 | glass | `5c94fc` `b70000` |
@@ -137,21 +139,12 @@ so there is no straight line across it anywhere.
 | grass (`town pad`) | `d7a175` `8d6b4f` |
 | meadow | `b2966a` `967448` |
 | sand | `cebe82` `b29e5c` |
-| wasteland | `463422` `110000` |
+| wasteland | `2b190e` `110000` |
 | snow | `c6ccda` `a4aaba` |
 
-**The desert's formations are objects, in materials already named** (the
-user, 2026-10-13: "we need many natural forming things in the desert since its
-pretty barren"). Ten of them, `art/structures/entrances/desert_design.py`, a
-column of one strip each, two cells tall: two saguaros, a barrel cactus and a
-prickly pear in foliage (plant green is the trees' green); a boulder, a pair
-of boulders and a rock spire in cliff rock (a spire is the rock the cliffs are,
-not the pyramid's cut sandstone); a dry shrub in bark; the Grootslang's skull and
-one coil of the Olgoi-Khorkhoi's spine in bone, the catacombs' two tones with
-the roster's bone white above them. Each keeps the objects' rule: one line round
-it, three colours and black, one ramp placed by form. What stands is solid on
-its bottom three rows and walked behind where it rises; the bones lie flat
-and are walked over.
+**The desert's formations were retired** (2026-10-27): the strip of ten
+(saguaros, boulders, a spire, a shrub, bones) gave way to the desert props
+(`art/structures/props/desert/`), placed and broken in their themed groups.
 
 **A village is its ground's building set** (the user, 2026-10-13: "the
 buildings in the village and the architecture and 'vibe' must match the
@@ -182,16 +175,76 @@ sure wells are all round") -- in the set's stone, snow on its lit edges in
 snow.
 Thatch, rust and yellow paint are named here for the first time.
 
-**The wasteland ground is cracked earth** (the user, 2026-10-14, asked whether
-the grounds match and should be kept: the grass, meadow, snow, sand and
-water cells are the reference and stay; the wasteland, one near-black cell
-of single dots, was the odd one out and is redrawn to the ground rule).
-`art/ground/wasteland_design.py`, a block of six cells in the grass block's
-roles: a flat fill of `341e10`, cracks as short fissure strokes in the
-near-black `110000` drawn as the tufts' blades are, one long fissure across
-the clump pair, a pale clod of dirt's `583518` here and there, no black. Its
-track is bark's `463422` edged in the near-black. Sheet cols 27-29 rows 4-5,
-written by `gen_entrance_art.py --grounds`.
+**The wasteland is overhauled after the user's Yume Nikki references**
+(2026-10-27; the mock-ups and their reasoning are `art/concept/wasteland/`).
+Stage 1 is the ground, the void, the volcanoes and the causeways; the
+hamlets, mazes, a lone-gate landmark and the rubble come in a second stage.
+
+- **Ground.** A flat red-brown, `3e1c0e`, with a rare clod of dirt's `583518`
+  and no cracks (the cracked earth of 2026-10-14 is gone; the maroon tried in
+  the mock-ups "read purple"). Broad blocks of a lighter `583518`, laid a tile
+  at a time, were tried and taken out the same day (the user: "get rid of the
+  light brown 'tan' streaks/blobs"). `art/ground/wasteland_design.py`, sheet
+  cols 27-29 rows 4-5, written by `gen_entrance_art.py --grounds`. The track
+  is a dark worn `2b190e` edged in the near-black `110000`, no longer tan.
+- **Island rock.** An island with no ore cave, in every biome, is ash taupe:
+  `b2966a` `8d6b4f` `583518` (the user, 2026-10-27: the Mother 1 cliffs'
+  olive "to match the reference more without it being confused with other
+  ores"), greyer and duller than bronze's orange, apart from every other ore.
+  `DEFAULT` in `art/structures/gen_cave_entrances.py` -> `src/ore_tones.inc`.
+  The desert's boulders and spire keep the old cliff rock, and so does the
+  oasis's rock (`tools/oasis_blocks.py`).
+- **The void** is the wasteland's liquid where lava was: TILE_LAVA, the same
+  id with a new look. `2c0c47` with the water cell's whole marks in `301b5a`
+  and `3b2a58` (`art/ground/void_design.py`, sheet (15,0)), and a 1px `110000`
+  rim on the land side as water's shallows are. It comes only as pools (the
+  user: "lava should be pools"), one to three of the ponds' radius-2 brushes,
+  about one to every 600 tiles of wasteland; the citadel's moat ring stays.
+  A natural river or pond running through the wasteland is void too (the
+  user: "natural rivers ... in the wasteland should be the purple color"),
+  turning back to water where it leaves, the two liquids meeting along the
+  edge field. The change is a cut straight across the river, bank to bank,
+  never down its middle (the user: "it should go from one side to the
+  other"): the river is cut into slabs across its channel, and each slab goes
+  whole, by its tiles' vote and its neighbours' along the river. Roads bridge a void river outside the citadel's ring, on a
+  causeway. A raft floats on the void while the lava charm is held (the user:
+  "both should be crossed by raft"), so the ring waits on the charm.
+- **Mini volcanoes** stand where the dead trees did (the user: "red stands
+  should be like mini volcanos", "larger/denser"): props of the wasteland's
+  own, theme TH_VOLCANO, in four sizes in red rock (`ec8476` `b70000`
+  `7c0a1b` and black), laid in dense groves (`props/wasteland/`). A waste
+  village's trees are little volcanoes.
+- **Causeways.** A bridge over the void is the bridges' deck in waste stone
+  (`9797aa` `595965` `34343e`): `tools/stone_deck.py` copies the deck's row
+  of the sheet into the row below in stone, and the game draws that row for a
+  deck in the wasteland (`stone_deck_at`).
+
+Stage 2 (the same day): the built stone, the hamlets, the mazes, the gate and
+the rubble.
+
+- **Waste stone.** Everything built in the wasteland is a step darker than
+  stone elsewhere, `9797aa` `595965` `34343e`, sitting in the gloom as the
+  references' blocks do. The barracks huts and their well are recoloured in
+  `villages/waste.png` itself (they stand nowhere else), under slate in the
+  void's `3b2a58`. The stone yard walls and the ruins stand in other biomes
+  too, so `tools/waste_stone.py` copies their cells, recoloured, to empty rows
+  (194-200, from col 24), and the game draws the copy for a cell standing in
+  the wasteland (`art_src`, `WASTE_COPIES` in `src/tilemap.cpp`).
+- **The hamlet's compound.** A waste village stands in one row (never a back
+  row) inside a wall of the stone yard walls: a parallelogram in the houses'
+  projection round the row and its street (`lay_yard`), broken wherever a
+  street or road runs and wherever anything already stands.
+- **The ruin maze.** The wasteland's ruins stand at the heart of a maze of
+  broken walls (`stamp_dungeon_surround`): runs across and back at 45 degrees,
+  the only ways the yard walls join, the doorway's columns open in front,
+  dead ends to either side. The walls break like rocks.
+- **The lone gate** is the wasteland's landmark, where the burnt wagon stood:
+  a doorway of waste stone standing alone, the ground seen through it, its
+  chest before it (`landmarks/gate_design.py`, sheet 18,176).
+- **Rubble** lies round the void: a second prop theme of the wasteland,
+  TH_RUBBLE, chosen for a group within 7 tiles of a pool -- grey rocks in
+  waste stone's base and dark with a crack and no lit tone (the bible's rock),
+  a fallen stub of wall in its courses, a bone (`props/wasteland/rubble_design.py`).
 
 **A town's ground is a biome**: its open ground, and what lies under its
 woods, its buildings and its streets. The starting town is grass; the coastal
@@ -297,6 +350,7 @@ into the sheet's rows 226-245 and writes `src/props.inc`; then
   - desert: cactus stand, rock country, old trail
   - forest: deadfall, woodcutter's camp, undergrowth
   - plains (the meadow ground): farmstead, Mayan ruins
+  - snow: ice field, abandoned expedition camp, mammoth graveyard
 
   The theme's anchor stands at a group's middle, with 2-7 fillers thrown round it
   a tile apart, thinning toward the edge. A group holds at most two of a small

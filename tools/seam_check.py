@@ -24,7 +24,7 @@ if 'half' in sys.argv[3:]:
     im = im[::2, ::2]
     step //= 2
 
-BROWN = np.array([136, 112, 0])
+BROWN = np.array([141, 107, 79])   # the islands' default base, 8d6b4f (2026-10-27)
 INK = np.array([0, 0, 0])
 brown = np.all(im == BROWN, axis=2)
 ink = np.all(im == INK, axis=2)

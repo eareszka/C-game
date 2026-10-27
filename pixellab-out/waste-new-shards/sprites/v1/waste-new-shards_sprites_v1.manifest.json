@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "waste-new-shards_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art cluster of jagged dark red volcanic glass shards sticking out of the ground, dark eerie wasteland",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-cluster-of-jagged-dark-red-volcanic-gl.png"
+  ]
+}

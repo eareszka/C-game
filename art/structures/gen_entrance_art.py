@@ -134,7 +134,6 @@ SPRITES = [
 # on the sheet: it goes in by --tables and its own cells written (the band also
 # holds the dungeon walls, gen_dungeon_wall_tiles.py, which --stamp would clear).
 SPRITES_LAST = [
-    ("DESERT", "entrances/desert.png", 10, 2, 0),      # the sand's formations, two cells tall each
 ]
 
 
@@ -197,7 +196,7 @@ LANDMARKS = [
     ("CAMP", "LM_FOREST", "landmarks/camp.png", 4, 176),
     ("STATUE", "LM_SAND", "landmarks/statue.png", 10, 176),
     ("CAIRN", "LM_SNOW", "landmarks/cairn.png", 14, 176),
-    ("WAGON", "LM_WASTE", "landmarks/wagon.png", 18, 176),
+    ("GATE", "LM_WASTE", "landmarks/gate.png", 18, 176),      # the lone gate (2026-10-27), where the burnt wagon stood
     ("BOAT", "LM_COAST", "landmarks/boat.png", 23, 176),
 ]
 # (export, sheet col, sheet row) -- the chest, shut and open (landmarks/
@@ -381,6 +380,7 @@ def landmarks(legal):
 # it by its cells (src/tilemap.cpp COVER_WASTE).
 GROUNDS = [
     ("../ground/wasteland.png", 27, 4),
+    ("../ground/sand.png", 21, 0),        # the desert: the wasteland's clods in sand (2026-10-27)
 ]
 
 
@@ -450,7 +450,7 @@ def props(legal):
         "// the sheet (col, row, w, h; an animation's frames side by side from there),",
         "// the blows it takes and to which weapons it is what (HarvestTarget), and its",
         "// drops (item, or -1, and how many).",
-        "enum PropBiome { PB_DESERT, PB_FOREST, PB_PLAINS, PB_COUNT };",
+        "enum PropBiome { %s, PB_COUNT };" % ", ".join(prop_table.BIOMES),
         "enum PropTheme { %s, TH_COUNT };" % ", ".join(themes),
         "static const int PROP_THEME_BIOME[TH_COUNT] = { %s };" % ", ".join(prop_table.THEMES[t] for t in themes),
         "struct PropKind { int biome; unsigned themes; int anchor, weight, stray, col, row, w, h, frames, hp;",

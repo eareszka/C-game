@@ -570,6 +570,7 @@ if '--write' in sys.argv or WHARF_ONLY:
         t.putdata([p for row in block for p in row])
         sheet.paste(t, (n % DECK_COLS * 16, (DECK_ROW0 + n // DECK_COLS) * 16))
     sheet.save(ROOT + '/assets/tileset.png')
+    print('rows %d-%d cleared: run tools/stone_deck.py again for the wasteland's causeways' % (DECK_ROW0, DECK_ROW0 + 1))
     p = ROOT + '/include/towns.h'
     s = open(p, encoding='utf-8', newline='').read()
     nl = '\r\n' if '\r\n' in s else '\n'

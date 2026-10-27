@@ -1,0 +1,16 @@
+{
+  "run": "waste-new-fallenwall_sprites_v2",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\waste-new-fallenwall\\sprites\\v2",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\waste-new-fallenwall\\sprites\\v2\\pixel-art-long-toppled-grey-stone-brick-wall-sec.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\waste-new-fallenwall\\sprites\\v2\\waste-new-fallenwall_sprites_v2.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {},
+  "route": "create-image-pixflux"
+}

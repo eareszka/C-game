@@ -399,7 +399,7 @@ const char* item_description(Item it) {
         case ITEM_SPYGLASS: return "SEE TIER 2 WHEN ZOOMED OUT";
         case ITEM_BINOCULARS: return "SEE TIER 1 WHEN ZOOMED OUT";
         case ITEM_COMPASS: return "REVEALS THE ENTIRE DUNGEON MAP";
-        case ITEM_LAVA_CHARM: return "RAFT PROTECTION AGAINST LAVA";
+        case ITEM_LAVA_CHARM: return "WHILE HELD, THE RAFT CARRIES YOU OVER THE VOID.";
         case ITEM_PLAGUE_RESIDUE: return "POISON COATING FOR A WEAPON";
         default: return nullptr;
     }

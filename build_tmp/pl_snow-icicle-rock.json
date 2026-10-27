@@ -1,0 +1,16 @@
+{
+  "run": "snow-icicle-rock_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\snow-icicle-rock\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\snow-icicle-rock\\sprites\\v1\\pixel-art-dark-grey-rock-overhang-with-icicles-h.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\snow-icicle-rock\\sprites\\v1\\snow-icicle-rock_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {},
+  "route": "create-image-pixflux"
+}

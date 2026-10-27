@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "waste-new-fallenwall_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "pixel art long toppled grey stone brick wall section lying on its side on the ground, broken ends, dark eerie wasteland",
+    "image_size": {
+      "width": 96,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pixel-art-long-toppled-grey-stone-brick-wall-sec.png"
+  ]
+}

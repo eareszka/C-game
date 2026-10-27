@@ -9,11 +9,13 @@
 // Everything else that stops a walker still stops a raft. boat: aboard the
 // boat, the other way round -- only water will do, and every shore is a wall
 // (the wharf's tip takes the boy off it: main.cpp).
-struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_ok; bool boat = false; };
+// lava_ok: the lava charm is held, so a raft floats on the void as on water
+// (the user, 2026-10-27); the boat keeps to water.
+struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_ok; bool boat = false; bool lava_ok = false; };
 static bool ow_solid(const void* ctx, float px, float py) {
     const OWCollCtx* c = static_cast<const OWCollCtx*>(ctx);
     if (c->boat) return !tilemap_pixel_water(c->map, px, py) || resource_node_solid(c->res, px, py);
-    if (c->float_ok && tilemap_pixel_water(c->map, px, py))
+    if (c->float_ok && (tilemap_pixel_water(c->map, px, py) || (c->lava_ok && tilemap_pixel_void(c->map, px, py))))
         return resource_node_solid(c->res, px, py);
     return tilemap_pixel_solid(c->map, px, py)
         || resource_node_solid(c->res, px, py);
@@ -148,9 +150,11 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
 
     float anim_speed;
 
+    const bool lava_ok = item_count(player, ITEM_LAVA_CHARM) > 0;   // the void floats the raft too
     auto feet_on_water = [&]() {
+        float fx = ow->x + (HB_X1 + HB_X2) * 0.5f, fy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
         return item_raft_worn(player) && !player->at_sea &&
-               tilemap_pixel_water(map, ow->x + (HB_X1 + HB_X2) * 0.5f, ow->y + (HB_Y1 + HB_Y2) * 0.5f);
+               (tilemap_pixel_water(map, fx, fy) || (lava_ok && tilemap_pixel_void(map, fx, fy)));
     };
 
     player_gait(in, &ow->speed, &anim_speed,
@@ -161,7 +165,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         // round what is in the way. It ends at land, or against something.
         // A long crossing picks up speed, for convenience: from the push off
         // it builds evenly to twice RAFT_SPEED at RAFT_RAMP_T, and holds.
-        OWCollCtx ctx = { map, resources, true };
+        OWCollCtx ctx = { map, resources, true, false, lava_ok };
         ow->sail_t += dt;
         float speed = RAFT_SPEED * (1.0f + fminf(ow->sail_t / RAFT_RAMP_T, 1.0f));
         float nx = ow->x + ow->sail_dx * speed * dt;
@@ -175,7 +179,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         if (!feet_on_water()) ow->sailing = false;   // landed
         player->is_moving = 0;
     } else if (dx != 0.0f || dy != 0.0f) {
-        OWCollCtx ctx = { map, resources, item_raft_worn(player) || player->at_sea != 0, player->at_sea != 0 };
+        OWCollCtx ctx = { map, resources, item_raft_worn(player) || player->at_sea != 0, player->at_sea != 0, lava_ok };
         float speed = player->at_sea ? BOAT_SPEED : ow->speed;   // the boat is quicker than a walk
         if (noclip) {
             ow->x += dx * speed * dt;
