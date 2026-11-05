@@ -463,11 +463,13 @@ def leaf_litter():
     return g, {'t': THATCH[0], 'r': RUST[0], 'R': RUST[1]}
 
 
-# ---------------------------------------------------------------- 16. sapling (4 frames)
+# ---------------------------------------------------------------- 16. sapling (3 frames)
 def sapling(frame=0):
     """A young tree, bushy and low: a round crown on a short trunk, the old round tree's build --
     a lollipop on a stick read as a pole (redrawn 2026-10-27 after the in-world check)."""
-    sway = (0, 1, 0, -1)[frame]                                    # only the crown's top stirs
+    # only the crown's top stirs: a sway sampled three times round its loop, on the world's
+    # ambient beat (src/core.h, the graveyard roots' -- the user, 2026-10-29)
+    sway = (0, 1, -1)[frame]
     g = blank(16, 32)
     for y in range(25, 30):                                        # the trunk, in the leaves' shade
         g[y][7] = g[y][8] = 'G'
@@ -536,7 +538,7 @@ if __name__ == '__main__':
             continue
         if name == 'sapling':
             os.makedirs(os.path.join(HERE, 'sapling_frames'), exist_ok=True)
-            frames = [make(k) for k in range(4)]
+            frames = [make(k) for k in range(3)]
             for k, (g, pal) in enumerate(frames):
                 write(g, pal, os.path.join(HERE, 'sapling_frames', f'sapling_{k}.png'))
             strip = [sum((f[0][y] for f in frames), []) for y in range(32)]

@@ -1,0 +1,22 @@
+{
+  "run": "flap-animate-d-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\68-shuyu-flap-d-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\68-shuyu-flap-d-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\68-shuyu-flap-d-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\68-shuyu-flap-d-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\68-shuyu-flap-d-try2-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\flap-animate-D-try2\\flap-animate-d-try2\\animations\\v1\\flap-animate-d-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "349077d8-0d70-44b9-8ca4-ac3fdb0a3368",
+    "generation_id": "1c479e50-72f4-453f-b696-cee982a6fc2c"
+  }
+}

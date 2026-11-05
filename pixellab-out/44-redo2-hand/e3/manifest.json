@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "e3",
+  "generated": "2026-11-03T16:34:13Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "e3_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "e3.png"
+      ],
+      "ids": {
+        "background_job_id": "88fc3741-1032-4b08-8aad-3088779b0fb0",
+        "generation_id": "70f6aae0-c083-4efe-9544-99a05f1057a3"
+      }
+    }
+  ]
+}

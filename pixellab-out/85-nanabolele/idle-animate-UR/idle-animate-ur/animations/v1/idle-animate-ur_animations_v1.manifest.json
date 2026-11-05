@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-ur_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1856 characters>",
+      "format": "png"
+    },
+    "action": "Lying low in place: the glowing scale lights along its back pulse brighter from tail to head, then it gapes its fanged jaws wide, every light blazing, then closes them. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "86ef2c84-dbe0-4308-a32a-f9446cea0730",
+    "generation_id": "3ba8fa06-5fe8-4bfc-ad5b-32f6ef8e4a4c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "85-nanabolele-idle-ur-00.png",
+    "85-nanabolele-idle-ur-01.png",
+    "85-nanabolele-idle-ur-02.png",
+    "85-nanabolele-idle-ur-03.png",
+    "85-nanabolele-idle-ur-04.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "86-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1280 characters>",
+      "format": "png"
+    },
+    "action": "galloping in place, its long stag legs reaching and gathering, its mane and tail flying, its badger head low and forward, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e1c1a88b-246d-4f03-80b6-d7d6328df492",
+    "generation_id": "fc7a1ca4-38c2-4d9c-b9b8-28887e8c1f6f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runu-00.png",
+    "runu-01.png",
+    "runu-02.png",
+    "runu-03.png",
+    "runu-04.png"
+  ]
+}

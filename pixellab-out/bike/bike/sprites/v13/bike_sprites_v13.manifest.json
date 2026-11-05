@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v13",
+  "provider": "pixellab",
+  "route": "inpaint-v3",
+  "arguments": {
+    "description": "one bicycle wheel seen exactly end on, a thin narrow upright tyre only three pixels wide, black rubber with a thin grey tread line down the middle. Flat colours, black and grey only, no dithering.",
+    "inpainting_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 340 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "mask_image": {
+      "image": {
+        "type": "base64",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAAAAABWESUoAAAAIElEQVR4nGNgGAWjYLgBRlTufwwxJkImMA0CBQyDAAAASXoBDGiLED8AAAAASUVORK5CYII=",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "no_background": true,
+    "crop_to_mask": false,
+    "seed": 62
+  },
+  "links": {},
+  "seed": 62,
+  "ids": {
+    "background_job_id": "274cbccf-3b6f-4d87-8d3d-e444b71fb62d",
+    "generation_id": "23480a9f-1ed1-4549-8aa3-cf5c1cf39baf"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wheels-dn.png"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "id": 84, "name": "84-kigutilik", "dir": "art/enemies/pixellab/84_kigutilik",
+  "description": "Kigutilik: a huge hairless ice-violet beast on long stilt legs with a walrus head, fangs and two long tusks, a cup-shaped bowl on a stalk growing from the top of its head, two curling tentacle tails. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/84_kigutilik.png", "frames": 5, "rows": false, "ms": 250,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+    "action": "Standing high on its stilt legs: its two tentacle tails curl and uncurl, then it raises its walrus head and opens its fanged jaws wide, then lowers it again. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "map": {"*": [0, 1, 2, 3, 0]}, "ground": true, "despeckle": 2
+  }}
+}

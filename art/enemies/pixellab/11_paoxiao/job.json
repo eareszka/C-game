@@ -1,0 +1,10 @@
+{
+  "id": 11, "name": "11-paoxiao", "dir": "art/enemies/pixellab/11_paoxiao",
+  "description": "Paoxiao: a grey goat-bodied man-eater with a pale human face, small horns, a staring white eye on its flank, and pale human-skinned lower legs. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/11_paoxiao.png", "frames": 3, "rows": false, "ms": 250,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+    "map": {"*": [0, 1, 3]}, "ground": true
+  }}
+}

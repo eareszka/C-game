@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T14:58:59Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "16-kamaitachi-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "12a0cf01-d376-45e1-8b2d-40784381932d",
+        "generation_id": "576f435c-8d03-4ad7-a272-35d10cf91c06"
+      }
+    }
+  ]
+}

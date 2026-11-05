@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\53-come-at-a-body-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\53-come-at-a-body-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\53-come-at-a-body-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\53-come-at-a-body-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\53-come-at-a-body-idle-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "5d87ee62-b503-44d1-90f3-dea56a3c53bb",
+    "generation_id": "13095b3b-8b08-461a-a703-22f1cf748b16"
+  }
+}

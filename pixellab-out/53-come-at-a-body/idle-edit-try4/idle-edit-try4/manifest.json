@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit-try4",
+  "generated": "2026-10-28T08:29:35Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "idle-edit-try4_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "53-come-at-a-body-idle-frame0-try4.png"
+      ],
+      "ids": {
+        "background_job_id": "378758fc-cd8d-4008-bc4f-3fb8e07ac3ad",
+        "generation_id": "b16431e5-33e9-4e5c-b002-fb9d7a3459ac"
+      }
+    }
+  ]
+}

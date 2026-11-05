@@ -13,9 +13,16 @@
 // it, every ready enemy by tier then id. Returns how many.
 int  playtest_order(int* ids, int max);
 
-// The run's label: today's date and the direction, e.g. 2026-10-19-fwd. A
-// run is resumed by its label, so a day's pass can be played in blocks.
-void playtest_run_label(char* out, size_t n, bool reverse);
+// The check-only run: keeps, of the n ids, those listed in
+// playtest/recheck.txt (the enemies needing work: written by
+// tools/playtest_report.py from each one's latest trial), in their order.
+// Returns how many are left.
+int  playtest_recheck(int* ids, int n);
+
+// The run's label: today's date and the direction, e.g. 2026-10-19-fwd, and
+// -chk on a check-only run (so the day's full pass doesn't count as done).
+// A run is resumed by its label, so a day's pass can be played in blocks.
+void playtest_run_label(char* out, size_t n, bool reverse, bool check);
 
 // The knife a trial of enemy id fights with: the ore, oil and level a player
 // has by its tier (the table in src/playtest.cpp).

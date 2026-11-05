@@ -16,7 +16,7 @@ bool resident_find_route(ResidentPoint start, ResidentPoint target, int step, in
                 bool rejoin, const std::function<bool(ResidentPoint)>& fits,
                 const std::function<bool(ResidentPoint,ResidentPoint,bool)>& segment,
                 std::vector<ResidentPoint>& route, ResidentPoint& route_start, size_t& next_point,
-                const std::function<float(ResidentPoint)>& weight) {
+                const std::function<float(ResidentPoint)>& weight, bool quiet) {
     auto point=[&](int i)->ResidentPoint {return {(float)(ox+i%w*step),(float)(oy+i/w*step)};};
     auto nearest=[&](ResidentPoint p,bool rejoin=false)->int {
         int cx=(int)std::round((p.x-ox)/step),cy=(int)std::round((p.y-oy)/step);
@@ -30,7 +30,7 @@ bool resident_find_route(ResidentPoint start, ResidentPoint target, int step, in
         return found;
     };
     int a=nearest(start,rejoin),b=nearest(target);
-    if(a<0||b<0) {SDL_Log("Resident: inaccessible endpoint (%.0f %.0f -> %.0f %.0f)",start.x,start.y,target.x,target.y);return false;}
+    if(a<0||b<0) {if(!quiet)SDL_Log("Resident: inaccessible endpoint (%.0f %.0f -> %.0f %.0f)",start.x,start.y,target.x,target.y);return false;}
     struct Open {float score;int i;bool operator<(const Open& p)const{return score>p.score;}};
     std::priority_queue<Open> open;
     std::vector<float> cost(w*h,1e20f);
@@ -54,7 +54,7 @@ bool resident_find_route(ResidentPoint start, ResidentPoint target, int step, in
             open.push({nc+std::hypot(q.x-end.x,q.y-end.y),j});
         }
     }
-    if(!closed[b]){SDL_Log("Resident: no route to %.0f %.0f",target.x,target.y);return false;}
+    if(!closed[b]){if(!quiet)SDL_Log("Resident: no route to %.0f %.0f",target.x,target.y);return false;}
     route.clear();route.push_back(target);
     for(int i=b;i!=a;i=parent[i])route.push_back(point(i));
     route.push_back(point(a));std::reverse(route.begin(),route.end());next_point=0;

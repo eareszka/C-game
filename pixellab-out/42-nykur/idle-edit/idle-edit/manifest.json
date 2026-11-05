@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T04:21:09Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "42-nykur-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "02c27a5b-2de3-49f8-8058-fff3b72cb2fd",
+        "generation_id": "325a9eb0-86f2-40e5-8115-fd31ab902b11"
+      }
+    }
+  ]
+}

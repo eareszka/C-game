@@ -8,6 +8,10 @@ The tier sheet (tools/enemy_tier_sheet.py) with three marks a cell:
                   or, for one still to do, how close its sprite was to the bible when rated (8 closest)
     bottom left   PASS, or FAIL and the rules it breaks: the bible's checker on the sheets the game loads today
     faded         nothing left to do
+    under it      MINI: its map mini is done (art/enemies/minis/confirmed.json or its own
+                  assets/enemies/minis_NN.png, as the game counts it), NO MINI, or MINI - for one
+                  that gets none (bosses, 51 97 99); PATTERN: its bullet patterns are done
+                  (include/ready.h), or NO PAT
 What is done is data, art/enemies/redraw_status.json. The checker and sprite_style.json live on the
 sprites branch (SPRITES below); it is pointed at this tree's ENEMY_SHEETS and assets.
 Without that optional checker, LOCAL labels check primary-sheet palette,
@@ -53,6 +57,15 @@ def local_checks(sheet):
         bad.append('PAL')
     return bad
 
+NO_MINI_ELITES = {51, 97, 99}   # the top elites, with the bosses, get no map mini
+
+
+def minis_done(count):
+    with open(os.path.join(ROOT, 'art', 'enemies', 'minis', 'confirmed.json'), encoding='utf-8') as f:
+        done = set(json.load(f))
+    return done | {i for i in range(count) if os.path.exists(os.path.join(ROOT, 'assets', 'enemies', 'minis_%02d.png' % i))}
+
+
 RATED = {8: (120, 220, 60), 7: (160, 220, 60), 6: (200, 220, 60), 5: (232, 220, 60),
          4: (236, 180, 50), 3: (236, 140, 50), 2: (232, 100, 50)}
 
@@ -83,11 +96,23 @@ def main(out, complete=None):
         n = len([i for i in ids if i in left])
         return '%d left of %d' % (n, len(ids)) if n else 'all %d done' % len(ids)
 
+    tiers = re.findall(r'T_([A-Z0-9]+)', ets.table('include/enemy.h', 'ENEMY_TIERS[] = {'))
+    no_mini = {i for i, t in enumerate(tiers) if t.startswith('BOSS')} | NO_MINI_ELITES
+    minis, patterns = minis_done(count), ets.ready_ids()
+
+    def chips(i):
+        mini = (('MINI -', (70, 70, 80)) if i in no_mini else
+                ('MINI', (40, 150, 70)) if i in minis else ('NO MINI', (150, 40, 40)))
+        pattern = ('PATTERN', (40, 150, 70)) if i in patterns else ('NO PAT', (150, 40, 40))
+        return [mini, pattern]
+
     check_note = ('PASS/FAIL = bible checker.' if sc else
                   'LOCAL = primary palette/alpha/layout only; style needs review.')
     title = ('Enemy redraws: %d left of %d drawn, %d settled. Faded = done. '
-             'Number = old bible rating. %s') % (len(left), len(drawn), len(drawn) - len(left), check_note)
-    ets.main(out, tags=tags, dim=set(settled), row_note=row_note, title=title)
+             'Number = old bible rating. %s  Minis %d of %d, patterns %d of %d.') % (
+        len(left), len(drawn), len(drawn) - len(left), check_note,
+        len((minis - no_mini) & set(range(count))), count - len(no_mini), len(patterns), count)
+    ets.main(out, tags=tags, dim=set(settled), row_note=row_note, title=title, chips=chips)
     if complete is not None:
         status_path = os.path.join(ROOT, 'art', 'enemies', 'redraw_status.json')
         with open(status_path, encoding='utf-8') as f:

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "18_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1188 characters>",
+      "format": "png"
+    },
+    "action": "front view, symmetrical. A slug-faced serpent surging straight toward the viewer: its low spiked body rises and falls, its head dipping forward and its long eyestalks swaying back. No legs. Same size and colours, flat fills, black one-pixel outline.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "8b37ea05-321b-49a4-b0e3-94deabdd6093",
+    "generation_id": "a43689f0-5d39-421e-8248-fe4a8af2e77c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "surge-00.png",
+    "surge-01.png",
+    "surge-02.png",
+    "surge-03.png",
+    "surge-04.png"
+  ]
+}

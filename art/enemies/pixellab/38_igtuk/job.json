@@ -1,0 +1,37 @@
+{
+  "id": 38,
+  "name": "38-igtuk",
+  "dir": "art/enemies/pixellab/38_igtuk",
+  "description": "Igtuk: the Inuit spirit whose jaws make the booming in the mountains -- a long blue-grey beast on four long legs with curled feet, one large eye, a huge upturned jaw, a dark shaggy beard, a hair tuft at its snout tip. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "art/enemies/pixellab/38_igtuk/base/38_igtuk.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place: it breathes, then opens its huge jaw wide and snaps it shut with a boom, its shaggy beard swinging. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3
+        ]
+      },
+      "ground": true,
+      "despeckle": 2,
+      "replaces": "assets/enemies/38_igtuk.png"
+    }
+  },
+  "match": null
+}

@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-edit\\idle-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-edit\\idle-edit\\sprites\\v1\\50-teakettler-idle-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-edit\\idle-edit\\sprites\\v1\\idle-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "70dea81e-6ae2-4c81-929e-5902316f397c",
+    "generation_id": "4c8d039f-8dc3-4dfd-abaa-3fc9b163ec03"
+  },
+  "route": "edit-images-v2"
+}

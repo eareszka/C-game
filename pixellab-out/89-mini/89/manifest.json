@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "89",
+  "generated": "2026-11-02T11:45:46Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "89_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "ripd-00.png",
+        "ripd-01.png",
+        "ripd-02.png",
+        "ripd-03.png",
+        "ripd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "237a2057-449e-4234-ba68-4da7edeedf9a",
+        "generation_id": "43efd685-a4c5-4ad2-8f3e-cef980d97c82"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "89_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "ripu-00.png",
+        "ripu-01.png",
+        "ripu-02.png",
+        "ripu-03.png",
+        "ripu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "10a05a7c-2bf2-495e-8158-b122003dd789",
+        "generation_id": "95cf2f9a-cba0-4629-a2d4-45dfb6db3ab9"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "89_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "ripl-00.png",
+        "ripl-01.png",
+        "ripl-02.png",
+        "ripl-03.png",
+        "ripl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "10741211-765b-4e58-b881-96f21900a35a",
+        "generation_id": "4760b189-d271-49b0-8988-3d27af56f1da"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "89_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "de1d4e03-0c8b-4023-8206-9b92e38ddec4",
+        "generation_id": "26615bbf-a639-4c52-9e1b-4d77b0368fba"
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "36-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1544 characters>",
+      "format": "png"
+    },
+    "action": "running in place, a loping hound gallop, legs reaching and gathering, its coiled tail bouncing, head low and silent, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "9b4d4bcb-ebdf-4ab8-aaf5-f9b7eac3fd90",
+    "generation_id": "7732be08-fb01-4d00-a1aa-4464512e6c49"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runl-00.png",
+    "runl-01.png",
+    "runl-02.png",
+    "runl-03.png",
+    "runl-04.png"
+  ]
+}

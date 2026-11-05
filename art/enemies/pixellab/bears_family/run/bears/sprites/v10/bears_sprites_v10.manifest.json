@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "bears_sprites_v10",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1620 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact bear, pose and shapes. Recolour it as a white polar bear with a pale blue shadow and add a jagged pale blue ice crust on its back and shoulders. Small ears.",
+    "width": 64,
+    "height": 64,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d82fa1da-21ff-420b-90c7-db22e19f2367",
+    "generation_id": "d91de396-bfae-49fc-9b7d-bb8dccc0cdfb"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e20.png"
+  ]
+}

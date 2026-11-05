@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1644-source-make-this-creature-much-fatter-and-strong",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1504 characters>",
+      "format": "png"
+    },
+    "description": "<elided 395 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 583
+  },
+  "links": {},
+  "seed": 583,
+  "ids": {
+    "background_job_id": "6e1c0f0e-f08e-43f0-9768-159346d49d5d",
+    "generation_id": "775139e4-6caa-42a2-9823-28bd642c3e17"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f3.png"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-29T04:05:02Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "20-sermilik-idle-d-00.png",
+        "20-sermilik-idle-d-01.png",
+        "20-sermilik-idle-d-02.png",
+        "20-sermilik-idle-d-03.png",
+        "20-sermilik-idle-d-04.png",
+        "20-sermilik-idle-d-05.png",
+        "20-sermilik-idle-d-06.png",
+        "20-sermilik-idle-d-07.png",
+        "20-sermilik-idle-d-08.png"
+      ],
+      "ids": {
+        "background_job_id": "869d4fd3-e9bc-44c3-a3bb-065521920c19",
+        "generation_id": "14c34489-1606-4aaa-ada1-af35a33a98bc"
+      }
+    }
+  ]
+}

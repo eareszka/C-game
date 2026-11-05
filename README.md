@@ -21,7 +21,7 @@ mainland and the first three bosses. There's no music yet; the sound effects are
 - **Battles.** Real-time bullet-pattern fights against a roster of enemies and bosses,
   with switchable weapons and loot drops.
 - **Crafting.** Recipe books from the book shop, resources from trees, rocks and ore
-  veins, and a raft that's worn like boots.
+  veins, and a raft that's worn like gear.
 - **A living town.** NPCs (courier, gardener, fisher, sailor, woodcutter, residents)
   follow daily routines on a world clock.
 - **Permanent consequences.** Nothing grows back: trees you cut and enemies you beat

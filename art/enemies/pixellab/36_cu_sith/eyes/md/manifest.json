@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "md",
+  "generated": "2026-10-29T16:24:55Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "md_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "eyesd.png"
+      ],
+      "ids": {
+        "background_job_id": "65fb889d-2037-450b-9459-f2f86b0540b7",
+        "generation_id": "f7c59d48-4527-4468-8a05-93cd24d92659"
+      }
+    }
+  ]
+}

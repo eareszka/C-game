@@ -1,0 +1,598 @@
+{
+  "approved_design": true,
+  "approved_animation": false,
+  "installed": false,
+  "frame_size": [
+    78,
+    59
+  ],
+  "original_frame_size": [
+    78,
+    59
+  ],
+  "working_padding_each_side": 16,
+  "resampled_pixels": false,
+  "runtime_loop": [
+    0,
+    1,
+    0,
+    2
+  ],
+  "runtime_loop_ms": [
+    400,
+    250,
+    400,
+    250
+  ],
+  "frames": {
+    "D": [
+      {
+        "bounds": [
+          3,
+          15,
+          76,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 73 wide x 34 tall (columns 3-75, rows 15-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 10.9% of 1415 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          4,
+          14,
+          75,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 71 wide x 35 tall (columns 4-74, rows 14-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.4% of 1339 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          1,
+          17,
+          76,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 75 wide x 32 tall (columns 1-75, rows 17-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 10.4% of 1248 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "DR": [
+      {
+        "bounds": [
+          11,
+          11,
+          64,
+          48
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 53 wide x 37 tall (columns 11-63, rows 11-47)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.2% of 1202 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          12,
+          10,
+          63,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 51 wide x 37 tall (columns 12-62, rows 10-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.3% of 1190 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          12,
+          10,
+          63,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 51 wide x 39 tall (columns 12-62, rows 10-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.6% of 1114 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "R": [
+      {
+        "bounds": [
+          19,
+          3,
+          58,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 39 wide x 46 tall (columns 19-57, rows 3-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.8% of 988 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          19,
+          4,
+          58,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 39 wide x 43 tall (columns 19-57, rows 4-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 12.4% of 967 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          17,
+          8,
+          58,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 41 wide x 39 tall (columns 17-57, rows 8-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.0% of 912 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "UR": [
+      {
+        "bounds": [
+          10,
+          9,
+          67,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 57 wide x 40 tall (columns 10-66, rows 9-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.0% of 1433 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          8,
+          9,
+          68,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 60 wide x 38 tall (columns 8-67, rows 9-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.2% of 1397 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          9,
+          8,
+          69,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 60 wide x 39 tall (columns 9-68, rows 8-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 9.7% of 1303 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "U": [
+      {
+        "bounds": [
+          3,
+          16,
+          76,
+          55
+        ],
+        "colors": 5,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 4 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 73 wide x 39 tall (columns 3-75, rows 16-54)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 9.0% of 1496 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          2,
+          17,
+          76,
+          55
+        ],
+        "colors": 5,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 4 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 74 wide x 38 tall (columns 2-75, rows 17-54)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 8.2% of 1462 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          3,
+          16,
+          76,
+          55
+        ],
+        "colors": 5,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 4 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 73 wide x 39 tall (columns 3-75, rows 16-54)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 9.3% of 1442 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "UL": [
+      {
+        "bounds": [
+          11,
+          9,
+          68,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 57 wide x 40 tall (columns 11-67, rows 9-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.0% of 1433 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          10,
+          9,
+          70,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 60 wide x 38 tall (columns 10-69, rows 9-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.2% of 1397 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          9,
+          8,
+          69,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 60 wide x 39 tall (columns 9-68, rows 8-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 9.7% of 1303 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "L": [
+      {
+        "bounds": [
+          20,
+          3,
+          59,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 39 wide x 46 tall (columns 20-58, rows 3-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.8% of 988 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          20,
+          4,
+          59,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 39 wide x 43 tall (columns 20-58, rows 4-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 12.4% of 967 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          20,
+          8,
+          61,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 41 wide x 39 tall (columns 20-60, rows 8-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 11.0% of 912 px (reference 9-14%)"
+        ]
+      }
+    ],
+    "DL": [
+      {
+        "bounds": [
+          14,
+          11,
+          67,
+          48
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 53 wide x 37 tall (columns 14-66, rows 11-47)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.2% of 1202 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          15,
+          10,
+          66,
+          47
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 51 wide x 37 tall (columns 15-65, rows 10-46)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.3% of 1190 px (reference 9-14%)"
+        ]
+      },
+      {
+        "bounds": [
+          15,
+          10,
+          66,
+          49
+        ],
+        "colors": 6,
+        "off_palette": 0,
+        "partial_alpha": 0,
+        "tile_violations": [],
+        "outline_checks": [
+          "palette: 0 off-palette pixels; 5 colours plus black",
+          "  341e10 hue 23 sat 69 value 20",
+          "  595965 hue 240 sat 12 value 40",
+          "  8d6b4f hue 27 sat 44 value 55",
+          "  f0bc3c hue 43 sat 75 value 94",
+          "  fcfcfc hue 0 sat 0 value 99",
+          "drawn box: 51 wide x 39 tall (columns 15-65, rows 10-48)",
+          "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+          "interior black: 13.6% of 1114 px (reference 9-14%)"
+        ]
+      }
+    ]
+  },
+  "failures": [],
+  "runtime_roundtrip_exact": true,
+  "review_roundtrip_exact": true,
+  "original_hashes_preserved": true
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "run": "walkd_animations_v1",
+  "provider": "pixellab",
+  "route": "background-job",
+  "collected": "98470eee-a121-4de6-8d69-3966bab59367",
+  "ids": {
+    "job_id": "98470eee-a121-4de6-8d69-3966bab59367"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

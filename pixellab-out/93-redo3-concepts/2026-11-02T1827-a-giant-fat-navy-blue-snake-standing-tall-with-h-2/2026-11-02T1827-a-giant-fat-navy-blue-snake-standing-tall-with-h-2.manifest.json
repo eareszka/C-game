@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1827-a-giant-fat-navy-blue-snake-standing-tall-with-h-2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 415 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "no_background": true,
+    "init_image": {
+      "type": "base64",
+      "base64": "<elided 1412 characters>",
+      "format": "png"
+    },
+    "seed": 852
+  },
+  "links": {},
+  "seed": 852,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "g2.png"
+  ]
+}

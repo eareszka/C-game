@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1814-sketch-keep-this-composition-exactly-a-very-tall-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 992 characters>",
+      "format": "png"
+    },
+    "description": "<elided 438 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 813
+  },
+  "links": {},
+  "seed": 813,
+  "ids": {
+    "background_job_id": "6aa1ba68-5edd-49dc-b3e0-1c69ecb47e4e",
+    "generation_id": "2360ae1c-94ae-4c9d-b3cc-608b6c52aa24"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e3.png"
+  ]
+}

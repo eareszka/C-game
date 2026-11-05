@@ -1,0 +1,22 @@
+{
+  "run": "walk-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\50-teakettler-walk-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\50-teakettler-walk-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\50-teakettler-walk-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\50-teakettler-walk-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\50-teakettler-walk-ur-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\walk-animate-UR\\walk-animate-ur\\animations\\v1\\walk-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "1320d54a-6ecd-4661-8025-463390f45740",
+    "generation_id": "d562b67f-4045-4825-9d34-c24486a5395f"
+  }
+}

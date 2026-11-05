@@ -1,0 +1,25 @@
+{
+  "run": "idle-rotate_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\85-nanabolele-idle-views-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-rotate\\idle-rotate\\rotations\\v1\\idle-rotate_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "76a819f2-cbff-4fb0-98b6-1996cb8fb094",
+    "generation_id": "ab4fc984-8f0e-4a0a-84ad-fe348ec52b3f"
+  }
+}

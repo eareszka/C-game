@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "A blue winged gargoyle demon seen from the front, tan chest, two bat wings, red claws. Same silhouette exactly, add nothing above or behind it",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 2136 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 84,
+      "height": 84
+    },
+    "target_size": {
+      "width": 104,
+      "height": 104
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-104.png"
+  ]
+}

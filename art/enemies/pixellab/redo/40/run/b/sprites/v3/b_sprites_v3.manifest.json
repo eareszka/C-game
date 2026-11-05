@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "b_sprites_v3",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 622 characters>",
+    "image_size": {
+      "width": 88,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "no_background": true,
+    "seed": 4003
+  },
+  "links": {},
+  "seed": 4003,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "t4003.png"
+  ]
+}

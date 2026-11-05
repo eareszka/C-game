@@ -1,0 +1,25 @@
+{
+  "run": "idle-rotate_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\26-akhekh-idle-views-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-rotate\\idle-rotate\\rotations\\v1\\idle-rotate_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "8e16d525-5606-4682-a63a-7ff3c9e4655a",
+    "generation_id": "d010a579-4480-4622-bc18-082f5398d988"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1729-source-keep-this-exact-serpent-pose-size-and-col",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2148 characters>",
+      "format": "png"
+    },
+    "description": "<elided 429 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 652
+  },
+  "links": {},
+  "seed": 652,
+  "ids": {
+    "background_job_id": "18ace3ae-7b41-4315-bcab-f65c12d07a82",
+    "generation_id": "7acb095b-18db-43e1-89f4-22ee570e78aa"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "x2.png"
+  ]
+}

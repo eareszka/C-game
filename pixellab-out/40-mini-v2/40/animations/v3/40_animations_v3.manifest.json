@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "40_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 772 characters>",
+      "format": "png"
+    },
+    "action": "beached stone whale flopping uncomfortably on the ground, body heaving up and slapping back down, jaws gasping, no legs, no flippers, no fin on the tail, same size and colours",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "add2c728-c3a3-4e41-85d5-063dcc7f6541",
+    "generation_id": "81220133-26e7-4b39-a26f-68277d642fad"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flopl-00.png",
+    "flopl-01.png",
+    "flopl-02.png",
+    "flopl-03.png",
+    "flopl-04.png"
+  ]
+}

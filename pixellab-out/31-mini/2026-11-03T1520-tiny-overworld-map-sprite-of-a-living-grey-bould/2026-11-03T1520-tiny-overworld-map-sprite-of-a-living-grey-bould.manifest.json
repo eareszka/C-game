@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1520-tiny-overworld-map-sprite-of-a-living-grey-bould",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 293 characters>",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD439I2heG0wmUG3ZQtDAAuQQWi3Kf8BgAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1401
+  },
+  "links": {},
+  "seed": 1401,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f1.png"
+  ]
+}

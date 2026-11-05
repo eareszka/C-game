@@ -7,6 +7,8 @@
     python art/structures/gen_entrance_art.py --tables --villages    # and the villages' sets' own cells
     python art/structures/gen_entrance_art.py --tables --grounds     # and the grounds' blocks' own cells
     python art/structures/gen_entrance_art.py --tables --props       # and the props' own cells
+    python art/structures/gen_entrance_art.py --tables --xuelin      # and town 2's own cells
+    python art/structures/gen_entrance_art.py --tables --strip STEAM # and that one sprite strip's cells
     python tools/palette_pass.py --write                # always last
 
 Each entrance is drawn through the pixel plugin into art/structures/entrances/
@@ -125,7 +127,7 @@ ART = [
 # player meets -- carry them, as a block does.
 SPRITES = [
     ("GRAVESTONE", "entrances/gravestones.png", 6),
-    ("STEAM", "entrances/steam.png", 4),
+    ("STEAM", "entrances/steam.png", 4),          # three frames played (src/core.h's beat), the fourth cell kept empty so nothing after it moves
     ("OASIS_WATER", "entrances/oasis_water.png", 1),
     ("YARD_FENCE", "entrances/yard_walls.png", 16, 2, 0),
     ("YARD_WALL", "entrances/yard_walls.png", 16, 2, 256),
@@ -227,6 +229,14 @@ VILLAGES = [
     ("VS_WASTE",  "villages/waste.png",  0, 220),
 ]
 
+# (export, sheet col, sheet row) -- town 2, Xuelin's buildings (xuelin/
+# <name>_design.py). Entrance art to the game as the houses are; its blueprint
+# says where each cell goes (tools/town2_layout.py). Each at fixed cells of
+# its own in XUELIN_BAND, the free rows below the band, written by --xuelin
+# and by nothing else.
+XUELIN = [("xuelin/%s.png" % n, col, row) for n, (col, row) in overworld_style.XUELIN_AT.items()]
+XUELIN_BAND = (0, 64, 255, 175)
+
 
 def palette():
     cols = set()
@@ -323,7 +333,7 @@ def blocks():
         im = Image.open(os.path.join(HERE, path)).convert("RGBA")
         lay = crop_layers(path, 0, 0, im.width, im.height)
         out.append(("TOWN_HOUSE", 0, im, col, row, roles("TOWN_HOUSE", -1, im, lay[1]), "-1", lay))
-    for vset, path, col, row in VILLAGES:
+    for path, col, row in XUELIN + [(p, c, r) for _, p, c, r in VILLAGES]:
         im = Image.open(os.path.join(HERE, path)).convert("RGBA")
         lay = crop_layers(path, 0, 0, im.width, im.height)
         out.append(("TOWN_HOUSE", 0, im, col, row, roles("TOWN_HOUSE", -1, im, lay[1]), "-1", lay))
@@ -457,7 +467,10 @@ def props(legal):
         "                  HarvestTarget target; int item[2], n[2]; };",
         "#define PROP_BAND_ROW0 %d" % r0,
         "#define PROP_BAND_ROW1 %d" % r1,
-        "static const PropKind PROP_KINDS[] = {"] + rows + ["};", ""]), px
+        "static const PropKind PROP_KINDS[] = {"] + rows + ["};",
+        "// Each kind's name, by the same index.",
+        "static const char* const PROP_NAMES[] = { %s };" % ", ".join('"%s"' % pr[0] for pr in prop_table.PROPS),
+        ""]), px
 
 
 def block_pixels(name, im, col, row, legal, px):
@@ -475,6 +488,15 @@ def block_pixels(name, im, col, row, legal, px):
     for y in range(im.height):
         for x in range(im.width):
             px[(col * CELL + x, row * CELL + y)] = p[x, y][:3] if p[x, y][3] else KEY
+
+
+def xuelin(legal):
+    """{sheet pixel: colour} of Xuelin's cells (XUELIN): its band cleared, then its art."""
+    c0, r0, c1, r1 = XUELIN_BAND
+    px = {(x, y): KEY for y in range(r0 * CELL, (r1 + 1) * CELL) for x in range(c0 * CELL, (c1 + 1) * CELL)}
+    for path, col, row in XUELIN:
+        block_pixels(path, Image.open(os.path.join(HERE, path)).convert("RGBA"), col, row, legal, px)
+    return px
 
 
 def grounds(legal):
@@ -574,6 +596,10 @@ def main():
     # the band as it should be: key everywhere, then the art
     want = {(x, y): KEY for y in range(ROW0 * CELL, ROW_END * CELL) for x in range(SHEET_COLS * CELL)}
     lines, sprites, depth, at, rooms, houses, furn = [], [], [], {}, [], [], {}
+    # --strip NAME: that one strip of SPRITES written alone, its cells as the
+    # band would have them -- without --stamp, which writes the whole band
+    strip = sys.argv[sys.argv.index("--strip") + 1] if "--strip" in sys.argv else None
+    strip_px = {}
     for t, size, im, col, row, role, biome, lay in blocks():
         p = im.load()
         cw, ch = im.width // CELL, im.height // CELL
@@ -590,6 +616,8 @@ def main():
             for x in range(im.width):
                 if p[x, y][3]:
                     want[(col * CELL + x, row * CELL + y)] = p[x, y][:3]
+                if t == strip and size == -1:
+                    strip_px[(col * CELL + x, row * CELL + y)] = p[x, y][:3] if p[x, y][3] else KEY
         if lay:
             footy, foot, y0, way = lay
             for cy in range(ch):
@@ -669,11 +697,13 @@ def main():
     vg_changed = sum(1 for q, c in vg_px.items() if sp[q] != c)
     gd_px = grounds(legal)
     gd_changed = sum(1 for q, c in gd_px.items() if sp[q] != c)
+    xl_px = xuelin(legal)
+    xl_changed = sum(1 for q, c in xl_px.items() if sp[q] != c)
     pr_text, pr_px = props(legal)
     t7 = write_if_changed(PROPS_INC, pr_text)
     pr_changed = sum(1 for q, c in pr_px.items() if sp[q] != c)
-    print("structure art: %d sheet pixels differ, %d of the landmarks' own, %d of the villages' own, %d of the grounds' own, %d of the props' own, tables %s"
-          % (changed, lm_changed, vg_changed, gd_changed, pr_changed,
+    print("structure art: %d sheet pixels differ, %d of the landmarks' own, %d of the villages' own, %d of the grounds' own, %d of the props' own, %d of Xuelin's own, tables %s"
+          % (changed, lm_changed, vg_changed, gd_changed, pr_changed, xl_changed,
              "differ" if t1 or t2 or t3 or t4 or t5 or t6 or t7 else "same"))
     if "--props" in sys.argv and pr_changed:
         for q, c in pr_px.items():
@@ -695,6 +725,18 @@ def main():
             sp[q] = c
         sheet.convert("RGBA").save(SHEET)
         print("the grounds' cells written")
+    if strip:
+        assert strip_px, "no strip named %s in SPRITES" % strip
+        n = sum(1 for q, c in strip_px.items() if sp[q] != c)
+        for q, c in strip_px.items():
+            sp[q] = c
+        sheet.convert("RGBA").save(SHEET)
+        print("the %s strip's cells written (%d pixels differed)" % (strip, n))
+    if "--xuelin" in sys.argv and xl_changed:
+        for q, c in xl_px.items():
+            sp[q] = c
+        sheet.convert("RGBA").save(SHEET)
+        print("Xuelin's cells written")
     if "--stamp" in sys.argv:
         if changed:
             for q, c in want.items():

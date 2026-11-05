@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "m_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2664 characters>",
+      "format": "png"
+    },
+    "description": "Chipekwe: a huge heavy periwinkle-blue beast, a curling trunk, one ivory horn above it, massive legs, navy belly, thick tail. Black outline, flat pixel art.",
+    "no_background": true,
+    "seed": 621
+  },
+  "links": {},
+  "seed": 621,
+  "ids": {
+    "background_job_id": "f2a9f8d8-fb2b-4c73-95e7-54c5620e0edc",
+    "generation_id": "e0162a38-c5d1-4979-80b8-15382d98b8aa"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

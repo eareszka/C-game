@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 2288 characters>",
+          "format": "png"
+        },
+        "width": 98,
+        "height": 65
+      }
+    ],
+    "image_size": {
+      "width": 98,
+      "height": 65
+    },
+    "description": "<elided 930 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a2912fc9-e886-4421-b239-b85c923bdafc",
+    "generation_id": "0548e99e-1878-4a9b-964e-6c871016f1b4"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "40-slide-rock-bolter-idle-frame0.png"
+  ]
+}

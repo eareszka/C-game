@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1625-crimson-fireball-spirit-with-a-giant-hand-inside",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "crimson fireball spirit with a giant hand inside, ball of flat red and orange flame, a huge pale hand reaching out of the fire with mouths on its fingertips, big simple flat shapes, flat colours, boss game sprite, no ground",
+    "image_size": {
+      "width": 128,
+      "height": 80
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1513
+  },
+  "links": {},
+  "seed": 1513,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c3.png"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1558-tiny-game-map-sprite-hulking-slate-golem-warrior",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 286 characters>",
+    "image_size": {
+      "width": 48,
+      "height": 36
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/FgwP/t8159x8AQE4J3KjWodsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1463
+  },
+  "links": {},
+  "seed": 1463,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "m3.png"
+  ]
+}

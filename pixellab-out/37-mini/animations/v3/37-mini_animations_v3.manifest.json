@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "37-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1400 characters>",
+      "format": "png"
+    },
+    "action": "trotting in place, legs stepping high, its branching antlers bobbing, its wispy tail swaying, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "05bdc5f9-0b61-4ea1-a04b-a0d318788bb1",
+    "generation_id": "c879de61-e70c-41f1-98ea-f080d39d1d86"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runl-00.png",
+    "runl-01.png",
+    "runl-02.png",
+    "runl-03.png",
+    "runl-04.png"
+  ]
+}

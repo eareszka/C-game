@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-edit\\idle-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-edit\\idle-edit\\sprites\\v1\\53-come-at-a-body-idle-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\idle-edit\\idle-edit\\sprites\\v1\\idle-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "aaebd0f8-dad0-4c82-b52c-c23cf4ae7e74",
+    "generation_id": "7af3d3a3-3b05-4b0e-bbac-f5a4ac4d2eef"
+  },
+  "route": "edit-images-v2"
+}

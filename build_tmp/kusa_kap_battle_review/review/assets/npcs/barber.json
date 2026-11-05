@@ -1,0 +1,375 @@
+{
+  "frames": [
+    {
+      "filename": "27_barber_down_0",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_down_1",
+      "frame": {
+        "x": 14,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_down_2",
+      "frame": {
+        "x": 28,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_up_0",
+      "frame": {
+        "x": 0,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_up_1",
+      "frame": {
+        "x": 14,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_up_2",
+      "frame": {
+        "x": 28,
+        "y": 20,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_left_0",
+      "frame": {
+        "x": 0,
+        "y": 40,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_left_1",
+      "frame": {
+        "x": 14,
+        "y": 40,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_left_2",
+      "frame": {
+        "x": 28,
+        "y": 40,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_right_0",
+      "frame": {
+        "x": 0,
+        "y": 60,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_right_1",
+      "frame": {
+        "x": 14,
+        "y": 60,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    },
+    {
+      "filename": "27_barber_right_2",
+      "frame": {
+        "x": 28,
+        "y": 60,
+        "w": 14,
+        "h": 20
+      },
+      "duration": 200,
+      "rotated": false,
+      "trimmed": false,
+      "sourceSize": {
+        "w": 14,
+        "h": 20
+      },
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 14,
+        "h": 20
+      }
+    }
+  ],
+  "meta": {
+    "image": "27_barber.png",
+    "size": {
+      "w": 42,
+      "h": 80
+    },
+    "scale": "1",
+    "frameTags": [
+      {
+        "name": "down",
+        "from": 0,
+        "to": 2,
+        "direction": "forward"
+      },
+      {
+        "name": "up",
+        "from": 3,
+        "to": 5,
+        "direction": "forward"
+      },
+      {
+        "name": "left",
+        "from": 6,
+        "to": 8,
+        "direction": "forward"
+      },
+      {
+        "name": "right",
+        "from": 9,
+        "to": 11,
+        "direction": "forward"
+      }
+    ]
+  },
+  "design": {
+    "name": "27_barber",
+    "label": "Barber",
+    "head": "part",
+    "outfit": "formal",
+    "face": "moustache",
+    "palette": {
+      "K": "000000",
+      "S": "f0b890",
+      "H": "633e1b",
+      "C": "e8e0c0"
+    }
+  },
+  "origin": {
+    "x": 7,
+    "y": 19
+  },
+  "playback": {
+    "frame_duration_ms": 200,
+    "stop_behavior": "standing",
+    "down": {
+      "idle_frame": 0,
+      "walk_sequence": [
+        1,
+        0,
+        2,
+        0
+      ]
+    },
+    "up": {
+      "idle_frame": 3,
+      "walk_sequence": [
+        4,
+        3,
+        5,
+        3
+      ]
+    },
+    "left": {
+      "idle_frame": 6,
+      "walk_sequence": [
+        7,
+        6,
+        8,
+        6
+      ]
+    },
+    "right": {
+      "idle_frame": 9,
+      "walk_sequence": [
+        10,
+        9,
+        11,
+        9
+      ]
+    }
+  },
+  "native_aseprite": {
+    "stored_pose_order": [
+      "step_a",
+      "standing",
+      "step_b"
+    ],
+    "tag_playback": "pingpong",
+    "idle_frames_zero_based": [
+      1,
+      4,
+      7,
+      10
+    ],
+    "note": "PNG/JSON atlas keeps standing, step_a, step_b order. Native tag loops step_a, standing, step_b, standing."
+  },
+  "correction": "Side eyes cleared of player remnants; glasses lenses solid black, as requested."
+}

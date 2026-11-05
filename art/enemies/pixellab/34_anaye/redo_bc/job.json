@@ -1,0 +1,17 @@
+{
+  "id": 34,
+  "name": "34-anaye-bc",
+  "dir": "art/enemies/pixellab/34_anaye/redo_bc",
+  "description": "armoured bone-masked titan with a feather crest and a huge axe",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/redraws/34_anaye.png",
+      "frames": 9,
+      "rows": true,
+      "ms": 260,
+      "views": ["D"],
+      "make": "animate"
+    }
+  }
+}

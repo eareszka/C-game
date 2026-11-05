@@ -1,0 +1,22 @@
+{
+  "original": {
+    "exit_code": 0,
+    "stdout": "enemy 45 KUSA KAP seed 3872026: 12.0s, hits 0, peak bullets 50/1024, frames at cap 0, spawns <40px 0 (closest 217.7), tightest pass 23.5px at t=10.87\n  enemy nearest 215 px, passes within 60 px: 0\n",
+    "screenshots": [
+      "pose_1.png",
+      "pose_2.png",
+      "pose_3.png"
+    ]
+  },
+  "review": {
+    "exit_code": 0,
+    "stdout": "enemy 45 KUSA KAP seed 3872026: 12.0s, hits 0, peak bullets 50/1024, frames at cap 0, spawns <40px 0 (closest 217.7), tightest pass 23.5px at t=10.87\n  enemy nearest 215 px, passes within 60 px: 0\n",
+    "screenshots": [
+      "pose_1.png",
+      "pose_2.png",
+      "pose_3.png"
+    ]
+  },
+  "gameplay_stdout_equal": true,
+  "original_hashes_preserved": true
+}

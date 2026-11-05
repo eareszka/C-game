@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1503-a-gaunt-charcoal-grey-spidery-beast-slate-wolf-b",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 348 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "direction": "west",
+    "no_background": true,
+    "seed": 844
+  },
+  "links": {},
+  "seed": 844,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p2.png"
+  ]
+}

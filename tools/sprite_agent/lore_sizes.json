@@ -1,0 +1,371 @@
+{
+ "_": "Where each enemy falls in its tier's size range, by how big it is on A Book of Creatures, https://abookofcreatures.com/ (the user, 2026-11-04). 0 is the bottom of the range and 1 the top. Below 0 or above 1 goes past the range, by at most 10% of that end. guess: true means the entry gives no size, so the place is judged from what it does say. side: a size in px the user set by hand, which overrides pos and the tier's range.",
+ "78": {
+  "pos": -0.36,
+  "why": "The size of two clenched fists",
+  "url": "https://abookofcreatures.com/2021/05/07/zankallala/"
+ },
+ "67": {
+  "pos": -0.27,
+  "why": "The size of a pigeon",
+  "url": "https://abookofcreatures.com/2020/05/25/lagopus/"
+ },
+ "24": {
+  "pos": -0.18,
+  "why": "One foot long",
+  "url": "https://abookofcreatures.com/2019/04/08/zoureg/"
+ },
+ "28": {
+  "pos": 0.0,
+  "why": "Grouped with the birds as a small fowl",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/05/06/opimachus/"
+ },
+ "80": {
+  "pos": 0.1,
+  "why": "Box-like",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/11/23/bes-kotak/"
+ },
+ "81": {
+  "pos": 0.2,
+  "why": "Nothing on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/05/18/ieltxu/"
+ },
+ "22": {
+  "pos": 0.25,
+  "why": "Nothing on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/09/20/cactus-cat/"
+ },
+ "21": {
+  "pos": 0.4,
+  "why": "Up to a fathom (1.8 m) long",
+  "url": "https://abookofcreatures.com/2020/12/04/asp/"
+ },
+ "82": {
+  "pos": 0.5,
+  "why": "Similar to humans in appearance",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/05/03/nadubi/"
+ },
+ "63": {
+  "pos": 0.5,
+  "why": "5 ft 10 to 6 ft tall, and narrow enough to hide behind a ten-inch tree",
+  "url": "https://abookofcreatures.com/2017/02/06/hidebehind/"
+ },
+ "77": {
+  "pos": 0.55,
+  "why": "The size of a seal or porpoise",
+  "url": "https://abookofcreatures.com/2020/11/09/hoga/"
+ },
+ "64": {
+  "pos": 0.55,
+  "why": "Resembles an alligator with short legs",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2017/02/03/dungavenhooter/"
+ },
+ "61": {
+  "pos": 0.6,
+  "why": "The size of a small pony",
+  "url": "https://abookofcreatures.com/2017/06/09/roperite/"
+ },
+ "76": {
+  "pos": 0.7,
+  "why": "Two humps, each three feet high and three feet long",
+  "url": "https://abookofcreatures.com/2021/01/18/loch-oich-monster/"
+ },
+ "79": {
+  "pos": 0.8,
+  "why": "A giant mouse with a head the size of a walrus's",
+  "url": "https://abookofcreatures.com/2020/10/26/ugjuknarpak/"
+ },
+ "62": {
+  "pos": 1.2,
+  "why": "13 feet tall, the largest beast of the lumberwoods",
+  "url": "https://abookofcreatures.com/2019/01/07/hugag/"
+ },
+ "16": {
+  "pos": -0.55,
+  "why": "Looks something like a weasel",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2016/04/25/kamaitachi/"
+ },
+ "43": {
+  "pos": 0.0,
+  "why": "Sluglike with humanoid arms, in a large shell",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/05/31/sazae-oni/"
+ },
+ "87": {
+  "pos": 0.15,
+  "why": "A hyena, bigger than the striped kind",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/02/22/corocotta/"
+ },
+ "89": {
+  "pos": 0.2,
+  "why": "Like a cowhide stretched out flat",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/11/25/cuero/"
+ },
+ "86": {
+  "pos": 0.3,
+  "why": "As big as a wild donkey",
+  "url": "https://abookofcreatures.com/2021/02/26/leucrocotta/"
+ },
+ "88": {
+  "pos": 0.3,
+  "why": "Reaches its flippers over the sides of a boat",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/12/11/amixsak/"
+ },
+ "42": {
+  "pos": 0.45,
+  "why": "A horse, described as massive and stout",
+  "url": "https://abookofcreatures.com/2021/06/04/nykur/"
+ },
+ "19": {
+  "pos": 0.5,
+  "why": "A bull calf or a huge horse",
+  "url": "https://abookofcreatures.com/2019/04/12/skeljaskrimsli/"
+ },
+ "39": {
+  "pos": 0.5,
+  "why": "A chameleon on long legs like bamboo",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/02/12/ajaju/"
+ },
+ "84": {
+  "pos": 0.6,
+  "why": "As big as a bear, but taller",
+  "url": "https://abookofcreatures.com/2020/05/22/kigutilik/"
+ },
+ "85": {
+  "pos": 0.7,
+  "why": "Eats people and cattle",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/04/16/nanabolele/"
+ },
+ "20": {
+  "pos": 0.8,
+  "why": "An enormous polar bear",
+  "url": "https://abookofcreatures.com/2019/06/21/sermilik/"
+ },
+ "33": {
+  "pos": 0.9,
+  "why": "An enormous mobile stone",
+  "url": "https://abookofcreatures.com/2020/10/23/tsenagahi/"
+ },
+ "27": {
+  "pos": 1.1,
+  "why": "About 40 feet long",
+  "url": "https://abookofcreatures.com/2021/05/21/grootslang/"
+ },
+ "18": {
+  "pos": 1.2,
+  "why": "A huge lake monster; another Icelandic serpent is 30 to 40 m",
+  "url": "https://abookofcreatures.com/2020/12/21/vatnaormur/"
+ },
+ "25": {
+  "pos": 0.0,
+  "why": "Something like a large ant or spider",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/08/19/myrmecoleon/"
+ },
+ "37": {
+  "pos": 0.1,
+  "why": "Nothing on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/11/01/celestial-stag/"
+ },
+ "92": {
+  "pos": 0.15,
+  "why": "A deer with large antlers",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/02/08/siehnam/"
+ },
+ "36": {
+  "side": 56,
+  "pos": 0.2,
+  "why": "An enormous dog, the size of a two-year-old stirk. You asked for it much smaller",
+  "url": "https://abookofcreatures.com/2020/04/13/cu-sith/"
+ },
+ "35": {
+  "pos": 0.3,
+  "why": "A moose or elk",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/10/30/lomie/"
+ },
+ "38": {
+  "pos": 0.4,
+  "why": "A cavernous mouth, nothing else on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/07/22/igtuk/"
+ },
+ "96": {
+  "pos": 0.5,
+  "why": "Wraps its long fins around a boat",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2019/08/23/bregdi/"
+ },
+ "45": {
+  "pos": 0.55,
+  "why": "An eagle that carries off dugongs",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/03/05/kusa-kap/"
+ },
+ "90": {
+  "pos": 0.65,
+  "why": "Massive, and kills hippos; the user asked for bigger on 2026-11-05 (\"Not big enough\"), so it sits at the 10% limit past Severe",
+  "url": "https://abookofcreatures.com/2020/05/29/chipekwe/",
+  "side": 88
+ },
+ "47": {
+  "side": 110,
+  "pos": 0.7,
+  "why": "30 feet long. You asked for it much larger",
+  "url": "https://abookofcreatures.com/2021/05/10/moha-moha/"
+ },
+ "93": {
+  "pos": 0.7,
+  "why": "30 feet long",
+  "url": "https://abookofcreatures.com/2020/06/01/chipique/"
+ },
+ "91": {
+  "pos": 0.75,
+  "why": "Enormous; a carving of it is 39 feet long",
+  "url": "https://abookofcreatures.com/2021/02/15/kurrea/"
+ },
+ "94": {
+  "pos": 0.85,
+  "why": "A huge sea monster, likely a whale",
+  "url": "https://abookofcreatures.com/2019/03/15/trochus/"
+ },
+ "46": {
+  "pos": 1.0,
+  "why": "Gigantic, with arms up to 75 feet long",
+  "url": "https://abookofcreatures.com/2020/06/15/lusca/"
+ },
+ "40": {
+  "pos": 1.2,
+  "why": "Colossal, the size of a whale",
+  "url": "https://abookofcreatures.com/2020/11/27/slide-rock-bolter/"
+ },
+ "29": {
+  "pos": 0.0,
+  "why": "A long trunk-like nose, nothing on its body",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/03/19/karnabo/"
+ },
+ "31": {
+  "pos": 0.2,
+  "why": "A boulder that grows when struck",
+  "url": "https://abookofcreatures.com/2021/03/01/man-eating-boulder/"
+ },
+ "99": {
+  "pos": 0.3,
+  "why": "A column of cloud, a hag or a scaly monster",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/05/01/fad-felen/"
+ },
+ "13": {
+  "pos": 0.4,
+  "why": "Stalked northern Scotland, nothing on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/01/22/beast-of-the-charred-forests/"
+ },
+ "41": {
+  "pos": 0.45,
+  "why": "A monstrous bear",
+  "url": "https://abookofcreatures.com/2020/06/08/sasnalkahi/"
+ },
+ "32": {
+  "pos": 0.5,
+  "why": "A monstrous snake",
+  "url": "https://abookofcreatures.com/2019/10/11/angont/"
+ },
+ "12": {
+  "pos": 0.55,
+  "why": "A mouse that grew, with great bat-like wings",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/11/16/ebigane/"
+ },
+ "97": {
+  "pos": 0.55,
+  "why": "A dragon with a long scaly tail",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2021/05/14/ro/"
+ },
+ "7": {
+  "pos": 0.7,
+  "why": "A great fiery dragon",
+  "url": "https://abookofcreatures.com/2021/05/03/alber/"
+ },
+ "10": {
+  "pos": 0.7,
+  "why": "A monstrous bat-winged dragon",
+  "url": "https://abookofcreatures.com/2021/04/23/grandgoule/"
+ },
+ "48": {
+  "pos": 0.8,
+  "why": "Born of a polar bear, nothing on its size",
+  "guess": true,
+  "url": "https://abookofcreatures.com/2020/11/13/bjarndyrakongur/"
+ },
+ "51": {
+  "pos": 1.6,
+  "why": "Looks like a small island",
+  "url": "https://abookofcreatures.com/2019/08/16/aspidochelone/"
+ },
+ "23": {
+  "side": 160,
+  "pos": -0.2,
+  "why": "Two feet long, like a sausage. You swapped its size with 44",
+  "url": "https://abookofcreatures.com/2021/03/26/olgoi-khorkhoi/"
+ },
+ "30": {
+  "side": 195,
+  "pos": 0.6,
+  "why": "Ten times the size of an elephant. You swapped its size with 34",
+  "url": "https://abookofcreatures.com/2020/11/02/dajna/"
+ },
+ "49": {
+  "pos": 0.9,
+  "why": "200 cubits long",
+  "url": "https://abookofcreatures.com/2020/05/08/physeter/"
+ },
+ "6": {
+  "pos": 1.2,
+  "why": "As tall as a mountain, the biggest creature in the world",
+  "url": "https://abookofcreatures.com/2021/06/14/wakmangganchi-aragondi/"
+ },
+ "44": {
+  "side": 90,
+  "pos": 0.0,
+  "why": "A big hand from the ocean. You swapped its size with 23",
+  "url": "https://abookofcreatures.com/2020/11/20/itqiirpak/"
+ },
+ "34": {
+  "side": 101,
+  "pos": 0.35,
+  "why": "A group of monsters; one of them, Yeitso, is titanic. You kept the original sprite at this size over a 130 px redraw",
+  "url": "https://abookofcreatures.com/2019/10/02/anaye/"
+ },
+ "98": {
+  "pos": 0.8,
+  "why": "Up to 200 m long and 10 m wide",
+  "url": "https://abookofcreatures.com/2020/05/11/boiuna/"
+ },
+ "52": {
+  "pos": 1.1,
+  "why": "The largest of all beasts, with dens a league wide",
+  "url": "https://abookofcreatures.com/2016/04/29/%E1%B9%A3annaja/"
+ },
+ "100": {
+  "pos": 1.0,
+  "why": "Not on the site",
+  "guess": true
+ }
+}

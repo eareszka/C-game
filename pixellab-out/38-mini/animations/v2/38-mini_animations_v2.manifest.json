@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "38-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2096 characters>",
+      "format": "png"
+    },
+    "action": "loping forward on its long legs, curled feet stepping, its huge jaw bobbing, its beard swinging, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5c04ddc5-b056-475c-afcf-c67dcdc2c378",
+    "generation_id": "7f224f0d-8ac3-4116-b8a9-00a8653e90f1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rund-00.png",
+    "rund-01.png",
+    "rund-02.png",
+    "rund-03.png",
+    "rund-04.png"
+  ]
+}

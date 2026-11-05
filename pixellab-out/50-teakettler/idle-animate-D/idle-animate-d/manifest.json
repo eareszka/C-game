@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-28T08:01:15Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "50-teakettler-idle-d-00.png",
+        "50-teakettler-idle-d-01.png",
+        "50-teakettler-idle-d-02.png",
+        "50-teakettler-idle-d-03.png",
+        "50-teakettler-idle-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1ddad567-c77d-4f58-acdf-cc5ea378eb01",
+        "generation_id": "c87b9fe3-a0f9-4b68-aa46-e9dee2d0ad3a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 80x88, 8 colours plus black.
+Unmet: The checker's LOOK remains: 3 shades of one colour against RULE.md's limit of 2, because BRIEF.md's colour list has 4 blues (hide, lit, shadow, deepest gaps). The amber eye (f0bc3c) is from reference.png, not the brief's colour list, and is the 8th colour. Both eyes show, though reference.png hides one behind the horn. User approval is still pending.

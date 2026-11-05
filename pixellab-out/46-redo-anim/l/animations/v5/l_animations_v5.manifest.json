@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "l_animations_v5",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2008 characters>",
+      "format": "png"
+    },
+    "action": "Lurking in place: its shark jaws slowly gape wider and close, its octopus arms writhe and curl, the head sways a little. Same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 545
+  },
+  "links": {},
+  "seed": 545,
+  "ids": {
+    "background_job_id": "2950e6e3-d5db-45df-b0df-b877e171e72c",
+    "generation_id": "be6b8f22-4dc2-4e34-ac0f-105013e22fe9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idleu-00.png",
+    "idleu-01.png",
+    "idleu-02.png",
+    "idleu-03.png",
+    "idleu-04.png",
+    "idleu-05.png",
+    "idleu-06.png"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0528-src-l-fast-trotting-scuttle-in-place-a-little-pi",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 336 characters>",
+      "format": "png"
+    },
+    "action": "Fast trotting scuttle in place, a little pig-like creature running on its four short legs: the legs step, the body keeps its size and design, the ears and face stay the same. Camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 403
+  },
+  "links": {},
+  "seed": 403,
+  "ids": {
+    "background_job_id": "70cfebbd-455c-40e9-b98b-cd87d643ae32",
+    "generation_id": "a7354708-e63b-471d-a39c-543d382cd20b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runl-00.png",
+    "runl-01.png",
+    "runl-02.png",
+    "runl-03.png",
+    "runl-04.png"
+  ]
+}

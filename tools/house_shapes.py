@@ -36,7 +36,10 @@ FONT = {'B': ['##.', '#.#', '##.', '#.#', '##.'], 'O': ['.#.', '#.#', '#.#', '#.
         'K': ['#.#', '#.#', '##.', '#.#', '#.#'], 'S': ['.##', '#..', '.#.', '..#', '##.'],
         'T': ['###', '.#.', '.#.', '.#.', '.#.'], 'R': ['##.', '#.#', '##.', '#.#', '#.#'],
         'E': ['###', '#..', '##.', '#..', '###'], 'I': ['###', '.#.', '.#.', '.#.', '###'],
-        'N': ['###', '#.#', '#.#', '#.#', '#.#']}
+        'N': ['###', '#.#', '#.#', '#.#', '#.#'], 'A': ['.#.', '#.#', '###', '#.#', '#.#'],
+        'C': ['.##', '#..', '#..', '#..', '.##'], 'D': ['##.', '#.#', '#.#', '#.#', '##.'],
+        'H': ['#.#', '#.#', '###', '#.#', '#.#'], 'L': ['#..', '#..', '#..', '#..', '###'],
+        'M': ['#.#', '###', '###', '#.#', '#.#'], 'U': ['#.#', '#.#', '#.#', '#.#', '###']}
 
 CHIMNEY = {'B': 'X', 'S': 'x', 'M': 'x'}    # a chimney's own brick on a house that is not brick
 
@@ -120,11 +123,23 @@ class House:
         self.B = self.h - 1
         self.c, self.f = {}, {}
         self.foot = set()
+        self.sx = self.sy = 0
+
+    def shift(self, sx, sy):
+        """Draw what follows sx right and sy down: a building laid at its
+        place in a larger drawing (art/structures/xuelin/town_design.py), its
+        own coordinates kept."""
+        self.sx, self.sy = sx, sy
 
     def put(self, x, y, c, f):
         """The nearer -- the lower ground row -- wins; a tie goes to the later."""
+        x, y, f = x + self.sx, y + self.sy, f + self.sy
         if 0 <= x < self.w and 0 <= y < self.h and c and f >= self.f.get((x, y), -1):
             self.c[(x, y)], self.f[(x, y)] = c, f
+
+    def stood(self, cells):
+        """The ground these pixels (x, y) are, stood on."""
+        self.foot |= {(x + self.sx, y + self.sy) for x, y in cells}
 
     def wing(self, x0, x1, depth, wall, rise, d0=0, eave=2, ridge=0.7, side='B'):
         """A brick block x0..x1 across, its front d0 back from the ground line
@@ -174,7 +189,7 @@ class House:
                 for x in range(x0, x1 + 1):
                     edge = x in (x0, x1) or d in (d0, d1)
                     self.put(x + d, B - wall - d, 'K' if edge else 'R', B - d)
-        self.foot |= {(x + d, B - d) for x in range(x0, x1 + 1) for d in range(d0, d1 + 1)}
+        self.stood({(x + d, B - d) for x in range(x0, x1 + 1) for d in range(d0, d1 + 1)})
 
     def _slope(self, x0, x1, d0, mid, wall, rise, eave, outer):
         """The roof's front slope: rows of shingles six deep (two black, four
@@ -204,6 +219,160 @@ class House:
                 self.put(x, y, c, B - sx)
                 drawn.add((x, y))
         return drawn
+
+    def hall(self, x0, x1, depth, wall, rise, d0=0, eave=3, lift=4, ridge=3, snow=0.35,
+             tiles=('R', 'Q'), side='B', ends=True, front=True, z0=0):
+        """Xuelin's (art/structures/xuelin/): a block x0..x1 across, d0 back
+        and depth deep, its wall `wall` high, under a Chinese roof: two slopes
+        meeting at a ridge half way back, each hollowed -- steep at the ridge,
+        flat at the eave -- its corners turned up `lift`, the eave overhanging
+        `eave` all round. Its tiles laid in channels down the slope, four
+        across: a black gap, two lit (tiles[0]), one dark (tiles[1]); the eave
+        a black lip. A ridge `ridge` high along the top, curling up at both
+        ends if `ends`. snow: the share of the slope under it, from the ridge
+        down, in the snowpack's white (W), lying in the channels so the tiles'
+        dark shows between; and on the ridge. 0, none.
+        The side under the roof's line is a hard gable in `side`. The front
+        wall is laid in the house's tone, or in front(rx, ry) if that is a
+        tone of its own (a hall's red posts and lattice); front=False leaves
+        it for the design to draw (a gate's door and posts). z0 stands it that
+        high: a storey on a wall (the gate tower's)."""
+        import math
+        B = self.B
+        d1, dm = d0 + depth, d0 + depth / 2.0
+        de, db, xa, xb = d0 - eave, d1 + eave, x0 - eave, x1 + eave
+        lit, dark = tiles
+        span = max(8.0, (xb - xa) / 4.0)                      # how far in the corners' lift reaches
+
+        def z(x, d):
+            t = (d - de) / (dm - de) if d <= dm else (db - d) / (db - dm)
+            t = min(1.0, max(0.0, t))
+            up = max(0.0, 1 - (x - xa) / span) ** 2 + max(0.0, 1 - (xb - x) / span) ** 2
+            return z0 + wall + rise * t ** 1.6 + lift * up * (1 - t) ** 2, t
+
+        # the hard gable: the side wall at x1 up to the roof's underside
+        for i in range(int((d1 - d0) * 2) + 1):
+            d = d0 + i / 2.0
+            top = z(x1, d)[0] - 1
+            for k in range(z0, int(top) + 1):
+                edge = d - d0 < 1.5 or d1 - d < 0.5 or k == z0
+                self.put(int(round(x1 + d)), int(round(B - k - d)), 'K' if edge else side, B - int(round(d)))
+        if front:                                             # the front wall
+            yt = B - d0 - z0 - wall + 1
+            for y in range(yt, B - d0 - z0 + 1):
+                for x in range(x0, x1 + 1):
+                    c = 'K' if x == x0 or y == B - d0 - z0 else (front if callable(front) else self.tone)(x - x0, y - yt)
+                    self.put(x + d0, y, c, B - d0)
+        # the slopes, sampled finely; each point over the ground row of its depth
+        for j in range(int((db - de) * 4) + 1):
+            d = de + j / 4.0
+            for i in range(int((xb - xa) * 2) + 1):
+                x = xa + i / 2.0
+                zz, t = z(x, d)
+                lx = int(math.floor(x - xa))
+                if d > dm:
+                    c = 'K' if lx % 4 == 0 else dark                # the far slope, what shows of it
+                elif d - de < 1.5 or x - xa < 1 or xb - x < 1:
+                    c = 'K'                                         # the eave's lip, the verges
+                else:
+                    c = ('K', lit, lit, dark)[lx % 4]
+                    if snow:
+                        line = 1 - snow + 0.05 * math.sin(lx // 4 * 1.7)    # a little uneven, a channel at a time
+                        if t > line:
+                            c = dark if lx % 4 == 0 else 'W'
+                self.put(int(round(x + d)), int(round(B - zz - d)), c, B - int(round(d)))
+        # the ridge along the top, and its curled ends
+        f = B - int(math.floor(dm))
+        for i in range(int((xb - xa - 2) * 2) + 1):
+            x = xa + 1 + i / 2.0
+            top = z(x, dm)[0]
+            for k in range(ridge + 1):
+                c = 'K' if k in (0, ridge) or x - xa < 2 or xb - x < 2 else lit
+                if snow and k == ridge:
+                    c = 'W'
+                self.put(int(round(x + dm)), int(round(B - top - dm)) - k, c, f)
+            if snow:
+                self.put(int(round(x + dm)), int(round(B - top - dm)) - (ridge + 1), 'K', f)
+        if ends:
+            for x, s in ((xa + 2, 1), (xb - 2, -1)):              # a horn, rising and turned in
+                top = z(x, dm)[0] + ridge
+                for k in range(6):
+                    for w in (0, 1):
+                        self.put(int(round(x + dm)) - s * w, int(round(B - top - dm)) - k, 'K', f)
+                for w in range(1, 4):                                 # the tip turned in and down
+                    for k in ((5, 4) if w == 3 else (5,)):
+                        self.put(int(round(x + dm)) + s * w, int(round(B - top - dm)) - k, 'K', f)
+        if not z0:                                            # a storey on a wall stands on the wall's ground
+            self.stood({(x + d, B - d) for x in range(x0, x1 + 1) for d in range(d0, d1 + 1)})
+
+    def hall_d(self, x0, x1, depth, wall, rise, d0=0, eave=3, lift=3, ridge=3, snow=0.35,
+               tiles=('R', 'Q'), side='B', ends=True, face=None):
+        """hall() turned a quarter: its ridge running back, half way across,
+        so its gable end is to the front -- a courtyard's side halls, and the
+        walls that run back. The slopes face west, lit, and east, a step
+        darker (tiles[0] for two of the four, then one); the channels run
+        across, down each slope; the front end, wall and gable, in the house's
+        tone; the east wall in `side`, or face(rd, ry) if given (the side
+        hall that faces the courtyard across it). The corners turn up `lift`
+        at both ends of each eave."""
+        import math
+        B = self.B
+        d1, xm = d0 + depth, (x0 + x1) / 2.0
+        de, db, xa, xb = d0 - eave, d1 + eave, x0 - eave, x1 + eave
+        lit, dark = tiles
+        span = max(8.0, (db - de) / 4.0)
+
+        def z(x, d):
+            t = (x - xa) / (xm - xa) if x <= xm else (xb - x) / (xb - xm)
+            t = min(1.0, max(0.0, t))
+            up = max(0.0, 1 - (d - de) / span) ** 2 + max(0.0, 1 - (db - d) / span) ** 2
+            return wall + rise * t ** 1.6 + lift * up * (1 - t) ** 2, t
+
+        for i in range(int((d1 - d0) * 2) + 1):                 # the east wall
+            d = d0 + i / 2.0
+            for k in range(wall):
+                edge = d - d0 < 1.5 or d1 - d < 0.5 or k == 0
+                c = 'K' if edge else face(int(d - d0), wall - 1 - k) if face else side
+                self.put(int(round(x1 + d)), int(round(B - k - d)), c, B - int(round(d)))
+        for x in range(x0, x1 + 1):                             # the front end, its gable to the roof's line
+            top = int(z(x, d0)[0]) - 1
+            for k in range(top + 1):
+                c = 'K' if x == x0 or k == 0 else self.tone(x - x0, top - k)
+                self.put(x + d0, B - k - d0, c, B - d0)
+        for j in range(int((db - de) * 4) + 1):                 # the slopes
+            d = de + j / 4.0
+            ld = int(math.floor(d - de))
+            for i in range(int((xb - xa) * 2) + 1):
+                x = xa + i / 2.0
+                zz, t = z(x, d)
+                if x - xa < 1.5 or xb - x < 1.5 or d - de < 1 or db - d < 1:
+                    c = 'K'                                     # the eaves' lips, the verges
+                else:
+                    c = (('K', lit, lit, dark) if x <= xm else ('K', lit, dark, dark))[ld % 4]
+                    if snow:
+                        line = 1 - snow + 0.05 * math.sin(ld // 4 * 1.7)
+                        if t > line:
+                            c = dark if ld % 4 == 0 else 'W'
+                self.put(int(round(x + d)), int(round(B - zz - d)), c, B - int(round(d)))
+        for i in range(int((db - de - 2) * 2) + 1):             # the ridge, running back
+            d = de + 1 + i / 2.0
+            top = z(xm, d)[0]
+            f = B - int(round(d))
+            for k in range(ridge + 1):
+                c = 'K' if k in (0, ridge) or d - de < 2 or db - d < 2 else lit
+                if snow and k == ridge:
+                    c = 'W'
+                self.put(int(round(xm + d)), int(round(B - top - d)) - k, c, f)
+            if snow:
+                self.put(int(round(xm + d)), int(round(B - top - d)) - (ridge + 1), 'K', f)
+        if ends:
+            for d in (de + 2, db - 2):                           # a horn at each end, rising
+                top = z(xm, d)[0] + ridge
+                f = B - int(round(d))
+                for k in range(6):
+                    for w in (0, 1):
+                        self.put(int(round(xm + d)) + w, int(round(B - top - d)) - k, 'K', f)
+        self.stood({(x + d, B - d) for x in range(x0, x1 + 1) for d in range(d0, d1 + 1)})
 
     def barn(self, x0, x1, depth, wall, h1, h2):
         """A barn: its gable end to the front under a gambrel roof running
@@ -247,7 +416,7 @@ class House:
                 self.put(x + d, B - wall - d + 1, 'K', B - d)
             for z in range(wall):                            # the side, up to the eave
                 self.put(x1 + d, B - z - d, 'K' if z == 0 or d == depth else 'S', B - d)
-        self.foot |= {(x + d, B - d) for x in range(x0, x1 + 1) for d in range(depth + 1)}
+        self.stood({(x + d, B - d) for x in range(x0, x1 + 1) for d in range(depth + 1)})
 
     def barn_door(self, x0, w, h=30):
         """A barn door `w` wide and `h` high on the ground line: planks in the
@@ -287,7 +456,7 @@ class House:
         for d in range(int(cd - rd), int(cd + rd) + 1):
             for x in range(int(cx - rx), int(cx + rx) + 1):
                 if ((x - cx) / rx) ** 2 + ((d - cd) / rd) ** 2 <= 1:
-                    self.foot.add((x + d, B - d))
+                    self.stood({(x + d, B - d)})
 
     def dome(self, x0, x1, d0, depth, wall, rise, shade='T'):
         """A dome over the wall's top, x0..x1 across and `depth` back from
@@ -439,7 +608,7 @@ class House:
         triangle(lambda x, y, c: self.put(x, y, c, B - d - depth), p1, p2, apex, 'K')
         triangle(lambda x, y, c: self.put(x, y, c, B - d), p0, p1, apex, 'R')
 
-    def grid(self, name, merge=()):
+    def grid(self, name, merge=(), objects=False):
         """The house as a drawing with its layers (entrance_shapes.Grid):
         the pixels, a black line round the whole, each pixel's ground row
         and the ground stood on."""
@@ -456,7 +625,7 @@ class House:
             four_per_cell(g, merge, by_count=False)
         f = dict(self.f)
         stand(g, lambda x, y: f.get((x, y), y), self.foot)
-        check(g, name)
+        check(g, name, objects=objects)
         return g
 
     def door_cells(self, door):

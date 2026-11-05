@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0649-input-menacing-idle-facing-us-the-huge-spiked-ar",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3724 characters>",
+      "format": "png"
+    },
+    "action": "<elided 261 characters>",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1031
+  },
+  "links": {},
+  "seed": 1031,
+  "ids": {
+    "background_job_id": "682917c9-b7b5-412e-acb8-217b4029e08d",
+    "generation_id": "35d5ff79-1c9a-4215-901a-767c4a2c0199"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png"
+  ]
+}

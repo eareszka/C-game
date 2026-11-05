@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-u",
+  "generated": "2026-10-28T15:09:06Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "16-kamaitachi-idle-u-00.png",
+        "16-kamaitachi-idle-u-01.png",
+        "16-kamaitachi-idle-u-02.png",
+        "16-kamaitachi-idle-u-03.png",
+        "16-kamaitachi-idle-u-04.png"
+      ],
+      "ids": {
+        "background_job_id": "d086b0ea-bef2-480d-895e-7a469bb5740c",
+        "generation_id": "365d8dca-b2b3-436e-86d0-c50991728a2c"
+      }
+    }
+  ]
+}

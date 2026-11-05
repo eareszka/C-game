@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "k_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1868 characters>",
+      "format": "png"
+    },
+    "action": "Hovering in place: its great wings beat strongly up and then down, the dugong held still in its talons, body bobbing slightly. Same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 481
+  },
+  "links": {},
+  "seed": 481,
+  "ids": {
+    "background_job_id": "a8f172e5-90ed-4207-b785-196fc70b59df",
+    "generation_id": "24166fde-4ae5-4022-b02a-9265619dc787"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyd-00.png",
+    "flyd-01.png",
+    "flyd-02.png",
+    "flyd-03.png",
+    "flyd-04.png",
+    "flyd-05.png",
+    "flyd-06.png"
+  ]
+}

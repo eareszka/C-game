@@ -1,0 +1,39 @@
+{
+  "id": 83,
+  "name": "83-beast-of-barrisdale",
+  "dir": "art/enemies/pixellab/83_beast_of_barrisdale",
+  "description": "Beast of Barrisdale: a roaring flying beast, a charcoal-grey body on long thin bent legs with pink hooked claws, a great fan of salmon wings ribbed in red on its back, a pale pink face hung low with a gaping red mouth. Facing left. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/83_beast_of_barrisdale.png",
+      "frames": 10,
+      "rows": true,
+      "ms": 130,
+      "views": [
+        "D"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Standing planted on its three clawed feet facing left: it breathes, its fan of wings on its back lifting and beating down twice, its head bobbing, its roaring mouth working. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          0
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0824-tiny-overworld-enemy-grey-rat-dinosaur-crouched",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny overworld enemy, grey rat dinosaur crouched and running to the left, tall peach fins on its back, round ear, ivory teeth and claws, peach tail, black outline, flat colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/Djgn/Xzw48B8AP44J1NQPqmsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1194
+  },
+  "links": {},
+  "seed": 1194,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-overworld-enemy-grey-rat-dinosaur-crouched.png"
+  ]
+}

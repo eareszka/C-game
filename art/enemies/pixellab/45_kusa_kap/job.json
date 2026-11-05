@@ -1,0 +1,16 @@
+{
+  "id": 45,
+  "name": "45-kusa-kap",
+  "dir": "art/enemies/pixellab/45_kusa_kap",
+  "description": "Kusa Kap, a giant white-bellied sea eagle with broad brown wings, white head and tail, yellow hooked beak and yellow talons carrying a grey dugong. Preserve the dugong, bird anatomy and broad wing silhouette. Flat single-pixel black-outline game art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/45_kusa_kap.png",
+    "frames": 3, "rows": false, "ms": 250,
+    "runtime_loop": [0, 1, 0, 2], "runtime_loop_ms": [400, 250, 400, 250],
+    "views": ["D", "DR", "R", "UR", "U"],
+    "make": "animate", "count": 4,
+    "action": "Giant sea eagle hovering in place carrying the same grey dugong firmly in its yellow talons. One full broad wingbeat: wings rise above the back then sweep down and return. Head, body and dugong remain stable, tiny natural bob only. Keep facing, anatomy, proportions and pixel density. No walking, no prey release, no extra limbs. Flat pixel art, single-pixel black outlines, no texture or antialiasing.",
+    "map": {"*": [0, 1, 3]}
+  }}
+}

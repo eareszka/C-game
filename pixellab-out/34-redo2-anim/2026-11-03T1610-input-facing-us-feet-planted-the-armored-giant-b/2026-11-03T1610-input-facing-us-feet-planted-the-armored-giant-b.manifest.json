@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1610-input-facing-us-feet-planted-the-armored-giant-b",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 4552 characters>",
+      "format": "png"
+    },
+    "action": "<elided 299 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1491
+  },
+  "links": {},
+  "seed": 1491,
+  "ids": {
+    "background_job_id": "4b7dc471-a8ee-4a97-b8c8-e3820bd021c4",
+    "generation_id": "1ffd1ecb-9924-4f32-9338-cb8193e58de9"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png"
+  ]
+}

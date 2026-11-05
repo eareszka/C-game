@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0658-input-relentless-stalking-walk-toward-us-heavy-s",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 648 characters>",
+      "format": "png"
+    },
+    "action": "Relentless stalking walk toward us: heavy steps, one leg then the other lifts, the big clawed arms sway, the skull head dips, same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1041
+  },
+  "links": {},
+  "seed": 1041,
+  "ids": {
+    "background_job_id": "2f190dba-bcdc-4b5a-a06d-27c4b19e0e4a",
+    "generation_id": "cba110c2-da13-40ef-aa4e-9e35dc26e1bd"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walk-00.png",
+    "walk-01.png",
+    "walk-02.png",
+    "walk-03.png",
+    "walk-04.png"
+  ]
+}

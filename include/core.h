@@ -12,6 +12,13 @@ double time_delta_seconds(void);
 void   world_advance(float dt);
 Uint32 world_ms(void);
 
+// The world's one beat for everything ambient that moves -- props, steam,
+// the ore's twinkle, Xuelin's lanterns -- after the graveyard dungeon's
+// hanging roots (src/dungeon.cpp): three frames, a second each (the user,
+// 2026-10-29: "the same frame count as the soil in graveyard dungeons ... a
+// consistent fps"). Each thing keeps its own phase, in whole frames.
+enum { AMBIENT_FRAMES = 3, AMBIENT_FRAME_MS = 1000 };
+
 void draw_fps(SDL_Renderer* renderer, float dt, float player_x, float player_y);
 
 // Draw a string at (x, y) in the game's font (Pixuf, src/font.inc): printable

@@ -52,10 +52,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/roperite_pixellab.ps1
 
 Default action is **DryRun**. It saves `dry-run.json` with the complete
 serialized request and prints its route and estimate. Source and style board
-are embedded in the request, with the prompt from `prompt.txt`. The approved
-board is `art/direction/approved_enemy_study/approved_42_fronts_native_512.png`;
-the companion `STYLE_BRIEF.md` supplies the drawing rules, with its old RO
-task-specific exceptions excluded. Input hashes are recorded in `inputs.json`.
+are embedded in the request, with the prompt from `prompt.txt`. Roperite's run
+used the older `approved_42_fronts_native_512.png`. New work uses
+`art/direction/approved_enemy_study/style_bc_native_512.png`; the companion
+`STYLE_BRIEF.md` supplies the words to send, and `art/direction/SPRITE_STYLE.md`
+is the bible. Input hashes are recorded in `inputs.json`.
 First-frame occupied bounds are `(35,14)-(63,64)`, exclusive coordinates.
 
 Verified route: `edit-images-v2`, `edit_with_reference`, output 98x65,

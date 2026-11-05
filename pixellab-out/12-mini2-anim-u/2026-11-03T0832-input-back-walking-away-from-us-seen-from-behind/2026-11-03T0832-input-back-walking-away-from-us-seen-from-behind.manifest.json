@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0832-input-back-walking-away-from-us-seen-from-behind",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 524 characters>",
+      "format": "png"
+    },
+    "action": "Walking away from us, seen from behind: the legs step one side then the other, the tail sways side to side, the fins stay, same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1212
+  },
+  "links": {},
+  "seed": 1212,
+  "ids": {
+    "background_job_id": "20d04cc5-707e-4ca2-8e59-2b477af255bd",
+    "generation_id": "7d41a930-d834-4eb1-9b3f-fc9306f543df"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walku-00.png",
+    "walku-01.png",
+    "walku-02.png",
+    "walku-03.png",
+    "walku-04.png"
+  ]
+}

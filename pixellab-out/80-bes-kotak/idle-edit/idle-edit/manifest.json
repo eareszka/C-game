@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T14:29:41Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "80-bes-kotak-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "6a12c3bc-2b8e-4884-ad69-0cdd5eb26a61",
+        "generation_id": "68da4c19-f106-4b00-aa3f-80c038bdbe87"
+      }
+    }
+  ]
+}

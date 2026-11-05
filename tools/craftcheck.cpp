@@ -8,10 +8,12 @@
 #include "legacy_player_v2.h"
 #include "legacy_player_v3.h"
 #include "legacy_player_v4.h"
+#include "legacy_player_v5.h"
 #include "save.h"
 #include "dungeon.h"
 #include "story.h"
 #include "persist.h"
+#include "wilds.h"
 #include <SDL2/SDL_image.h>
 #include <cassert>
 #include <cstdio>
@@ -19,6 +21,7 @@
 #include <cmath>
 #include <filesystem>
 #include <set>
+#include <string>
 #include <algorithm>
 
 static Player fresh_player(){
@@ -44,7 +47,7 @@ static void catalog_checks(){
   if(c.is_weapon)assert(p.owned[c.weapon]&&p.arsenal[c.weapon].material==MAT_STONE);
   else {assert(item_count(&p,c.item)==1);item_slot(&p,c.item)=c.max;fill(p,r);assert(!craft_ready(&p,c));assert(!craft_make(&p,c));}
  }
- assert(result(ITEM_SWIFT_BOOTS).n==4);assert(result(ITEM_SAIL).in[0].amount==6);assert(result(ITEM_BINOCULARS).in[0].amount==2);
+ assert(result(ITEM_BICYCLE).n==4&&result(ITEM_BICYCLE).in[0].item==ITEM_KHARVITE&&result(ITEM_BICYCLE).in[2].item==ITEM_WIND_SINEW);assert(result(ITEM_SAIL).in[0].amount==6);assert(result(ITEM_BINOCULARS).in[0].amount==2);
  assert(item_limit(ITEM_MEDKIT)==999&&item_limit(ITEM_ESCAPE_CHARM)==1&&item_limit(ITEM_SLEEPING_BAG)==0);
  assert(!strcmp(item_name(ITEM_ESSENCE),"SPIRIT ESSENCE"));assert(!strcmp(item_name(ITEM_WHITE_FUR),"FUR"));
  Player p=fresh_player();const Craft& c=weapon(WEAPON_SCYTHE);item_slot(&p,c.needs)=1;fill(p,craft_recipe(&p,c,MAT_STONE));assert(craft_make(&p,c));
@@ -90,8 +93,8 @@ static void loot_checks(){
 template<class P>struct SaveFixture{char magic[4];unsigned version,player_size,seed;float x,y;P player;uint8_t explored[EXPLORE_H][EXPLORE_W];uint8_t landmarks[MAX_LANDMARKS/8];DungeonChestRecord chests[MAX_DUNGEON_CHEST_RECORDS];StoryFlags story;};
 static void save_checks(){
  namespace fs=std::filesystem;fs::path original=fs::current_path();fs::create_directories("build_tmp/crafting_qa/saves");fs::current_path("build_tmp/crafting_qa/saves");
- static uint8_t explored[EXPLORE_H][EXPLORE_W]={};Player p=fresh_player();p.poisoned=1;p.poison_timer=0.75f;item_slot(&p,ITEM_SWIFT_BOOTS)=1;p.footwear=1;item_slot(&p,ITEM_BINOCULARS)=1;item_mark_found(&p,ITEM_BINOCULARS);item_slot(&p,ITEM_ENCHANTED_WOOD)=17;explored[1][2]=1;
- assert(save_write(42,12,34,p,explored));Player got={};unsigned seed;float x,y;assert(save_read(&seed,&x,&y,&got,explored));assert(got.poisoned&&got.poison_timer==0.75f&&got.footwear);assert(seed==42&&x==12&&y==34&&item_count(&got,ITEM_ENCHANTED_WOOD)==17&&item_found(&got,ITEM_BINOCULARS));
+ static uint8_t explored[EXPLORE_H][EXPLORE_W]={};Player p=fresh_player();p.poisoned=1;p.poison_timer=0.75f;item_slot(&p,ITEM_BICYCLE)=1;p.bike_worn=1;item_slot(&p,ITEM_BINOCULARS)=1;item_mark_found(&p,ITEM_BINOCULARS);item_slot(&p,ITEM_ENCHANTED_WOOD)=17;explored[1][2]=1;
+ assert(save_write(42,12,34,p,explored));Player got={};unsigned seed;float x,y;assert(save_read(&seed,&x,&y,&got,explored));assert(got.poisoned&&got.poison_timer==0.75f&&got.bike_worn);assert(seed==42&&x==12&&y==34&&item_count(&got,ITEM_ENCHANTED_WOOD)==17&&item_found(&got,ITEM_BINOCULARS));
  static SaveFixture<LegacyPlayerV2> old={};memcpy(old.magic,"FCC1",4);old.version=2;old.player_size=sizeof(LegacyPlayerV2);old.seed=123;old.x=7;old.y=9;
  memcpy(&old.player,&p,sizeof(LegacyPlayerV2));old.player.parts[PART_FUR]=6;old.player.sail=1;old.player.books[2]=1;old.explored[3][4]=1;old.landmarks[0]=5;old.story=*story_flags();
  const size_t sizes[]={sizeof(old),offsetof(SaveFixture<LegacyPlayerV2>,story),(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+MAX_LANDMARKS/8+3)&~(size_t)3,(offsetof(SaveFixture<LegacyPlayerV2>,landmarks)+3)&~(size_t)3};
@@ -103,11 +106,20 @@ static void save_checks(){
  static SaveFixture<LegacyPlayerV4> v4={};memcpy(v4.magic,"FCC1",4);v4.version=4;v4.player_size=sizeof(LegacyPlayerV4);v4.seed=456;memcpy(&v4.player,&p,sizeof(v4.player));
  FILE* f4=fopen("save.dat","wb");assert(f4);assert(fwrite(&v4,1,sizeof(v4),f4)==sizeof(v4));fclose(f4);
  assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());got=p;seed=456;
- got.footwear=0;assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(!got.footwear&&item_count(&got,ITEM_SWIFT_BOOTS)==1);
- item_slot(&got,ITEM_DIVING_FINS)=1;assert(item_equip_footwear(&got,ITEM_DIVING_FINS,true));assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(got.footwear==FOOTWEAR_DIVING_FINS&&item_footwear_equipped(&got,ITEM_DIVING_FINS)&&!item_footwear_equipped(&got,ITEM_SWIFT_BOOTS));
+ got.bike_worn=0;assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(!got.bike_worn&&item_count(&got,ITEM_BICYCLE)==1);
+ item_slot(&got,ITEM_DIVING_FINS)=1;assert(item_equip_footwear(&got,ITEM_DIVING_FINS,true));assert(item_equip_bike(&got,true));assert(save_write(seed,x,y,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(got.footwear==FOOTWEAR_DIVING_FINS&&item_footwear_equipped(&got,ITEM_DIVING_FINS)&&item_bike_worn(&got));
+ // A version-20 save (the V5 player, 8 bytes shorter, before the bike's flag): its retired footwear value 1 is a bike worn, 2 the fins.
+ for(int old:{1,2}){
+  assert(save_write(seed,x,y,got,explored));std::string file;{FILE* f=fopen("save.dat","rb");assert(f);int c;while((c=fgetc(f))!=EOF)file.push_back((char)c);fclose(f);}
+  const size_t at=offsetof(SaveFixture<Player>,player);unsigned v=20,ps=(unsigned)sizeof(LegacyPlayerV5);memcpy(&file[4],&v,4);memcpy(&file[8],&ps,4);
+  memcpy(&file[at+offsetof(Player,footwear)],&old,4);file.erase(at+sizeof(LegacyPlayerV5),sizeof(Player)-sizeof(LegacyPlayerV5));
+  {FILE* f=fopen("save.dat","wb");assert(f);assert(fwrite(file.data(),1,file.size(),f)==file.size());fclose(f);}
+  memset(&got,0,sizeof(got));assert(save_read(&seed,&x,&y,&got,explored));assert(got.poisoned&&item_count(&got,ITEM_BICYCLE)==1);
+  assert(got.bike_worn==(old==1)&&got.footwear==(old==2?FOOTWEAR_DIVING_FINS:FOOTWEAR_NONE));
+ }
  assert(!save_refused_old_world());
  FILE* f=fopen("save.dat","wb");fwrite(&old,1,12,f);fclose(f);assert(!save_read(&seed,&x,&y,&got,explored));fs::current_path(original);
- puts("saves: V19 equipped/unequipped round trip, V4/V3/V2 refused as an older world, truncation rejection checked");
+ puts("saves: V21 bike/fins round trip, V20 footwear migration, V4/V3/V2 refused as an older world, truncation rejection checked");
 }
 // The raft worn and taken off, and what was destroyed (persist.h), through a
 // save and back; a version-17 save (no block) migrates to a worn raft and an
@@ -122,15 +134,26 @@ static void raft_and_persist_checks(){
  assert(item_equip_raft(&got,true));assert(save_write(7,1,2,got,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(item_raft_worn(&got));
  Player none=fresh_player();assert(!item_equip_raft(&none,true));none.raft_worn=1;assert(save_write(7,1,2,none,explored));assert(save_read(&seed,&x,&y,&got,explored));assert(!got.raft_worn);
  // What was destroyed, kept.
- persist_tile_add(tilemap_tile_key(10,20));persist_oilbloom_add(3);persist_spawner_beaten(0xABCDu,2);persist_spawner_beaten(0xABCDu,63);persist_node_broken(0xABCDu,4);
+ persist_tile_add(tilemap_tile_key(10,20));persist_oilbloom_add(3);persist_spawner_beaten(0xABCDu,2);persist_spawner_beaten(0xABCDu,63);persist_node_broken(0xABCDu,4);persist_wild_beaten(wild_key(5,6,1));
  assert(save_write(7,1,2,p,explored));persist_clear();assert(!persist_tile_has(tilemap_tile_key(10,20)));
  assert(save_read(&seed,&x,&y,&got,explored));
  assert(persist_tile_has(tilemap_tile_key(10,20))&&!persist_tile_has(tilemap_tile_key(11,20))&&persist_oilbloom_has(3)&&!persist_oilbloom_has(4));
  DungeonDeadRecord d=persist_dungeon(0xABCDu);assert(d.spawners==((1ull<<2)|(1ull<<63))&&d.nodes==(1ull<<4)&&persist_dungeon(0x1234u).spawners==0);
+ assert(persist_wild_has(wild_key(5,6,1))&&!persist_wild_has(wild_key(5,6,2)));
+ // Version 19: the same file without the wilds' block (an empty one is its count, 4)
+ // and in the V5 player layout (no bike flag): read, none beaten.
+ persist_clear();assert(save_write(7,1,2,p,explored));
+ {const uintmax_t sz=fs::file_size("save.dat");fs::resize_file("save.dat",sz-4);
+  std::string file;{FILE* f=fopen("save.dat","rb");assert(f);int c;while((c=fgetc(f))!=EOF)file.push_back((char)c);fclose(f);}
+  unsigned v=19,ps=(unsigned)sizeof(LegacyPlayerV5);memcpy(&file[4],&v,4);memcpy(&file[8],&ps,4);
+  file.erase(offsetof(SaveFixture<Player>,player)+sizeof(LegacyPlayerV5),sizeof(Player)-sizeof(LegacyPlayerV5));
+  FILE* f=fopen("save.dat","wb");assert(f);assert(fwrite(file.data(),1,file.size(),f)==file.size());fclose(f);}
+ persist_wild_beaten(wild_key(1,1,0));   // left from a session before: the read forgets it
+ assert(save_read(&seed,&x,&y,&got,explored));assert(!persist_wild_has(wild_key(1,1,0)));
  // Version 17: the same file without the block, the raft field and the world
  // stamp. Played in an older world, so refused -- and it still leaves nothing behind.
  persist_clear();p.raft_worn=0;assert(save_write(7,1,2,p,explored));
- {const uintmax_t sz=fs::file_size("save.dat");fs::resize_file("save.dat",sz-20);   // the empty block (4 + 8 + 4) and the stamp (4)
+ {const uintmax_t sz=fs::file_size("save.dat");fs::resize_file("save.dat",sz-24);   // the empty block (4 + 8 + 4), the stamp (4) and the wilds' (4)
   FILE* f=fopen("save.dat","r+b");assert(f);unsigned v=17;fseek(f,4,SEEK_SET);fwrite(&v,sizeof(v),1,f);fclose(f);}
  persist_tile_add(99);   // left from a session before: a refused load clears it
  assert(!save_read(&seed,&x,&y,&got,explored)&&save_refused_old_world());assert(!persist_tile_has(99));
@@ -141,49 +164,53 @@ static void raft_and_persist_checks(){
  persist_clear();fs::current_path(original);
  puts("raft and persistence: worn on craft, unequip, save round trips, v17 migration and refused-save cleanup checked");
 }
-static void swift_boots_checks(){
+static void bicycle_checks(){
  Player p=fresh_player();float speed,anim;Input in={};
  player_gait(&in,&speed,&anim,&p);assert(speed==120&&fabsf(anim-0.2f)<0.001f);
- item_slot(&p,ITEM_SWIFT_BOOTS)=1;
- player_gait(&in,&speed,&anim,&p);assert(speed==120);assert(item_equip_swift_boots(&p,true));
- player_gait(&in,&speed,&anim,&p);assert(speed==180&&fabsf(anim-0.2f/1.5f)<0.001f);
- // Vehicle and swimming callers omit the player to preserve their gait.
+ assert(!item_equip_bike(&p,true));item_slot(&p,ITEM_BICYCLE)=1;
+ player_gait(&in,&speed,&anim,&p);assert(speed==120);assert(item_equip_bike(&p,true));assert(item_bike_worn(&p));
+ player_gait(&in,&speed,&anim,&p);assert(speed==BIKE_SPEED&&fabsf(anim-BIKE_ANIM)<0.001f);
+ // The raft, the boat and swimming omit the player: on foot pace there.
  player_gait(&in,&speed,&anim);assert(speed==120&&fabsf(anim-0.2f)<0.001f);
- in.keys[SDL_SCANCODE_LSHIFT]=KEY_HELD;
- player_gait(&in,&speed,&anim,&p);assert(speed==360);
- in.keys[SDL_SCANCODE_LCTRL]=KEY_HELD;
- player_gait(&in,&speed,&anim,&p);assert(speed==60&&fabsf(anim-0.3f)<0.001f);
- item_slot(&p,ITEM_SWIFT_BOOTS)=2;in={};player_gait(&in,&speed,&anim,&p);assert(speed==180);
- item_slot(&p,ITEM_SWIFT_BOOTS)=1;
- // Exercise actual room movement and removal of the equipment bonus.
+ // One pace whatever is held.
+ in.keys[SDL_SCANCODE_LSHIFT]=KEY_HELD;player_gait(&in,&speed,&anim,&p);assert(speed==BIKE_SPEED);
+ in.keys[SDL_SCANCODE_LCTRL]=KEY_HELD;player_gait(&in,&speed,&anim,&p);assert(speed==BIKE_SPEED);
+ in={};
+ // Room movement at the bike's pace, on foot again once it is off.
  InteriorMap room={};for(auto& row:room.tiles)for(auto& tile:row)tile=INT_FLOOR;
  InteriorPlayer ip={};ip.x=100;ip.y=100;in.keys[SDL_SCANCODE_RIGHT]=KEY_HELD;
- interior_player_update(&ip,&p,&in,0.1f,&room);assert(fabsf(ip.x-118)<0.001f);
- assert(item_equip_swift_boots(&p,false));ip.x=100;
+ interior_player_update(&ip,&p,&in,0.1f,&room);assert(fabsf(ip.x-100-BIKE_SPEED*0.1f)<0.001f);
+ assert(item_equip_bike(&p,false));ip.x=100;
  interior_player_update(&ip,&p,&in,0.1f,&room);assert(fabsf(ip.x-112)<0.001f);
- assert(item_equip_swift_boots(&p,true));ip.x=100;in.keys[SDL_SCANCODE_LSHIFT]=KEY_HELD;
- interior_player_update(&ip,&p,&in,0.1f,&room);assert(fabsf(ip.x-136)<0.001f);
- assert(item_count(&p,ITEM_SWIFT_BOOTS)==1);
- // Inventory exposes a repeatable equip/unequip action without spending boots.
+ // The sheet's frames: coasting, then the wheel's four steps, five a facing.
+ p.facing=FACE_RIGHT;p.is_moving=0;p.anim_step=0;assert(player_bike_frame(&p)==15);
+ p.is_moving=1;p.anim_step=0;assert(player_bike_frame(&p)==16);p.anim_step=1;assert(player_bike_frame(&p)==17);
+ p.anim_step=3;assert(player_bike_frame(&p)==19);
+ p.anim_step=2;p.facing=FACE_UP_RIGHT;assert(player_bike_frame(&p)==38);p.facing=FACE_DOWN;p.is_moving=0;
+ // ITEMS: a repeatable equip/unequip that spends nothing, and the game's block.
  GameMenu menu;game_menu_toggle(&menu);menu.focus=FOCUS_LIST;Input use={};use.keys[SDL_SCANCODE_Z]=KEY_PRESSED;
- item_slot(&p,ITEM_SWIFT_BOOTS)=1;game_menu_update(&menu,&p,&use,0.1f);assert(menu.focus==FOCUS_ACTIONS);
- game_menu_update(&menu,&p,&use,0.1f);assert(!p.footwear);
- game_menu_update(&menu,&p,&use,0.1f);assert(p.footwear&&item_count(&p,ITEM_SWIFT_BOOTS)==1);
- item_slot(&p,ITEM_SWIFT_BOOTS)=0;player_gait(&in,&speed,&anim,&p);assert(speed==PLAYER_RUN_SPEED);assert(!item_equip_swift_boots(&p,true));
- assert(item_equip_swift_boots(&p,false));game_menu_free(&menu);
- puts("swift boots: equip/unequip, walk/run boost, crouch priority, no stacking and room movement checked");
+ game_menu_update(&menu,&p,&use,0.1f);assert(menu.focus==FOCUS_ACTIONS);
+ game_menu_update(&menu,&p,&use,0.1f);assert(item_bike_worn(&p));
+ game_menu_update(&menu,&p,&use,0.1f);assert(!item_bike_worn(&p)&&item_count(&p,ITEM_BICYCLE)==1);
+ menu.bike_block="NOT IN A FIGHT";game_menu_update(&menu,&p,&use,0.1f);assert(!item_bike_worn(&p));menu.bike_block=nullptr;
+ // The fins and the bike are worn together: the bike is no footwear.
+ item_slot(&p,ITEM_DIVING_FINS)=1;assert(item_equip_footwear(&p,ITEM_DIVING_FINS,true));assert(item_equip_bike(&p,true));
+ assert(item_footwear_equipped(&p,ITEM_DIVING_FINS)&&item_bike_worn(&p));
+ item_slot(&p,ITEM_BICYCLE)=0;assert(!item_bike_worn(&p));player_gait(&in,&speed,&anim,&p);assert(speed==PLAYER_WALK_SPEED);assert(!item_equip_bike(&p,true));
+ assert(item_equip_bike(&p,false));game_menu_free(&menu);
+ puts("bicycle: equip/unequip, one pace whatever is held, room movement, frames, menu block and fins alongside checked");
 }
 static void diving_fins_checks(){
  Player p=fresh_player();Input in={};float speed,anim;
  assert(player_swim_speed(&p,&in)==90);assert(!item_equip_footwear(&p,ITEM_DIVING_FINS,true));
- item_slot(&p,ITEM_DIVING_FINS)=1;item_slot(&p,ITEM_SWIFT_BOOTS)=1;
+ item_slot(&p,ITEM_DIVING_FINS)=1;item_slot(&p,ITEM_BICYCLE)=1;
  assert(player_swim_speed(&p,&in)==90);assert(item_equip_footwear(&p,ITEM_DIVING_FINS,true));
  assert(player_swim_speed(&p,&in)==135);player_gait(&in,&speed,&anim,&p);assert(speed==120);
  in.keys[SDL_SCANCODE_LSHIFT]=KEY_HELD;assert(player_swim_speed(&p,&in)==270);
- assert(item_equip_swift_boots(&p,true));assert(!item_footwear_equipped(&p,ITEM_DIVING_FINS));assert(player_swim_speed(&p,&in)==180);
- player_gait(&in,&speed,&anim,&p);assert(speed==360);
- assert(item_equip_footwear(&p,ITEM_DIVING_FINS,true));assert(!item_footwear_equipped(&p,ITEM_SWIFT_BOOTS));
- assert(item_equip_swift_boots(&p,false));assert(item_footwear_equipped(&p,ITEM_DIVING_FINS));
+ // The bike, worn too, never reaches the water: swimming keeps the fins' pace.
+ assert(item_equip_bike(&p,true));assert(item_footwear_equipped(&p,ITEM_DIVING_FINS));assert(player_swim_speed(&p,&in)==270);
+ player_gait(&in,&speed,&anim,&p);assert(speed==BIKE_SPEED);
+ assert(item_equip_bike(&p,false));assert(item_footwear_equipped(&p,ITEM_DIVING_FINS));
  assert(item_equip_footwear(&p,ITEM_DIVING_FINS,false));in={};assert(player_swim_speed(&p,&in)==90);
  // Actual swimming update: same input and easing, fins travel 50% farther.
  static DungeonMap water={};water.type=DUNGEON_ENT_OASIS;
@@ -198,7 +225,7 @@ static void diving_fins_checks(){
  p=fresh_player();item_slot(&p,ITEM_DIVING_FINS)=1;GameMenu m;game_menu_toggle(&m);m.focus=FOCUS_LIST;
  Input use={};use.keys[SDL_SCANCODE_Z]=KEY_PRESSED;game_menu_update(&m,&p,&use,0.1f);game_menu_update(&m,&p,&use,0.1f);
  assert(item_footwear_equipped(&p,ITEM_DIVING_FINS));game_menu_update(&m,&p,&use,0.1f);assert(p.footwear==FOOTWEAR_NONE&&item_count(&p,ITEM_DIVING_FINS)==1);game_menu_free(&m);
- puts("diving fins: swimming boost, one footwear slot, switching, land exclusion, actual swim movement and menu checked");
+ puts("diving fins: swimming boost, the bike alongside, land exclusion, actual swim movement and menu checked");
 }
 static void poison_checks(){
  Player p=fresh_player();p.stats.hp=60;player_poison_tick(&p,5);assert(p.stats.hp==60);
@@ -292,7 +319,7 @@ static void render_checks(){
  Player p=fresh_player();p.owned[WEAPON_KNIFE]=true;for(int i=0;i<ITEM_COUNT;i++)item_slot(&p,(Item)i)=std::min(99,item_limit((Item)i));
  GameMenu menu;game_menu_toggle(&menu);menu.cmd=1;menu.focus=FOCUS_ACTIONS;
  auto capture=[&](const char* file){SDL_SetRenderDrawColor(renderer,24,32,24,255);SDL_RenderClear(renderer);game_menu_draw(&menu,&p,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,file)==0);};
- for(int i=0;i<craft_count();i++){menu.sel=i;capture("build_tmp/crafting_qa/recipe.png");if(!craft_at(i).is_weapon&&craft_at(i).item==ITEM_SWIFT_BOOTS)capture("build_tmp/crafting_qa/swift_boots.png");}
+ for(int i=0;i<craft_count();i++){menu.sel=i;capture("build_tmp/crafting_qa/recipe.png");if(!craft_at(i).is_weapon&&craft_at(i).item==ITEM_BICYCLE)capture("build_tmp/crafting_qa/bicycle.png");}
  static const Item scythe_stock[]={ITEM_SCYTHE_BOOK};
  game_menu_open_shop(&menu,scythe_stock,1);assert(menu.sel==craft_count()-1);menu.focus=FOCUS_LIST;capture("build_tmp/crafting_qa/scythe_shop.png");
  int gold=item_count(&p,ITEM_GOLD);Input in={};in.keys[SDL_SCANCODE_Z]=KEY_PRESSED;game_menu_update(&menu,&p,&in,0.1f);assert(item_count(&p,ITEM_GOLD)==gold);
@@ -324,8 +351,8 @@ static void render_checks(){
  GameMenu med_menu;game_menu_toggle(&med_menu);med_menu.focus=FOCUS_ACTIONS;SDL_RenderClear(renderer);game_menu_draw(&med_menu,&med_patient,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/medkit.png")==0);game_menu_free(&med_menu);
  Player poisoned_patient=fresh_player();poisoned_patient.poisoned=1;item_slot(&poisoned_patient,ITEM_ANTIDOTE)=5;
  GameMenu antidote_menu;game_menu_toggle(&antidote_menu);antidote_menu.focus=FOCUS_ACTIONS;SDL_RenderClear(renderer);game_menu_draw(&antidote_menu,&poisoned_patient,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/antidote.png")==0);game_menu_free(&antidote_menu);
- Player boot_owner=fresh_player();item_slot(&boot_owner,ITEM_SWIFT_BOOTS)=1;item_equip_swift_boots(&boot_owner,true);
- GameMenu boots_menu;game_menu_toggle(&boots_menu);boots_menu.focus=FOCUS_LIST;SDL_RenderClear(renderer);game_menu_draw(&boots_menu,&boot_owner,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/swift_boots_active.png")==0);game_menu_free(&boots_menu);
+ Player bike_owner=fresh_player();item_slot(&bike_owner,ITEM_BICYCLE)=1;item_equip_bike(&bike_owner,true);
+ GameMenu bike_menu;game_menu_toggle(&bike_menu);bike_menu.focus=FOCUS_LIST;SDL_RenderClear(renderer);game_menu_draw(&bike_menu,&bike_owner,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/bicycle_active.png")==0);game_menu_free(&bike_menu);
  Player fin_owner=fresh_player();item_slot(&fin_owner,ITEM_DIVING_FINS)=1;item_equip_footwear(&fin_owner,ITEM_DIVING_FINS,true);
  GameMenu fin_menu;game_menu_toggle(&fin_menu);fin_menu.focus=FOCUS_ACTIONS;SDL_RenderClear(renderer);game_menu_draw(&fin_menu,&fin_owner,renderer);SDL_RenderPresent(renderer);assert(IMG_SavePNG(surface,"build_tmp/crafting_qa/diving_fins.png")==0);game_menu_free(&fin_menu);
  Player hero=fresh_player();hero.owned[WEAPON_KNIFE]=true;Input empty={};
@@ -338,7 +365,7 @@ static void render_checks(){
 }
 int main(){
  setvbuf(stdout,nullptr,_IONBF,0);SDL_setenv("SDL_VIDEODRIVER","dummy",1);assert(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER)==0);
- catalog_checks();loot_checks();save_checks();raft_and_persist_checks();swift_boots_checks();diving_fins_checks();poison_checks();band_aid_checks();medkit_checks();escape_menu_checks();render_checks();
+ catalog_checks();loot_checks();save_checks();raft_and_persist_checks();bicycle_checks();diving_fins_checks();poison_checks();band_aid_checks();medkit_checks();escape_menu_checks();render_checks();
  for(int w=0;w<WEAPON_COUNT;w++){ProjectileProfile p=weapon_profile((WeaponType)w);assert(fabsf(faster_fire_rate(p.fire_rate,0)-p.fire_rate)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)-TOUHOU_FIRE_RATE)<0.001f);assert(fabsf(faster_fire_rate(p.fire_rate,WEAPON_OIL_MAX)*faster_damage(p.fire_rate,p.damage,WEAPON_OIL_MAX)/(p.fire_rate*p.damage)-FASTER_DPS_AT_MAX)<0.001f);}
  SDL_Quit();puts("craftcheck: ok");return 0;
 }

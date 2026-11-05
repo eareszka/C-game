@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Grand'Goule, a monster battle sprite, keep its design exactly",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 2080 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 72,
+      "height": 72
+    },
+    "target_size": {
+      "width": 100,
+      "height": 100
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-100.png"
+  ]
+}

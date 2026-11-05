@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\43-sazae-oni\\idle-edit\\idle-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\43-sazae-oni\\idle-edit\\idle-edit\\sprites\\v1\\43-sazae-oni-idle-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\43-sazae-oni\\idle-edit\\idle-edit\\sprites\\v1\\idle-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "77baf132-ff91-4f99-96b5-2c65c3ce0c4a",
+    "generation_id": "8dbebe70-f819-457c-884c-0621a8affe09"
+  },
+  "route": "edit-images-v2"
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "idle-rotate_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1756 characters>",
+      "format": "png"
+    },
+    "description": "Amixsak: an empty walrus hide risen from the sea as a vengeful monster, a sagging hollow brown skin floating upright, a dark empty hollow inside, long yellowed tusks, flippers spread to seize. Flat black-outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "cf88d3cc-f223-43b9-85ee-639a3afcfc86",
+    "generation_id": "1dd73776-c245-4902-b4ab-421217f8b623"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "88-amixsak-idle-views-south-00.png",
+    "88-amixsak-idle-views-south-east-01.png",
+    "88-amixsak-idle-views-east-02.png",
+    "88-amixsak-idle-views-north-east-03.png",
+    "88-amixsak-idle-views-north-04.png",
+    "88-amixsak-idle-views-north-west-05.png",
+    "88-amixsak-idle-views-west-06.png",
+    "88-amixsak-idle-views-south-west-07.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "18",
+  "generated": "2026-11-02T12:33:08Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "18_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "surge-00.png",
+        "surge-01.png",
+        "surge-02.png",
+        "surge-03.png",
+        "surge-04.png"
+      ],
+      "ids": {
+        "background_job_id": "8b37ea05-321b-49a4-b0e3-94deabdd6093",
+        "generation_id": "a43689f0-5d39-421e-8248-fe4a8af2e77c"
+      }
+    }
+  ]
+}

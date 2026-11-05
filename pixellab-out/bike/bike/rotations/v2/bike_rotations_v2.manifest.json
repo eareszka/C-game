@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "bike_rotations_v2",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 380 characters>",
+      "format": "png"
+    },
+    "description": "tiny RPG character sitting upright on a small chunky black bicycle with two wheels; brown hair, checked red shirt, black pants, red shoes; flat colours, one black outline",
+    "no_background": true,
+    "seed": 202
+  },
+  "links": {},
+  "seed": 202,
+  "ids": {
+    "background_job_id": "cde6a7a8-f407-42e2-a9fe-ebf1852f98aa",
+    "generation_id": "a33594c6-f48e-4afc-bb09-50b6d9129322"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-202-south-00.png",
+    "rot-202-south-east-01.png",
+    "rot-202-east-02.png",
+    "rot-202-north-east-03.png",
+    "rot-202-north-04.png",
+    "rot-202-north-west-05.png",
+    "rot-202-west-06.png",
+    "rot-202-south-west-07.png"
+  ]
+}

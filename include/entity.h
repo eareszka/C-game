@@ -207,7 +207,10 @@ enum MonsterPart { PART_HIDE, PART_BONE, PART_ESSENCE, PART_VINE, PART_FEATHER, 
 // Display name, e.g. "HIDE": one list for the battle panel and the menus.
 const char* part_name(int part);
 
-enum Footwear { FOOTWEAR_NONE, FOOTWEAR_SWIFT_BOOTS, FOOTWEAR_DIVING_FINS };
+// What is worn on the feet: the fins, or nothing. Value 1 is retired (the
+// footwear the bicycle replaced): a save that still says 1 is read as a worn
+// bike (src/save.cpp).
+enum Footwear { FOOTWEAR_NONE, FOOTWEAR_RETIRED, FOOTWEAR_DIVING_FINS };
 
 typedef struct {
     Stats stats;
@@ -266,10 +269,15 @@ typedef struct {
     unsigned long long found_extra[2];
     int poisoned;
     float poison_timer;
-    int footwear; // Footwear: one pair worn, 0/1 retains the original boots save layout.
+    int footwear; // Footwear: the fins or nothing; 1 is a retired value (save version 5).
     // The raft in use (item_raft_worn): only a worn raft floats. Put on when
     // crafted; taken off from ITEMS, never while afloat. Save version 18.
     int raft_worn;
+    // The bicycle in use (item_bike_worn): put on and taken off from ITEMS,
+    // never on water or in a fight. Ridden wherever the player can walk, at
+    // BIKE_SPEED; tools stay put, and it comes off by itself for a ladder, the
+    // raft or the boat, back on at the ground. Save version 21.
+    int bike_worn;
 } Player;
 
 // Active gameplay only: lose 1 HP per second while poisoned, never below 1.
@@ -339,7 +347,11 @@ void player_animate(Player* player, float dt, float anim_speed);
 constexpr float PLAYER_WALK_SPEED = 120.0f;
 constexpr float PLAYER_RUN_SPEED  = 240.0f;
 constexpr float PLAYER_CROUCH_SPEED = 60.0f;
-constexpr float SWIFT_BOOTS_SPEED_MULT = 1.5f;
+// The bicycle: one steady pace, quicker than a sprint (and than the wilds,
+// CHASER_SPEED in main.cpp), whatever keys are held; and its pedal frame's
+// duration.
+constexpr float BIKE_SPEED = 300.0f;
+constexpr float BIKE_ANIM  = 0.12f;
 constexpr float DIVING_FINS_SPEED_MULT = 1.5f;
 // How fast the raft carries the player, a steady glide between walk and run.
 constexpr float RAFT_SPEED = 180.0f;
@@ -362,11 +374,17 @@ bool player_crouching(const Input* in);
 bool player_sprinting(const Input* in);
 
 // The speed and walk-frame duration for this frame: sprinting with shift,
-// crouching with ctrl. Pass the player on foot for the equipped Swift Boots bonus.
-// A null player keeps base gait (swimming and vehicle travel).
+// crouching with ctrl. Pass the player where the bicycle may be ridden: worn,
+// it sets BIKE_SPEED whatever is held. A null player keeps the gait on foot
+// (swimming, the raft and the boat).
 void player_gait(const Input* in, float* speed, float* anim_speed, const Player* player = nullptr);
-// Oasis swimming speed, including equipped fins; never applies boots.
+// Oasis swimming speed, including equipped fins; never the bike.
 float player_swim_speed(const Player* player, const Input* in);
+
+// The frame of assets/player_bike.png to draw while riding: 24 x 24 each,
+// five a facing in the Facing enum's order (down, up, left, right, down-left,
+// down-right, up-left, up-right) -- coasting, then the four steps of a wheel's turn.
+int player_bike_frame(const Player* player);
 
 typedef struct {
     Stats stats;

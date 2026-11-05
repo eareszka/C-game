@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 520 characters>",
+          "format": "png"
+        },
+        "width": 36,
+        "height": 32
+      }
+    ],
+    "image_size": {
+      "width": 36,
+      "height": 32
+    },
+    "description": "<elided 1110 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ceebcf3a-370c-4812-be91-ce0f26823dbc",
+    "generation_id": "96f721e1-f042-430a-8ed7-cbc2581527e2"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "09-questing-beast-idle-frame0.png"
+  ]
+}

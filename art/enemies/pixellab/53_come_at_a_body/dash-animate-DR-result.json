@@ -1,0 +1,22 @@
+{
+  "run": "dash-animate-dr_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\53-come-at-a-body-dash-dr-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\53-come-at-a-body-dash-dr-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\53-come-at-a-body-dash-dr-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\53-come-at-a-body-dash-dr-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\53-come-at-a-body-dash-dr-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\53-come-at-a-body\\dash-animate-DR\\dash-animate-dr\\animations\\v1\\dash-animate-dr_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "0086ee8a-e956-4985-9411-cb613aa7eb20",
+    "generation_id": "7d99789c-93fa-41ea-856d-a767d5836d33"
+  }
+}

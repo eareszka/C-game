@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "89_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 664 characters>",
+      "format": "png"
+    },
+    "action": "a living flat cowhide creeping along the ground by rippling, its clawed points reaching out then pulling in, the body stays the same shape and size, same colours",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "237a2057-449e-4234-ba68-4da7edeedf9a",
+    "generation_id": "43efd685-a4c5-4ad2-8f3e-cef980d97c82"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ripd-00.png",
+    "ripd-01.png",
+    "ripd-02.png",
+    "ripd-03.png",
+    "ripd-04.png"
+  ]
+}

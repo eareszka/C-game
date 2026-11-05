@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\87-corocotta-idle-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\87-corocotta-idle-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\87-corocotta-idle-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\87-corocotta-idle-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\87-corocotta-idle-ur-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\87-corocotta\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\idle-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a0c8bef6-74c1-45c0-b094-52e22e5fe4f1",
+    "generation_id": "25f45b69-cdaf-4e51-87bf-028e8693d026"
+  }
+}

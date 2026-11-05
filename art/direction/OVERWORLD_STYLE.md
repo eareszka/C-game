@@ -41,7 +41,7 @@ Every piece is one of three kinds, and a kind has its own rules.
 
 Built pieces follow the interiors' way of drawing a material, objects the
 enemy sprites' way of drawing a creature (the user, 2026-10-12), so a brick
-outside is a brick inside and a tree is drawn as a Skvader is.
+outside is a brick inside and a tree is drawn as an enemy is (`SPRITE_STYLE.md`).
 
 ## Across projections
 

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "83-mini-small_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1992 characters>",
+      "format": "png"
+    },
+    "action": "hovering in flight in place, its fan of wings on its back beating down and up, its tucked legs and hooked claws flexing, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b5af49b2-d23f-4381-a9d1-c22ea8691b6e",
+    "generation_id": "56b81250-ef8f-4b27-9b72-aed9d514874e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyd-00.png",
+    "flyd-01.png",
+    "flyd-02.png",
+    "flyd-03.png",
+    "flyd-04.png"
+  ]
+}

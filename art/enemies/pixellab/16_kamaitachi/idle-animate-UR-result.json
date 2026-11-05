@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\16-kamaitachi-idle-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\16-kamaitachi-idle-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\16-kamaitachi-idle-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\16-kamaitachi-idle-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\16-kamaitachi-idle-ur-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\16-kamaitachi\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\idle-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "08b26214-f3b8-4b92-9cc3-65d38f4eed2b",
+    "generation_id": "cef721c8-d200-4b68-b0f0-cb882d67d599"
+  }
+}

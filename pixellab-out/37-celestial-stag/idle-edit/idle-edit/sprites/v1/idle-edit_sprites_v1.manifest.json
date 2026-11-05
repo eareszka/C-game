@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1356 characters>",
+          "format": "png"
+        },
+        "width": 98,
+        "height": 65
+      }
+    ],
+    "image_size": {
+      "width": 98,
+      "height": 65
+    },
+    "description": "<elided 839 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e5e32ff1-a218-42b0-b3f9-1e6b3fa0240f",
+    "generation_id": "d34ffdb8-eca5-4dac-a239-79b7e8de821f"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "37-celestial-stag-idle-frame0.png"
+  ]
+}

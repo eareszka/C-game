@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0538-giant-wheel-shaped-sea-beast-standing-on-its-edg",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "giant wheel-shaped sea beast standing on its edge like a cartwheel, round dark blue-grey body, ring of long spines and a crest radiating from the rim, small timid face in the hub, flat colours, no water, game enemy sprite",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "seed": 942
+  },
+  "links": {},
+  "seed": 942,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

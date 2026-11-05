@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\80-bes-kotak-idle-ur-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\80-bes-kotak\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\idle-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "54fa7b2d-ec80-4050-8798-935f7d66d757",
+    "generation_id": "9552ce1b-587a-4ec8-b94a-ccfd1d9b4384"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-11-02T07:01:23Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "40-slide-rock-bolter-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "a2912fc9-e886-4421-b239-b85c923bdafc",
+        "generation_id": "0548e99e-1878-4a9b-964e-6c871016f1b4"
+      }
+    }
+  ]
+}

@@ -25,7 +25,9 @@ job.json: {"id", "name", "dir", "prompts": {SHEET: file}, "sheets": {SHEET: {
     "ground": true puts every frame's lowest pixel on the approved frame's ground line;
     "despeckle": N drops loose islands of N pixels or fewer from animated frames;
     "flash": {"png", "colors", "radius", "to"} derives an alternate sheet (the eye gone white),
-    "from": another SHEET whose approved frame 0 is this one's palette and reference}}}
+    "replaces": the sheet battle.cpp loads now, when "png" is a bigger padded base for it (36 Cu Sith, sized up to 98x65),
+    "from": another SHEET whose approved frame 0 is this one's palette and reference,
+    "extra": ["rrggbb", ...] colours added to frame 0's palette for the animated frames (steam, a flash)}}}
 """
 import json
 import os
@@ -43,11 +45,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'art/direction'))
 import fcremap as fc
 
-BOARD = 'art/direction/approved_enemy_study/approved_42_fronts_native_512.png'
+BOARD = 'art/direction/approved_enemy_study/style_bc_native_512.png'    # the bible's style image (SPRITE_STYLE.md)
 VIEWS = {'D': 'south', 'DR': 'south-east', 'R': 'east', 'UR': 'north-east', 'U': 'north',
          'UL': 'north-west', 'L': 'west', 'DL': 'south-west'}   # left views: only where drawn, not mirrored (16)
 MAX_SIDE = 256          # rotate / animate input limit
-ESTIMATE = {'edit': 30, 'rotate': 3, 'animate': 1}
+MIN_SIDE = 32           # the API's smallest image: a tinier canvas is sent padded and cut back (02 Treesqueak, 20x19)
+ESTIMATE = {'edit': 30, 'rotate': 3, 'animate': 1, 'sprite': 3}
 
 
 class Job:
@@ -72,8 +75,9 @@ class Job:
         return Image.open(self.f(f'{key}_frame0_clean.png')).convert('RGBA')
 
     def palette(self, key):
+        extra = {rgb(c) for c in self.sheet(key).get('extra', [])}   # colours frame 0 lacks (50 Teakettler's white steam)
         key = self.sheet(key).get('from', key)
-        return sorted({p[:3] for p in self.approved(key).getdata() if p[3]})
+        return sorted({p[:3] for p in self.approved(key).getdata() if p[3]} | extra)
 
 
 def pngs(result):
@@ -152,12 +156,19 @@ def roomy(im, path):
 def fit(im, size, origin, ground=None):
     """A generated frame back onto the native canvas at the crop's origin, never resampled; with
     `ground`, moved up or down so its lowest pixel sits on that line (a rotated view). A pose that
-    leaves the canvas is an error, not clipped."""
+    drifted past a side but still fits the width slides back in (50 Teakettler's walk on a 32 px
+    canvas), and with no ground line past the top or bottom too (26 Akhekh's tail, a pixel, as it beats);
+    one that leaves the canvas otherwise is an error, not clipped."""
     out = Image.new('RGBA', (size[0] + 2 * im.width, size[1] + 2 * im.height))
     out.paste(im, (origin[0] + im.width, origin[1] + im.height))
     box = out.getbbox()
     dy = 0 if ground is None else ground - (box[3] - im.height)
-    inner = (im.width, im.height - dy, im.width + size[0], im.height - dy + size[1])
+    if ground is None and box[3] - box[1] <= size[1]:       # a flier with no ground line slides back in too, a bob
+        dy = max(0, im.height - box[1]) - max(0, box[3] - (im.height + size[1]))
+    dx = 0
+    if box[2] - box[0] <= size[0]:
+        dx = max(0, im.width - box[0]) - max(0, box[2] - (im.width + size[0]))
+    inner = (im.width - dx, im.height - dy, im.width - dx + size[0], im.height - dy + size[1])
     assert box[0] >= inner[0] and box[2] <= inner[2] and box[1] >= inner[1] and box[3] <= inner[3],         f'pose leaves the {size} canvas'
     return out.crop(inner)
 
@@ -178,23 +189,27 @@ def edit(job, key, generate, attempt=1):
     tag = '' if attempt == 1 else f'-try{attempt}'
     prompt = job.f(job.cfg['prompts'][key]).read_text(encoding='utf-8').strip()
     ref = job.sheet(key).get('from')
-    match = str(job.f(f'{ref}_frame0_clean.png')) if ref else str(ROOT / job.cfg.get('match', BOARD))   # "match": a style image (the bosses: Boiuna)
+    style = job.cfg.get('match', BOARD)   # "match": a style image (the bosses: Boiuna); null, the instruction alone
+    match = str(job.f(f'{ref}_frame0_clean.png')) if ref else str(ROOT / style) if style else None   # (53: every style image was copied in)
     # The edit route fails on a subject sitting low or high in an empty canvas (Namungumi, 3 failed
     # jobs): send it centred vertically, and move the draft back by the same rows.
     src = Image.open(job.f(f'source_{key}.png')).convert('RGBA')
     box = src.getbbox()
-    dy = (h - (box[3] - box[1])) // 2 - box[1]
-    sent = Image.new('RGBA', src.size)
-    sent.paste(src, (0, dy))
+    sw, sh = max(w, MIN_SIDE), max(h, MIN_SIDE)    # a tiny canvas goes out padded, the pixels unscaled
+    if not match:
+        sw, sh = -(-sw // 4) * 4, -(-sh // 4) * 4   # the instruction-only route takes sides in fours
+    dx, dy = (sw - w) // 2, (sh - (box[3] - box[1])) // 2 - box[1]
+    sent = Image.new('RGBA', (sw, sh))
+    sent.paste(src, (dx, dy))
     sent.save(job.f(f'source_{key}_sent.png'))
-    result = call(job, f'{key}-edit{tag}', ['edit', str(job.f(f'source_{key}_sent.png')), '--prompt', prompt, '--size', f'{w}x{h}',
-                                            '--match', match, '--transparent', '--name', f'{job.cfg["name"]}-{key}-frame0{tag}'], generate)
+    result = call(job, f'{key}-edit{tag}', ['edit', str(job.f(f'source_{key}_sent.png')), '--prompt', prompt, '--size', f'{sw}x{sh}',
+                                            *(['--match', match] if match else []), '--transparent', '--name', f'{job.cfg["name"]}-{key}-frame0{tag}'], generate)
     if result:
         draft = job.f(f'{key}_frame0_draft.png')
         if attempt > 1 and draft.exists():
             draft.replace(job.f(f'{key}_frame0_draft_try{attempt - 1}.png'))
         back = Image.new('RGBA', (w, h))
-        back.paste(Image.open(pngs(result)[0]).convert('RGBA'), (0, -dy))
+        back.paste(Image.open(pngs(result)[0]).convert('RGBA'), (-dx, -dy))
         back.save(draft)
 
 
@@ -267,13 +282,14 @@ def animate(job, key, generate, attempt=1, only=None):
     for v in (only or s['views']):
         src = job.f(f'{key}_input_{v}.png')
         origin = roomy(view_image(job, key, v), src)
+        ground = view_image(job, key, v).getbbox()[3] if s.get('ground') else None   # feet back on its line as it is fitted
         for name, action in actions(s).items():
             part = f'-{name}' if name else ''
             result = call(job, f'{key}-animate{part}-{v}{tag}', ['animate', str(src), '--action', action, '--frames', str(s['count']),
                                                             '--transparent', '--name', f'{job.cfg["name"]}-{key}{part}-{v}{tag}'], generate)
             if result:
                 for i, p in enumerate(pngs(result)[-s['count']:], 1):
-                    to_palette(fit(Image.open(p), (w, h), origin), job.palette(key)).save(job.f(f'{key}_anim{part.replace("-", "_")}_{v}_{i}.png'))
+                    to_palette(fit(Image.open(p), (w, h), origin, ground), job.palette(key)).save(job.f(f'{key}_anim{part.replace("-", "_")}_{v}_{i}.png'))
 
 
 def frames(job, key, generate):
@@ -472,14 +488,14 @@ def install(job):
     for key, s, packed in todo:
         sheet = Image.open(packed).convert('RGBA')
         old = ROOT / s['png']
-        assert sheet.size == Image.open(old).size, f'{key}: sheet size changed'
+        assert sheet.size == Image.open(old).size, f'{key}: sheet size changed'   # (a bigger cell: "png" a padded base, "replaces" the old)
         dest = ROOT / 'assets/enemies/redraws' / Path(s['png']).name
         palette = sorted({'%02x%02x%02x' % p[:3] for p in sheet.getdata() if p[3]})
         tags = enemy_sheet.install(sheet, dest, s['frames'], s['rows'], ms=s['ms'], palette=palette,
                                    backup=str(ROOT / 'art/_backup' / f'pixellab_{job.cfg["id"]:02}_{stamp}'))
         assert Image.open(dest).convert('RGBA').tobytes() == sheet.tobytes()
-        rel_old, rel_new = s['png'], dest.relative_to(ROOT).as_posix()
-        if rel_old != rel_new:
+        rel_old, rel_new = s.get('replaces', s['png']), dest.relative_to(ROOT).as_posix()
+        if rel_old != rel_new and f'"{rel_new}"' not in src:     # (a re-install finds it switched already)
             assert f'"{rel_old}"' in src, f'{rel_old} not in battle.cpp'
             src = src.replace(f'"{rel_old}"', f'"{rel_new}"')
         manifest['enemies'] = [e for e in manifest['enemies'] if e.get('png') != rel_new] + [dict(

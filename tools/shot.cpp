@@ -319,7 +319,17 @@ int main(int argc, char** argv)
         printf("story stage %s\n", STORY_STAGE_NAMES[story_stage()]);
     }
 
+    // SHOT_MS=n: the world's clock that far on, so what moves on its beat
+    // (core.h's ambient frames) is caught at that moment
+    if (const char* ms = getenv("SHOT_MS")) world_advance((float)atof(ms) / 1000.0f);
     const char* kind = getenv("SHOT_KIND");
+    if (want_x < 0 && kind && kind[0] == 't' && (kind[1] == '1' || kind[1] == '2')) {
+        // Town 1 or 2 (SHOT_KIND=t2 is Xuelin), its footprint in the middle of the window.
+        int n = kind[1] - '0';
+        want_x = g_map.towns[n].x + TOWN_W / 2 - tw / 2;
+        want_y = g_map.towns[n].y + TOWN_H / 2 - th / 2;
+        printf("centred on town %d at %d,%d\n", n, g_map.towns[n].x, g_map.towns[n].y);
+    }
     if (want_x < 0 && kind && kind[0] == 't') {
         // The spawn town, whose houses are the building art.
         want_x = g_map.towns[0].x + TOWN_W / 2 - tw / 2;
@@ -547,6 +557,28 @@ int main(int argc, char** argv)
             sw++;
         }
     }
+    // SHOT_WALK_S=n walks the first player n pixels south from where SHOT_PLAYER
+    // put them, moving as the game does, in and out of behind an island, and
+    // draws them where they stop. Negative walks north again from there.
+    if (const char* ws = getenv("SHOT_WALK_S")) {
+        static const auto solid = [](const void* m, float x, float y) {
+            const Tilemap* t = (const Tilemap*)m;
+            return tilemap_behind_active() ? tilemap_behind_solid(t, x, y) : tilemap_pixel_solid(t, x, y);
+        };
+        float ox = px[0] - (HB_X1 + HB_X2) * 0.5f, oy = py[0] - (HB_Y1 + HB_Y2) * 0.5f;
+        int n = atoi(ws);
+        for (int pass = 0; pass < 2; pass++) {
+            int len = pass ? -abs(atoi(getenv("SHOT_WALK_N") ? getenv("SHOT_WALK_N") : "0")) : n;
+            for (int k = 0; k < abs(len); k += 2) {
+                float d = len > 0 ? 2.0f : -2.0f;
+                if (d > 0) tilemap_behind_try_enter(&g_map, ox + HB_X1, ox + HB_X2, oy + HB_Y2);
+                move_feet(&g_map, &ox, &oy, 0.0f, d, solid);
+                tilemap_behind_update(ox + HB_X1, ox + HB_X2, oy + HB_Y2);
+                if (k % 12 == 0) printf("walk y=%.0f %s\n", oy + HB_Y2, tilemap_behind_active() ? "behind" : "outside");
+            }
+        }
+        px[0] = ox + (HB_X1 + HB_X2) * 0.5f; py[0] = oy + (HB_Y1 + HB_Y2) * 0.5f;
+    }
     bool each = getenv("SHOT_EACH") != nullptr;
     for (int pic = 0; pic < (each && np ? np : 1); pic++) {
         SDL_SetRenderDrawColor(ren, 255, 0, 255, 255);
@@ -589,6 +621,7 @@ int main(int argc, char** argv)
             SDL_RenderCopy(ren, who, &src, &dst);
             tilemap_draw_over_player(&g_map, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
             resource_nodes_draw_over_player(&nodes, &cam, ren, ox, oy, 28, 40, oy + HB_Y2);
+            if (i == 0) tilemap_draw_behind_cover(&g_map, &cam, ren, ox, oy, 28, 40);
             if (nsw) weapon_swing_draw(&swing, px[i], py[i], &cam, ren);
             int blocked = 0;
             for (int yy = HB_Y1; yy < HB_Y2; yy++)

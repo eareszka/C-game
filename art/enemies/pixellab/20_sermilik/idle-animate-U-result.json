@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-u_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\20-sermilik-idle-u-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\20-sermilik\\idle-animate-U\\idle-animate-u\\animations\\v1\\idle-animate-u_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "71b91332-3a04-49c7-a54f-48027af8c746",
+    "generation_id": "44062469-4874-4b7a-a6d2-de4650f7c3a4"
+  }
+}

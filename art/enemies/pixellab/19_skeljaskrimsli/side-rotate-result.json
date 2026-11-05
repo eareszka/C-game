@@ -1,0 +1,25 @@
+{
+  "run": "side-rotate-2_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\19-side-views-2-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate-2\\side-rotate-2\\rotations\\v1\\side-rotate-2_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "f46a56ca-3348-47ac-8ee4-6d188595b9ce",
+    "generation_id": "c03fa0da-0229-4570-8d84-6797f548f509"
+  }
+}

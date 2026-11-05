@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 872 characters>",
+          "format": "png"
+        },
+        "width": 45,
+        "height": 47
+      }
+    ],
+    "image_size": {
+      "width": 45,
+      "height": 47
+    },
+    "description": "<elided 1000 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "12a0cf01-d376-45e1-8b2d-40784381932d",
+    "generation_id": "576f435c-8d03-4ad7-a272-35d10cf91c06"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "16-kamaitachi-idle-frame0.png"
+  ]
+}

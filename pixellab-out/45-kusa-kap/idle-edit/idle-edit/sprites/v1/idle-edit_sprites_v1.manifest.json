@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1360 characters>",
+          "format": "png"
+        },
+        "width": 78,
+        "height": 59
+      }
+    ],
+    "image_size": {
+      "width": 78,
+      "height": 59
+    },
+    "description": "<elided 1473 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7e01c289-9694-4caa-b4b0-30ccebdced2f",
+    "generation_id": "60440cc5-e200-4989-b35c-106dcc430137"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "45-kusa-kap-idle-frame0.png"
+  ]
+}

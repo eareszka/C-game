@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1172 characters>",
+      "format": "png"
+    },
+    "action": "<elided 402 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2d9afc48-a803-49ee-9fa4-6bdef43898be",
+    "generation_id": "37f301e9-a2f3-4392-aeea-2a25f321fae3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "45-kusa-kap-idle-d-00.png",
+    "45-kusa-kap-idle-d-01.png",
+    "45-kusa-kap-idle-d-02.png",
+    "45-kusa-kap-idle-d-03.png",
+    "45-kusa-kap-idle-d-04.png"
+  ]
+}

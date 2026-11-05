@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1845-c2-keep-this-serpent-its-tall-neck-facing-front-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4084 characters>",
+      "format": "png"
+    },
+    "description": "<elided 450 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 931
+  },
+  "links": {},
+  "seed": 931,
+  "ids": {
+    "background_job_id": "d4bfd3ed-8f00-45ca-9c0f-d83e0fb19bba",
+    "generation_id": "f1d3e298-08af-436a-ba9a-6f0990e607b1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "w1.png"
+  ]
+}

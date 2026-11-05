@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 868 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: it breathes, its mossy mane rising and settling, its coiled tail swishing, then it lifts its head and gives one silent bark. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "17854ef0-0bba-49a4-90cb-643c299c6e21",
+    "generation_id": "7afe33cc-0302-4d4b-bc17-d2dc9e229f2b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "36-cu-sith-idle-d-00.png",
+    "36-cu-sith-idle-d-01.png",
+    "36-cu-sith-idle-d-02.png",
+    "36-cu-sith-idle-d-03.png",
+    "36-cu-sith-idle-d-04.png"
+  ]
+}

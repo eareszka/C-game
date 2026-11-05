@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1521-tiny-map-enemy-big-round-stone-monster-side-on-f",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny map enemy, big round stone monster side on facing left at level camera, gaping jaws at the front, dark red gullet, moss draped down its back, small rocks at its base, black outline, flat simple colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "west",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD439I2heG0wmUG3ZQtDAAuQQWi3Kf8BgAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1404
+  },
+  "links": {},
+  "seed": 1404,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s2.png"
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v7",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 636 characters>",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "style_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 304 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 24,
+        "height": 24
+      }
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 688 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "usage_description": "the same bicycle and rider from the side"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 640 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "usage_description": "the same bicycle and rider from the front"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 560 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 64,
+          "height": 96
+        },
+        "usage_description": "the bicycle style to match"
+      }
+    ],
+    "no_background": true,
+    "seed": 51
+  },
+  "links": {},
+  "seed": 51,
+  "ids": {
+    "background_job_id": "53f3b042-4830-4af7-a70f-8353a8e25f50",
+    "generation_id": "0cb9db71-bc69-48a9-bebe-2ba41e30f46e"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "diagdown-00.png",
+    "diagdown-01.png",
+    "diagdown-02.png",
+    "diagdown-03.png",
+    "diagdown-04.png",
+    "diagdown-05.png",
+    "diagdown-06.png",
+    "diagdown-07.png",
+    "diagdown-08.png",
+    "diagdown-09.png",
+    "diagdown-10.png",
+    "diagdown-11.png",
+    "diagdown-12.png",
+    "diagdown-13.png",
+    "diagdown-14.png",
+    "diagdown-15.png",
+    "diagdown-16.png",
+    "diagdown-17.png",
+    "diagdown-18.png",
+    "diagdown-19.png",
+    "diagdown-20.png",
+    "diagdown-21.png",
+    "diagdown-22.png",
+    "diagdown-23.png",
+    "diagdown-24.png",
+    "diagdown-25.png",
+    "diagdown-26.png",
+    "diagdown-27.png",
+    "diagdown-28.png",
+    "diagdown-29.png",
+    "diagdown-30.png",
+    "diagdown-31.png",
+    "diagdown-32.png",
+    "diagdown-33.png",
+    "diagdown-34.png",
+    "diagdown-35.png",
+    "diagdown-36.png",
+    "diagdown-37.png",
+    "diagdown-38.png",
+    "diagdown-39.png",
+    "diagdown-40.png",
+    "diagdown-41.png",
+    "diagdown-42.png",
+    "diagdown-43.png",
+    "diagdown-44.png",
+    "diagdown-45.png",
+    "diagdown-46.png",
+    "diagdown-47.png",
+    "diagdown-48.png",
+    "diagdown-49.png",
+    "diagdown-50.png",
+    "diagdown-51.png",
+    "diagdown-52.png",
+    "diagdown-53.png",
+    "diagdown-54.png",
+    "diagdown-55.png",
+    "diagdown-56.png",
+    "diagdown-57.png",
+    "diagdown-58.png",
+    "diagdown-59.png",
+    "diagdown-60.png",
+    "diagdown-61.png",
+    "diagdown-62.png",
+    "diagdown-63.png"
+  ]
+}

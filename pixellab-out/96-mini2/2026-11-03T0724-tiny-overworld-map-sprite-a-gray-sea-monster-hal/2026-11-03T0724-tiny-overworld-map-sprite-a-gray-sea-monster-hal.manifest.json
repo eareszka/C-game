@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0724-tiny-overworld-map-sprite-a-gray-sea-monster-hal",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 262 characters>",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD439I2hYHz6W4G6dZcBgAskQVVLb4q3QAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1091
+  },
+  "links": {},
+  "seed": 1091,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-overworld-map-sprite-a-gray-sea-monster-hal.png"
+  ]
+}

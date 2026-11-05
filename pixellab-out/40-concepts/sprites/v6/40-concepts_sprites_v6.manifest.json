@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "40-concepts_sprites_v6",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 317 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "medium detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 22
+  },
+  "links": {},
+  "seed": 22,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

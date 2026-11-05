@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "k_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 577 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 72
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "seed": 7301
+  },
+  "links": {},
+  "seed": 7301,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "t7301.png"
+  ]
+}

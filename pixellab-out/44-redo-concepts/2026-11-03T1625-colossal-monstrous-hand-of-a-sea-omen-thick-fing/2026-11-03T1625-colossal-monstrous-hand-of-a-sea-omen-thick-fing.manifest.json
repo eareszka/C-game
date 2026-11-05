@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1625-colossal-monstrous-hand-of-a-sea-omen-thick-fing",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 271 characters>",
+    "image_size": {
+      "width": 128,
+      "height": 80
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1512
+  },
+  "links": {},
+  "seed": 1512,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

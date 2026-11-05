@@ -1,0 +1,11 @@
+{
+"id": 93,
+"side": 76,
+"tolerance": 4,
+"colours": 6,
+"rule": "6a2af9a8c999",
+"prompt": "652adb0921d0",
+"made": "2026-11-05 00:02",
+"rule_version": 2,
+"touch_up": "The user: \"It should have the same shape as the previous one. But the old one was harder to read\", \"specifically the snake the part\". Keep the outer silhouette and where everything sits: the rearing neck and head, the coil tail at the right, the coils along the bottom and the boat and rider, all in the same places. Redraw only what is inside the snake so it reads at game size. Replace the tiled grey belly panels on the neck and on the bottom coil with one plain flat grey band, with no bricks or cross lines. Replace the blocks on the violet hood and tail with plain flat violet and one violet shadow. Make the bottom coils read as one thick snake body, with the boat sitting clearly on top of them, using one clean black line between them. At most 6 colours plus black: two violets, two greys, one brown, and the red of the drip and the eyes. Two flat tones per material. Leave the head shape, the eye, the rider and the boat's outline as they are, apart from using those colours."
+}

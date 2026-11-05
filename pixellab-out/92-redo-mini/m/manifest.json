@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "m",
+  "generated": "2026-11-02T18:06:55Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "std-00.png",
+        "std-01.png",
+        "std-02.png",
+        "std-03.png",
+        "std-04.png"
+      ],
+      "ids": {
+        "background_job_id": "0eacb145-925e-4e2b-aad0-3a7ede0af265",
+        "generation_id": "a1be4e4a-d736-4ad2-9542-69c870e250c4"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "stu-00.png",
+        "stu-01.png",
+        "stu-02.png",
+        "stu-03.png",
+        "stu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "ca712eb0-2136-465d-b79c-6afce9ba7d40",
+        "generation_id": "e09c4925-7453-4a14-952c-4bf2616c4c35"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "str-00.png",
+        "str-01.png",
+        "str-02.png",
+        "str-03.png",
+        "str-04.png"
+      ],
+      "ids": {
+        "background_job_id": "33359697-dfd4-45a7-ac4d-a0f585df49e1",
+        "generation_id": "47971f0a-2bbe-4dfd-a2a9-950588689ce3"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "m_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "f343e440-e5e5-40ca-a741-1c61da97fc69",
+        "generation_id": "61e63478-985c-4ca0-8851-c83207d30206"
+      }
+    }
+  ]
+}

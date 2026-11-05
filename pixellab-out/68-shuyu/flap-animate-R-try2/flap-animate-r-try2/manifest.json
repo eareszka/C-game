@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "flap-animate-r-try2",
+  "generated": "2026-10-28T09:44:27Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "flap-animate-r-try2_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "68-shuyu-flap-r-try2-00.png",
+        "68-shuyu-flap-r-try2-01.png",
+        "68-shuyu-flap-r-try2-02.png",
+        "68-shuyu-flap-r-try2-03.png",
+        "68-shuyu-flap-r-try2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "cf7b31a8-4586-4e51-99c1-7e8ab6d81495",
+        "generation_id": "83b1a3a6-048a-4ecb-938e-a03c0d530dbc"
+      }
+    }
+  ]
+}

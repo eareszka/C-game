@@ -1,0 +1,11 @@
+{
+  "id": 42, "name": "42-nykur", "dir": "art/enemies/pixellab/42_nykur",
+  "description": "Nykur: a fine dapple-grey water horse with a wet dark green weedy mane and tail, its hooves turned backwards. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/42_nykur.png", "frames": 3, "rows": false, "ms": 250,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+    "action": "Standing in place: the horse tosses its head up, its wet weedy mane swinging out, then lowers its head as if beckoning. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "map": {"*": [0, 1, 3]}, "ground": true, "despeckle": 2
+  }}
+}

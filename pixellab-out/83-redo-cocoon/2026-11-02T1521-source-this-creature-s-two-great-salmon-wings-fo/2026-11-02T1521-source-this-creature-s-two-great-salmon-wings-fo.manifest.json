@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1521-source-this-creature-s-two-great-salmon-wings-fo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1780 characters>",
+      "format": "png"
+    },
+    "description": "<elided 387 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 894
+  },
+  "links": {},
+  "seed": 894,
+  "ids": {
+    "background_job_id": "ba0c2f91-f1b7-492b-9edf-fb75b69a6b0a",
+    "generation_id": "07c388e1-9fa6-4200-8928-38bfc9b403c9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f1.png"
+  ]
+}

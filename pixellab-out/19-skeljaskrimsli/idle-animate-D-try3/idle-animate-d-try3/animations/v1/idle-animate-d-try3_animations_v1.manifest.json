@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d-try3_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1636 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place breathing heavily, hunched: its big domed shell back heaves up and settles down, its two glowing green eyes and glowing teeth glow brighter then dim. Feet planted, head lowered, same pose, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4b793e54-4084-46b3-a3f3-3d805418c707",
+    "generation_id": "bc80a685-a0f4-4c73-bff8-ee3a5d5068a8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "19-skeljaskrimsli-idle-d-try3-00.png",
+    "19-skeljaskrimsli-idle-d-try3-01.png",
+    "19-skeljaskrimsli-idle-d-try3-02.png",
+    "19-skeljaskrimsli-idle-d-try3-03.png",
+    "19-skeljaskrimsli-idle-d-try3-04.png",
+    "19-skeljaskrimsli-idle-d-try3-05.png",
+    "19-skeljaskrimsli-idle-d-try3-06.png",
+    "19-skeljaskrimsli-idle-d-try3-07.png",
+    "19-skeljaskrimsli-idle-d-try3-08.png"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-u_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\35-lomie-idle-u-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\35-lomie-idle-u-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\35-lomie-idle-u-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\35-lomie-idle-u-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\35-lomie-idle-u-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-animate-U\\idle-animate-u\\animations\\v1\\idle-animate-u_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "493a6896-fc7f-482c-83fa-349cb69e0edc",
+    "generation_id": "5bbc47db-e8fb-4689-9d80-69338b5f7827"
+  }
+}

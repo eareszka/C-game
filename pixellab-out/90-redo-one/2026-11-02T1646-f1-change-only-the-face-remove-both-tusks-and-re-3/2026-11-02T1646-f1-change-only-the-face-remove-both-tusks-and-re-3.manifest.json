@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1646-f1-change-only-the-face-remove-both-tusks-and-re-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 5952 characters>",
+      "format": "png"
+    },
+    "description": "<elided 359 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 592
+  },
+  "links": {},
+  "seed": 592,
+  "ids": {
+    "background_job_id": "9ea3c68a-8b9a-409f-a327-f6e50e983853",
+    "generation_id": "c4abcf09-1980-4121-9010-80e61933c7a8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "o2.png"
+  ]
+}

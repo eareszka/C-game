@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "subject": "c",
+  "generated": "2026-11-02T18:39:13Z",
+  "spent": {
+    "calls": 5,
+    "generations": 5.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "c_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "hdl-00.png",
+        "hdl-01.png",
+        "hdl-02.png",
+        "hdl-03.png",
+        "hdl-04.png",
+        "hdl-05.png",
+        "hdl-06.png"
+      ],
+      "ids": {
+        "background_job_id": "e141969e-389f-458b-a69a-e3ae2bb21cba",
+        "generation_id": "808d0b53-f57a-4322-8265-c4c8b4d5a62a"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "c_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "hd-00.png",
+        "hd-01.png",
+        "hd-02.png",
+        "hd-03.png",
+        "hd-04.png",
+        "hd-05.png",
+        "hd-06.png"
+      ],
+      "ids": {
+        "background_job_id": "7af0f8c5-0674-4ecc-a4c5-e00f3b1bd440",
+        "generation_id": "9d67edfa-d2e6-474f-b7f6-001da8247f75"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "c_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "hl-00.png",
+        "hl-01.png",
+        "hl-02.png",
+        "hl-03.png",
+        "hl-04.png",
+        "hl-05.png",
+        "hl-06.png"
+      ],
+      "ids": {
+        "background_job_id": "e35c4431-a28c-4fd2-ad85-a9a78eb919e1",
+        "generation_id": "ba8c49b5-a455-43d7-ba9a-9fba2a1bc662"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "c_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "hr-00.png",
+        "hr-01.png",
+        "hr-02.png",
+        "hr-03.png",
+        "hr-04.png",
+        "hr-05.png",
+        "hr-06.png"
+      ],
+      "ids": {
+        "background_job_id": "b9033fab-97bb-462b-bedb-7b1d3eb1d11e",
+        "generation_id": "5e9347ba-fe1a-4e17-bfb8-1f60c5636f74"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "c_animations_v5",
+      "directory": "animations/v5",
+      "files": [
+        "hdr-00.png",
+        "hdr-01.png",
+        "hdr-02.png",
+        "hdr-03.png",
+        "hdr-04.png",
+        "hdr-05.png",
+        "hdr-06.png"
+      ],
+      "ids": {
+        "background_job_id": "c6c074d2-c30e-4453-865a-cacfb09d9259",
+        "generation_id": "997b9a0d-6acf-4be6-a259-5662b28b47c2"
+      }
+    }
+  ]
+}

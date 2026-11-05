@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "subject": "18",
+  "generated": "2026-11-02T12:25:08Z",
+  "spent": {
+    "calls": 2,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "18_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "spit-00.png",
+        "spit-01.png",
+        "spit-02.png",
+        "spit-03.png",
+        "spit-04.png"
+      ],
+      "ids": {
+        "background_job_id": "7a45bf13-acb0-4f19-b77c-c3855f090f07",
+        "generation_id": "a814fa11-d629-43d2-9f76-a3508b1b5d90"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "18_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "heave-00.png",
+        "heave-01.png",
+        "heave-02.png",
+        "heave-03.png",
+        "heave-04.png"
+      ],
+      "ids": {
+        "background_job_id": "340ab10c-d8e8-4137-b6e5-9da95bcd1c7c",
+        "generation_id": "159a689d-af77-487a-a2f7-bca7be61b299"
+      }
+    }
+  ]
+}

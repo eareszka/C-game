@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1847-w2-make-the-wizard-in-the-canoe-three-times-smal",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3896 characters>",
+      "format": "png"
+    },
+    "description": "<elided 434 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 941
+  },
+  "links": {},
+  "seed": 941,
+  "ids": {
+    "background_job_id": "98bad36a-571c-4748-a170-9ad075b34b49",
+    "generation_id": "d8cc7fe4-6439-4a09-a46d-1a0120a1a095"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s1.png"
+  ]
+}

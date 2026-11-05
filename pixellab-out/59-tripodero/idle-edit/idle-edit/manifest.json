@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T10:45:19Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "59-tripodero-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "2670e24a-bdef-48c7-ae28-ceebfc826e81",
+        "generation_id": "ecda8550-1a77-4853-bde4-4b4f1a3da1b0"
+      }
+    }
+  ]
+}

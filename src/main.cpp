@@ -1,8 +1,10 @@
+#include <algorithm>  // stable_sort: the overworld's sprites by their feet
 #include <stdio.h>
 #include <stdlib.h>   // strtoul, for the seed argument
 #include <string.h>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <SDL2/SDL_image.h>
 #include <unistd.h>   // chdir: run from game.exe's own folder
@@ -30,6 +32,9 @@
 #include "playtest.h"   // F4: the difficulty trials
 #include "version.h"
 #include "persist.h"     // nothing beaten or broken comes back
+#include "wilds.h"       // the overworld's packs, off the roads
+#include "chase_path.h"  // a walking chaser's way to the player
+#include "tumbleweed.h"  // the desert's, blowing by
 #include "resident.h"
 #include "towns.h"      // TOWN1_HALL_DOOR_*: the debug warp to the hall
 #include "audio.h"
@@ -92,42 +97,79 @@ static void landmark_pay(Player* p, const LandmarkPlacement& l, unsigned roll,
 static int entered_door = -1;
 
 // Each enemy's own way of chasing on the map: its speed as a share of the
-// chase pace (CHASER_SPEED, 1.5x the player's walk), t seconds into the chase
+// chase pace (CHASER_SPEED, the player's run), t seconds into the chase
 // (tools/minis.py chase_speed() draws each one). Walking away from one fails,
-// running gets away.
+// running only holds a steady one off and a burst closes on you; the bike
+// gets away (the user, 2026-10-28: too easy to avoid).
 static float chase_speed(int enemy_id, float t) {
     switch (enemy_id) {
         case 2:  return fmodf(t, 0.55f) < 0.3f ? 1.5f : 0.0f;    // Treesqueak darts: a scurry, a freeze
+        case 65: return fmodf(t, 0.55f) < 0.3f ? 1.5f : 0.0f;    // the Mice That Eat Iron scurry off with their beam, then freeze
         case 7:  return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // Alber swoops: a glide, then wingbeats
+        case 10: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Grand'Goule swoops: a glide, then wingbeats
         case 8:  return fmodf(t, 0.6f) < 0.3f ? 1.7f : 0.2f;      // Snawfus bounds: a leap, a landing
         case 9:  return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Questing Beast dashes straight at you, then a breath
-        case 10: return fmodf(t, 0.6f) < 0.4f ? 1.6f : -0.3f;     // the Grand Goule surges, then draws back
         case 11: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Paoxiao lies in wait, then pounces
-        case 12: return 1.2f;                                     // Ebigane jinks (chase_bend)
-        case 13: return 1.1f;                                     // the Beast of the Charred Forests prowls (chase_bend)
+        case 12: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Ebigane dashes in low, then a breath
+        case 13: return 0.8f;                                     // the Beast of the Charred Forests plods, a furnace on legs
         case 14: return fmodf(t, 0.55f) < 0.25f ? 2.4f : 0.0f;    // the Lodsilungur flops, then lies there
+        case 40: return fmodf(t, 0.55f) < 0.25f ? 2.4f : 0.0f;    // the Slide-Rock Bolter, stranded, flops at you, then lies there
         case 15: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Ofuguggi meanders, its pace rising and falling
         case 16: return fmodf(t, 0.8f) < 0.35f ? 2.0f : 0.6f;     // the Kamaitachi gusts at you, then whirls
-        case 17: return 1.1f;                                     // the Qiqirn flees (chase_bend), a little slower than you run
+        case 17: return 0.9f;                                     // the Qiqirn flees (chase_bend), a little slower than you run
         case 19: return 0.8f;                                     // the Skeljaskrimsli plods, slow and steady
+        case 20: return 0.8f;                                     // the Sermilik lumbers at you, an iced bear, slow and heavy
+        case 35: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Lomie, hunted, runs: straight at you, then a breath
+        case 36: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Cu Sith, the silent hunter: a lope straight at you, then a breath
+        case 90: return 0.8f;                                     // the Chipekwe plods at you, slow and heavy
+        case 38: return 0.8f;                                     // the Igtuk lumbers at you on its long stilted legs
+        case 92: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Siehnam stands and watches, then lunges
+        case 37: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Celestial Stag begs the miners, then, refused, lunges
         case 41: return 0.8f;                                     // the Sasnalkahi lumbers at you, slow and heavy
+        case 42: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Nykur gallops at you, as it runs riders into the water, then a breath
+        case 43: return 0.8f;                                     // the Sazae-oni creeps at you, a sea snail, slow and steady
+        case 84: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Kigutilik strides at you on its long stilts, then a breath
+        case 46: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Lusca jets: a lunge of its arms, then a glide
+        case 85: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Nanabolele lunges at you under the water, its lights and horns breaking the surface, then glides
+        case 93: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Chipique surges at you under the water, canoe and all, then glides
+        case 94: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Trochus rolls up out of the water at you, then sinks to a glide
+        case 95: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Wendigo dashes straight at you, then a breath: it never stops hunting
+        case 96: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Bregdi surges at you through the water, jaws open, then glides
+        case 86: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Leucrocotta gallops at you on its stag's legs, then a breath
+        case 87: return fmodf(t, 1.1f) < 0.8f ? 1.3f : 1.8f;      // the Corocotta circles round you, calling in a man's voice, then darts in
+        case 88: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Amixsak lurks under the water, then lunges up to seize
         case 47: return fmodf(t, 0.55f) < 0.25f ? 2.4f : 0.0f;    // the Moha-Moha flops along out of the sea, then lies there
+        case 53: return fmodf(t, 0.6f) < 0.4f ? 1.6f : -0.3f;     // the Come-at-a-body rushes at you, halts short and draws back (the lore)
         case 48: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Bjarndyrakongur lumbers, then rushes straight at you
         case 54: return fmodf(t, 0.6f) < 0.3f ? 1.7f : 0.2f;      // the Billdad bounds on its kangaroo legs: a leap, a landing
         case 55: return fmodf(t, 0.6f) < 0.35f ? 1.5f : 0.2f;     // the Wapaloosie inches: reaching out, then humped up gathering
+        case 89: return fmodf(t, 0.6f) < 0.35f ? 1.5f : 0.2f;     // the Cuero creeps as a flat hide must: reaching out, then gathering
         case 56: return 1.15f;                                    // the Moskitto buzzes in, weaving (chase_bend)
         case 57: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Dingbat swoops: a glide, then wingbeats
         case 58: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // the Agropelter lies in wait, then pounces
+        case 31: return 1.7f - 1.5f * fmodf(t, 1.0f);             // the Man-Eating Boulder heaves off fast, rolling out
+        case 29: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Karnabo creeps, its pace rising and falling
         case 62: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Hugag wanders on its stilts, its pace rising and falling
         case 63: return fmodf(t, 1.1f) < 0.8f ? 1.3f : 1.8f;      // the Hidebehind circles round you, then darts in
         case 64: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Dungavenhooter dashes at you, its club swinging, then a breath
         case 66: return 1.7f - 1.5f * fmodf(t, 1.0f);             // the Ayotochtli kicks off in its ball, rolls out, kicks off again
+        case 26: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Akhekh swoops on its blue wings: a glide, then wingbeats
+        case 45: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // Kusa Kap swoops: a glide, then wingbeats
+        case 83: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Beast of Barrisdale swoops on its fan wings: a glide, then wingbeats
+        case 67: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Lagopus swoops off its perch: a glide, then wingbeats
+        case 68: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // the Shuyu swoops on its red wings: a glide, then wingbeats
         case 69: return fmodf(t, 0.9f) < 0.5f ? 1.3f : 0.4f;      // Bes Chem swoops down out of the branches: a glide, then wingbeats
         case 70: return 0.7f;                                     // the Trollgadda, so great it can barely move, swims slow
         case 71: return 0.8f;                                     // the Namungumi crawls heavily out of its lake
         case 73: return fmodf(t, 0.85f) < 0.6f ? 0.5f : 2.0f;     // the Liderc drifts like a marsh light, then streaks like a shooting star
         case 74: return fmodf(t, 0.85f) < 0.5f ? 0.0f : 2.3f;     // Bes Rap crouches at the roots, then pounces
         case 75: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Makalala sprints at you on its long legs, then a breath
+        case 77: return fmodf(t, 1.0f) < 0.5f ? 1.5f : 0.5f;      // the Hoga charges like the bull it half is, then a breath
+        case 78: return fmodf(t, 0.6f) < 0.3f ? 1.7f : 0.2f;      // Zankallala's jerboa bounds: a leap, a landing
+        case 79: return 0.8f;                                     // the Ugjuknarpak lumbers at you upright, slow and heavy
+        case 80: return 0.8f;                                     // Bes Kotak floats at you, a heavy box drifting slow
+        case 81: return 1.2f;                                     // the Ieltxu flits at you, darting (chase_bend)
+        case 82: return 1.0f;                                     // the Nadubi skitters at you on its four legs, never stopping (chase_bend)
         case 76: return fmodf(t, 1.0f) < 0.4f ? 2.0f : 0.2f;      // the Loch Oich monster surges through its loch in humps, then glides
         case 22: return 1.0f + 0.5f * sinf(t * 6.2831853f / 0.9f);  // the Cactus Cat, drunk on the cacti's sap, meanders
         case 24: return fmodf(t, 0.9f) < 0.55f ? 0.0f : 2.5f;     // the Zoureg coils, still, then is thrown straight at you
@@ -143,12 +185,19 @@ static float chase_speed(int enemy_id, float t) {
 static int chase_frame(int enemy_id, float t) {
     switch (enemy_id) {
         case 8:  return fmodf(t, 0.6f) < 0.3f ? 0 : 1;            // Snawfus: stretched out in the leap, gathered landing
+        case 78: return fmodf(t, 0.6f) < 0.3f ? 0 : 1;            // Zankallala's jerboa: stretched out in the leap, crouched landing
         case 54: return fmodf(t, 0.6f) < 0.3f ? 0 : 1;            // the Billdad: up off its hind legs in the leap, crouched landing
         case 55: return fmodf(t, 0.6f) < 0.35f ? 1 : 0;           // the Wapaloosie: stretched out reaching, arched gathering
+        case 89: return fmodf(t, 0.6f) < 0.35f ? 1 : 0;           // the Cuero: stretched out reaching, gathered up
         case 58: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Agropelter: crouched in the wait, in the air in the pounce
         case 74: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // Bes Rap: crouched in the wait, sprung in the pounce
         case 11: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Paoxiao: standing in the wait, in the air in the pounce
+        case 88: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Amixsak: lurking in the wait, flippers flung up in the lunge
+        case 92: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Siehnam: standing in the wait, stepped out in the lunge
+        case 37: return fmodf(t, 0.85f) < 0.5f ? 0 : 1;           // the Celestial Stag: standing in the wait, stepped out in the lunge
+        case 94: return fmodf(t, 1.0f) < 0.4f ? 1 : 0;            // the Trochus: risen out of the water in the lunge, low in the glide
         case 14: return fmodf(t, 0.55f) < 0.25f ? 1 : 0;          // the Lodsilungur: in the air in the flop, lying between
+        case 40: return fmodf(t, 0.55f) < 0.25f ? 1 : 0;          // the Slide-Rock Bolter: heaved up jaws agape in the flop, slumped between
         case 24: return fmodf(t, 0.9f) < 0.55f ? 0 : 1;           // the Zoureg: coiled while it waits, uncoiled in the thrust
         case 47: {                                                // the Moha-Moha (three frames): heaved up, flopping down, lying flat
             float u = fmodf(t, 0.55f);
@@ -162,19 +211,22 @@ static float chase_bend(int enemy_id, float t) {
     switch (enemy_id) {
         case 3:  return 0.9f * sinf(t * 6.2831853f / 0.7f);       // Qique zigzags, a weave every 0.7 s
         case 5:  return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Cobra wiggles, a quick slither
-        case 12: return fmodf(t, 0.5f) < 0.25f ? 0.8f : -0.8f;    // Ebigane jinks, a bat's dart off one side then the other
-        case 13: return 0.6f;                                     // the Beast prowls, circling in on you
+        case 81: return fmodf(t, 0.5f) < 0.25f ? 0.8f : -0.8f;    // the Ieltxu flits as it does in battle, off one side then the other
         case 14: return fmodf(t, 1.1f) < 0.55f ? 0.7f : -0.7f;    // each of the Lodsilungur's flops veers the other way
         case 47: return fmodf(t, 1.1f) < 0.55f ? 0.7f : -0.7f;    // and each of the Moha-Moha's
+        case 40: return fmodf(t, 1.1f) < 0.55f ? 0.7f : -0.7f;    // and each of the Slide-Rock Bolter's
         case 56: return 0.8f * sinf(t * 6.2831853f / 0.45f);      // the Moskitto weaves side to side as it buzzes in
         case 62: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Hugag wanders the woods, curving one way then the other
         case 63: return fmodf(t, 1.1f) < 0.8f ? 1.2f : 0.0f;      // circling wide behind you, then straight in
+        case 87: return fmodf(t, 1.1f) < 0.8f ? 1.2f : 0.0f;      // circling you as it calls, then straight in
         case 70: return 0.4f * sinf(t * 6.2831853f / 1.6f);       // the Trollgadda's slow swim weaving a little
+        case 91: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Kurrea slithers in an S
         case 72: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Mahwot swims fast, weaving in an S
         case 15: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Ofuguggi meanders, curving one way then the other
         case 17: return 3.14159265f;                              // the Qiqirn, terrified of people, runs straight away from you
         case 22: return 0.7f * sinf(t * 6.2831853f / 1.3f);       // the Cactus Cat staggers drunk, curving one way then the other
         case 25: return 0.35f * sinf(t * 6.2831853f / 0.5f);      // the Myrmecoleon weaves a little on its long ant legs
+        case 82: return 0.35f * sinf(t * 6.2831853f / 0.5f);      // the Nadubi weaves a little as it skitters
         case 21: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Asp slithers, weaving side to side (a snake: the user)
         case 27: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Grootslang slithers, weaving side to side
         case 32: return 0.6f * sinf(t * 6.2831853f / 0.35f);      // the Angont slithers out of its swamp, weaving side to side
@@ -195,7 +247,12 @@ static int mini_frames(int enemy_id) {
 // A mini only ever seen from the side: going up or down it shows the side it
 // last faced, left or right (DungeonChaser::side). It still goes all four ways.
 static bool mini_sideways(int enemy_id) {
-    return enemy_id == 60 || enemy_id == 72;                      // the Rumptifusel: its front looked awkward (the user); the Mahwot: drawn side on only
+    return enemy_id == 60 || enemy_id == 72 || enemy_id == 93 || enemy_id == 96;                      // the Rumptifusel: its front looked awkward (the user); the Mahwot: drawn side on only; the Chipique: never turns (the user)
+}
+// A mini that walks backwards: it shows the view opposite the way it goes,
+// tail first, chasing or wandering (tools/minis.py chase_gif(backwards=)).
+static bool mini_backwards(int enemy_id) {
+    return enemy_id == 50;                                        // the Teakettler walks backwards by choice (the lore; the user, 2026-10-28)
 }
 // A flier's mini hovers (the user: "hover + ground shadow"): drawn HOVER_UP
 // art px over its shadow, bobbing a pixel with its wingbeat, its wings never
@@ -204,10 +261,18 @@ static bool mini_sideways(int enemy_id) {
 static const int HOVER_UP = 6;
 static int mini_hover(int enemy_id) {
     switch (enemy_id) {
+        case 10: return 11;                                       // the Grand'Goule: a gargoyle on the wing
         case 56: return 6;                                        // the Moskitto: it never lands
         case 57: return 7;                                        // the Dingbat: always in the air
+        case 26: return 7;                                        // the Akhekh: on the wing, as it hangs in the air in battle
+        case 81: return 6;                                        // the Ieltxu: a night bird on the wing
+        case 80: return 7;                                        // Bes Kotak: a box spirit that floats, never walks
+        case 67: return 7;                                        // the Lagopus: on the wing, as it flies between perches in battle
+        case 68: return 6;                                        // the Shuyu: on the wing (the user: "Have the mini fly")
         case 69: return 6;                                        // Bes Chem: on the wing, never landing
         case 73: return 6;                                        // the Liderc: a wisp, a burning hen in the air
+        case 45: return 11;                                       // Kusa Kap: on the wing, its dugong in its talons
+        case 83: return 11;                                       // the Beast of Barrisdale: on the wing, as it flies in battle (the user: "this is a flier")
         default: return 0;
     }
 }
@@ -227,8 +292,10 @@ int main(int argc, char *argv[])
     // enemy, and F1/F2/F3, B, R in battle and click-to-warp on the map.
     bool debug = false;
     const char* seed_arg = nullptr;
+    int preview_battle = -1;   // --battle ID: test mode, straight into that enemy's fight (reviewing a pattern)
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0) debug = true;
+        else if (strcmp(argv[i], "--battle") == 0 && i + 1 < argc) { debug = true; preview_battle = atoi(argv[++i]); }
         else                                 seed_arg = argv[i];
     }
     BattleScene::debug_keys = debug;
@@ -297,6 +364,10 @@ int main(int argc, char *argv[])
         platform_shutdown(&plat);
         return 1;
     }
+    // The player on the bicycle (assets/player_bike.png, 24x24 frames): drawn
+    // in place of the walk wherever they are riding. Missing, they walk.
+    SDL_Texture* bike_sprite = IMG_LoadTexture(plat.renderer, "assets/player_bike.png");
+    if (!bike_sprite) printf("No bike sheet: %s\n", IMG_GetError());
 
     if (!story_people_init(plat.renderer)) {
         SDL_DestroyTexture(player_sprite);
@@ -322,12 +393,12 @@ int main(int argc, char *argv[])
         // Keep items whose functionality is being tested ready in debug runs.
         if (debug) {
             player.stats.hp = 1; // Start injured for healing-item tests.
-            const Item test_items[] = { ITEM_ESCAPE_CHARM, ITEM_BAND_AID, ITEM_MEDKIT, ITEM_ANTIDOTE, ITEM_SWIFT_BOOTS, ITEM_DIVING_FINS };
+            const Item test_items[] = { ITEM_ESCAPE_CHARM, ITEM_BAND_AID, ITEM_MEDKIT, ITEM_ANTIDOTE, ITEM_BICYCLE, ITEM_DIVING_FINS };
             for (Item it : test_items) {
                 item_slot(&player, it) = (it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE)?5:1;
                 item_mark_found(&player, it);
             }
-            item_equip_swift_boots(&player, true);
+            item_equip_bike(&player, true);
         }
     };
     fresh_player();
@@ -553,8 +624,15 @@ int main(int argc, char *argv[])
     // [ ] pick an enemy, P lets one loose on your floor and O on the other, so
     // each one's chase (chase_speed / chase_frame / chase_bend) can be watched.
     // A touch only counts, unless N has turned battles on; nothing is saved.
+    // [ ] go through the enemies whose mini is done (the user, 2026-10-30) in
+    // difficulty order (2026-10-29): tier by tier, STARTER first, ids rising
+    // within a tier, the unset last -- the finished sheet's order. Filled once
+    // the minis are loaded (mini_done, below); chase_test_pos is the place in it.
     bool chase_test         = false;
     int  chase_test_id      = 0;
+    int  chase_test_pos     = 0;
+    int  chase_test_n       = 0;
+    int  chase_test_order[ENEMY_COUNT];
     bool chase_test_battle  = false;
     int  chase_test_touches = 0;
     GameMenu menu;            // the TAB menu: crafting and items
@@ -657,6 +735,7 @@ int main(int argc, char *argv[])
     // one after another in the sheet's order.
     bool trial_open = false, trial_running = false;
     bool trial_reverse = false, trial_warmup = true;
+    bool trial_check = false;         // only the enemies in playtest/recheck.txt
     int  trial_ids[ENEMY_COUNT], trial_n = 0, trial_start = 0, trial_pos = 0;
     char trial_run[32] = "";
     GameState trial_return = STATE_OVERWORLD;
@@ -693,7 +772,7 @@ int main(int argc, char *argv[])
         "BES KOTAK", "IELTXU", "NADUBI", "BEAST OF BARRISDALE", "KIGUTILIK",
         "NANABOLELE", "LEUCROCOTTA", "COROCOTTA", "AMIXSAK", "CUERO",
         "CHIPEKWE", "KURREA", "SIEHNAM", "CHIPIQUE", "TROCHUS",
-        "WITKES", "BREGDI", "RO", "BOIUNA", "FAD FELEN",
+        "WENDIGO", "BREGDI", "RO", "BOIUNA", "FAD FELEN",
         // The final boss, 100
         "FLESH PLANET",
     };
@@ -757,6 +836,17 @@ int main(int argc, char *argv[])
             mini_done[id] = mini_two[id] = true;
         }
     }
+    // The chase test room's list: the done minis, easiest first; every enemy
+    // if no minis loaded, so the room still has something to let loose.
+    for (int id = 0; id < ENEMY_COUNT; id++)
+        if (id < 100 && mini_done[id]) chase_test_order[chase_test_n++] = id;
+    if (chase_test_n == 0)
+        for (int id = 0; id < ENEMY_COUNT; id++) chase_test_order[chase_test_n++] = id;
+    std::stable_sort(chase_test_order, chase_test_order + chase_test_n, [](int a, int b) {
+        auto rank = [](int id) { EnemyTier t = enemy_tier(id); return t == T_UNSET ? 99 : (int)t; };
+        return rank(a) < rank(b);
+    });
+    chase_test_id = chase_test_order[0];
 
     if (!debug) state = STATE_TITLE;
 
@@ -765,10 +855,26 @@ int main(int argc, char *argv[])
     // hx, hy: the leg it is on (one of 8 ways); poll: seconds to its next re-aim.
     // spawner: its dungeon spawner, beaten for good when it loses (persist.h); -1 for none.
     // sx, sy: where the chase test room let it loose; flash: seconds of white left after a touch there.
-    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; int spawner; float sx = 0, sy = 0, flash = 0; int side = 2; };   // side: the last way it faced of L R (2 3), for mini_sideways()
+    // A walker's way to the player (chase_aim): route, its waypoints in the
+    // chaser's own frame, next the one it heads for, via whether it follows
+    // them (else it goes straight at the player); reach, whether there is a
+    // way at all; look, seconds to its next look for one.
+    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; int spawner; float sx = 0, sy = 0, flash = 0; int side = 2;   // side: the last way it faced of L R (2 3), for mini_sideways()
+                           std::vector<ResidentPoint> route; size_t next = 0; bool via = false, reach = false; float look = 0; };
     static const int MAX_CHASERS = DMAP_MAX_SPAWNERS;   // one a spawner, the catacombs' 64 too
     DungeonChaser chasers[MAX_CHASERS] = {};
     int num_chasers = 0;
+    // The wilds' packs (wilds.h), let loose a square at a time as it comes near
+    // the screen and put away again once it is well behind: chasers as in a
+    // dungeon, spawner the member's wild_key. wild_live: the squares let loose.
+    static const int MAX_WILD = 24;
+    DungeonChaser wild[MAX_WILD] = {};
+    int num_wild = 0;
+    std::unordered_set<int> wild_live;
+    // What the walkers have asked of the ground looking for their ways
+    // (chase_path.h), one a map: the overworld's, and the dungeon's now.
+    ChaseCache ow_chase_cache, dng_chase_cache;
+    auto wild_reset = [&]() { num_wild = 0; wild_live.clear(); ow_chase_cache.clear(); };
     // The test house's enemies: drawn as chasers (draw_chaser), standing still
     // on their spots, facing down, in their first frame.
     DungeonChaser test_ch[sizeof(test_enemies) / sizeof(test_enemies[0])] = {};
@@ -837,6 +943,7 @@ int main(int argc, char *argv[])
         dungeon_bind_cave_mouths(&dmap, mx, my, 2);
         dungeon_player_init(&dplayer, &player, &dmap, 0);
         num_chasers = 0;
+        dng_chase_cache.clear();
         chase_test = true;
         chase_test_touches = 0;
         dmap_arrive();
@@ -869,6 +976,8 @@ int main(int argc, char *argv[])
         for (bool& b : oilbloom_done) b = false;
         dungeon_explored_cache.clear();
         dbg_tour = -1;   // new world, new set of entrances to tour
+        wild_reset();    // and none of its packs
+        tumble_clear();  // nor tumbleweeds
     };
 
     // The title screen (play mode only).
@@ -956,6 +1065,7 @@ int main(int argc, char *argv[])
         static const int SPIN[4] = { 0, 3, 1, 2 };                  // D R U L
         if (id == 16) face = SPIN[world_ms() / 120 % 4];        // the Kamaitachi spins, whichever way it goes
         if (mini_sideways(id) && face < 2) face = ch.side;          // going up or down, still side on
+        if (mini_backwards(id)) face ^= 1;                          // D U, L R: the other way, tail first
         float wx = art_snap(ch.x), wy = art_snap(ch.y);   // on the tiles' art grid
         bool running = ch.chasing && ch.aggro_timer <= 0.0f;
         bool moving = ch.chasing ? running && chase_speed(id, ch.t) != 0.0f : ch.pause <= 0.0f;
@@ -1011,14 +1121,16 @@ int main(int argc, char *argv[])
     };
     // One chaser's turn, in a dungeon or the test house. Unseen, it ambles: one
     // way at random up to PATROL_R from the middle of its beat (ax, ay), a stop,
-    // another way. Seen, it turns to look and holds 24 frames, then runs at
-    // (cdx, cdy) its own way, re-aiming every 8 frames (EarthBound's): the line
-    // to you, bent, snapped to one of 8 directions; between re-aims it keeps to
-    // the leg, which is what a sidestep exploits. Returns its speed along
-    // (hx, hy); fits(ch, wx, wy) says where it may stand.
-    const float CHASER_SPEED = 1.5f * PLAYER_WALK_SPEED;   // walked away from, no; run from, yes
-    auto chase_tick = [&](DungeonChaser& ch, bool seen, float cdx, float cdy, float dt, auto fits) -> float {
-        const float NOTICE_T = 24.0f / 60.0f, POLL_T = 8.0f / 60.0f;  // EB's 24-frame hold, 8-frame re-aim
+    // another way. Seen, it turns to look and holds 12 frames -- none if one
+    // near it is already running (alerted) -- then runs at (cdx, cdy) its own
+    // way, re-aiming every 4 frames: the line to you, bent. EarthBound's 8-way
+    // snap and 8-frame re-aim are gone on purpose (the user, 2026-10-28: too
+    // easy to sidestep). Returns its speed along (hx, hy); fits(ch, wx, wy)
+    // says where it may stand.
+    const float CHASER_SPEED = PLAYER_RUN_SPEED;   // a sprint only holds a steady one off
+    const float ALERT_R = 6.0f * TILE_SIZE;        // one running this near alerts the rest
+    auto chase_tick = [&](DungeonChaser& ch, bool seen, bool alerted, float cdx, float cdy, float dt, auto fits) -> float {
+        const float NOTICE_T = 12.0f / 60.0f, POLL_T = 4.0f / 60.0f;
         if (!ch.chasing) {
             if (!seen) {
                 const float PATROL_SPEED = 0.3f * PLAYER_RUN_SPEED, PATROL_R = 2.0f * DMAP_TILE;
@@ -1035,7 +1147,7 @@ int main(int argc, char *argv[])
                 return 0.0f;
             }
             ch.chasing = true;
-            ch.aggro_timer = NOTICE_T;
+            ch.aggro_timer = alerted ? 0.0f : NOTICE_T;
             ch.t = 0.0f;
             ch.poll = 0.0f;
             ch.face = fabsf(cdx) > fabsf(cdy) ? (cdx < 0 ? 2 : 3) : (cdy < 0 ? 1 : 0);
@@ -1048,14 +1160,261 @@ int main(int argc, char *argv[])
             ch.poll += POLL_T;
             float dist = sqrtf(cdx * cdx + cdy * cdy);
             float mx = cdx / dist, my = cdy / dist;
-            float bend = chase_bend(ch.enemy_id, ch.t), bc = cosf(bend), bs = sinf(bend);
-            const float EIGHTH = 0.78539816f;   // pi / 4
-            float a = roundf(atan2f(mx * bs + my * bc, mx * bc - my * bs) / EIGHTH) * EIGHTH;
-            ch.hx = cosf(a); ch.hy = sinf(a);
+            float bend = ch.via ? 0.0f : chase_bend(ch.enemy_id, ch.t), bc = cosf(bend), bs = sinf(bend);   // round a corner, no jinking
+            ch.hx = mx * bc - my * bs; ch.hy = mx * bs + my * bc;
             ch.face = fabsf(ch.hx) > fabsf(ch.hy) ? (ch.hx < 0 ? 2 : 3) : (ch.hy < 0 ? 1 : 0);   // it looks the way it runs
             if (fabsf(ch.hx) > 0.01f) ch.side = ch.hx < 0 ? 2 : 3;
         }
         return CHASER_SPEED * chase_speed(ch.enemy_id, ch.t);
+    };
+    // A chaser's look before its turn (chase_path.h; the user, 2026-10-28: a
+    // walker finds its way to the player, and one with no way to them -- an
+    // island, another level -- does not go for them at all). seen: whether it
+    // sees them; (pcx, pcy): the player; (cdx, cdy): from it to them, turned
+    // into the way to head -- the next waypoint when the straight walk is
+    // blocked. Returns whether it may go for them: seen, and a way there.
+    // A flier flies straight over everything, as before. A walker looks again
+    // every 8 frames (its re-aim); only one search runs a frame on a map
+    // (*searched), and one cut short (CHASE_UNSURE) goes on the next. One
+    // chasing with no way left gives up and ambles where it stands.
+    const float LOOK_T = 8.0f / 60.0f;
+    auto chase_aim = [&](DungeonChaser& ch, bool seen, float pcx, float pcy, float& cdx, float& cdy,
+                         float half_w, float half_h, float dt, ChaseCache* cache, bool* searched,
+                         const std::function<bool(float, float)>& fits) -> bool {
+        if (enemy_flies(ch.enemy_id)) { ch.via = false; return seen; }
+        if (!ch.chasing && !seen) {   // ambling, nothing to look for
+            ch.route.clear(); ch.via = false; ch.reach = false; ch.look = 0.0f;
+            return false;
+        }
+        float sx = pcx - cdx, sy = pcy - cdy;   // the chaser in the player's frame
+        ch.look -= dt;
+        if (ch.look <= 0.0f) {
+            ch.look = LOOK_T;
+            if (chase_straight(sx, sy, pcx, pcy, fits)) {
+                ch.reach = true; ch.via = false; ch.route.clear();
+            } else if (*searched) {
+                ch.look = 0.0f;   // another's search this frame: its turn next frame
+            } else {
+                *searched = true;
+                ChaseWay r = chase_route(cache, sx, sy, pcx, pcy, half_w, half_h, fits, ch.route, CHASE_ASKS);
+                if (r == CHASE_UNSURE) ch.look = 0.0f;   // not sure yet: on with it next frame, as it was meanwhile
+                else {
+                    ch.reach = ch.via = r == CHASE_WAY;
+                    for (ResidentPoint& p : ch.route) { p.x += ch.x - sx; p.y += ch.y - sy; }   // into its own frame
+                    ch.next = 0;
+                    ch.poll = 0.0f;   // re-aim along it now
+                }
+            }
+        }
+        if (ch.chasing && !ch.reach) {   // no way left: it gives up
+            ch.chasing = false;
+            ch.ax = ch.x; ch.ay = ch.y;
+            ch.route.clear(); ch.via = false;
+            return false;
+        }
+        if (ch.via) {
+            // On to the next waypoint once at it, or once past it along the leg.
+            while (ch.next < ch.route.size()) {
+                float wx = ch.route[ch.next].x - ch.x, wy = ch.route[ch.next].y - ch.y;
+                bool ahead = (ch.hx == 0.0f && ch.hy == 0.0f) || wx * ch.hx + wy * ch.hy > 0.0f;
+                if (wx * wx + wy * wy > 10.0f * 10.0f && ahead) break;
+                ch.next++;
+                ch.poll = 0.0f;
+            }
+            if (ch.next >= ch.route.size()) ch.via = false;   // the last leg: straight at them
+            else { cdx = ch.route[ch.next].x - ch.x; cdy = ch.route[ch.next].y - ch.y; }
+        }
+        return seen && ch.reach;
+    };
+    // Where a chaser running straight at the player (no waypoint) heads instead:
+    // ahead of them along (pvx, pvy), their velocity, by up to the time it
+    // would take to get there (0.75 s at most). A third of a pack runs at you,
+    // a third half as far ahead, a third all the way, so they fan out and cut
+    // you off. The Qiqirn, running away, does not lead.
+    auto chase_lead = [&](const DungeonChaser& ch, float pvx, float pvy, float& cdx, float& cdy) {
+        if (ch.via || ch.enemy_id == 17) return;
+        static const float SHARE[3] = { 0.0f, 0.5f, 1.0f };
+        float share = SHARE[(unsigned)ch.spawner % 3];
+        float lead = share * fminf(sqrtf(cdx * cdx + cdy * cdy) / CHASER_SPEED, 0.75f);
+        cdx += pvx * lead; cdy += pvy * lead;
+    };
+    // Whether another of chs (n of them) within ALERT_R of ch is running at the
+    // player already: then ch need not stop to look. delta measures between two.
+    auto chase_alerted = [&](const DungeonChaser& ch, const DungeonChaser* chs, int n, auto delta) {
+        for (int i = 0; i < n; i++) {
+            const DungeonChaser& o = chs[i];
+            if (&o == &ch || !o.active || !o.chasing || o.aggro_timer > 0.0f) continue;
+            float dx, dy;
+            delta(o.x - ch.x, o.y - ch.y, dx, dy);
+            if (dx * dx + dy * dy <= ALERT_R * ALERT_R) return true;
+        }
+        return false;
+    };
+    // The player's velocity from where their middle was last frame (dx, dy
+    // since then); nothing after a jump of more than 32 px (a warp, a load, a
+    // new map).
+    struct PlayerTrack { float x = 0, y = 0; };
+    auto player_vel = [](PlayerTrack& tr, float dx, float dy, float px, float py, float dt, float& vx, float& vy) {
+        vx = vy = 0.0f;
+        if (dt > 0.0f && dx * dx + dy * dy <= 32.0f * 32.0f) { vx = dx / dt; vy = dy / dt; }
+        tr.x = px; tr.y = py;
+    };
+    PlayerTrack ow_track, dng_track;
+    // The wilds' turn on the overworld (wilds.h). Squares coming within a
+    // square of the screen are let loose, those two squares past it put away
+    // (a pack on your heels keeps its square). Then each chaser as in a
+    // dungeon, with the whole screen for its sight and the world wrapping;
+    // touching one starts the fight. pcx, pcy: the middle of the player.
+    auto wild_tick = [&](float pcx, float pcy, float dt) {
+        const int   CPX  = WILD_CHUNK * TILE_SIZE;
+        const float z    = cam.zoom > 0.5f ? cam.zoom : 0.5f;
+        const float hw   = LOGICAL_W * 0.5f / z, hh = LOGICAL_H * 0.5f / z;
+        auto chunk_of = [](int key) { return key / WILD_PACK_MAX; };
+        auto chunk_near = [&](int chunk, float margin) {
+            int cx = chunk % WILD_CHUNKS_X, cy = chunk / WILD_CHUNKS_X;
+            float mx = (cx + 0.5f) * CPX, my = (cy + 0.5f) * CPX;
+            return fabsf(wrap_dpx(mx - pcx)) <= hw + CPX * 0.5f + margin &&
+                   fabsf(wrap_dpy(my - pcy)) <= hh + CPX * 0.5f + margin;
+        };
+        // Put away what is far behind, unless one of its pack is after you.
+        for (auto it = wild_live.begin(); it != wild_live.end();) {
+            int chunk = *it;
+            bool keep = chunk_near(chunk, 2.0f * CPX);
+            for (int i = 0; i < num_wild && !keep; i++)
+                if (chunk_of(wild[i].spawner) == chunk && wild[i].active && wild[i].chasing) keep = true;
+            if (keep) { ++it; continue; }
+            int k = 0;
+            for (int i = 0; i < num_wild; i++)
+                if (chunk_of(wild[i].spawner) != chunk) wild[k++] = wild[i];
+            num_wild = k;
+            it = wild_live.erase(it);
+        }
+        // Let loose what is coming near. Only once the world is all laid: the
+        // roads a pack keeps away from are phase 2's.
+        if (tilemap_world_done()) {
+            int cx0 = (int)floorf((pcx - hw - CPX) / CPX), cx1 = (int)floorf((pcx + hw + CPX) / CPX);
+            int cy0 = (int)floorf((pcy - hh - CPX) / CPX), cy1 = (int)floorf((pcy + hh + CPX) / CPX);
+            for (int gy = cy0; gy <= cy1; gy++)
+                for (int gx = cx0; gx <= cx1; gx++) {
+                    int cx = gx, cy = gy;
+                    if (map->wrap_axis == WRAP_X) cx = (cx % WILD_CHUNKS_X + WILD_CHUNKS_X) % WILD_CHUNKS_X;
+                    else                          cy = (cy % WILD_CHUNKS_Y + WILD_CHUNKS_Y) % WILD_CHUNKS_Y;
+                    if (cx < 0 || cy < 0 || cx >= WILD_CHUNKS_X || cy >= WILD_CHUNKS_Y) continue;
+                    int chunk = cy * WILD_CHUNKS_X + cx;
+                    if (!wild_live.insert(chunk).second) continue;
+                    WildPack pack;
+                    wild_pack(map, map_seed, cx, cy, &pack);
+                    for (int s = 0; s < pack.n && num_wild < MAX_WILD; s++) {
+                        uint32_t key = wild_key(cx, cy, s);
+                        if (persist_wild_has(key)) continue;   // beaten for good
+                        float x = pack.x[s], y = pack.y[s];
+                        // Not on top of the player: a load or a warp lands among them.
+                        float ddx = wrap_dpx(x - pcx), ddy = wrap_dpy(y - pcy);
+                        if (ddx * ddx + ddy * ddy < 6.0f * TILE_SIZE * 6.0f * TILE_SIZE) continue;
+                        if (!enemy_flies(pack.enemy[s])) {
+                            float fx = x - (HB_X1 + HB_X2) * 0.5f, fy = y - (HB_Y1 + HB_Y2) * 0.5f;
+                            unwedge_feet(map, &fx, &fy, tilemap_pixel_solid);
+                            x = fx + (HB_X1 + HB_X2) * 0.5f; y = fy + (HB_Y1 + HB_Y2) * 0.5f;
+                        }
+                        wild[num_wild++] = { x, y, pack.enemy[s], true, false, 0.0f,
+                                             (int)(key % 4), 0.0f, x, y, 0.0f, 0.0f, 0.0f, 0.0f, (int)key };
+                    }
+                }
+        }
+        if (player.at_sea) return;   // nothing out here swims after the boat
+
+        const float TRIGGER_DIST2 = ACTOR_TOUCH * ACTOR_TOUCH;
+        const float SEE_W = LOGICAL_W * 0.5f, SEE_H = LOGICAL_H * 0.5f;
+        const float LOSE_W = SEE_W * 1.5f, LOSE_H = SEE_H * 1.6f;
+        auto in_box = [&](const DungeonChaser& c, float w, float h) {
+            return fabsf(wrap_dpx(pcx - c.x)) <= w && fabsf(wrap_dpy(pcy - c.y)) <= h;
+        };
+        auto sees = [&](const DungeonChaser& c) { return in_box(c, SEE_W, SEE_H); };
+        auto fits = [&](const DungeonChaser& c, float wx, float wy) {
+            if (enemy_flies(c.enemy_id))   // anywhere short of the hard border
+                return map->wrap_axis == WRAP_X ? wy >= 0 && wy < MAP_HEIGHT * TILE_SIZE
+                                                : wx >= 0 && wx < MAP_WIDTH  * TILE_SIZE;
+            return can_occupy(map, wx - (HB_X1 + HB_X2) * 0.5f, wy - (HB_Y1 + HB_Y2) * 0.5f, tilemap_pixel_solid);
+        };
+        bool searched = false;   // one way searched for a frame (chase_aim)
+        float pvx, pvy;
+        player_vel(ow_track, wrap_dpx(pcx - ow_track.x), wrap_dpy(pcy - ow_track.y), pcx, pcy, dt, pvx, pvy);
+        auto wrap_delta = [&](float x, float y, float& dx, float& dy) { dx = wrap_dpx(x); dy = wrap_dpy(y); };
+        for (int ci = 0; ci < num_wild; ci++) {
+            DungeonChaser& ch = wild[ci];
+            if (!ch.active) continue;
+            if (ch.chasing && !in_box(ch, LOSE_W, LOSE_H)) {   // lost you: it ambles where it stands
+                ch.chasing = false;
+                ch.ax = ch.x; ch.ay = ch.y;
+            }
+            float cdx = wrap_dpx(pcx - ch.x), cdy = wrap_dpy(pcy - ch.y);
+            if (cdx * cdx + cdy * cdy < TRIGGER_DIST2) {
+                // The one touched first, then up to two more of the wilds after you.
+                ch.active = false;
+                battle_queue_count = 0;
+                battle_queue_idx   = 0;
+                battle_queue_chaser_idx[0] = battle_queue_chaser_idx[1] = battle_queue_chaser_idx[2] = -1;
+                auto enlist = [&](int i) {
+                    DungeonChaser& o = wild[i];
+                    o.active = false;
+                    flash_entries[battle_queue_count] = { pcx - wrap_dpx(pcx - o.x), pcy - wrap_dpy(pcy - o.y), o.enemy_id, o.face };
+                    battle_queue_chaser_idx[battle_queue_count] = i;
+                    battle_queue[battle_queue_count++] = o.enemy_id;
+                };
+                enlist(ci);
+                for (int pass = 0; pass < 2 && battle_queue_count < 3; pass++) {
+                    int best = -1; float bd2 = 0.0f;
+                    for (int cj = 0; cj < num_wild; cj++) {
+                        const DungeonChaser& o = wild[cj];
+                        if (!o.active || !o.chasing || !sees(o)) continue;
+                        float odx = wrap_dpx(pcx - o.x), ody = wrap_dpy(pcy - o.y), d2 = odx * odx + ody * ody;
+                        if (best < 0 || d2 < bd2) { best = cj; bd2 = d2; }
+                    }
+                    if (best >= 0) enlist(best);
+                }
+                // Everyone else in sight steps back, so one fight does not chain into the next.
+                for (int cj = 0; cj < num_wild; cj++)
+                    if (wild[cj].active && sees(wild[cj])) wild[cj].active = false;
+                flash_count      = battle_queue_count;
+                pre_battle_timer = 0.0f;
+                audio_play(SFX_BATTLE_START);
+                return;
+            }
+            bool seen = chase_aim(ch, sees(ch), pcx, pcy, cdx, cdy, LOSE_W, LOSE_H, dt, &ow_chase_cache, &searched,
+                                  [&](float x, float y) { return fits(ch, x, y); });
+            chase_lead(ch, pvx, pvy, cdx, cdy);
+            float sp = chase_tick(ch, seen, seen && chase_alerted(ch, wild, num_wild, wrap_delta), cdx, cdy, dt, fits);
+            if (!ch.chasing || ch.aggro_timer > 0.0f) continue;
+            float dx = ch.hx * sp * dt, dy = ch.hy * sp * dt;
+            if (enemy_flies(ch.enemy_id)) {
+                if (fits(ch, ch.x + dx, ch.y + dy)) { ch.x += dx; ch.y += dy; }
+            } else {
+                float fx = ch.x - (HB_X1 + HB_X2) * 0.5f, fy = ch.y - (HB_Y1 + HB_Y2) * 0.5f;
+                move_feet(map, &fx, &fy, dx, dy, tilemap_pixel_solid);
+                ch.x = fx + (HB_X1 + HB_X2) * 0.5f; ch.y = fy + (HB_Y1 + HB_Y2) * 0.5f;
+            }
+            ch.x = wrap_px(ch.x);
+            ch.y = wrap_py(ch.y);
+        }
+    };
+    // The world box draw_chaser covers for c, as it draws it: its mini (2 world
+    // px an art px), its battle sheet shrunk, or the square; a pixel or two
+    // over, for the hop and the hover, rather than short.
+    auto chaser_box = [&](const DungeonChaser& c, float* x, float* y, float* w, float* h) {
+        int id = c.enemy_id;
+        float bw = 14.0f, bh = 14.0f, bottom = c.y + 7.0f, lift = 0.0f;
+        if (id < 0 || id >= 100 || !mini_done[id] || (!minis_tex && !mini_big[id])) {
+            if (const SheetFallback* fb = sheet_fallback(id)) {
+                float k = fminf(1.0f, fminf(28.0f / fb->h, 48.0f / fb->w)) * 2.0f;
+                bw = fb->w * k; bh = fb->h * k; lift = 2.0f;
+            }
+        } else {
+            int cw = mini_big[id] ? mini_big_w[id] : 40, chh = mini_big[id] ? mini_big_h[id] : 28;
+            bw = cw * 2.0f; bh = chh * 2.0f;
+            lift = mini_hover(id) ? HOVER_UP * 2.0f : 2.0f;
+        }
+        *w = bw; *h = bh + lift;
+        *x = c.x - bw * 0.5f; *y = bottom - bh - lift;
     };
     // Drawn over the map: the flashes and fade going in, the fade-in coming back.
     auto battle_veil_draw = [&](const Camera* c) {
@@ -1405,6 +1764,8 @@ int main(int argc, char *argv[])
                     wet = tilemap_pixel_water(map, cx, cy) || (lava_ok && tilemap_pixel_void(map, cx, cy));
                 }
                 menu.raft_block = state == STATE_OVERWORLD && !player.at_sea && wet ? "CAN'T WHILE ON WATER" : nullptr;
+                // The bike neither comes out nor goes away on water or in a fight.
+                menu.bike_block = state == STATE_BATTLE ? "NOT IN A FIGHT" : menu.raft_block;
             }
             menu.healing_block = state == STATE_BATTLE ? "EXPLORATION ONLY"
                 : pre_battle_timer >= 0.0f ? "BATTLE IS STARTING"
@@ -1436,7 +1797,10 @@ int main(int argc, char *argv[])
             // made inside loads outside that door, or at that dungeon's mouth.
             if (menu.save_request) {
                 menu.save_request = false;
-                bool ok = save_write(map_seed, ow.x, ow.y, player, explored);
+                // Behind an island is a state, and a save keeps only the place:
+                // saved there, they load outside it rather than on its top.
+                float save_y = ow.y + tilemap_behind_safe_y(ow.x + HB_X1, ow.x + HB_X2, ow.y + HB_Y2);
+                bool ok = save_write(map_seed, ow.x, save_y, player, explored);
                 has_save = has_save || ok;
                 game_menu_say(&menu, ok ? "SAVED" : "COULD NOT SAVE");
             }
@@ -1508,6 +1872,16 @@ int main(int argc, char *argv[])
             input_consume(&in, SDL_SCANCODE_SPACE);
             input_consume(&in, SDL_SCANCODE_ESCAPE);
             input_consume(&in, SDL_SCANCODE_X);
+        }
+
+        // A pattern review (--battle ID): into that fight as soon as the game is up.
+        if (preview_battle >= 0 && preview_battle < ENEMY_COUNT && state != STATE_TITLE && state != STATE_BATTLE) {
+            delete battle_scene;
+            battle_scene = new BattleScene(&player, preview_battle);
+            state_after_battle = state;
+            state = STATE_BATTLE;
+            audio_play(SFX_BATTLE_START);
+            preview_battle = -1;
         }
 
         // ── Battle test list (F3) ─────────────────────────────────────────────
@@ -1583,10 +1957,16 @@ int main(int argc, char *argv[])
         // trial_seq(i): the run's i-th enemy, forward or reversed.
         auto trial_seq = [&](int i) { return trial_ids[trial_reverse ? trial_n - 1 - i : i]; };
         auto trial_resume = [&]() {
-            playtest_run_label(trial_run, sizeof(trial_run), trial_reverse);
+            playtest_run_label(trial_run, sizeof(trial_run), trial_reverse, trial_check);
             trial_start = 0;
             while (trial_start < trial_n && playtest_logged(trial_run, trial_seq(trial_start))) trial_start++;
             if (trial_start >= trial_n) trial_start = 0;
+        };
+        // The run's enemies: the whole sheet, or (check only) the ones to recheck.
+        auto trial_load = [&]() {
+            trial_n = playtest_order(trial_ids, ENEMY_COUNT);
+            if (trial_check) trial_n = playtest_recheck(trial_ids, trial_n);
+            trial_resume();
         };
         auto trial_fight = [&](int id) {
             delete battle_scene;
@@ -1597,8 +1977,9 @@ int main(int argc, char *argv[])
         };
         if (debug && input_pressed(&in, SDL_SCANCODE_F4) && !dbg_open && !menu.open && !battle_list_open && state != STATE_BATTLE) {
             trial_open = !trial_open;
-            if (trial_open) { trial_n = playtest_order(trial_ids, ENEMY_COUNT); trial_resume(); }
+            if (trial_open) trial_load();
         }
+        if (trial_open && input_pressed(&in, SDL_SCANCODE_C)) { trial_check = !trial_check; trial_load(); }
         if (trial_open && trial_n > 0) {
             if (input_pressed(&in, SDL_SCANCODE_LEFT))  trial_start = (trial_start + trial_n - 1) % trial_n;
             if (input_pressed(&in, SDL_SCANCODE_RIGHT)) trial_start = (trial_start + 1) % trial_n;
@@ -1959,8 +2340,17 @@ int main(int argc, char *argv[])
                             audio_play(SFX_BATTLE_START);   // with the first flash
                         }
                     }
+                    // The wilds: hold still while the world does, just back
+                    // from a fight, or on a door.
+                    if (!actors_paused() && pre_battle_timer < 0.0f && post_battle_t <= 0.0f && room_t < 0.0f) {
+                        wild_tick(ow.x + player.width * 0.5f, ow.y + player.height * 0.5f, dt);
+                        tumble_tick(map, &cam, ow.x + player.width * 0.5f, ow.y + player.height * 0.5f,
+                                    resident_save().world_seconds, dt);   // the desert's, blowing by
+                    }
                 }
                 floattext_spawn_from_harvest(&cur_float, &harvest);
+                for (int i = 0; i < harvest.count; i++)   // a tree or a prop gone: the ground the walkers knew is out of date
+                    if (harvest.hits[i].destroyed) { ow_chase_cache.clear(); break; }
                 // A landmark's cache struck open: speech box + menu icons.
                 if (int lm = tilemap_take_opened_landmark(); lm >= 0 && lm < map->num_landmarks) {
                     Item icons[CHEST_ICON_MAX]; int counts[CHEST_ICON_MAX], ni = 0;
@@ -2006,28 +2396,72 @@ int main(int argc, char *argv[])
                            ow_talk < 0 && !ow_prompt && pre_battle_timer < 0.0f, game_in);
                 // Town 0's approved residents; village speakers keep their placeholder.
                 // The player walks through everyone: whoever's feet are lower is in front.
-                auto draw_ow_npcs = [&](bool in_front) {
-                    SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
-                    for (int i = 0; i < ow_nn; i++) {
-                        if ((ow_npcs[i].y > ow.y) != in_front) continue;
-                        if (!story_npc_draw(ow_npcs[i], plat.renderer, &cam))
-                            player_draw(&player, ow_npcs[i].x, ow_npcs[i].y, &cam, plat.renderer, player_sprite,
-                                        story_npc_facing(ow_npcs[i]));
-                    }
-                    SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
-                };
-                draw_ow_npcs(false);
-                player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite, ow.swing.body_frame);
-                draw_ow_npcs(true);
+                // The player, the residents and the wilds (each at its image nearest
+                // the player) in one pass, by where their feet meet the ground, the
+                // nearer over the farther; each followed by the art standing in
+                // front of it, over the box its sprite covers.
+                struct OwSprite { float feet; int kind, idx; DungeonChaser ch; float x, y, w, h; };   // kind: 0 player, 1 resident, 2 wild, 3 tumbleweed
+                std::vector<OwSprite> sprites;
+                sprites.push_back({ ow.y + HB_Y2, 0, 0, {}, ow.x, ow.y, (float)player.width, (float)player.height });
                 for (int i = 0; i < ow_nn; i++)
-                    tilemap_draw_over_player(map, &cam, plat.renderer, ow_npcs[i].x, ow_npcs[i].y,
-                                             28, 40, ow_npcs[i].y + HB_Y2);
-                overworld_draw_swing(&ow, &cam, plat.renderer);
-                tilemap_draw_over_player(map, &cam, plat.renderer, ow.x, ow.y,
-                                         (float)player.width, (float)player.height, ow.y + HB_Y2);
-                resource_nodes_draw_over_player(&resources, &cam, plat.renderer, ow.x, ow.y,
-                                                (float)player.width, (float)player.height, ow.y + HB_Y2);
+                    sprites.push_back({ ow_npcs[i].y + HB_Y2, 1, i, {}, ow_npcs[i].x, ow_npcs[i].y, 28, 40 });
+                {
+                    float pcx = ow.x + player.width * 0.5f, pcy = ow.y + player.height * 0.5f;
+                    for (int i = 0; i < num_wild; i++) {
+                        if (!wild[i].active) continue;
+                        OwSprite s = { 0, 2, i, wild[i] };
+                        s.ch.x = pcx - wrap_dpx(pcx - s.ch.x);
+                        s.ch.y = pcy - wrap_dpy(pcy - s.ch.y);
+                        s.feet = s.ch.y + (HB_Y2 - HB_Y1) * 0.5f;
+                        chaser_box(s.ch, &s.x, &s.y, &s.w, &s.h);
+                        sprites.push_back(s);
+                    }
+                    for (int i = 0; i < TUMBLE_MAX; i++) {
+                        OwSprite s = { 0, 3, i, {} };
+                        if (tumble_sprite(i, pcx, pcy, &s.feet, &s.x, &s.y, &s.w, &s.h)) sprites.push_back(s);
+                    }
+                }
+                std::stable_sort(sprites.begin(), sprites.end(), [](const OwSprite& a, const OwSprite& b) {
+                    // Behind an island the player is under everything, its top's people too.
+                    if (tilemap_behind_active() && (a.kind == 0) != (b.kind == 0)) return a.kind == 0;
+                    return a.feet != b.feet ? a.feet < b.feet : a.kind > b.kind;   // a tie: the player last
+                });
+                auto draw_sprite = [&](const OwSprite& s) {
+                    if (s.kind == 0) {
+                        if (bike_sprite && overworld_riding(&ow, &player, map))
+                            player_draw_bike(&player, ow.x, ow.y, &cam, plat.renderer, bike_sprite);
+                        else player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite, ow.swing.body_frame);
+                        overworld_draw_swing(&ow, &cam, plat.renderer);
+                    } else if (s.kind == 1) {
+                        SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
+                        if (!story_npc_draw(ow_npcs[s.idx], plat.renderer, &cam))
+                            player_draw(&player, ow_npcs[s.idx].x, ow_npcs[s.idx].y, &cam, plat.renderer, player_sprite,
+                                        story_npc_facing(ow_npcs[s.idx]));
+                        SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                    } else if (s.kind == 2) draw_chaser(&cam, s.ch);
+                    else tumble_draw_one(plat.renderer, &cam, tilemap_get_town_tex(), s.idx);
+                    tilemap_draw_over_player(map, &cam, plat.renderer, s.x, s.y, s.w, s.h, s.feet);
+                    resource_nodes_draw_over_player(&resources, &cam, plat.renderer, s.x, s.y, s.w, s.h, s.feet);
+                    if (s.kind == 0) tilemap_draw_behind_cover(map, &cam, plat.renderer, s.x, s.y, s.w, s.h);
+                };
+                for (const OwSprite& s : sprites) draw_sprite(s);
+                tumble_draw_bursts(plat.renderer, &cam);   // a broken one's twigs, over everyone
                 tilemap_draw_depth(map, &cam, plat.renderer);
+                // The crowns of trees behind someone were just laid over them: back
+                // over those crowns goes the sprite (and what stands in front of it).
+                for (const OwSprite& s : sprites) {
+                    if (s.kind == 0 && tilemap_behind_active()) continue;   // the island's crowns are over them
+                    SDL_Rect cells[16];
+                    int n = tilemap_canopy_cells(map, s.x, s.y, s.w, s.h, s.feet, cells, 16);
+                    for (int i = 0; i < n; i++) {
+                        int x0 = cam_px(&cam, (float)cells[i].x), y0 = cam_py(&cam, (float)cells[i].y);
+                        SDL_Rect clip = { x0, y0, cam_px(&cam, (float)(cells[i].x + cells[i].w)) - x0,
+                                                  cam_py(&cam, (float)(cells[i].y + cells[i].h)) - y0 };
+                        SDL_RenderSetClipRect(plat.renderer, &clip);
+                        draw_sprite(s);
+                    }
+                    if (n) SDL_RenderSetClipRect(plat.renderer, nullptr);
+                }
                 story_hole_draw(plat.renderer, &cam, map, true);    // the portal and its pages, in the air
                 if (dbg_grid) {
                     tilemap_draw_debug_grid(map, &cam, plat.renderer);
@@ -2184,6 +2618,7 @@ int main(int argc, char *argv[])
                         }
                         chase_test = false;
                         num_chasers = 0;
+                        dng_chase_cache.clear();
                         for (int si = 0; si < dmap.num_spawners && num_chasers < MAX_CHASERS; si++) {
                             DungeonSpawner& sp = dmap.spawners[si];
                             if (sp.dead) continue;   // beaten before: gone for good
@@ -2212,7 +2647,9 @@ int main(int argc, char *argv[])
 
 
                 explore_mark(explored, ow.x, ow.y);
-                if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open && !menu.open)
+                // Not while typing in the battle list (an M in LOMIE opened the
+                // map behind it, and the open map paused the fight it started).
+                if (input_pressed(&in, SDL_SCANCODE_M) && !dbg_open && !menu.open && !battle_list_open && !trial_open)
                     map_open = !map_open;
 
                 if (map_open) {
@@ -2282,6 +2719,11 @@ int main(int argc, char *argv[])
                                     }
                                 }
                             }
+                            // And one of the wilds, the same: its square never holds it again.
+                            if (victory && state_after_battle == STATE_OVERWORLD) {
+                                int cidx = battle_queue_chaser_idx[battle_queue_idx];
+                                if (cidx >= 0 && cidx < num_wild) persist_wild_beaten((uint32_t)wild[cidx].spawner);
+                            }
                             float last_x = battle_scene->player_x(), last_y = battle_scene->player_y();
                             delete battle_scene;
                             battle_scene = nullptr;
@@ -2295,7 +2737,9 @@ int main(int argc, char *argv[])
                                 // Re-activate any queued enemies that were never fought.
                                 for (int qi = battle_queue_idx + 1; qi < battle_queue_count; qi++) {
                                     int cidx = battle_queue_chaser_idx[qi];
-                                    if (cidx >= 0 && cidx < num_chasers)
+                                    if (state_after_battle == STATE_OVERWORLD) {
+                                        if (cidx >= 0 && cidx < num_wild) wild[cidx].active = true;
+                                    } else if (cidx >= 0 && cidx < num_chasers)
                                         chasers[cidx].active = true;
                                 }
                                 battle_queue_count = 0;
@@ -2324,6 +2768,8 @@ int main(int argc, char *argv[])
                     HarvestResult dng_harvest = {};
                     dungeon_player_update(&dplayer, &player, &world_input, dt, &dmap, &cam, dbg_noclip, &dng_harvest);
                     floattext_spawn_from_harvest(&cur_float, &dng_harvest);
+                    for (int i = 0; i < dng_harvest.count; i++)   // a vein or a rock broken open
+                        if (dng_harvest.hits[i].destroyed) { dng_chase_cache.clear(); break; }
                     if (dplayer.picked_item >= 0 || dplayer.picked_gold > 0) {
                         Item it = dplayer.picked_item >= 0 ? (Item)dplayer.picked_item : ITEM_GOLD;
                         int  n  = dplayer.picked_item >= 0 ? 1 : dplayer.picked_gold;
@@ -2345,8 +2791,9 @@ int main(int argc, char *argv[])
                 } else {
                     // Update chasers, EarthBound's way. One ambles until you are inside
                     // the shipped screen (1.0x: 320x240 px either way from you, whatever
-                    // the test zoom shows), turns to look and holds 24 frames, then walks
-                    // at you in 8 directions, re-aiming every 8 frames, and forgets you
+                    // the test zoom shows), turns to look and holds 12 frames (none if
+                    // one near it is running already), then runs at you, leading you
+                    // (chase_lead), re-aiming every 4 frames, and forgets you
                     // once you are a quarter screen past its edge. Touching any one,
                     // ambling or not, starts the fight.
                     const float TRIGGER_DIST2 = ACTOR_TOUCH * ACTOR_TOUCH;
@@ -2387,6 +2834,10 @@ int main(int argc, char *argv[])
                         return moved;
                     };
 
+                    bool searched = false;   // one way searched for a frame (chase_aim)
+                    float pvx, pvy;
+                    player_vel(dng_track, dpcx - dng_track.x, dpcy - dng_track.y, dpcx, dpcy, dt, pvx, pvy);
+                    auto flat_delta = [](float x, float y, float& dx, float& dy) { dx = x; dy = y; };
                     for (int ci = 0; ci < num_chasers; ci++) {
                         DungeonChaser& ch = chasers[ci];
                         if (!ch.active) continue;
@@ -2460,7 +2911,10 @@ int main(int argc, char *argv[])
                             break;
                         }
 
-                        float sp = chase_tick(ch, sees(ch), cdx, cdy, dt, fits);
+                        bool seen = chase_aim(ch, sees(ch), dpcx, dpcy, cdx, cdy, LOSE_W, LOSE_H, dt, &dng_chase_cache, &searched,
+                                              [&](float x, float y) { return fits(ch, x, y); });
+                        chase_lead(ch, pvx, pvy, cdx, cdy);
+                        float sp = chase_tick(ch, seen, seen && chase_alerted(ch, chasers, num_chasers, flat_delta), cdx, cdy, dt, fits);
                         if (!ch.chasing || ch.aggro_timer > 0.0f) continue;
                         // The leg, blended with a short-range push away from any other
                         // chaser it is crowding, so they flow around each other instead
@@ -2559,8 +3013,11 @@ int main(int argc, char *argv[])
                     notes_tick(dw, &dmap, &cam, dplayer.x + (HB_X1 + HB_X2) * 0.5f, dplayer.y + (HB_Y1 + HB_Y2) * 0.5f,
                                pre_battle_timer < 0.0f && post_battle_t <= 0.0f, game_in);
                 }
-                if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer))
-                    player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite, dplayer.swing.body_frame);
+                if (!dungeon_draw_swimmer(&dmap, &dplayer, &player, &cam, plat.renderer)) {
+                    if (bike_sprite && item_bike_worn(&player) && !dplayer.climbing)
+                        player_draw_bike(&player, dplayer.x, dplayer.y, &cam, plat.renderer, bike_sprite);
+                    else player_draw(&player, dplayer.x, dplayer.y, &cam, plat.renderer, player_sprite, dplayer.swing.body_frame);
+                }
                 dungeon_draw_front(&dmap, &dplayer, &cam, plat.renderer);
                 dungeon_draw_swing(&dplayer, &cam, plat.renderer);
 
@@ -2577,14 +3034,16 @@ int main(int argc, char *argv[])
 
                 battle_veil_draw(&cam);
 
-                // The chase test room's picker: [ ] the enemy (Shift by tens), P one
+                // The chase test room's picker: [ ] the enemy, of those with a
+                // done mini, easiest first (chase_test_order; Shift by tens), P one
                 // let loose on your floor, O on the other, BACKSPACE clears, N
                 // battles on a touch or not. A spot is a floor tile at least four
                 // away, the nearest ring that has any, one of them at random.
                 if (chase_test && !dbg_open && !menu.open && !dlg_text && pre_battle_timer < 0.0f) {
                     int tens = (input_down(&in, SDL_SCANCODE_LSHIFT) || input_down(&in, SDL_SCANCODE_RSHIFT)) ? 10 : 1;
                     int step = input_pressed(&in, SDL_SCANCODE_RIGHTBRACKET) - input_pressed(&in, SDL_SCANCODE_LEFTBRACKET);
-                    chase_test_id = ((chase_test_id + step * tens) % ENEMY_COUNT + ENEMY_COUNT) % ENEMY_COUNT;
+                    chase_test_pos = ((chase_test_pos + step * tens) % chase_test_n + chase_test_n) % chase_test_n;
+                    chase_test_id = chase_test_order[chase_test_pos];
                     if (input_pressed(&in, SDL_SCANCODE_N)) chase_test_battle = !chase_test_battle;
                     if (input_pressed(&in, SDL_SCANCODE_BACKSPACE)) num_chasers = 0;
                     bool here = input_pressed(&in, SDL_SCANCODE_P), there = input_pressed(&in, SDL_SCANCODE_O);
@@ -2677,7 +3136,10 @@ int main(int argc, char *argv[])
                     const int id = chase_test_id;
                     char l1[96], l2[96], l3[96];
                     SDL_snprintf(l1, sizeof(l1), "CHASE TEST  [ ] PICK  P HERE  O OTHER FLOOR  BKSP CLEAR  N BATTLE");
-                    SDL_snprintf(l2, sizeof(l2), "#%d %s   %s   %s", id, ENEMY_NAMES[id],
+                    static const char* const TIER_LABEL[] = { "UNSET", "STARTER", "LOW", "MEDIUM", "UPPER",
+                                                              "HARD", "SEVERE", "ELITE", "BOSS 1", "BOSS 2", "BOSS 3" };
+                    SDL_snprintf(l2, sizeof(l2), "#%d %s   %s   %s   %s", id, ENEMY_NAMES[id],
+                                 TIER_LABEL[enemy_tier(id)],
                                  enemy_flies(id) ? "FLIES" : "WALKS",
                                  id < 100 && mini_done[id] ? "MINI" : "NO MINI: SHEET");
                     SDL_snprintf(l3, sizeof(l3), "BATTLE ON TOUCH: %s   TOUCHES: %d   OUT: %d",
@@ -2692,7 +3154,7 @@ int main(int argc, char *argv[])
                     draw_text(plat.renderer, l3, 6, 464, 1, chase_test_battle ? 255 : 180, chase_test_battle ? 120 : 180, chase_test_battle ? 120 : 180);
                 }
 
-                if (input_pressed(&in, SDL_SCANCODE_M) && !menu.open)
+                if (input_pressed(&in, SDL_SCANCODE_M) && !menu.open && !battle_list_open && !trial_open)   // as above
                     map_open = !map_open;
 
                 if (map_open) {
@@ -2831,7 +3293,9 @@ int main(int argc, char *argv[])
                 }
                 for (int i = 0; i < TEST_N && pre_battle_timer < 0.0f && imap.id == 0; i++)   // the flashes draw them; the starting house only
                     draw_chaser(&icam, test_ch[i]);
-                player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
+                if (bike_sprite && item_bike_worn(&player))
+                    player_draw_bike(&player, iplayer.x, iplayer.y, &icam, plat.renderer, bike_sprite);
+                else player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
                 draw_npcs(true);
                 interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
                                           (float)player.width, (float)player.height, iplayer.y + HB_Y2);
@@ -3144,6 +3608,7 @@ int main(int argc, char *argv[])
                     player = saved_player;
                     ow.x = saved_x;
                     ow.y = saved_y;
+                    tilemap_behind_clear();
                     items_primed = false;
                     state = STATE_OVERWORLD;
                     input_consume(&in, SDL_SCANCODE_RETURN);
@@ -3394,7 +3859,9 @@ int main(int argc, char *argv[])
             draw_text(plat.renderer, "DIFFICULTY RUN", 320 - text_width("DIFFICULTY RUN", 2) / 2, 128, 2, 252, 252, 252);
             char ln[96];
             if (trial_n == 0) {
-                draw_text(plat.renderer, "NO ENEMIES: RUN TOOLS/PLAYTEST_ORDER.PY", 140, 170, 1, 255, 120, 120);
+                draw_text(plat.renderer, trial_check ? "NOTHING IN PLAYTEST/RECHECK.TXT" : "NO ENEMIES: RUN TOOLS/PLAYTEST_ORDER.PY",
+                          140, 170, 1, 255, 120, 120);
+                draw_text(plat.renderer, "C: CHECK ONLY OFF   ESC: CLOSE", 140, 302, 1, 150, 150, 150);
             } else {
                 int left = 0;
                 for (int i = 0; i < trial_n; i++) if (!playtest_logged(trial_run, trial_seq(i))) left++;
@@ -3409,10 +3876,12 @@ int main(int argc, char *argv[])
                 draw_text(plat.renderer, ln, 140, 228, 1, 252, 252, 252);
                 SDL_snprintf(ln, sizeof(ln), "WARM-UP VS SKVADER: %s", trial_warmup ? "ON" : "OFF");
                 draw_text(plat.renderer, ln, 140, 246, 1, 252, 252, 252);
-                static const char* KEYS[4] = { "LEFT/RIGHT: START  UP/DN: TIER","R: REVERSE   W: WARM-UP",
+                SDL_snprintf(ln, sizeof(ln), "CHECK ONLY: %s", trial_check ? "ON (NEEDING WORK)" : "OFF");
+                draw_text(plat.renderer, ln, 140, 264, 1, trial_check ? 255 : 252, trial_check ? 200 : 252, trial_check ? 80 : 252);
+                static const char* KEYS[4] = { "LEFT/RIGHT: START  UP/DN: TIER","R: REVERSE  W: WARM-UP  C: CHECK",
                                                "ENTER: GO   ESC: CLOSE", "IN THE CARD: 1-5 RATE, ESC ENDS RUN" };
                 for (int i = 0; i < 4; i++)
-                    draw_text(plat.renderer, KEYS[i], 140, 284 + i * 18, 1, 150, 150, 150);
+                    draw_text(plat.renderer, KEYS[i], 140, 290 + i * 16, 1, 150, 150, 150);
             }
         }
 
@@ -3520,6 +3989,7 @@ int main(int argc, char *argv[])
     story_people_free();
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
+    if (bike_sprite) SDL_DestroyTexture(bike_sprite);
     for (SDL_Texture* t : { minis_tex, minis_white }) if (t) SDL_DestroyTexture(t);
     for (SDL_Texture* t : mini_big) if (t) SDL_DestroyTexture(t);
     for (SDL_Texture* t : mini_big_white) if (t) SDL_DestroyTexture(t);

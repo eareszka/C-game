@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0721-input-surging-through-the-water-facing-left-the",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 524 characters>",
+      "format": "png"
+    },
+    "action": "Surging through the water facing left: the jaws open and close, the long fin rises and falls, the neck bobs, the pale water at the bottom ripples and stays. Same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1081
+  },
+  "links": {},
+  "seed": 1081,
+  "ids": {
+    "background_job_id": "a4be212e-4f24-4eae-8510-6aa47973b481",
+    "generation_id": "d55518c6-89cb-45d0-a118-180ea5bc7283"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "surf-00.png",
+    "surf-01.png",
+    "surf-02.png",
+    "surf-03.png",
+    "surf-04.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-r_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1028 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: the horse tosses its head up, its wet weedy mane swinging out, then lowers its head as if beckoning. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2cacb03d-73de-43ed-b7b6-7bc8218b00ef",
+    "generation_id": "84112216-f930-44f0-a002-259f3a0ad980"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "42-nykur-idle-r-00.png",
+    "42-nykur-idle-r-01.png",
+    "42-nykur-idle-r-02.png",
+    "42-nykur-idle-r-03.png",
+    "42-nykur-idle-r-04.png"
+  ]
+}

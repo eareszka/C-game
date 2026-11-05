@@ -1,0 +1,11 @@
+{
+  "id": 99,
+  "name": "99-fad-felen-bc",
+  "dir": "art/enemies/pixellab/99_fad_felen/redo_bc",
+  "description": "gaunt grey beast with a pale skull face inside a big golden-yellow mane, long thin tail, drooling",
+  "prompts": {"idle": "prompt.txt", "standing": "prompt_standing.txt"},
+  "sheets": {
+    "idle": {"png": "art/enemies/pixellab/99_fad_felen/redo_bc/base/99_fad_felen.png", "replaces": "assets/enemies/redraws/99_fad_felen.png", "frames": 10, "rows": true, "ms": 180, "views": ["D"], "make": "animate"},
+    "standing": {"png": "art/enemies/pixellab/99_fad_felen/redo_bc/base/99_fad_felen_standing.png", "replaces": "assets/enemies/redraws/99_fad_felen_standing.png", "frames": 10, "rows": true, "ms": 180, "views": ["D"], "make": "animate", "from": "idle"}
+  }
+}

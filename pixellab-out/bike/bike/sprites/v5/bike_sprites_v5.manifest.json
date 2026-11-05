@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v5",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 470 characters>",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "style_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 284 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 24,
+        "height": 24
+      }
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 464 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 64,
+          "height": 96
+        },
+        "usage_description": "the bicycle and pose to match"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 500 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 56,
+          "height": 80
+        },
+        "usage_description": "the rider's character"
+      }
+    ],
+    "no_background": true,
+    "seed": 42
+  },
+  "links": {},
+  "seed": 42,
+  "ids": {
+    "background_job_id": "31b68245-6c4c-4873-b29a-a98be8130716",
+    "generation_id": "b386d65c-e637-4d16-a28d-f82038705da3"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "back-00.png",
+    "back-01.png",
+    "back-02.png",
+    "back-03.png",
+    "back-04.png",
+    "back-05.png",
+    "back-06.png",
+    "back-07.png",
+    "back-08.png",
+    "back-09.png",
+    "back-10.png",
+    "back-11.png",
+    "back-12.png",
+    "back-13.png",
+    "back-14.png",
+    "back-15.png",
+    "back-16.png",
+    "back-17.png",
+    "back-18.png",
+    "back-19.png",
+    "back-20.png",
+    "back-21.png",
+    "back-22.png",
+    "back-23.png",
+    "back-24.png",
+    "back-25.png",
+    "back-26.png",
+    "back-27.png",
+    "back-28.png",
+    "back-29.png",
+    "back-30.png",
+    "back-31.png",
+    "back-32.png",
+    "back-33.png",
+    "back-34.png",
+    "back-35.png",
+    "back-36.png",
+    "back-37.png",
+    "back-38.png",
+    "back-39.png",
+    "back-40.png",
+    "back-41.png",
+    "back-42.png",
+    "back-43.png",
+    "back-44.png",
+    "back-45.png",
+    "back-46.png",
+    "back-47.png",
+    "back-48.png",
+    "back-49.png",
+    "back-50.png",
+    "back-51.png",
+    "back-52.png",
+    "back-53.png",
+    "back-54.png",
+    "back-55.png",
+    "back-56.png",
+    "back-57.png",
+    "back-58.png",
+    "back-59.png",
+    "back-60.png",
+    "back-61.png",
+    "back-62.png",
+    "back-63.png"
+  ]
+}

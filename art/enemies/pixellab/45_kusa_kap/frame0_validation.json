@@ -1,0 +1,41 @@
+{
+  "approved": false,
+  "stage": "first-frame design review",
+  "size": [
+    78,
+    59
+  ],
+  "size_ok": true,
+  "bounds": [
+    3,
+    15,
+    76,
+    49
+  ],
+  "opaque_colors": 6,
+  "off_palette_pixels": 0,
+  "partial_alpha_pixels": 0,
+  "transparent_pixels": 3187,
+  "tile_violations": [],
+  "external_bible_checker_available": false,
+  "visual_review_required": [
+    "identity and dugong",
+    "anatomy and silhouette",
+    "outline",
+    "flat form shading",
+    "pixel density"
+  ],
+  "local_outline_checks": [
+    "palette: 0 off-palette pixels; 5 colours plus black",
+    "  341e10 hue 23 sat 69 value 20",
+    "  595965 hue 240 sat 12 value 40",
+    "  8d6b4f hue 27 sat 44 value 55",
+    "  f0bc3c hue 43 sat 75 value 94",
+    "  fcfcfc hue 0 sat 0 value 99",
+    "drawn box: 73 wide x 34 tall (columns 3-75, rows 15-48)",
+    "outline: closed (0 colour px on the edge, all on parts drawn without one)",
+    "interior black: 10.9% of 1415 px (reference 9-14%)"
+  ],
+  "original_hashes_preserved": true,
+  "aseprite_roundtrip_exact": true
+}

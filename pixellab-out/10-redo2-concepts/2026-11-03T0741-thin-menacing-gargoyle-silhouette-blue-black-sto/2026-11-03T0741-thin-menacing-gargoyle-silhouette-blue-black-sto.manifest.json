@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0741-thin-menacing-gargoyle-silhouette-blue-black-sto",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 344 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1123
+  },
+  "links": {},
+  "seed": 1123,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k3.png"
+  ]
+}

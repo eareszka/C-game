@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "k_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3496 characters>",
+      "format": "png"
+    },
+    "action": "Coiling in place: a slow ripple travels along its long body, its head sways and its jaws open a little, the crystal plates keep their colours. Same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 692
+  },
+  "links": {},
+  "seed": 692,
+  "ids": {
+    "background_job_id": "c45eeeaf-6495-44ca-bc1c-556af1543b13",
+    "generation_id": "3437bdb8-f0a5-43c3-bf07-3dedf0bf4df6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idledr-00.png",
+    "idledr-01.png",
+    "idledr-02.png",
+    "idledr-03.png",
+    "idledr-04.png",
+    "idledr-05.png",
+    "idledr-06.png"
+  ]
+}

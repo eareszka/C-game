@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1502-in-l-gliding-slowly-to-the-left-at-level-camera",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 812 characters>",
+      "format": "png"
+    },
+    "action": "Gliding slowly to the left at level camera, no feet showing: the robe trailing behind sways, the long reaching arm rises and falls, the clawed hand opens and closes, the long nose sways. Same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1373
+  },
+  "links": {},
+  "seed": 1373,
+  "ids": {
+    "background_job_id": "0b2a8c1b-73d0-4567-929d-5807e2999f7f",
+    "generation_id": "8343fcd7-830f-4e6f-be44-87f974bd5342"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

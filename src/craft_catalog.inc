@@ -18,7 +18,9 @@ static const Craft CRAFTS[] = {
     { false, WEAPON_KNIFE, ITEM_SPYGLASS, 2, { { ITEM_EYE_LENS, 1 }, { ITEM_BONE, 3 } }, 0, ITEM_SPYGLASS_BOOK, 1, ITEM_COUNT, 160 },
     { false, WEAPON_KNIFE, ITEM_DIVING_FINS, 3, { { ITEM_WING_SKIN, 3 }, { ITEM_BONE, 3 }, { ITEM_GRIP_SCALES, 4 } }, 0, ITEM_DIVING_FINS_BOOK, 1, ITEM_COUNT, 180 },
     { true, WEAPON_KATANA, ITEM_COUNT, 1, { { ITEM_WOOD, 2 } }, 3, ITEM_KATANA_BOOK, 0, ITEM_MOON_STEEL, 180 },
-    { false, WEAPON_KNIFE, ITEM_SWIFT_BOOTS, 4, { { ITEM_HIDE, 6 }, { ITEM_WIND_SINEW, 4 }, { ITEM_FEATHER, 6 }, { ITEM_GRIP_SCALES, 6 } }, 0, ITEM_SWIFT_BOOTS_BOOK, 1, ITEM_COUNT, 200 },
+    // The bicycle: late parts only -- a kharvite frame, grip-scale tyres, wind
+    // sinew for the chain and cables, enchanted wood for the saddle and grips.
+    { false, WEAPON_KNIFE, ITEM_BICYCLE, 4, { { ITEM_KHARVITE, 6 }, { ITEM_GRIP_SCALES, 6 }, { ITEM_WIND_SINEW, 4 }, { ITEM_ENCHANTED_WOOD, 2 } }, 0, ITEM_BICYCLE_BOOK, 1, ITEM_COUNT, 200 },
     { false, WEAPON_KNIFE, ITEM_COMPASS, 3, { { ITEM_BRONZE, 4 }, { ITEM_EYE_LENS, 1 }, { ITEM_ESSENCE, 3 } }, 0, ITEM_COMPASS_BOOK, 1, ITEM_COUNT, 250 },
     { false, WEAPON_KNIFE, ITEM_O2_CHARM, 2, { { ITEM_WATER_RING, 3 }, { ITEM_GILLS, 10 } }, 0, ITEM_O2_CHARM_BOOK, 1, ITEM_COUNT, 300 },
     { false, WEAPON_KNIFE, ITEM_BINOCULARS, 3, { { ITEM_EYE_LENS, 2 }, { ITEM_HORN, 2 }, { ITEM_VINE, 2 } }, 0, ITEM_BINOCULARS_BOOK, 1, ITEM_COUNT, 400 },

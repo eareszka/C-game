@@ -1,0 +1,1115 @@
+{
+  "schema": 1,
+  "subject": "bike",
+  "generated": "2026-11-02T14:33:05Z",
+  "spent": {
+    "calls": 43,
+    "generations": 178.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "ride-right-00.png",
+        "ride-right-01.png",
+        "ride-right-02.png",
+        "ride-right-03.png",
+        "ride-right-04.png"
+      ],
+      "ids": {
+        "background_job_id": "bcfd4c66-4ba4-4cff-980c-274fb83a6284",
+        "generation_id": "9e2ee5f4-36a7-443e-af6e-0619fca418b4"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v10",
+      "directory": "animations/v10",
+      "files": [
+        "stroke-rt-00.png",
+        "stroke-rt-01.png",
+        "stroke-rt-02.png",
+        "stroke-rt-03.png",
+        "stroke-rt-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1dbd52b2-4a14-45ad-9416-afc614f183aa",
+        "generation_id": "9dba4114-9e92-481c-8066-cfd6304fc506"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v11",
+      "directory": "animations/v11",
+      "files": [
+        "stroke-dr-00.png",
+        "stroke-dr-01.png",
+        "stroke-dr-02.png",
+        "stroke-dr-03.png",
+        "stroke-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1ac5d85e-a931-4c58-8ff0-f742b53847a6",
+        "generation_id": "52add096-37b6-43fe-a2d0-2f81131162ff"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v12",
+      "directory": "animations/v12",
+      "files": [
+        "stroke-ur-00.png",
+        "stroke-ur-01.png",
+        "stroke-ur-02.png",
+        "stroke-ur-03.png",
+        "stroke-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1bd8139d-b8eb-4658-81bc-f8ede415a971",
+        "generation_id": "a94b8304-19f5-43a9-b695-ac9770dffe22"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v14",
+      "directory": "animations/v14",
+      "files": [
+        "stroke-dn-00.png",
+        "stroke-dn-01.png",
+        "stroke-dn-02.png",
+        "stroke-dn-03.png",
+        "stroke-dn-04.png"
+      ],
+      "ids": {
+        "background_job_id": "bcaf284b-9576-4b5d-a559-cb0ed3107af8",
+        "generation_id": "98635928-6836-476b-8ed8-64eecec71fe1"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v15",
+      "directory": "animations/v15",
+      "files": [
+        "stroke-rt-00.png",
+        "stroke-rt-01.png",
+        "stroke-rt-02.png",
+        "stroke-rt-03.png",
+        "stroke-rt-04.png"
+      ],
+      "ids": {
+        "background_job_id": "cde01423-9120-47f3-8cbb-b2eb4278093c",
+        "generation_id": "c56a05f8-ce3f-49f3-98a8-68644f5264fd"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v16",
+      "directory": "animations/v16",
+      "files": [
+        "stroke-dr-00.png",
+        "stroke-dr-01.png",
+        "stroke-dr-02.png",
+        "stroke-dr-03.png",
+        "stroke-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "1ecd4ab1-bae4-4042-96a1-3357ef672190",
+        "generation_id": "3db4c763-56fc-4418-abde-37e9b9339f70"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v17",
+      "directory": "animations/v17",
+      "files": [
+        "stroke-ur-00.png",
+        "stroke-ur-01.png",
+        "stroke-ur-02.png",
+        "stroke-ur-03.png",
+        "stroke-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e06b4f8a-8953-44ee-8662-2a7a16c10cb6",
+        "generation_id": "47cb6ec1-c0d1-4dd6-9290-f7e57d676d65"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v18",
+      "directory": "animations/v18",
+      "files": [
+        "stroke-dr2-00.png",
+        "stroke-dr2-01.png",
+        "stroke-dr2-02.png",
+        "stroke-dr2-03.png",
+        "stroke-dr2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "0b9103d1-6829-4ae7-87c5-836e38f92008",
+        "generation_id": "5424b18f-c9b3-418c-bc05-548e106f2cda"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v19",
+      "directory": "animations/v19",
+      "files": [
+        "stroke-ur2-00.png",
+        "stroke-ur2-01.png",
+        "stroke-ur2-02.png",
+        "stroke-ur2-03.png",
+        "stroke-ur2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "45272b24-9043-438c-8d11-4456a4b3ef90",
+        "generation_id": "4547fcba-3095-48c6-87a3-d4cf05b61dce"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "stroke-dn-00.png",
+        "stroke-dn-01.png",
+        "stroke-dn-02.png",
+        "stroke-dn-03.png",
+        "stroke-dn-04.png"
+      ],
+      "ids": {
+        "background_job_id": "723eef7c-2132-4459-ad44-d0db4228d46a",
+        "generation_id": "b58b81d0-dacd-492b-b2ae-07b3761bf27d"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v20",
+      "directory": "animations/v20",
+      "files": [
+        "stroke-ur2-00.png",
+        "stroke-ur2-01.png",
+        "stroke-ur2-02.png",
+        "stroke-ur2-03.png",
+        "stroke-ur2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "50fca169-6cf2-4e1c-a673-58f60cccb94f",
+        "generation_id": "04640d98-ca39-4cd5-9fd1-679d545e73a3"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v21",
+      "directory": "animations/v21",
+      "files": [
+        "stroke-dr2-00.png",
+        "stroke-dr2-01.png",
+        "stroke-dr2-02.png",
+        "stroke-dr2-03.png",
+        "stroke-dr2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "638422fe-d6a2-441f-b570-380573150fdb",
+        "generation_id": "fecea51e-9e5f-401a-9a2d-880d7f37f60e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v22",
+      "directory": "animations/v22",
+      "files": [
+        "stroke-dr2-00.png",
+        "stroke-dr2-01.png",
+        "stroke-dr2-02.png",
+        "stroke-dr2-03.png",
+        "stroke-dr2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "d9331316-a487-4ec2-b2ef-62e5571ceec1",
+        "generation_id": "2a35470b-4b1b-431d-af9f-2e3a8307c610"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v23",
+      "directory": "animations/v23",
+      "files": [
+        "stroke-ur2-00.png",
+        "stroke-ur2-01.png",
+        "stroke-ur2-02.png",
+        "stroke-ur2-03.png",
+        "stroke-ur2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "337ca742-c713-4176-a01e-42b115d22471",
+        "generation_id": "e64d16e1-dc50-4e58-ae42-b51dfcb1a012"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "stroke-up-00.png",
+        "stroke-up-01.png",
+        "stroke-up-02.png",
+        "stroke-up-03.png",
+        "stroke-up-04.png"
+      ],
+      "ids": {
+        "background_job_id": "49394f14-0bf8-45df-aef1-b0a2d23a3bdc",
+        "generation_id": "33f75409-02b9-4fec-a50e-f063a6ed1d91"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "stroke-rt-00.png",
+        "stroke-rt-01.png",
+        "stroke-rt-02.png",
+        "stroke-rt-03.png",
+        "stroke-rt-04.png"
+      ],
+      "ids": {
+        "background_job_id": "00d0b62e-1c21-46f9-afe9-b544080096c1",
+        "generation_id": "ccd62457-1b2e-431a-b7ec-5636629dff0e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v5",
+      "directory": "animations/v5",
+      "files": [
+        "stroke-dr-00.png",
+        "stroke-dr-01.png",
+        "stroke-dr-02.png",
+        "stroke-dr-03.png",
+        "stroke-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "f9f899ed-de4a-46dd-a10c-b404c9496b31",
+        "generation_id": "89cd6c85-8e41-4f42-856f-64242cfa95f7"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v6",
+      "directory": "animations/v6",
+      "files": [
+        "stroke-ur-00.png",
+        "stroke-ur-01.png",
+        "stroke-ur-02.png",
+        "stroke-ur-03.png",
+        "stroke-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "2eb170c0-cfac-450c-b85c-0d5e7959c28c",
+        "generation_id": "a930823f-e3a5-489d-817c-2651e661d59b"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v7",
+      "directory": "animations/v7",
+      "files": [
+        "stroke-ur-00.png",
+        "stroke-ur-01.png",
+        "stroke-ur-02.png",
+        "stroke-ur-03.png",
+        "stroke-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "b487328c-83a5-43c4-96f3-e22164bf27e2",
+        "generation_id": "cd96862e-3589-4368-b6df-4b018271381f"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v8",
+      "directory": "animations/v8",
+      "files": [
+        "stroke-dn-00.png",
+        "stroke-dn-01.png",
+        "stroke-dn-02.png",
+        "stroke-dn-03.png",
+        "stroke-dn-04.png"
+      ],
+      "ids": {
+        "background_job_id": "181eeffe-7fa0-4b96-af26-39affb809aa4",
+        "generation_id": "1e2a8cdf-2f09-42ed-8de5-a1def2725b33"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "bike_animations_v9",
+      "directory": "animations/v9",
+      "files": [
+        "stroke-up-00.png",
+        "stroke-up-01.png",
+        "stroke-up-02.png",
+        "stroke-up-03.png",
+        "stroke-up-04.png"
+      ],
+      "ids": {
+        "background_job_id": "00ce02c1-8ac1-495d-8a86-d0793f10ba39",
+        "generation_id": "09d2f885-1add-414c-ac29-2d70f27c9faa"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "bike_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-101-south-00.png",
+        "rot-101-south-east-01.png",
+        "rot-101-east-02.png",
+        "rot-101-north-east-03.png",
+        "rot-101-north-04.png",
+        "rot-101-north-west-05.png",
+        "rot-101-west-06.png",
+        "rot-101-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "a3d2e46f-08b0-4100-8f3a-ebd86a401ded",
+        "generation_id": "b98bdf24-8df9-4704-af6e-b6dc5174e126"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "bike_rotations_v2",
+      "directory": "rotations/v2",
+      "files": [
+        "rot-202-south-00.png",
+        "rot-202-south-east-01.png",
+        "rot-202-east-02.png",
+        "rot-202-north-east-03.png",
+        "rot-202-north-04.png",
+        "rot-202-north-west-05.png",
+        "rot-202-west-06.png",
+        "rot-202-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "cde6a7a8-f407-42e2-a9fe-ebf1852f98aa",
+        "generation_id": "a33594c6-f48e-4afc-bb09-50b6d9129322"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "side-11-00.png",
+        "side-11-01.png",
+        "side-11-02.png",
+        "side-11-03.png",
+        "side-11-04.png",
+        "side-11-05.png",
+        "side-11-06.png",
+        "side-11-07.png",
+        "side-11-08.png",
+        "side-11-09.png",
+        "side-11-10.png",
+        "side-11-11.png",
+        "side-11-12.png",
+        "side-11-13.png",
+        "side-11-14.png",
+        "side-11-15.png",
+        "side-11-16.png",
+        "side-11-17.png",
+        "side-11-18.png",
+        "side-11-19.png",
+        "side-11-20.png",
+        "side-11-21.png",
+        "side-11-22.png",
+        "side-11-23.png",
+        "side-11-24.png",
+        "side-11-25.png",
+        "side-11-26.png",
+        "side-11-27.png",
+        "side-11-28.png",
+        "side-11-29.png",
+        "side-11-30.png",
+        "side-11-31.png",
+        "side-11-32.png",
+        "side-11-33.png",
+        "side-11-34.png",
+        "side-11-35.png",
+        "side-11-36.png",
+        "side-11-37.png",
+        "side-11-38.png",
+        "side-11-39.png",
+        "side-11-40.png",
+        "side-11-41.png",
+        "side-11-42.png",
+        "side-11-43.png",
+        "side-11-44.png",
+        "side-11-45.png",
+        "side-11-46.png",
+        "side-11-47.png",
+        "side-11-48.png",
+        "side-11-49.png",
+        "side-11-50.png",
+        "side-11-51.png",
+        "side-11-52.png",
+        "side-11-53.png",
+        "side-11-54.png",
+        "side-11-55.png",
+        "side-11-56.png",
+        "side-11-57.png",
+        "side-11-58.png",
+        "side-11-59.png",
+        "side-11-60.png",
+        "side-11-61.png",
+        "side-11-62.png",
+        "side-11-63.png"
+      ],
+      "ids": {
+        "background_job_id": "01cfd800-0137-4c5f-9aa2-c58aa51e0b3b",
+        "generation_id": "c1591da1-702b-4c38-a664-77a2b87b9752"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v10",
+      "directory": "sprites/v10",
+      "files": [
+        "wheels-rt.png"
+      ],
+      "ids": {
+        "background_job_id": "8879e498-f45f-4587-ace7-ba10d7051848",
+        "generation_id": "a5709ac2-7636-4ce6-b157-fd78afc2e016"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v11",
+      "directory": "sprites/v11",
+      "files": [
+        "wheels-dr.png"
+      ],
+      "ids": {
+        "background_job_id": "ba65c791-576c-45ac-91af-a33b2c4ff979",
+        "generation_id": "d9c9c3b4-ed23-4a96-a6e5-f648cbad31c0"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v12",
+      "directory": "sprites/v12",
+      "files": [
+        "wheels-ur.png"
+      ],
+      "ids": {
+        "background_job_id": "90c6e4f7-1de6-4921-8610-585b24e4bebc",
+        "generation_id": "d453b0ca-414b-4c5b-b2cd-be3d175ddf8a"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v13",
+      "directory": "sprites/v13",
+      "files": [
+        "wheels-dn.png"
+      ],
+      "ids": {
+        "background_job_id": "274cbccf-3b6f-4d87-8d3d-e444b71fb62d",
+        "generation_id": "23480a9f-1ed1-4549-8aa3-cf5c1cf39baf"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v14",
+      "directory": "sprites/v14",
+      "files": [
+        "wheels-up.png"
+      ],
+      "ids": {
+        "background_job_id": "095c1cdb-47f8-4cc1-abc9-be6eef9a3e25",
+        "generation_id": "4fc13ea8-43a3-4dd6-8844-bd2460cc16bf"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v15",
+      "directory": "sprites/v15",
+      "files": [
+        "wheels2-73.png"
+      ],
+      "ids": {
+        "background_job_id": "3026f503-b5d5-4d81-b6a7-424990a16a2c",
+        "generation_id": "6f0c7702-b44c-4c71-b97d-3493ebce697c"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v17",
+      "directory": "sprites/v17",
+      "files": [
+        "wheels2-71.png"
+      ],
+      "ids": {
+        "background_job_id": "f733cb4e-6211-44a0-b330-3cc01c139d03",
+        "generation_id": "c19136ea-1c31-4597-a1e2-fc578c6c5798"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "inpaint-v3",
+      "run": "bike_sprites_v18",
+      "directory": "sprites/v18",
+      "files": [
+        "wheels2-74.png"
+      ],
+      "ids": {
+        "background_job_id": "cc70e094-a89b-4762-a0ed-dbf270d455bc",
+        "generation_id": "b3c83a46-c29c-4dac-89eb-a48d4a04e8e5"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "side-22-00.png",
+        "side-22-01.png",
+        "side-22-02.png",
+        "side-22-03.png",
+        "side-22-04.png",
+        "side-22-05.png",
+        "side-22-06.png",
+        "side-22-07.png",
+        "side-22-08.png",
+        "side-22-09.png",
+        "side-22-10.png",
+        "side-22-11.png",
+        "side-22-12.png",
+        "side-22-13.png",
+        "side-22-14.png",
+        "side-22-15.png",
+        "side-22-16.png",
+        "side-22-17.png",
+        "side-22-18.png",
+        "side-22-19.png",
+        "side-22-20.png",
+        "side-22-21.png",
+        "side-22-22.png",
+        "side-22-23.png",
+        "side-22-24.png",
+        "side-22-25.png",
+        "side-22-26.png",
+        "side-22-27.png",
+        "side-22-28.png",
+        "side-22-29.png",
+        "side-22-30.png",
+        "side-22-31.png",
+        "side-22-32.png",
+        "side-22-33.png",
+        "side-22-34.png",
+        "side-22-35.png",
+        "side-22-36.png",
+        "side-22-37.png",
+        "side-22-38.png",
+        "side-22-39.png",
+        "side-22-40.png",
+        "side-22-41.png",
+        "side-22-42.png",
+        "side-22-43.png",
+        "side-22-44.png",
+        "side-22-45.png",
+        "side-22-46.png",
+        "side-22-47.png",
+        "side-22-48.png",
+        "side-22-49.png",
+        "side-22-50.png",
+        "side-22-51.png",
+        "side-22-52.png",
+        "side-22-53.png",
+        "side-22-54.png",
+        "side-22-55.png",
+        "side-22-56.png",
+        "side-22-57.png",
+        "side-22-58.png",
+        "side-22-59.png",
+        "side-22-60.png",
+        "side-22-61.png",
+        "side-22-62.png",
+        "side-22-63.png"
+      ],
+      "ids": {
+        "background_job_id": "d739812c-4b87-490a-b0c4-8605f4489837",
+        "generation_id": "6d6c03a2-38b4-4487-b3b1-f56ceeedf03b"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "bike_sprites_v21",
+      "directory": "sprites/v21",
+      "files": [
+        "wedit-82.png"
+      ],
+      "ids": {
+        "background_job_id": "0bb61b71-96c5-47f2-9497-3277445a67dc",
+        "generation_id": "2f412c1a-d2ae-413e-a625-271a5766e9e9"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "bike_sprites_v22",
+      "directory": "sprites/v22",
+      "files": [
+        "wedit-81.png"
+      ],
+      "ids": {
+        "background_job_id": "7ba5c782-859d-4cce-a4c2-8a22375d2667",
+        "generation_id": "62fd2e4d-61db-43d7-bad9-e5089a0f23e9"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "bike_sprites_v23",
+      "directory": "sprites/v23",
+      "files": [
+        "wedit-83.png"
+      ],
+      "ids": {
+        "background_job_id": "7cf8043b-b734-4db4-ab87-6bb9aac3eb43",
+        "generation_id": "4f27f444-daf4-4572-a7f7-7660e7647870"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "bike_sprites_v24",
+      "directory": "sprites/v24",
+      "files": [
+        "wedit-84.png"
+      ],
+      "ids": {
+        "background_job_id": "9ad038c7-145c-4a12-bfea-555dc16ac459",
+        "generation_id": "ca3fe0fe-742a-4f4c-b5fc-7671360f5837"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "side-33-00.png",
+        "side-33-01.png",
+        "side-33-02.png",
+        "side-33-03.png",
+        "side-33-04.png",
+        "side-33-05.png",
+        "side-33-06.png",
+        "side-33-07.png",
+        "side-33-08.png",
+        "side-33-09.png",
+        "side-33-10.png",
+        "side-33-11.png",
+        "side-33-12.png",
+        "side-33-13.png",
+        "side-33-14.png",
+        "side-33-15.png",
+        "side-33-16.png",
+        "side-33-17.png",
+        "side-33-18.png",
+        "side-33-19.png",
+        "side-33-20.png",
+        "side-33-21.png",
+        "side-33-22.png",
+        "side-33-23.png",
+        "side-33-24.png",
+        "side-33-25.png",
+        "side-33-26.png",
+        "side-33-27.png",
+        "side-33-28.png",
+        "side-33-29.png",
+        "side-33-30.png",
+        "side-33-31.png",
+        "side-33-32.png",
+        "side-33-33.png",
+        "side-33-34.png",
+        "side-33-35.png",
+        "side-33-36.png",
+        "side-33-37.png",
+        "side-33-38.png",
+        "side-33-39.png",
+        "side-33-40.png",
+        "side-33-41.png",
+        "side-33-42.png",
+        "side-33-43.png",
+        "side-33-44.png",
+        "side-33-45.png",
+        "side-33-46.png",
+        "side-33-47.png",
+        "side-33-48.png",
+        "side-33-49.png",
+        "side-33-50.png",
+        "side-33-51.png",
+        "side-33-52.png",
+        "side-33-53.png",
+        "side-33-54.png",
+        "side-33-55.png",
+        "side-33-56.png",
+        "side-33-57.png",
+        "side-33-58.png",
+        "side-33-59.png",
+        "side-33-60.png",
+        "side-33-61.png",
+        "side-33-62.png",
+        "side-33-63.png"
+      ],
+      "ids": {
+        "background_job_id": "1d5a0a93-111c-4ff8-b58e-d817b5ec7d5e",
+        "generation_id": "0fb9d9e5-5b84-4275-b31b-4d9915c1df17"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "front-00.png",
+        "front-01.png",
+        "front-02.png",
+        "front-03.png",
+        "front-04.png",
+        "front-05.png",
+        "front-06.png",
+        "front-07.png",
+        "front-08.png",
+        "front-09.png",
+        "front-10.png",
+        "front-11.png",
+        "front-12.png",
+        "front-13.png",
+        "front-14.png",
+        "front-15.png",
+        "front-16.png",
+        "front-17.png",
+        "front-18.png",
+        "front-19.png",
+        "front-20.png",
+        "front-21.png",
+        "front-22.png",
+        "front-23.png",
+        "front-24.png",
+        "front-25.png",
+        "front-26.png",
+        "front-27.png",
+        "front-28.png",
+        "front-29.png",
+        "front-30.png",
+        "front-31.png",
+        "front-32.png",
+        "front-33.png",
+        "front-34.png",
+        "front-35.png",
+        "front-36.png",
+        "front-37.png",
+        "front-38.png",
+        "front-39.png",
+        "front-40.png",
+        "front-41.png",
+        "front-42.png",
+        "front-43.png",
+        "front-44.png",
+        "front-45.png",
+        "front-46.png",
+        "front-47.png",
+        "front-48.png",
+        "front-49.png",
+        "front-50.png",
+        "front-51.png",
+        "front-52.png",
+        "front-53.png",
+        "front-54.png",
+        "front-55.png",
+        "front-56.png",
+        "front-57.png",
+        "front-58.png",
+        "front-59.png",
+        "front-60.png",
+        "front-61.png",
+        "front-62.png",
+        "front-63.png"
+      ],
+      "ids": {
+        "background_job_id": "67e1b1a5-7e1d-4077-8fc1-f58c0d79fe41",
+        "generation_id": "d4096ea7-96d8-4c9e-8ec5-9109aafebf07"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v5",
+      "directory": "sprites/v5",
+      "files": [
+        "back-00.png",
+        "back-01.png",
+        "back-02.png",
+        "back-03.png",
+        "back-04.png",
+        "back-05.png",
+        "back-06.png",
+        "back-07.png",
+        "back-08.png",
+        "back-09.png",
+        "back-10.png",
+        "back-11.png",
+        "back-12.png",
+        "back-13.png",
+        "back-14.png",
+        "back-15.png",
+        "back-16.png",
+        "back-17.png",
+        "back-18.png",
+        "back-19.png",
+        "back-20.png",
+        "back-21.png",
+        "back-22.png",
+        "back-23.png",
+        "back-24.png",
+        "back-25.png",
+        "back-26.png",
+        "back-27.png",
+        "back-28.png",
+        "back-29.png",
+        "back-30.png",
+        "back-31.png",
+        "back-32.png",
+        "back-33.png",
+        "back-34.png",
+        "back-35.png",
+        "back-36.png",
+        "back-37.png",
+        "back-38.png",
+        "back-39.png",
+        "back-40.png",
+        "back-41.png",
+        "back-42.png",
+        "back-43.png",
+        "back-44.png",
+        "back-45.png",
+        "back-46.png",
+        "back-47.png",
+        "back-48.png",
+        "back-49.png",
+        "back-50.png",
+        "back-51.png",
+        "back-52.png",
+        "back-53.png",
+        "back-54.png",
+        "back-55.png",
+        "back-56.png",
+        "back-57.png",
+        "back-58.png",
+        "back-59.png",
+        "back-60.png",
+        "back-61.png",
+        "back-62.png",
+        "back-63.png"
+      ],
+      "ids": {
+        "background_job_id": "31b68245-6c4c-4873-b29a-a98be8130716",
+        "generation_id": "b386d65c-e637-4d16-a28d-f82038705da3"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v6",
+      "directory": "sprites/v6",
+      "files": [
+        "diagup-00.png",
+        "diagup-01.png",
+        "diagup-02.png",
+        "diagup-03.png",
+        "diagup-04.png",
+        "diagup-05.png",
+        "diagup-06.png",
+        "diagup-07.png",
+        "diagup-08.png",
+        "diagup-09.png",
+        "diagup-10.png",
+        "diagup-11.png",
+        "diagup-12.png",
+        "diagup-13.png",
+        "diagup-14.png",
+        "diagup-15.png",
+        "diagup-16.png",
+        "diagup-17.png",
+        "diagup-18.png",
+        "diagup-19.png",
+        "diagup-20.png",
+        "diagup-21.png",
+        "diagup-22.png",
+        "diagup-23.png",
+        "diagup-24.png",
+        "diagup-25.png",
+        "diagup-26.png",
+        "diagup-27.png",
+        "diagup-28.png",
+        "diagup-29.png",
+        "diagup-30.png",
+        "diagup-31.png",
+        "diagup-32.png",
+        "diagup-33.png",
+        "diagup-34.png",
+        "diagup-35.png",
+        "diagup-36.png",
+        "diagup-37.png",
+        "diagup-38.png",
+        "diagup-39.png",
+        "diagup-40.png",
+        "diagup-41.png",
+        "diagup-42.png",
+        "diagup-43.png",
+        "diagup-44.png",
+        "diagup-45.png",
+        "diagup-46.png",
+        "diagup-47.png",
+        "diagup-48.png",
+        "diagup-49.png",
+        "diagup-50.png",
+        "diagup-51.png",
+        "diagup-52.png",
+        "diagup-53.png",
+        "diagup-54.png",
+        "diagup-55.png",
+        "diagup-56.png",
+        "diagup-57.png",
+        "diagup-58.png",
+        "diagup-59.png",
+        "diagup-60.png",
+        "diagup-61.png",
+        "diagup-62.png",
+        "diagup-63.png"
+      ],
+      "ids": {
+        "background_job_id": "19ce177d-13be-40d2-8ba3-964838bfe512",
+        "generation_id": "6e4ab0e4-1659-419d-9971-92db4174a3c9"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "generate-image-v2",
+      "run": "bike_sprites_v7",
+      "directory": "sprites/v7",
+      "files": [
+        "diagdown-00.png",
+        "diagdown-01.png",
+        "diagdown-02.png",
+        "diagdown-03.png",
+        "diagdown-04.png",
+        "diagdown-05.png",
+        "diagdown-06.png",
+        "diagdown-07.png",
+        "diagdown-08.png",
+        "diagdown-09.png",
+        "diagdown-10.png",
+        "diagdown-11.png",
+        "diagdown-12.png",
+        "diagdown-13.png",
+        "diagdown-14.png",
+        "diagdown-15.png",
+        "diagdown-16.png",
+        "diagdown-17.png",
+        "diagdown-18.png",
+        "diagdown-19.png",
+        "diagdown-20.png",
+        "diagdown-21.png",
+        "diagdown-22.png",
+        "diagdown-23.png",
+        "diagdown-24.png",
+        "diagdown-25.png",
+        "diagdown-26.png",
+        "diagdown-27.png",
+        "diagdown-28.png",
+        "diagdown-29.png",
+        "diagdown-30.png",
+        "diagdown-31.png",
+        "diagdown-32.png",
+        "diagdown-33.png",
+        "diagdown-34.png",
+        "diagdown-35.png",
+        "diagdown-36.png",
+        "diagdown-37.png",
+        "diagdown-38.png",
+        "diagdown-39.png",
+        "diagdown-40.png",
+        "diagdown-41.png",
+        "diagdown-42.png",
+        "diagdown-43.png",
+        "diagdown-44.png",
+        "diagdown-45.png",
+        "diagdown-46.png",
+        "diagdown-47.png",
+        "diagdown-48.png",
+        "diagdown-49.png",
+        "diagdown-50.png",
+        "diagdown-51.png",
+        "diagdown-52.png",
+        "diagdown-53.png",
+        "diagdown-54.png",
+        "diagdown-55.png",
+        "diagdown-56.png",
+        "diagdown-57.png",
+        "diagdown-58.png",
+        "diagdown-59.png",
+        "diagdown-60.png",
+        "diagdown-61.png",
+        "diagdown-62.png",
+        "diagdown-63.png"
+      ],
+      "ids": {
+        "background_job_id": "53f3b042-4830-4af7-a70f-8353a8e25f50",
+        "generation_id": "0cb9db71-bc69-48a9-bebe-2ba41e30f46e"
+      }
+    }
+  ]
+}

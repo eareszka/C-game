@@ -1,0 +1,176 @@
+== redo/anim/idle_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 66 wide x 48 tall (columns 20-85, rows 15-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.2% of 1604 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((28, 45), 'b6433d')]; teeth 0
+== redo/anim/idle_1.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 66 wide x 48 tall (columns 20-85, rows 15-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.2% of 1604 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((28, 45), 'b6433d')]; teeth 0
+== redo/anim/idle_2.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 54 wide x 58 tall (columns 19-72, rows 5-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.0% of 1834 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_3.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 54 wide x 58 tall (columns 19-72, rows 5-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.0% of 1834 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_4.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 65 wide x 46 tall (columns 20-84, rows 17-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 12.3% of 1653 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_5.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 65 wide x 46 tall (columns 20-84, rows 17-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 12.3% of 1653 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_6.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 66 wide x 48 tall (columns 20-85, rows 15-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.9% of 1593 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_7.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 66 wide x 48 tall (columns 20-85, rows 15-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.9% of 1593 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_8.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 52 wide x 58 tall (columns 21-72, rows 5-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.0% of 1830 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/idle_9.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 52 wide x 58 tall (columns 21-72, rows 5-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.0% of 1830 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 60 wide x 54 tall (columns 21-80, rows 3-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.5% of 1793 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_1.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 60 wide x 54 tall (columns 21-80, rows 3-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.5% of 1793 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_2.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 71 wide x 52 tall (columns 17-87, rows 8-59)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 10.6% of 1753 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_3.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 71 wide x 52 tall (columns 17-87, rows 8-59)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 10.6% of 1753 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_4.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 68 wide x 30 tall (columns 19-86, rows 26-55)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 12.7% of 1254 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_5.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 68 wide x 30 tall (columns 19-86, rows 26-55)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 12.7% of 1254 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_6.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 33 tall (columns 17-75, rows 24-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.2% of 1176 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_7.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 33 tall (columns 17-75, rows 24-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 14.2% of 1176 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_8.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 71 wide x 44 tall (columns 17-87, rows 10-53)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.2% of 1607 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/fly_9.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 71 wide x 44 tall (columns 17-87, rows 10-53)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.2% of 1607 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 50 tall (columns 21-79, rows 8-57)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 9.5% of 1980 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_1.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 53 wide x 57 tall (columns 24-76, rows 2-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.7% of 2289 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_2.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 58 wide x 57 tall (columns 21-78, rows 5-61)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 8.0% of 2347 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_3.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 53 wide x 57 tall (columns 24-76, rows 2-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.7% of 2289 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_4.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 50 tall (columns 21-79, rows 8-57)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 9.5% of 1980 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+PASS

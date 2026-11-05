@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-u_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\85-nanabolele-idle-u-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\85-nanabolele-idle-u-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\85-nanabolele-idle-u-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\85-nanabolele-idle-u-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\85-nanabolele-idle-u-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\85-nanabolele\\idle-animate-U\\idle-animate-u\\animations\\v1\\idle-animate-u_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "3d670366-fda6-4eb1-89f1-2ed647f19e92",
+    "generation_id": "4fc5deda-6147-4717-8f65-191c0d594000"
+  }
+}

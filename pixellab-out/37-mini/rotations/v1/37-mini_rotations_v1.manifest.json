@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "37-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "small celestial stag: a purple spectral stag with tall branching antlers glowing in pale rainbow stripes, a wispy lilac tail, small pale eyes edged in black, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "04c2a624-3cc7-4c10-9d61-a3e973e88d04",
+    "generation_id": "60b2634e-6fe1-425b-81ad-a9a6bbd8285e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

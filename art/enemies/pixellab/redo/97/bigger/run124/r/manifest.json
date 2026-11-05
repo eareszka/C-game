@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "r",
+  "generated": "2026-11-05T15:40:44Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "cleaned",
+      "route": "resize",
+      "run": "r_cleaned_v1",
+      "directory": "cleaned/v1",
+      "files": [
+        "source-124.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

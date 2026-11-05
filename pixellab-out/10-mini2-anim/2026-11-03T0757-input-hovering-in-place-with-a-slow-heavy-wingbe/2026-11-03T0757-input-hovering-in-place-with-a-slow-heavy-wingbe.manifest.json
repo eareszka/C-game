@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0757-input-hovering-in-place-with-a-slow-heavy-wingbe",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 688 characters>",
+      "format": "png"
+    },
+    "action": "Hovering in place with a slow heavy wingbeat: the wings beat up and down, the body bobs slightly, the legs dangle. Same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1151
+  },
+  "links": {},
+  "seed": 1151,
+  "ids": {
+    "background_job_id": "2f58506e-6e53-4890-b15b-89d77c47e2b0",
+    "generation_id": "35819a27-7bdb-43af-97c9-e6ca974e7082"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flap-00.png",
+    "flap-01.png",
+    "flap-02.png",
+    "flap-03.png",
+    "flap-04.png"
+  ]
+}

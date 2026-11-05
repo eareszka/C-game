@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Nykur, a pale grey dappled water horse with a dark green mane, standing, keep its design exactly, nothing cropped",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 1008 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 44,
+      "height": 44
+    },
+    "target_size": {
+      "width": 68,
+      "height": 68
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-68.png"
+  ]
+}

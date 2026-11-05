@@ -3,10 +3,14 @@
     python art/structures/entrances/steam_design.py <design.json>
     python tools/draw_views.py <design.json> art/structures/entrances/steam
 
-Four 16x16 frames side by side, played in a loop over the water of an oasis in
-snow (src/tilemap.cpp, draw_hot_spring_steam): a puff leaves the water,
-swells as it rises, thins and is gone. No line round it -- steam has no edge --
-white where it is thick, the palest grey where it thins. One piece a frame.
+Three 16x16 frames side by side, played in a loop over the water of an oasis
+in snow (src/tilemap.cpp, draw_hot_spring_steam) on the world's ambient beat
+(src/core.h: three frames a second each, the graveyard roots' -- the user,
+2026-10-29): a puff leaves the water, swells as it rises, thins and is gone.
+No line round it -- steam has no edge -- white where it is thick, the palest
+grey where it thins. One piece a frame. A fourth cell stays on the sheet,
+empty: the strips packed after it keep their places (gen_entrance_art.py
+SPRITES).
 """
 import json, os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools'))
@@ -23,23 +27,21 @@ def pad(top, rows):
 # Plain white puffs (the user: "keep the steam normal"), the palest grey only
 # as a puff thins out at the top. They read against the oasis's flat water.
 FRAMES = [
-    pad(11, [".......SS.......",
+    pad(10, [".......SS.......",
              "......SSSS......",
              "......SSSS......",
              ".......SS......."]),
-    pad(7, ["......SSS.......",
+    pad(5, ["......SSS.......",
             ".....SSSSS......",
             ".....SSSSSS.....",
             "......SSSSS.....",
             ".......SSS......"]),
-    pad(3, [".......LLL......",
+    pad(1, [".......LLL......",
             "......LSSSL.....",
             ".....LSSSSL.....",
             "......LSSL......",
             ".......LL......."]),
-    pad(1, ["........LL......",
-            ".......LLLL.....",
-            "........LL......"]),
+    pad(0, []),                                  # the fourth cell, kept empty
 ]
 
 
@@ -47,7 +49,8 @@ def design():
     for i, rows in enumerate(FRAMES):
         g = Grid(16, 16)
         g.g = [list(r) for r in rows]
-        check(g, 'steam %d' % i)
+        if i < 3:
+            check(g, 'steam %d' % i)
     return {'pal': PAL, 'view_w': 16, 'order': ['f0', 'f1', 'f2', 'f3'],
             'views': {'f%d' % i: rows for i, rows in enumerate(FRAMES)}}
 

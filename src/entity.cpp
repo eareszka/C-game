@@ -95,13 +95,20 @@ bool player_sprinting(const Input* in)
 
 void player_gait(const Input* in, float* speed, float* anim_speed, const Player* player)
 {
+    // On the bike there is one pace: shift and ctrl do nothing.
+    if (player && item_bike_worn(player)) { *speed = BIKE_SPEED; *anim_speed = BIKE_ANIM; return; }
     if (player_crouching(in))      { *speed = PLAYER_CROUCH_SPEED; *anim_speed = 0.30f; }
     else if (player_sprinting(in)) { *speed = PLAYER_RUN_SPEED;    *anim_speed = 0.10f; }
     else                           { *speed = PLAYER_WALK_SPEED;   *anim_speed = 0.20f; }
-    if (player && item_footwear_equipped(player,ITEM_SWIFT_BOOTS) && !player_crouching(in)) {
-        *speed *= SWIFT_BOOTS_SPEED_MULT;
-        *anim_speed /= SWIFT_BOOTS_SPEED_MULT;
-    }
+}
+
+int player_bike_frame(const Player* player)
+{
+    static const int order[] = { FACE_DOWN, FACE_UP, FACE_LEFT, FACE_RIGHT,
+                                 FACE_DOWN_LEFT, FACE_DOWN_RIGHT, FACE_UP_LEFT, FACE_UP_RIGHT };
+    int idx = 0;
+    for (int i = 0; i < 8; i++) if (order[i] == player->facing) idx = i;
+    return idx * 5 + (player->is_moving ? 1 + player->anim_step % 4 : 0);
 }
 
 float player_swim_speed(const Player* player, const Input* in) {

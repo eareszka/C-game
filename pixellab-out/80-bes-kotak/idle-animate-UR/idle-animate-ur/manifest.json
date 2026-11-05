@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-10-28T14:41:23Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "80-bes-kotak-idle-ur-00.png",
+        "80-bes-kotak-idle-ur-01.png",
+        "80-bes-kotak-idle-ur-02.png",
+        "80-bes-kotak-idle-ur-03.png",
+        "80-bes-kotak-idle-ur-04.png",
+        "80-bes-kotak-idle-ur-05.png",
+        "80-bes-kotak-idle-ur-06.png",
+        "80-bes-kotak-idle-ur-07.png",
+        "80-bes-kotak-idle-ur-08.png"
+      ],
+      "ids": {
+        "background_job_id": "54fa7b2d-ec80-4050-8798-935f7d66d757",
+        "generation_id": "9552ce1b-587a-4ec8-b94a-ccfd1d9b4384"
+      }
+    }
+  ]
+}

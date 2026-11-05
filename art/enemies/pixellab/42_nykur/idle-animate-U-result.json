@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-u_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\42-nykur-idle-u-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\42-nykur-idle-u-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\42-nykur-idle-u-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\42-nykur-idle-u-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\42-nykur-idle-u-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\42-nykur\\idle-animate-U\\idle-animate-u\\animations\\v1\\idle-animate-u_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "d4261cef-eb3a-4b6a-9a28-39c48c0eefbd",
+    "generation_id": "85ead37a-2b2b-4c9c-af43-4cff7523cb0a"
+  }
+}

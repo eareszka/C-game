@@ -5,8 +5,9 @@
 One 16x16 cell, eight frames side by side (128x16), after a PixelLab draft
 (pixellab-out/desert-tumbleweed/sprites/v1): a ball of dry twigs in wood's tones (bark reads as a dark burr on the sand)
 with twigs standing out all round it and a few bold twigs curling across it.
-Frame 0 is the tumbleweed lying still; the eight together are one turn rolling
-to the right, 45 degrees a frame, hopping a pixel off the sand on the way.
+The eight together are one turn rolling to the right, 45 degrees a frame, the
+ball in the same place in every one: the game bounces it and draws its shadow
+(src/tumbleweed.cpp), so the frames only turn it.
 
 The ball is defined, not drawn: twigs by their angle round the middle, so each
 frame is the same ball laid down again turned, never a picture rotated and
@@ -22,7 +23,7 @@ CELL, FRAMES = 16, 8
 R = 4.7                                      # the ball
 SPIKES = [(0.3, 6.2), (1.2, 5.6), (2.0, 6.3), (2.9, 5.5), (3.7, 6.2), (4.6, 5.8), (5.5, 6.3)]   # angle, reach
 CURLS = [(1.0, 2.4, 3.0), (3.7, 2.5, 3.0), (5.6, 1.4, 1.8)]   # an arc of a circle: its centre's angle, distance, radius
-HOP = [0, 0, 1, 1, 0, 0, 1, 1]
+HOP = [0] * FRAMES                           # the bounce is the game's now
 
 
 def frame(k):

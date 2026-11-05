@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1829-c3-keep-this-exact-composition-a-huge-dark-navy-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3100 characters>",
+      "format": "png"
+    },
+    "description": "<elided 365 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 872
+  },
+  "links": {},
+  "seed": 872,
+  "ids": {
+    "background_job_id": "6d02f37e-60a8-4e97-a2df-75fc733a7418",
+    "generation_id": "1594384b-4f7d-4360-8ca1-a9d78acf7d91"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e2.png"
+  ]
+}

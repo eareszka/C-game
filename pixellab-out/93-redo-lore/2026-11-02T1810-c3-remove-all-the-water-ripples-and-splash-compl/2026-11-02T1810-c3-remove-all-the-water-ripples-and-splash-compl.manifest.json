@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1810-c3-remove-all-the-water-ripples-and-splash-compl",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3000 characters>",
+      "format": "png"
+    },
+    "description": "<elided 372 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 782
+  },
+  "links": {},
+  "seed": 782,
+  "ids": {
+    "background_job_id": "a9100348-f5d7-46a2-9813-a7f730ac1af9",
+    "generation_id": "c43013c0-36bd-4c36-9852-fe9752ddd253"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e2.png"
+  ]
+}

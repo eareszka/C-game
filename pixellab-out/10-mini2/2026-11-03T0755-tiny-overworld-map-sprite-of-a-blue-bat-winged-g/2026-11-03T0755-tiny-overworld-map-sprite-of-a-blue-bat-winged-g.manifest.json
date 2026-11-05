@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0755-tiny-overworld-map-sprite-of-a-blue-bat-winged-g",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny overworld map sprite of a blue bat-winged gargoyle hovering in the air facing us, hunched body, long pale tan beak pointing down, tan chest, dark charcoal bat wings spread, thin limbs with claws, black outline, flat colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD4bx41heHvrVUMdUk6DAAunwWzXET13wAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1141
+  },
+  "links": {},
+  "seed": 1141,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-overworld-map-sprite-of-a-blue-bat-winged-g.png"
+  ]
+}

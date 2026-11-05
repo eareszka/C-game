@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "idle-edit-try8_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1744 characters>",
+      "format": "png"
+    },
+    "description": "<elided 317 characters>",
+    "width": 88,
+    "height": 44,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c2fe3e20-3ad1-4d72-977d-1c921f0eda71",
+    "generation_id": "bf3776d8-fb87-417c-80c9-240d419523c7"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "19-skeljaskrimsli-idle-frame0-try8.png"
+  ]
+}

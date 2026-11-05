@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "89_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "the Cuero of Chilean lore: a living stretched cowhide lying spread flat like an octopus, pale tan leather with brown patches, the hide's outer rim lined with sharp claws, two red eyes and a toothed mouth in its middle. One creature, flat pixel art",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 302
+  },
+  "links": {},
+  "seed": 302,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "a2.png"
+  ]
+}

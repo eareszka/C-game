@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "s_sprites_v2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3936 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact snake, pose, neck, coils and flat plain shapes, smaller. No scales. Recolour it bright green with a yellow belly stripe. A small cobra hood at the neck.",
+    "width": 48,
+    "height": 48,
+    "no_background": true,
+    "seed": 2152
+  },
+  "links": {},
+  "seed": 2152,
+  "ids": {
+    "background_job_id": "ff0f6ed5-d502-4616-8bd0-c924d387fadc",
+    "generation_id": "1699934f-def4-4475-adb1-672e49dbc658"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e2152.png"
+  ]
+}

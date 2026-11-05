@@ -1,0 +1,347 @@
+<title>Enemy Sprite Style Audit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column of reading text around black "arena" stages, so every sprite is judged on the ground the battle really draws.
+   Colours come from art/direction/game_palette.gpl and headings from the game's own Pixuf font. One deliberate dark look: sprites must sit on black. */
+:root{
+  --arena:#000000;--page:#1e1e24;--panel:#292931;--rule:#474751;
+  --ink:#fcfcfc;--text:#e8e0c0;--muted:#9797aa;--gold:#f0bc3c;--grey:#848694;
+  --good:#a8f0bc;--near:#fc9838;--bad:#ec8476;--badfill:#b70000;
+  --display:"Pixuf","Courier New",monospace;
+  --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+body{background:var(--page);color:var(--text);font:400 1.0625rem/1.55 var(--body)}
+.wrap{max-width:1180px;margin-inline:auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:56px;grid-template-columns:minmax(0,1fr)}
+.wrap>*{min-width:0}
+h1,h2,h3{font-family:var(--display);font-weight:400;color:var(--ink);text-wrap:balance;margin:0;-webkit-font-smoothing:none}
+h1{font-size:48px;line-height:1.05}
+h2{font-size:32px;line-height:1.1;color:var(--gold)}
+h3{font-size:24px;line-height:1.15}
+p{margin:0;max-width:65ch}
+a{color:var(--gold)}
+strong{color:var(--ink)}
+code{font:500 .85em var(--mono);color:var(--ink);overflow-wrap:anywhere}
+section,header{display:grid;gap:16px;min-width:0}
+.verdict{font-size:1.25rem;line-height:1.45;max-width:58ch}
+.warn{color:var(--near)}
+nav{display:flex;flex-wrap:wrap;gap:6px 20px;font:500 14px var(--mono)}
+.fine{font-size:.9rem;color:var(--muted);max-width:75ch}
+.plain{margin:0;padding-left:1.1em;list-style:square;display:grid;gap:10px;max-width:70ch}
+.plain li::marker{color:var(--gold)}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:18px;max-width:72ch}
+.steps li{counter-increment:s;display:grid;grid-template-columns:2.2rem minmax(0,1fr);gap:0 10px}
+.steps li::before{content:counter(s);font:400 32px/1 var(--display);color:var(--gold);-webkit-font-smoothing:none}
+
+/* the tier bars: one unit of width is one enemy in every row */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font:400 13px var(--mono);color:var(--text);margin:0;padding:0;list-style:none}
+.legend li{display:flex;align-items:center;gap:7px}
+.legend i{display:block;width:12px;height:12px}
+.bars{display:grid;gap:6px}
+.bar-row{display:grid;grid-template-columns:4.5rem minmax(0,1fr);gap:10px;align-items:center}
+.bar-name{font:500 13px var(--mono);color:var(--ink)}
+.bar{display:flex;gap:2px;min-width:0}
+.bar span{display:block;min-width:0;height:24px;font:500 12px/24px var(--mono);text-align:center;color:var(--arena);box-sizing:border-box}
+.seg-standard,.k-standard{background:var(--gold)}.seg-old,.k-old{background:var(--ink)}.seg-match,.k-match{background:var(--good)}.seg-close,.k-close{background:var(--near)}.seg-no,.k-no{background:var(--badfill)}.seg-no{color:var(--ink)!important}
+
+/* cases: each sprite on black with the reason beside it */
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:12px}
+.case{display:grid;gap:10px;background:var(--panel);padding:12px;align-content:start;min-width:0}
+.case .pad{background:var(--arena);padding:12px;display:flex;justify-content:center;overflow-x:auto;--px:1}
+.case p{font-size:.98rem}
+.case h3{font:500 14px var(--mono);color:var(--ink)}
+.case button{appearance:none;background:none;border:0;padding:0;cursor:pointer;display:block}
+.case img,.spr img{display:block;width:calc(var(--w)*var(--px)*1px);height:calc(var(--h)*var(--px)*1px);max-width:none;image-rendering:pixelated}
+@media (min-width:1000px){.case .pad{--px:2}}
+
+/* the sheet */
+.ctl{display:flex;flex-wrap:wrap;gap:12px 28px}
+.ctl>div{display:grid;gap:4px}
+.lab{font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--rule);width:max-content;max-width:100%}
+.seg button{appearance:none;background:none;border:0;color:var(--text);padding:8px 13px;min-height:40px;font:500 13px var(--mono);cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--gold);color:var(--arena)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.stage{background:var(--arena);padding:16px;overflow-x:auto;--px:2;display:grid;gap:30px}
+.stage[data-bg="grey"]{background:var(--grey)}
+.stage[data-bg="grey"] .cap,.stage[data-bg="grey"] .cap b,.stage[data-bg="grey"] .group h3,.stage[data-bg="grey"] .group p{color:var(--arena)}
+.group{display:grid;gap:12px;min-width:0}
+.group h3{color:var(--gold)}
+.group p{font-size:.92rem;color:var(--muted)}
+.group .n{font:400 13px var(--mono);color:var(--muted);margin-left:10px}
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 16px}
+.spr{appearance:none;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer;display:grid;gap:6px;justify-items:start;width:max(84px,calc(var(--w)*var(--px)*1px))}
+.cap{display:block;width:100%;min-height:3.75em;font:400 12px/1.25 var(--body);color:var(--muted);overflow-wrap:anywhere}
+.cap b{font:500 12px var(--mono);color:var(--text)}
+.cap i{display:block;font:500 12px var(--mono);font-style:normal}
+.t-standard{color:var(--gold)}.t-old{color:var(--ink)}.t-match{color:var(--good)}.t-close{color:var(--near)}.t-no{color:var(--bad)}
+.stage[data-bg="grey"] .cap i{color:var(--arena)}
+
+/* tables */
+.tablewrap{overflow-x:auto;min-width:0}
+table{border-collapse:collapse;font:400 14px var(--mono);font-variant-numeric:tabular-nums;width:100%;min-width:540px}
+th,td{padding:8px 16px 8px 0;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+thead th{font:500 12px var(--mono);letter-spacing:.03em;color:var(--muted)}
+td.num{white-space:nowrap}
+tbody th{font:500 14px var(--mono);color:var(--ink);white-space:nowrap}
+
+/* close-up */
+dialog{border:1px solid var(--rule);background:var(--page);color:var(--text);padding:0;width:min(1000px,calc(100vw - 24px));max-width:none;max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(0,0,0,.82)}
+.z{padding:16px;display:grid;gap:14px}
+.z-head{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between}
+.z-stages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.z-stage{display:grid;gap:6px;align-content:start;min-width:0;margin:0}
+.mini{padding:6px;display:flex;justify-content:center;align-items:center;min-height:120px;overflow:auto}
+.mini.k{background:var(--arena)}.mini.g{background:var(--grey)}
+.mini img{display:block;width:calc(var(--w)*var(--px)*1px);height:calc(var(--h)*var(--px)*1px);max-width:none;image-rendering:pixelated}
+.z-stage figcaption{font:400 12px var(--mono);color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px 16px;margin:0}
+.stats dt{font:500 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:0;font:500 15px var(--mono);color:var(--ink)}
+.z-notes{margin:0;padding-left:1.1em;list-style:square;display:grid;gap:6px}
+.z-nav{display:flex;gap:8px;flex-wrap:wrap}
+.z-nav button,.z-head button{appearance:none;background:none;border:1px solid var(--rule);color:var(--text);min-height:40px;padding:8px 14px;font:500 13px var(--mono);cursor:pointer}
+.z-nav button:hover,.z-head button:hover{border-color:var(--gold);color:var(--gold)}
+@media (max-width:760px){
+  h1{font-size:32px}
+  h2{font-size:24px}
+  .wrap{gap:44px;padding-block:20px 48px}
+  .verdict{font-size:1.125rem}
+  .stage{padding:12px}
+  .z-stages{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+<style>@font-face{font-family:"Pixuf";src:url(data:font/ttf;base64,/*PIXUF*/) format("truetype");font-display:swap}</style>
+
+<main class="wrap">
+  <header>
+    <h1>Do the 101 enemies look like one game?</h1>
+    <p class="verdict">{{VERDICT}}</p>
+    {{STALE}}
+    <nav aria-label="On this page"><a href="#diagnosis">Diagnosis</a><a href="#style">The art style</a><a href="#causes">Why it breaks</a><a href="#told">Your notes</a><a href="#styles">Every style</a><a href="#old">Size open</a><a href="#nomatch">Doesn't match</a><a href="#close">Close</a><a href="#sheet">All 101</a><a href="#sizes">Sizes</a><a href="#next">What's next</a></nav>
+  </header>
+
+  <section id="told" aria-labelledby="h-told">
+    <h2 id="h-told">What you've settled so far</h2>
+    <ul class="plain">
+      <li><strong>Starter, Low and Medium are perfect.</strong> Nothing there gets redrawn or marked as a fault.</li>
+      <li><strong>Repeated patterns:</strong> fine at the lower tiers, and bad and AI-looking higher up. I've taken Upper as fine, since you kept 63 Hidebehind, and Hard and up as the problem.</li>
+      <li><strong>Old designs often beat the redraws.</strong> Where they do, the old design gets resized with PixelLab to the right size, then cleaned to the game palette.</li>
+      <li><strong>Sizes:</strong> the tier table stays, including 280 px for 100 Flesh Planet and 240 px for 98 Boiuna, even though both run off the screen.</li>
+      <li><strong>Families look alike and grow with tier.</strong> Pick the strongest sprite and edit it into its relatives. Bears 20, 41 and 48 came from the old 41. Snakes 21 and 32 came from 27 Grootslang.</li>
+      <li><strong>Standards:</strong> your picks, plus 34 Anaye as the named inspiration. You called 93 perfect, and 63 stays on its NES redraw.</li>
+      <li><strong>Still open:</strong> 23 Olgoi-Khorkhoi at 221 px or 160 px, and whether 98 and 93 should join the snake family.</li>
+    </ul>
+  </section>
+
+  <section id="diagnosis" aria-labelledby="h-diagnosis">
+    <h2 id="h-diagnosis">Diagnosis by tier</h2>
+    <p>I looked at every current sprite at game size on black, as it stands on the newest edit sheet, and rated it against what you've approved and the notes below. Each block counts enemies, so a longer bar is a tier with more of them.</p>
+    <ul class="legend">
+      <li><i class="k-standard"></i>The standard: {{N_STD}}</li>
+      <li><i class="k-old"></i>Old sprite, size open: {{N_OLD}}</li>
+      <li><i class="k-match"></i>Matches: {{N_MATCH}}</li>
+      <li><i class="k-close"></i>Close: {{N_CLOSE}}</li>
+      <li><i class="k-no"></i>Doesn't match: {{N_NO}}</li>
+    </ul>
+    <div class="bars">{{BARS}}</div>
+    <p class="fine">These ratings are my judgement, and you've overruled mine before. I called the cast one game when you found it wasn't, I advised more work on 93 and 90 when you were happy with them, and you went back to 99 and 10 when I hadn't listed them. Your eye wins over any rating here.</p>
+  </section>
+
+  <section id="style" aria-labelledby="h-style">
+    <h2 id="h-style">The art style, as it stands</h2>
+    <p>The game has a real shared style at the level of materials, but not yet a shared way of drawing at large sizes.</p>
+    <ul class="plain">
+      <li><strong>What it is:</strong> folk-creature cartoons, with one creature, one joke, chunky hard-edged shapes and a face you read at once. Colours are from the game's palette, usually 8 plus black at most.</li>
+      <li><strong>Where it works:</strong> Starter through Medium, repeated marks included. Upper is nearly there, with four anatomy misses.</li>
+      <li><strong>Where it drifts:</strong> Hard and up. The redraws there show the same habits, the old sprites use softer shading, and the new families are cleaner again.</li>
+      <li><strong>Bosses are the biggest gap.</strong> They jump in size and softness from Elite, and most are still old sprites at sizes off the table.</li>
+    </ul>
+    <div class="tablewrap"><table>
+      <thead><tr><th scope="col">Tier</th><th scope="col">Enemies</th><th scope="col">Typical size</th><th scope="col">Colour patches per 100 px</th><th scope="col">Repeat score</th><th scope="col">Inner black</th></tr></thead>
+      <tbody>{{TREND_ROWS}}</tbody>
+    </table></div>
+    <p class="fine">Middle values for each tier. Colour patches fall steadily as sprites grow, and the repeat score jumps at the bosses. The repeat score is the share of small detailed blocks repeated exactly elsewhere. It also counts straight edges, so it's only a rough guide. </p>
+  </section>
+
+  <section id="causes" aria-labelledby="h-causes">
+    <h2 id="h-causes">Why it breaks down</h2>
+    <ul class="plain">
+      <li><strong>The first redraw rule.</strong> {{FIRST_RULE}} of the {{DRAWN_N}} remaining agent redraws came from the first rule, which pushed agents to fill big bodies with texture. {{LOOPS}} used loops in code, which is how identical bricks and scales get made.</li>
+      <li><strong>The same habits repeat.</strong> The toothy mouth, the mirrored front pose, the row of toe ticks and the stamped fur stroke come back on different creatures, which is much of what reads as AI-made above Upper.</li>
+      <li><strong>Nothing checks anatomy.</strong> Bodies that don't join up, like 28, 61, 62 and 77, pass every number.</li>
+      <li><strong>The written rule is out of date.</strong> <code>art/direction/SPRITE_STYLE.md</code> and the checker still ask for things your picks break, like 4 to 5 colours and 9 to 14% inner black. They haven't been changed.</li>
+      <li><strong>Size order is unsettled.</strong> {{N_OLD}} old sprites keep their old sizes, so 100 Flesh Planet is smaller than Boss 1's 30 Dajna, and 24 and 33 are tiny for their tiers.</li>
+    </ul>
+  </section>
+
+  <section id="styles" aria-labelledby="h-styles">
+    <h2 id="h-styles">The stylization of every enemy</h2>
+    <p><strong>Not all of them pass the checker.</strong> {{CK_CLEAN}} are clean, {{CK_LOOK}} pass with notes to look at, and {{CK_FAIL}} fail. All {{CK_SIZE}} size fails come from the tier table, including picks and sizes you chose yourself. The only colour fails are {{CK_COLOUR}}, both old sprites. Most notes are for more tones of one colour than the rule's two, which most of your picks break too. Passing says nothing about how good a sprite looks.</p>
+    <ul class="plain">{{STYLE_KEYS}}</ul>
+    <p class="fine">Style groups are my judgement by eye, and you can group the full sheet by them below. Checker results use the current rule, at 8 colours, which is out of date against your choices.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th scope="col">Enemy</th><th scope="col">Tier</th><th scope="col">Style</th><th scope="col">Rating</th><th scope="col">Checker</th></tr></thead>
+      <tbody>{{STYLE_ROWS}}</tbody>
+    </table></div>
+  </section>
+
+  <section id="old" aria-labelledby="h-old">
+    <h2 id="h-old">Old sprite, size open: {{N_OLD}}</h2>
+    <p>You chose these over their redraws. Only 31 and 78 are at the right size. The rest are waiting for you to say whether they get resized. Smallest first.</p>
+    <div class="cases" data-cases="{{OLD_IDS}}"></div>
+  </section>
+
+  <section id="nomatch" aria-labelledby="h-nomatch">
+    <h2 id="h-nomatch">Doesn't match: {{N_NO}}</h2>
+    <p>Smallest first. Tap a sprite for its numbers.</p>
+    <div class="cases" data-cases="{{NO_IDS}}"></div>
+  </section>
+
+  <section id="close" aria-labelledby="h-close">
+    <h2 id="h-close">Close: {{N_CLOSE}}</h2>
+    <p>Each fits with one thing off, and a touch-up may be enough. Smallest first.</p>
+    <div class="cases" data-cases="{{CLOSE_IDS}}"></div>
+  </section>
+
+  <section id="sheet" aria-labelledby="h-sheet">
+    <h2 id="h-sheet">All 101, as they stand</h2>
+    <p>The current sprite for every enemy, the same set as your newest edit sheet. Each is its first idle frame at the battle's pixel size on its pure black. Tap one for a close-up and its numbers.</p>
+    <div class="ctl">
+      <div><span class="lab" id="l-group">Group by</span><span class="seg" role="group" aria-labelledby="l-group" id="c-group">
+        <button type="button" data-v="tier">Tier</button><button type="button" data-v="rating">Rating</button><button type="button" data-v="style">Style</button><button type="button" data-v="id">Number</button></span></div>
+      <div><span class="lab" id="l-bg">Background</span><span class="seg" role="group" aria-labelledby="l-bg" id="c-bg">
+        <button type="button" data-v="black">Arena black</button><button type="button" data-v="grey">Grey</button></span></div>
+      <div><span class="lab" id="l-px">Pixel size</span><span class="seg" role="group" aria-labelledby="l-px" id="c-px">
+        <button type="button" data-v="1">1x</button><button type="button" data-v="2">2x</button></span></div>
+    </div>
+    <div class="stage" id="stage" data-bg="black"></div>
+  </section>
+
+  <section id="sizes" aria-labelledby="h-sizes">
+    <h2 id="h-sizes">Sizes against each tier</h2>
+    <p>Sizes are each sprite's longer side. Many of those outside their range are there on purpose: lore size can go up to 10% past a range, you set 34, 36 and 47 by hand, picks like 1 to 4 stay small, the bears and snakes were sized as families, and the old sprites above keep their old sizes for now.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th scope="col">Tier</th><th scope="col">Range</th><th scope="col">Actual</th><th scope="col">Outside the range</th></tr></thead>
+      <tbody>{{SIZE_ROWS}}</tbody>
+    </table></div>
+  </section>
+
+  <section id="next" aria-labelledby="h-next">
+    <h2 id="h-next">What's next</h2>
+    <ol class="steps">
+      <li><div><strong>Answer 23.</strong> 221 px as on the sheet, or the 160 px you set earlier.</div></li>
+      <li><div><strong>Decide the size-open sprites.</strong> Resize the ones you name with PixelLab, biggest first. Upscales are cheap but need checking, since 51 got cut off and 10 grew an extra part the first time.</div></li>
+      <li><div><strong>Go through the {{N_NO}} that don't match and the {{N_CLOSE}} close ones.</strong> Pick old, resized old, or a family edit for each. Upper's four misses are anatomy, not patterns.</div></li>
+      <li><div><strong>Rewrite the rule and checker</strong> from what you've kept, so future work doesn't fight your choices.</div></li>
+      <li><div><strong>Animate and install.</strong> Every new or resized sprite is a first frame only, and nothing is in the game yet. That's the big remaining job: about 4,300 cells across the current sheets, less for sprites that keep their old size and frames.</div></li>
+    </ol>
+  </section>
+
+  <footer>
+    <p class="fine">Built {{WHEN}} from the first frames on the newest edit sheet. I judged still frames on black, so none of this covers sprites moving or in a fight. As far as the files show, you've edited {{HAND_N}} of the remaining redraws by hand ({{HAND}}), and I rated those as they stand.</p>
+  </footer>
+</main>
+
+<dialog id="zoom" aria-labelledby="z-title">
+  <div class="z">
+    <div class="z-head"><h3 id="z-title"></h3><button type="button" id="z-close">Close</button></div>
+    <div class="z-stages">
+      <figure class="z-stage"><div class="mini k"><img id="z-a" alt=""></div><figcaption>As in battle</figcaption></figure>
+      <figure class="z-stage"><div class="mini g"><img id="z-b" alt=""></div><figcaption>On grey, outlines visible</figcaption></figure>
+    </div>
+    <dl class="stats" id="z-stats"></dl>
+    <ul class="z-notes" id="z-notes"></ul>
+    <div class="z-nav"><button type="button" id="z-prev">Previous</button><button type="button" id="z-next">Next</button></div>
+  </div>
+</dialog>
+
+<script>
+const DATA=/*DATA*/;
+const S=DATA.sprites,G=DATA.groups;
+const $=s=>document.querySelector(s);
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+const state={group:'tier',bg:'black',px:innerWidth>=900?2:1};
+let order=[];
+function sprite(id){
+  const s=S[id],b=el('button','spr');
+  b.type='button';b.dataset.id=id;
+  b.setAttribute('aria-label',id+' '+s.n+', '+s.label+', open close-up');
+  b.style.setProperty('--w',s.w);b.style.setProperty('--h',s.h);
+  const i=new Image();i.alt='';i.src=s.src;
+  const c=el('span','cap');
+  c.append(el('b',null,String(id)),' '+s.n,el('i','t-'+s.r,s.label));
+  b.append(i,c);
+  return b;
+}
+function renderSheet(){
+  const st=$('#stage');
+  st.dataset.bg=state.bg;
+  st.style.setProperty('--px',state.px);
+  st.replaceChildren();
+  order=[];
+  for(const g of G[state.group]){
+    const sec=el('div','group');
+    if(g.name){
+      const h=el('h3',null,g.name);
+      h.append(el('span','n',g.ids.length+(g.ids.length===1?' sprite':' sprites')));
+      sec.append(h);
+    }
+    if(g.desc)sec.append(el('p',null,g.desc));
+    const row=el('div','row');
+    for(const id of g.ids){row.append(sprite(id));order.push(id)}
+    sec.append(row);
+    st.append(sec);
+  }
+  for(const [box,val] of [['#c-group',state.group],['#c-bg',state.bg],['#c-px',String(state.px)]])
+    for(const b of $(box).children)b.setAttribute('aria-pressed',b.dataset.v===val?'true':'false');
+}
+for(const [box,key,conv] of [['#c-group','group',v=>v],['#c-bg','bg',v=>v],['#c-px','px',Number]])
+  $(box).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state[key]=conv(b.dataset.v);renderSheet()});
+document.querySelectorAll('[data-cases]').forEach(box=>{
+  box.dataset.cases.split(',').filter(Boolean).forEach(id=>{
+    const s=S[id],c=el('article','case'),pad=el('div','pad'),b=el('button');
+    b.type='button';b.dataset.id=id;
+    b.setAttribute('aria-label',id+' '+s.n+', open close-up');
+    b.style.setProperty('--w',s.w);b.style.setProperty('--h',s.h);
+    const i=new Image();i.alt='';i.src=s.src;
+    b.append(i);pad.append(b);
+    c.append(pad,el('h3',null,id+' '+s.n),el('p',null,s.why));
+    box.append(c);
+  });
+});
+const dlg=$('#zoom');let cur=0;
+function fit(s){
+  const narrow=innerWidth<=760;
+  const box=Math.min(innerWidth-24,1000)-32;
+  const maxW=(narrow?box:(box-8)/2)-14;
+  const maxH=innerHeight*(narrow?.3:.5);
+  return Math.max(1,Math.min(16,Math.floor(Math.min(maxW/s.w,maxH/s.h))));
+}
+function show(id){
+  cur=id;
+  const s=S[id],n=fit(s);
+  $('#z-title').textContent=id+' '+s.n;
+  for(const k of ['#z-a','#z-b']){const i=$(k);i.src=s.src;i.alt=k==='#z-a'?s.n+' on the arena black':s.n+' on grey';i.style.setProperty('--w',s.w);i.style.setProperty('--h',s.h);i.style.setProperty('--px',n)}
+  const stats=$('#z-stats');stats.replaceChildren();
+  for(const [k,v] of s.stats){const d=el('div');d.append(el('dt',null,k),el('dd',null,v));stats.append(d)}
+  const notes=$('#z-notes');notes.replaceChildren();
+  s.notes.forEach(t=>notes.append(el('li',null,t)));
+  notes.hidden=!s.notes.length;
+}
+function step(d){const list=order.length?order:Object.keys(S).map(Number);const i=list.indexOf(cur);show(list[(i+d+list.length)%list.length])}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b){show(+b.dataset.id);if(!dlg.open)dlg.showModal()}});
+$('#z-close').addEventListener('click',()=>dlg.close());
+$('#z-prev').addEventListener('click',()=>step(-1));
+$('#z-next').addEventListener('click',()=>step(1));
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+dlg.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')step(-1);if(e.key==='ArrowRight')step(1)});
+addEventListener('resize',()=>{if(dlg.open)show(cur)});
+renderSheet();
+</script>

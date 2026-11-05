@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "83-mini-small",
+  "generated": "2026-10-29T09:53:19Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "83-mini-small_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "flyd-00.png",
+        "flyd-01.png",
+        "flyd-02.png",
+        "flyd-03.png",
+        "flyd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "b5af49b2-d23f-4381-a9d1-c22ea8691b6e",
+        "generation_id": "56b81250-ef8f-4b27-9b72-aed9d514874e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "83-mini-small_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "flyu-00.png",
+        "flyu-01.png",
+        "flyu-02.png",
+        "flyu-03.png",
+        "flyu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "803d2a90-4a70-4782-aae9-8cfc2643d312",
+        "generation_id": "d915cc2c-8c15-4377-b6f2-4f59d7506849"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "83-mini-small_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "flyl-00.png",
+        "flyl-01.png",
+        "flyl-02.png",
+        "flyl-03.png",
+        "flyl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "f9acfd8d-4a4a-47da-8102-56af7f4ee495",
+        "generation_id": "e2cbddff-6fc7-4dec-a7ae-a59e857d8674"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "83-mini-small_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "85aacc4a-3af1-437e-a396-f8b87655acc8",
+        "generation_id": "44d854cc-ef33-42da-8e70-076d0dc0a4ca"
+      }
+    }
+  ]
+}

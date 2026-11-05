@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "walk-animate-left-d",
+  "generated": "2026-10-28T11:38:55Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "walk-animate-left-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "59-tripodero-walk-left-d-00.png",
+        "59-tripodero-walk-left-d-01.png",
+        "59-tripodero-walk-left-d-02.png",
+        "59-tripodero-walk-left-d-03.png",
+        "59-tripodero-walk-left-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "b467d4a8-b470-44e2-8936-b1a881f8d378",
+        "generation_id": "4e157f93-e73a-4249-8159-2dbf907fd26d"
+      }
+    }
+  ]
+}

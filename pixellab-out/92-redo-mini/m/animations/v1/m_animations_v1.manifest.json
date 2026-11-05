@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 812 characters>",
+      "format": "png"
+    },
+    "action": "Stalking: it creeps forward a step, head low and antlers dipping, then lunges a little. Same size, same place, same facing.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 761
+  },
+  "links": {},
+  "seed": 761,
+  "ids": {
+    "background_job_id": "0eacb145-925e-4e2b-aad0-3a7ede0af265",
+    "generation_id": "a1be4e4a-d736-4ad2-9542-69c870e250c4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "std-00.png",
+    "std-01.png",
+    "std-02.png",
+    "std-03.png",
+    "std-04.png"
+  ]
+}

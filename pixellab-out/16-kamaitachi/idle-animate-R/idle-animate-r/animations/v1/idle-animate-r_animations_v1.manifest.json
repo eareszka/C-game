@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-r_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 736 characters>",
+      "format": "png"
+    },
+    "action": "Riding its whirlwind in place: the wind swirls under it, the weasel ducks low, then lifts its head and raises its sickle claws. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dbefc439-20eb-4627-a024-a34b53d2d52e",
+    "generation_id": "ad9d6aa5-fcb4-427c-99dd-c470c4c6dab6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "16-kamaitachi-idle-r-00.png",
+    "16-kamaitachi-idle-r-01.png",
+    "16-kamaitachi-idle-r-02.png",
+    "16-kamaitachi-idle-r-03.png",
+    "16-kamaitachi-idle-r-04.png"
+  ]
+}

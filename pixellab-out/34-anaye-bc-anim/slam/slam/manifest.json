@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "slam",
+  "generated": "2026-11-04T07:41:10Z",
+  "spent": {
+    "calls": 1,
+    "generations": 3.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "slam_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "slam-00.png",
+        "slam-01.png",
+        "slam-02.png",
+        "slam-03.png",
+        "slam-04.png",
+        "slam-05.png",
+        "slam-06.png",
+        "slam-07.png",
+        "slam-08.png"
+      ],
+      "ids": {
+        "background_job_id": "6d1146bb-4792-408d-93ff-01e7d71c39c8",
+        "generation_id": "4b538088-7e2c-4aca-a815-ba68a860ad75"
+      }
+    }
+  ]
+}

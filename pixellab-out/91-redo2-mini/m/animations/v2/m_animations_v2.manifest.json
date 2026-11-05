@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 884 characters>",
+      "format": "png"
+    },
+    "action": "Slithering in place: a ripple runs along its long body, same size, same place, same facing.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 711
+  },
+  "links": {},
+  "seed": 711,
+  "ids": {
+    "background_job_id": "058801ba-959b-4903-aaad-11e3b38d0016",
+    "generation_id": "6f0d18c5-5c96-42da-96ec-496a6761b102"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "sld-00.png",
+    "sld-01.png",
+    "sld-02.png",
+    "sld-03.png",
+    "sld-04.png"
+  ]
+}

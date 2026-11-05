@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T06:30:59Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "85-nanabolele-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "25a9c0e2-352f-49af-aec8-88a9180c413a",
+        "generation_id": "da2e3e7b-963a-4a9b-8b76-12861084d050"
+      }
+    }
+  ]
+}

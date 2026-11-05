@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "89_sprites_v3",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "the Cuero, a monster that is a living flayed cow hide rearing up from the water, rippling leather sheet with torn edges, small hooked claws around its rim, small red eyes, a round sucking mouth on its underside. One creature, flat pixel art",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 304
+  },
+  "links": {},
+  "seed": 304,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "b2.png"
+  ]
+}

@@ -1,101 +1,91 @@
-"""19 Skeljaskrimsli's map mini: the shell monster, a hump of grey shells on brown legs, its mouth glowing
-green, at the player's scale, four views of two frames (tools/minis.py).
+"""19 Skeljaskrimsli's map mini, redrawn for its new battle art (art/enemies/pixellab/19_skeljaskrimsli: the
+user's ink pose, the second reference's look, its head all mouth): at the player's scale, four views, two
+frames (tools/minis.py). The old mini (the earlier creature) is kept in old_19/.
 
-Placed by hand over the shrink of its battle views (python tools/minis.py 19): the dome of shells with their
-scale marks, its glowing eyes and toothed mouth under the front of it, the brown legs; from the back its tail
-down the middle, from the side its long head, its shells and its tail trailing. The second frame is a heavy
-step. 16 px tall, as the Snawfus: its battle frames stand 32. Three of its battle colours and black: its
-shell grey (the dark grey of the shells' joints goes to black marks), its brown (legs), its green (the glow
-of its eyes and mouth; the red eye goes to it). Its brown and green are off the game palette (its battle
-sheet is from before it), so the nearest in it: 8d6b4f, 4fa667. Its pale grey, dark brown, pale green, white
-and sand go.
+Drawn by hand, fill only, one black outline round it, with the detail of its battle shrink (minis.shrink) built
+in (the user: "more detail ... not intimidating"): its great hunched dome of overlapping shell plates, lit pale
+with charcoal undersides and black seams, spiked tips along its crest; under it, from the front, its whole face one gaping maw of glowing green fangs round a black throat (no
+eyes); from behind, the dome over its dark haunches; from the side, hunched, the maw low at its front. Its
+thick dark legs step (frame 0, frame 1). The right view is the left mirrored. 20 px tall, bigger than its battle
+height (34 px) at the minis' one scale would make it (12; the user: "needs to be bigger"). Three of its battle colours and
+black (the overworld's most): its plate grey, its charcoal, its glow green; pale claws in the plate grey.
 
-Its chase: plod -- an armoured thing, it comes at you slow and steady, 0.8x the chase pace, the slowest of
-them (still faster than you walk). chase_speed() in src/main.cpp and tools/minis.py.
+Its chase: the plod, slow and steady (chase_speed() case 19, src/main.cpp).
 
     python art/enemies/minis/19_skeljaskrimsli_mini.py
 """
 from pathlib import Path
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tools'))
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'tools'))
 import minis, first_frame as ff
 
-PAL = {'K': '000000', 'S': '9797aa', 'B': '8d6b4f', 'G': '4fa667'}
+PAL = {'K': '000000', 'P': 'bcbeca', 'C': '1e1e24', 'G': 'a8f0bc'}
 CHASE = 'plod'
+HEIGHT = 20               # bigger than its battle height at the one scale (12): the user, "needs to be bigger"
+COLOURS = 3               # the overworld bible's most for an object; the plates' undersides take the charcoal
 
-# Front and back from row 12: the left half and the middle column, the right half its mirror.
-FRONT = [
-    '......KK' 'K',
-    '....KKSS' 'S',
-    '...KSSSK' 'S',
-    '..KSSKSS' 'S',
-    '.KSSSSSS' 'K',
-    '.KSKSSSK' 'S',
-    'KSSSSSSS' 'S',
-    'KSSSSGKS' 'S',
-    'KBBSSKGG' 'G',
-    'KBBBSKGK' 'G',
-    'KBBBBSKK' 'K',
-    'KBBBBBBB' 'B',
-    'KBBBBBKK' 'K',
-    'KBBBBBK.' '.',
-    'KBBBBBK.' '.',
-    '.KKKKK..' '.',
+DOME = [                 # spiked plate tips along its crest, overlapping plates lit pale, shaded mid grey, black seams
+    '.......P...P...P.....',
+    '.....PPPPPPPPPPPPP...',
+    '...PPPPCKPPPPCKPPPP..',
+    '..PPPCCKPPPPCCKPPPPP.',
+    '.PPCKPPPPPCKPPPPPCKP.',
+    '.PCCKPPPPCCKPPPPCCKPP',
+    'PPPPPCKPPPPPCKPPPPPCP',
 ]
-BACK = FRONT[:7] + [
-    'KSSSSSSS' 'S',
-    'KBBSSSSS' 'S',
-    'KBBBSSSS' 'S',
-    'KBBBBSSS' 'S',
-    'KBBBBBKS' 'S',
-    'KBBBBBKS' 'S',
-    'KBBBBBKK' 'S',
-    'KBBBBBK.' 'K',
-    '.KKKKK..' '.',
+FRONT = DOME + [         # the plates' shadowed edge, then its whole face one maw: long fangs top and bottom, black throat
+    'CCCCCCCCCCCCCCCCCCCCC',
+    'CCCGGGGGGGGGGGGGGGCCC',
+    'CCGKGKKGKKGKKGKKGKGCC',
+    'CCGKGKKGKKGKKGKKGKGCC',
+    'CCGKKKKKKKKKKKKKKKGCC',
+    'CCGKKGKKGKKGKKGKKKGCC',
+    'CCCGGGGGGGGGGGGGGGCCC',
+    '.CCCCCCCCCCCCCCCCCCC.',
 ]
-
-
-def whole(halves):
-    return [h + h[7::-1] for h in halves]
-
-
-def step(rows):
-    """Its left foot up off the ground."""
-    out = list(rows)
-    out[13] = '.KKKKK' + rows[13][6:]
-    out[14] = '......' + rows[14][6:]
-    out[15] = '......' + rows[15][6:]
-    return out
-
-
-SIDE = [                                         # from row 12, its head to the left
-    '.....K.K........K.K.K...........',
-    '....KSKSKK....KKSKSKSK..........',
-    '..KKSSSSSSKKKKSSSSSSSSK.........',
-    '.KSSSSKSSSSSSSSSKSSSSSSKK.......',
-    'KSSGSSSSSKSSSSSSSSSSKSSSSK......',
-    'KGGGGGSSSSSSSKSSSSSSSSSSSKKK....',
-    'KGKGKSSSKSSSSSSSSSSKSSSSSSSSKK..',
-    '.KKKKKSSSSSSSSSSSSSSSSSSSSSSSSKK',
-    '.....KSSBBSSSSSSSSSBBSSKKSSSSSSK',
-    '.....KBBBBBSSSSSSSBBBBKK.KKSSSK.',
-    '.....KBBBBBBBBBBBBBBBBK....KKK..',
-    '.....KBBBBKKKKKKKBBBBBK.........',
+BACK = DOME + [          # from behind: the plates down over its dark haunches
+    'PPCKPPPPPCKPPPPPCKPPP',
+    'CCCCCCCCCCCCCCCCCCCCC',
+    'CCCCCCCCCCCCCCCCCCCCC',
+    '.CCCCCCCCCKCCCCCCCCC.',
+    '.CCCCCCCCCKCCCCCCCCC.',
+    '.CCCCCCCC...CCCCCCCC.',
 ]
-SIDE_LEGS = (['.....KBBBK.......KBBBK..........', '.....KBBBK.......KBBBK..........',
-              '.....KBBBK.......KBBBK..........', '......KKK.........KKK...........'],
-             ['....KBBBBK.......KKBBBK.........', '...KBBBKK..........KBBBK........',
-              '...KBBBK...........KBBBK........', '....KKK.............KKK.........'])
+LEGS = (['.CCCC...........CCCC.', '.CCCCC.........CCCCC.', '.P.P.P.........P.P.P.'],    # planted, its pale claws
+        ['.CCCC...........CCCC.', '..CCCCC.......CCCCC..', '..P.P.P.......P.P.P..'])    # stepping
+SIDE = [                 # its head to the left, lowered: the plated dome, the maw open at its front, fangs top and bottom
+    '..........P...P...P......',
+    '........PPPPPPPPPPPPP....',
+    '......PPPPCKPPPPCKPPPPP..',
+    '....PPPPCCKPPPPCCKPPPPPP.',
+    '...PPCKPPPPPCKPPPPPCKPPPP',
+    '..PCCKPPPPCCKPPPPCCKPPPPP',
+    '.PPPPCKPPPPPCKPPPPPCKPPPP',
+    'CCCCCCCCCCCCCCCCCCCCCCCCC',
+    'GGGGGGGCCCCCCCCCCCCCCCCCC',
+    'KGKGKGGCCCCCCCCCCCCCCCCCC',
+    'KKKKKKGCCCCCCCCCCCCCCCCC.',
+    'KKKKKKGCCCCCCCCCCCCCCCCC.',
+    'KGKGKGGCCCCCCCCCCCCCCCC..',
+    'GGGGGGCCCCCCCCCCCCCCCCC..',
+    '.CCCCCCCCCCCCCCCCCCCCC...',
+]
+SIDE_LEGS = (['..CCCC.........CCCC.....', '.CCCCC........CCCCC.....', '.P.P.P........P.P.P.....'],
+             ['..CCCC.........CCCC.....', '..CCCCC........CCCCC....', '..P.P.P........P.P.P....'])
+for rows in (FRONT, BACK, SIDE) + LEGS + SIDE_LEGS:
+    assert len({len(r) for r in rows}) == 1, rows
 
-VIEWS = {
-    'D': [(11, 12, whole(FRONT)), (11, 12, step(whole(FRONT)))],
-    'U': [(11, 12, whole(BACK)), (11, 12, step(whole(BACK)))],
-    'L': [(4, 12, SIDE + legs) for legs in SIDE_LEGS],
-}
-VIEWS['R'] = [(40 - x0 - len(rows[0]), top, [r[::-1] for r in rows]) for x0, top, rows in VIEWS['L']]
-FRAMES = {v: [ff.grid([(top + y, x0, r) for y, r in enumerate(rows)], PAL) for x0, top, rows in fs]
-          for v, fs in VIEWS.items()}
+def place(rows):
+    """Fill rows to a frame: centred, the bottom row on the cell's last but one (the outline under it)."""
+    x0, y0 = minis.W // 2 - len(rows[0]) // 2, minis.H - 1 - len(rows)
+    return ff.outline({(x0 + x, y0 + y): c for y, r in enumerate(rows) for x, c in enumerate(r) if c != '.'})
+
+
+FRAMES = {'D': [place(FRONT + legs) for legs in LEGS], 'U': [place(BACK + legs) for legs in LEGS],
+          'L': [place(SIDE + legs) for legs in SIDE_LEGS]}
+FRAMES['R'] = [{(minis.W - 1 - x, y): c for (x, y), c in g.items()} for g in FRAMES['L']]
 
 if __name__ == '__main__':
-    minis.make(19, 'skeljaskrimsli', FRAMES, PAL, cap=16)
+    minis.make(19, 'skeljaskrimsli', FRAMES, PAL, cap=HEIGHT, colours=COLOURS)
     minis.chase_gif(19, CHASE, FRAMES, PAL)

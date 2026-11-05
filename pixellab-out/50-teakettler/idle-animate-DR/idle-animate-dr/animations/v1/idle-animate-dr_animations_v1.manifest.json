@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 616 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place, it raises its head and whistles like a boiling kettle, a small white puff of steam blowing from its nose, then lowers its head again. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "90c63554-f0fe-46fa-9b99-d47c39b1fa9a",
+    "generation_id": "5bee3162-75c1-4376-b54c-8c4ac427fc2e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "50-teakettler-idle-dr-00.png",
+    "50-teakettler-idle-dr-01.png",
+    "50-teakettler-idle-dr-02.png",
+    "50-teakettler-idle-dr-03.png",
+    "50-teakettler-idle-dr-04.png"
+  ]
+}

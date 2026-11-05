@@ -1,0 +1,19 @@
+{
+  "run": "grow_sprites_v2",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\grow_a\\run\\grow\\sprites\\v2",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\grow_a\\run\\grow\\sprites\\v2\\grow-93.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\grow_a\\run\\grow\\sprites\\v2\\grow_sprites_v2.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a3858684-e092-4d30-aac4-38192d052358",
+    "generation_id": "c3e63208-e0de-4934-af92-7056b5271239"
+  },
+  "route": "edit-image-pixen"
+}

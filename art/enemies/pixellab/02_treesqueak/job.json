@@ -1,0 +1,12 @@
+{
+  "id": 2, "name": "02-treesqueak", "dir": "art/enemies/pixellab/02_treesqueak",
+  "description": "Treesqueak: a tiny brown tree squirrel sitting upright, round ears, tan muzzle and belly, small pink nose, a few green moss spots on its brown fur, a curled tail on the ground behind it. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/02_treesqueak.png", "frames": 3, "rows": false, "ms": 250,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+    "action": "Sitting upright in place, it stretches up tall on its haunches and squeaks with its mouth open, then settles back and crouches low. Same facing, same size, feet and tail planted. Black one-pixel outlines, flat fills. No sound lines or effects.",
+    "map": {"*": [0, 1, 3]},
+    "ground": true
+  }}
+}

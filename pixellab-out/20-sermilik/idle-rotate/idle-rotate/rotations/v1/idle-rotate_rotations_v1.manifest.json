@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "idle-rotate_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1332 characters>",
+      "format": "png"
+    },
+    "description": "Sermilik: an enormous white polar bear whose very long shaggy fur is covered in ice, pale blue icicles hanging from its fur, its four paws like lumps of blue ice, small dark eyes. Flat black-outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "9ef14b6e-e3b8-4e66-8575-dee24964cf39",
+    "generation_id": "3555280a-c51e-466b-b559-72d70c8c0347"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "20-sermilik-idle-views-south-00.png",
+    "20-sermilik-idle-views-south-east-01.png",
+    "20-sermilik-idle-views-east-02.png",
+    "20-sermilik-idle-views-north-east-03.png",
+    "20-sermilik-idle-views-north-04.png",
+    "20-sermilik-idle-views-north-west-05.png",
+    "20-sermilik-idle-views-west-06.png",
+    "20-sermilik-idle-views-south-west-07.png"
+  ]
+}

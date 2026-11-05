@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "flap-animate-d",
+  "generated": "2026-10-28T09:27:17Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "flap-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "68-shuyu-flap-d-00.png",
+        "68-shuyu-flap-d-01.png",
+        "68-shuyu-flap-d-02.png",
+        "68-shuyu-flap-d-03.png",
+        "68-shuyu-flap-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "642189ae-5cc0-43e4-9573-78b0ea6d447a",
+        "generation_id": "a18133d9-9244-4a65-b295-49326e49e866"
+      }
+    }
+  ]
+}

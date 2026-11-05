@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe sfxdump biomecensus propcheck
+.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe sfxdump biomecensus propcheck wildcensus chasecheck tumblecheck cliff_leak_check
 
 all: $(TARGET)
 
@@ -110,6 +110,12 @@ TRACE_OBJ     = $(filter-out src/tilemap.o,$(HEADLESS_OBJ))
 HEADLESS_LIBS = $(shell pkg-config --libs sdl2 SDL2_image | sed 's/-lSDL2main//; s/-mwindows//')
 HEADLESS_CXX  = $(CXX) -std=c++17 -O2 -Iinclude -w -DSDL_MAIN_HANDLED \
                 $(shell pkg-config --cflags sdl2 SDL2_image) -Umain
+
+# Does the way behind a cliff wall join ground that was apart? Exits 1 if so.
+cliff_leak_check: cliff_leak_check$(EXE)
+
+cliff_leak_check$(EXE): tools/cliff_leak_check.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/cliff_leak_check.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 # Headless cave-art preview tool.
 dngshot: dngshot$(EXE)
@@ -159,6 +165,25 @@ biomecensus: biomecensus$(EXE)
 
 biomecensus$(EXE): tools/biomecensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/biomecensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# The desert's rolling tumbleweeds stay out of shut ground and go somewhere (src/tumbleweed.cpp).
+tumblecheck: tumblecheck$(EXE)
+
+tumblecheck$(EXE): tools/tumblecheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/tumblecheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# The walking chasers find their way, and none where there is none (src/chase_path.cpp).
+chasecheck: chasecheck$(EXE)
+
+chasecheck$(EXE): tools/chasecheck.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/chasecheck.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# The overworld's packs (src/wilds.cpp): where they stand, how far from a
+# track, what they hold. Exits non-zero on a pack by a road. Repo root.
+wildcensus: wildcensus$(EXE)
+
+wildcensus$(EXE): tools/wildcensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/wildcensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 # The props break as they should: blows, cells cleared and kept gone, drops paid.
 propcheck: propcheck$(EXE)

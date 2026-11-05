@@ -1,0 +1,19 @@
+{
+  "run": "edit_sprites_v2",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\edit\\run\\edit\\sprites\\v2",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\edit\\run\\edit\\sprites\\v2\\edit-93.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\art\\enemies\\pixellab\\93_chipique_nes\\edit\\run\\edit\\sprites\\v2\\edit_sprites_v2.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "64827d6a-8a2e-419b-ad50-7158ed20a577",
+    "generation_id": "e78475d5-7abb-4953-86eb-f21d73653c0e"
+  },
+  "route": "edit-image-pixen"
+}

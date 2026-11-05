@@ -1,0 +1,67 @@
+{
+  "id": 50,
+  "name": "50-teakettler",
+  "dir": "art/enemies/pixellab/50_teakettler",
+  "description": "Teakettler: a small brown dog-like Northwoods critter with big pointed upright ears, pink inner ears, a stubby curled tail and thin legs, steam puffing from its nose. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/50_teakettler.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place, it raises its head and whistles like a boiling kettle, a small white puff of steam blowing from its nose, then lowers its head again. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3
+        ]
+      },
+      "ground": true,
+      "extra": [
+        "fcfcfc",
+        "c6ccda"
+      ],
+      "despeckle": 2
+    },
+    "walk": {
+      "png": "assets/enemies/50_teakettler_walk.png",
+      "frames": 4,
+      "rows": false,
+      "ms": 125,
+      "from": "idle",
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Walking backwards in place, trotting tail-first: it keeps facing the same way while its four thin legs step back toward its tail, one diagonal pair then the other. Same facing, same size, ground line. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  }
+}

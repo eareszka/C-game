@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 22x15, 7 colours plus black.
+Unmet: Inside black lines are about 5% of drawn pixels (my hand count), below the rule's 8 to 15%, because black scale lines chopped the body into chunks on black, so the scales are dark green arcs instead. At 20 px the pike is also less "very long" than the brief wants: the willow takes up nearly half the height, and it reads as a stout fish rather than a truly long one.

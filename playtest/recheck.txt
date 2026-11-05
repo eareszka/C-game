@@ -1,0 +1,9 @@
+# Check only (C in the F4 menu): the enemies needing work -- their latest
+# trial outside their tier's target (tools/playtest_report.py TARGET).
+# Written by tools/playtest_report.py; id, tier, name, why.
+8 MEDIUM SNAWFUS -- 0.0 hits/min, under 1.5; feel 1, under 2
+9 MEDIUM QUESTING BEAST -- 0.0 hits/min, under 1.5; feel 1, under 2
+17 MEDIUM QIQIRN -- 10.0 hits/min, over 8
+58 MEDIUM AGROPELTER -- 28.4 hits/min, over 8
+79 UPPER UGJUKNARPAK -- 0.0 hits/min, under 2
+10 ELITE GRAND'GOULE -- 5.5 hits/min, under 8; feel 2, under 3

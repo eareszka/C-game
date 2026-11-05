@@ -1,0 +1,80 @@
+{
+  "_": "Battle animation and map mini pass (the user, 2026-11-03), one record an enemy, written only after the user approves it; battle and overworld kept apart. battle/overworld: new, reused, none (no mini by the user's rule) or pending. Separate from redraw_status.json (redraw completion), minis/confirmed.json (minis in the sheet) and include/ready.h (gameplay). Checks here are local: SPRITE_STYLE.md and style_check.py are not on this PC.",
+  "93": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 66,
+    "notes": "redo3/whole, 8 poses 260 ms, one view all directions; paddle arch in poses 5-6 accepted as is. Mini submerged, side-on, surf chase. Fight still Unfinished."
+  },
+  "94": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 9,
+    "notes": "New design from lore (spiked wheel), 3 poses 0 1 0 2, one view all directions, 98x69. Mini half submerged, rises in the lunge, surf chase. Fight still Unfinished."
+  },
+  "95": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 37,
+    "notes": "Was Witkes; now the Wendigo (the user). Winter bone demon from the user's description, 3 poses 0 1 0 2, one front view all directions, 102x66. Tier ELITE, swapped with 96. Mini front only, dash chase. Fight still Unfinished. Spawn place open: elites only spawn in wastelands and hard dungeons."
+  },
+  "96": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 16,
+    "notes": "Design b4 in the user's described colours, no water, 3 poses 0 1 0 2, one view all directions, 98x72. Tier SEVERE, swapped with 95. Mini drawn by PixelLab alone, half submerged, side-on, surf chase. Fight still Unfinished. Game does not spawn at sea yet."
+  },
+  "10": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 15,
+    "notes": "Gargoyle from the user's description, flattened; 3 poses timed to its fire: ring on the gape, shots leave the mouth. Flagged detail 8.3 px per patch. Mini by PixelLab alone, flier: hover 11, swoop, own 44x30 strip."
+  },
+  "12": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-03",
+    "gens": 18,
+    "notes": "Rat/bat/T-rex from the user's description, 3 idle poses timed to its fire (jaws for the screech, fins for the pentagram), 4 fly frames, mirrored right dirs, 104x68. Flight reads as a run, accepted."
+  },
+  "13": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 24,
+    "notes": "Eyeless coal beast from the user's description in the old sprite's colours, looking down at the player; 3 poses, pose 2 held on each shot from the mouth, 98x68, one view. Mini by PixelLab alone, four ground-level views, plod. Fight still light: 100 HP, flagged."
+  },
+  "29": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 17,
+    "notes": "Stooped robed bogey from lore, darker colours; 3 poses, pose 2 trunk ring held on each shot from the ring. Mini by PixelLab alone, four ground-level views, meander, own 40x32 strip. Fight still light: 225 HP, flagged."
+  },
+  "31": {
+    "battle": "new",
+    "overworld": "new",
+    "reviewed": "2026-11-03",
+    "gens": 18,
+    "notes": "Moss-draped boulder that is mostly mouth, 3 poses, pose 2 held on each shot from the gullet. First mini, by PixelLab alone, four ground-level views, roll chase. Fight still light: 258 HP, flagged."
+  },
+  "34": {
+    "battle": "new",
+    "overworld": "art only, not wired",
+    "reviewed": "2026-11-04",
+    "gens": 28,
+    "notes": "Bone-masked titan from the user's description with a reality-shard axe; 9 poses 260 ms: idle, lift as warning, slam on the shot; ring from the blade, aimed from the mask. Walk-and-raise mini approved in redo2/mini/seq, unused: no cutscene (the user: not now). Fight 300 HP, flagged."
+  },
+  "44": {
+    "battle": "new",
+    "overworld": "none",
+    "reviewed": "2026-11-04",
+    "gens": 37,
+    "notes": "Hand from the user's reference and description, fingertip mouths with tongues, plain thumb, true 8 views, 3 poses, pose 2 held on each shot, rings from the palm, aimed shots from fingertips in turn. Mini not installed: bosses are cutscenes (the user). Fight 445 HP, flagged."
+  }
+}

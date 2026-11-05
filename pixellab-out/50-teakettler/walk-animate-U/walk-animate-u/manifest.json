@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "walk-animate-u",
+  "generated": "2026-10-28T08:15:45Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "walk-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "50-teakettler-walk-u-00.png",
+        "50-teakettler-walk-u-01.png",
+        "50-teakettler-walk-u-02.png",
+        "50-teakettler-walk-u-03.png",
+        "50-teakettler-walk-u-04.png"
+      ],
+      "ids": {
+        "background_job_id": "39754d3a-c37a-44fb-84be-b29f4396125a",
+        "generation_id": "a9b9cbf7-6f53-4421-9396-127fe977af46"
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1646-giant-disembodied-hand-monster-huge-mouth-in-the",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 8408 characters>",
+      "format": "png"
+    },
+    "description": "giant disembodied hand monster, huge mouth in the palm with teeth and a long tongue, five fingers each ending in a small mouth with a tongue, seen at level camera",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3ec87d7f-2227-4816-b4c3-3f5fd4a4e134",
+    "generation_id": "a21846dd-e04f-450c-9a0a-b516a81c0493"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "v-south-00.png",
+    "v-south-east-01.png",
+    "v-east-02.png",
+    "v-north-east-03.png",
+    "v-north-04.png",
+    "v-north-west-05.png",
+    "v-west-06.png",
+    "v-south-west-07.png"
+  ]
+}

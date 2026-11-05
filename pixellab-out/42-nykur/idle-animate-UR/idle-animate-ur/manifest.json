@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-10-29T04:32:00Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "42-nykur-idle-ur-00.png",
+        "42-nykur-idle-ur-01.png",
+        "42-nykur-idle-ur-02.png",
+        "42-nykur-idle-ur-03.png",
+        "42-nykur-idle-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "aa274f38-006d-4311-b2f0-0f78c000aafe",
+        "generation_id": "7d634e21-bb2a-4e6a-8427-0eb715eb39c4"
+      }
+    }
+  ]
+}

@@ -90,7 +90,7 @@ const char* item_name(Item it) {
         "COLD-WEATHER GEAR",
         "SPYGLASS",
         "DIVING FINS",
-        "SWIFT BOOTS",
+        "BICYCLE",
         "COMPASS",
         "O2 CHARM",
         "BINOCULARS",
@@ -108,7 +108,7 @@ const char* item_name(Item it) {
         "HALBERD BOOK",
         "SPYGLASS BOOK",
         "DIVING FINS BOOK",
-        "SWIFT BOOTS BOOK",
+        "BICYCLE BOOK",
         "COMPASS BOOK",
         "O2 CHARM BOOK",
         "BINOCULARS BOOK",
@@ -358,7 +358,7 @@ bool item_use_antidote(Player* p) {
 }
 
 static int footwear_kind(Item it) {
-    return it==ITEM_SWIFT_BOOTS?FOOTWEAR_SWIFT_BOOTS:it==ITEM_DIVING_FINS?FOOTWEAR_DIVING_FINS:FOOTWEAR_NONE;
+    return it==ITEM_DIVING_FINS?FOOTWEAR_DIVING_FINS:FOOTWEAR_NONE;
 }
 bool item_footwear_equipped(const Player* p, Item it) {
     int kind=footwear_kind(it);
@@ -371,14 +371,17 @@ bool item_equip_footwear(Player* p, Item it, bool equip) {
     else if (p->footwear==kind) p->footwear=FOOTWEAR_NONE;
     return true;
 }
-bool item_equip_swift_boots(Player* p, bool equip) {
-    return item_equip_footwear(p,ITEM_SWIFT_BOOTS,equip);
-}
-
 bool item_raft_worn(const Player* p) { return p->raft_worn && p->raft > 0; }
 bool item_equip_raft(Player* p, bool equip) {
     if (equip && p->raft <= 0) return false;
     p->raft_worn = equip ? 1 : 0;
+    return true;
+}
+
+bool item_bike_worn(const Player* p) { return p->bike_worn && item_count(p, ITEM_BICYCLE) > 0; }
+bool item_equip_bike(Player* p, bool equip) {
+    if (equip && item_count(p, ITEM_BICYCLE) <= 0) return false;
+    p->bike_worn = equip ? 1 : 0;
     return true;
 }
 
@@ -393,8 +396,8 @@ const char* item_description(Item it) {
         case ITEM_SMOKE_BOMB: return "BREAKS ENEMY PURSUIT";
         case ITEM_ESCAPE_CHARM: return "RETURNS INSIDE THE ENTRANCE YOU USED. REUSABLE.";
         case ITEM_COLD_GEAR: return "PROTECTS AGAINST COLD";
-        case ITEM_SWIFT_BOOTS: return "50% FASTER WALKING AND SPRINTING.";
-        case ITEM_DIVING_FINS: return "50% FASTER SWIMMING. SHARES THE FOOTWEAR SLOT.";
+        case ITEM_BICYCLE: return "WHILE WORN, YOU RIDE FAST. OFF FOR LADDERS, THE RAFT AND FIGHTS. NO TOOLS WHILE RIDING.";
+        case ITEM_DIVING_FINS: return "50% FASTER SWIMMING.";
         case ITEM_O2_CHARM: return "PREVENTS UNDERWATER OXYGEN LOSS";
         case ITEM_SPYGLASS: return "SEE TIER 2 WHEN ZOOMED OUT";
         case ITEM_BINOCULARS: return "SEE TIER 1 WHEN ZOOMED OUT";

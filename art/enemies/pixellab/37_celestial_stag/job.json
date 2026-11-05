@@ -1,0 +1,39 @@
+{
+  "id": 37,
+  "name": "37-celestial-stag",
+  "dir": "art/enemies/pixellab/37_celestial_stag",
+  "description": "Celestial Stag: a slender stag of the deep mines, its coat the purple of the reality-shard cave, lilac stars on its back, antlers like the cave torches' rainbow flame. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "art/enemies/pixellab/37_celestial_stag/base/37_celestial_stag.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 150,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place: it breathes, lowers its glowing antlers and raises them again, the rainbow flame on its antlers flickering. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "ground": true,
+      "despeckle": 2,
+      "replaces": "assets/enemies/37_celestial_stag.png"
+    }
+  }
+}

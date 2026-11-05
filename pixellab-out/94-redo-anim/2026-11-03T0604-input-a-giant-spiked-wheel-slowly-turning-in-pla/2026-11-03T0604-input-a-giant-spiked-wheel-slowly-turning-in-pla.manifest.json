@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0604-input-a-giant-spiked-wheel-slowly-turning-in-pla",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1852 characters>",
+      "format": "png"
+    },
+    "action": "A giant spiked wheel slowly turning in place, rolling around its hub: the spokes and the bone spikes rotate a little around the centre. Same size, same design, same flat colours, centre fixed, camera fixed, no water.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 961
+  },
+  "links": {},
+  "seed": 961,
+  "ids": {
+    "background_job_id": "7389c773-4aac-41c2-a24a-24c73765c565",
+    "generation_id": "92410e09-d222-471d-8ab1-bc869dda289c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "roll-00.png",
+    "roll-01.png",
+    "roll-02.png",
+    "roll-03.png",
+    "roll-04.png"
+  ]
+}

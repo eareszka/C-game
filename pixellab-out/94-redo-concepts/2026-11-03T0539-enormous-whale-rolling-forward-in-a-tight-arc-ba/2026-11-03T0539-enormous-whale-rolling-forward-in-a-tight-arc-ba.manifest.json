@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0539-enormous-whale-rolling-forward-in-a-tight-arc-ba",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "enormous whale rolling forward in a tight arc, back arched into a wheel, row of large spines and a high crest along its curved back, tail curling under to meet the head, small eye, flat colours, side view, no water, game enemy sprite",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "seed": 943
+  },
+  "links": {},
+  "seed": 943,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c3.png"
+  ]
+}

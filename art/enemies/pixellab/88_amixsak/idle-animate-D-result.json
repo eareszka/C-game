@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\88-amixsak-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\88-amixsak-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\88-amixsak-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\88-amixsak-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\88-amixsak-idle-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\88-amixsak\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "0c8bb2e1-7dd3-4164-8c3b-9f25198cb15f",
+    "generation_id": "88a4896d-698f-4e4d-b4f7-9805244cbb48"
+  }
+}

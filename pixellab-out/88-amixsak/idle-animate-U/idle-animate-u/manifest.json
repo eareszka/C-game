@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-u",
+  "generated": "2026-10-29T09:01:04Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "88-amixsak-idle-u-00.png",
+        "88-amixsak-idle-u-01.png",
+        "88-amixsak-idle-u-02.png",
+        "88-amixsak-idle-u-03.png",
+        "88-amixsak-idle-u-04.png"
+      ],
+      "ids": {
+        "background_job_id": "66850af0-d6c4-44ea-9a25-d6e032d063b3",
+        "generation_id": "2d512952-001b-4492-8a62-c8ab593313bb"
+      }
+    }
+  ]
+}

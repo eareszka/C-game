@@ -111,14 +111,15 @@ def mound(g, cx, cy, rx, ry, top=True):
 # ---------------------------------------------------------------- ice field
 def ice_spire(frame=0):
     """The ice field's anchor: a tall jagged crystal, two smaller ones at its feet; a glint
-    runs up its lit face, one step a frame."""
+    runs up its lit face, one step a frame: three, on the world's ambient beat (src/core.h, the
+    graveyard roots' -- the user, 2026-10-29)."""
     W, H = 32, 48
     g = blank(W, H)
     piece(g, shard(W, H, 3, 10, 44, 6, 27))
     piece(g, shard(W, H, 21, 28, 44, 26, 31))
     piece(g, shard(W, H, 8, 23, 44, 15, 3, lit=0.7))
-    k = frame % 4
-    y = 37 - 9 * k
+    k = frame % 3
+    y = 37 - 6 * k                                     # where the face is wide enough to show it
     xs = [x for x in range(W) if g[y][x] == 'm']
     if xs:
         x = (xs[0] + xs[-1]) // 2 - 1
@@ -577,7 +578,7 @@ if __name__ == '__main__':
             continue
         if name == 'ice_spire':
             os.makedirs(os.path.join(HERE, 'ice_spire_frames'), exist_ok=True)
-            frames = [make(k) for k in range(4)]
+            frames = [make(k) for k in range(3)]
             for k, (g, pal) in enumerate(frames):
                 write(g, pal, os.path.join(HERE, 'ice_spire_frames', f'ice_spire_{k}.png'))
             strip = [sum((f[0][y] for f in frames), []) for y in range(48)]

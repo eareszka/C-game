@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "c_animations_v4",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3908 characters>",
+      "format": "png"
+    },
+    "action": "Only its neck and head sway slowly and its jaws work, blood dripping. The coil, the canoe, the figure and the tail stay completely still. Same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 905
+  },
+  "links": {},
+  "seed": 905,
+  "ids": {
+    "background_job_id": "b9033fab-97bb-462b-bedb-7b1d3eb1d11e",
+    "generation_id": "5e9347ba-fe1a-4e17-bfb8-1f60c5636f74"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "hr-00.png",
+    "hr-01.png",
+    "hr-02.png",
+    "hr-03.png",
+    "hr-04.png",
+    "hr-05.png",
+    "hr-06.png"
+  ]
+}

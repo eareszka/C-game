@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T09:05:28Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "68-shuyu-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "7ef4b0a3-6e74-436a-ae09-fc6dd43193b4",
+        "generation_id": "23fac35e-b453-4b0a-a4a0-e356fda3ad24"
+      }
+    }
+  ]
+}

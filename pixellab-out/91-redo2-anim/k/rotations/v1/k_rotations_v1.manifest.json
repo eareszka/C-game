@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "k_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2028 characters>",
+      "format": "png"
+    },
+    "description": "Kurrea: a long dark purple serpent with a lilac underside arching in one great loop, a row of big crystal plates along its spine, each plate one flat pastel colour, pink, yellow, mint or blue. Heavy head, forked tail. Flat colours, black outline.",
+    "no_background": true,
+    "seed": 681
+  },
+  "links": {},
+  "seed": 681,
+  "ids": {
+    "background_job_id": "5c3cd843-1a4f-4881-871b-a748ba066170",
+    "generation_id": "a83977e3-3054-4332-b4de-5a6b3754b59e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

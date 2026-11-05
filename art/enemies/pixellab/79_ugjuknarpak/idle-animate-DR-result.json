@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-dr_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\79-ugjuknarpak-idle-dr-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\idle-animate-dr_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "7a6e21e5-9351-4f90-8c77-c2dff8857b01",
+    "generation_id": "601f4854-1146-4ee5-b075-6f296d364b1f"
+  }
+}

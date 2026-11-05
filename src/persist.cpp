@@ -8,12 +8,14 @@ static std::mutex s_lock;
 static std::unordered_set<uint32_t> s_tiles;
 static uint64_t s_oilblooms = 0;
 static std::unordered_map<uint32_t, DungeonDeadRecord> s_dungeons;
+static std::unordered_set<uint32_t> s_wilds;
 
 void persist_clear(void) {
     std::lock_guard<std::mutex> g(s_lock);
     s_tiles.clear();
     s_oilblooms = 0;
     s_dungeons.clear();
+    s_wilds.clear();
 }
 
 void persist_tile_add(uint32_t key) {
@@ -89,8 +91,38 @@ bool persist_read(FILE* f) {
     if (nd && fread(dungeons.data(), sizeof(DungeonDeadRecord), nd, f) != nd) return false;
     std::lock_guard<std::mutex> g(s_lock);
     s_tiles = std::unordered_set<uint32_t>(tiles.begin(), tiles.end());
+    s_wilds.clear();   // a save from before them, or theirs read next (persist_wilds_read)
     s_oilblooms = oil;
     s_dungeons.clear();
     for (const DungeonDeadRecord& r : dungeons) s_dungeons[r.seed] = r;
+    return true;
+}
+
+void persist_wild_beaten(uint32_t key) {
+    std::lock_guard<std::mutex> g(s_lock);
+    s_wilds.insert(key);
+}
+bool persist_wild_has(uint32_t key) {
+    std::lock_guard<std::mutex> g(s_lock);
+    return s_wilds.count(key) != 0;
+}
+
+bool persist_wilds_write(FILE* f) {
+    std::lock_guard<std::mutex> g(s_lock);
+    std::vector<uint32_t> keys(s_wilds.begin(), s_wilds.end());
+    uint32_t n = (uint32_t)keys.size();
+    bool ok = fwrite(&n, sizeof(n), 1, f) == 1;
+    if (n) ok = fwrite(keys.data(), sizeof(uint32_t), n, f) == n && ok;
+    return ok;
+}
+
+bool persist_wilds_read(FILE* f) {
+    const uint32_t MAX_WILDS = 1u << 20;
+    uint32_t n = 0;
+    if (fread(&n, sizeof(n), 1, f) != 1 || n > MAX_WILDS) return false;
+    std::vector<uint32_t> keys(n);
+    if (n && fread(keys.data(), sizeof(uint32_t), n, f) != n) return false;
+    std::lock_guard<std::mutex> g(s_lock);
+    s_wilds = std::unordered_set<uint32_t>(keys.begin(), keys.end());
     return true;
 }

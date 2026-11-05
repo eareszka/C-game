@@ -15,6 +15,7 @@ struct OWCollCtx { const Tilemap* map; const ResourceNodeList* res; bool float_o
 static bool ow_solid(const void* ctx, float px, float py) {
     const OWCollCtx* c = static_cast<const OWCollCtx*>(ctx);
     if (c->boat) return !tilemap_pixel_water(c->map, px, py) || resource_node_solid(c->res, px, py);
+    if (tilemap_behind_active()) return tilemap_behind_solid(c->map, px, py);   // the ground under the island
     if (c->float_ok && (tilemap_pixel_water(c->map, px, py) || (c->lava_ok && tilemap_pixel_void(c->map, px, py))))
         return resource_node_solid(c->res, px, py);
     return tilemap_pixel_solid(c->map, px, py)
@@ -112,6 +113,20 @@ void overworld_stand_before_entrance(Overworld* ow, Player* player, const Tilema
     else     stand_before(ow, player, map, (x0 + n * 0.5f) * TILE_SIZE, (y0 + n * 0.5f) * TILE_SIZE);
 }
 
+// Whether a worn raft has the player's feet on what floats it.
+static bool feet_on_water(const Overworld* ow, const Player* player, const Tilemap* map)
+{
+    float fx = ow->x + (HB_X1 + HB_X2) * 0.5f, fy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
+    return item_raft_worn(player) && !player->at_sea &&
+           (tilemap_pixel_water(map, fx, fy) ||
+            (item_count(player, ITEM_LAVA_CHARM) > 0 && tilemap_pixel_void(map, fx, fy)));
+}
+
+bool overworld_riding(const Overworld* ow, const Player* player, const Tilemap* map)
+{
+    return item_bike_worn(player) && !ow->sailing && !player->at_sea && !feet_on_water(ow, player, map);
+}
+
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       ResourceNodeList* resources, Tilemap* map, const Camera* cam,
                       bool noclip, HarvestResult* out_harvest)
@@ -122,8 +137,12 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     HarvestResult local = {};
     HarvestResult* h = out_harvest ? out_harvest : &local;
 
-    weapon_swing_update(&ow->swing, player, in, dt, hx, hy, resources, map,
-                       cam, -1, h);
+    // On the bike (worn, and neither the raft nor the boat under them): one
+    // pace and no tool swung. With the raft on, water takes them off it until
+    // they land; without, water is a wall as it is on foot.
+    if (overworld_riding(ow, player, map)) ow->swing = WeaponSwingState();
+    else weapon_swing_update(&ow->swing, player, in, dt, hx, hy, resources, map,
+                             cam, -1, h);
 
     // Any destroyed gravestone may have been hiding a dungeon entrance. And
     // whatever node broke stays broken (persist.h): an oilbloom by its site,
@@ -151,14 +170,8 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
     float anim_speed;
 
     const bool lava_ok = item_count(player, ITEM_LAVA_CHARM) > 0;   // the void floats the raft too
-    auto feet_on_water = [&]() {
-        float fx = ow->x + (HB_X1 + HB_X2) * 0.5f, fy = ow->y + (HB_Y1 + HB_Y2) * 0.5f;
-        return item_raft_worn(player) && !player->at_sea &&
-               (tilemap_pixel_water(map, fx, fy) || (lava_ok && tilemap_pixel_void(map, fx, fy)));
-    };
 
-    player_gait(in, &ow->speed, &anim_speed,
-                !ow->sailing && !player->at_sea && !feet_on_water() ? player : nullptr);
+    player_gait(in, &ow->speed, &anim_speed, overworld_riding(ow, player, map) ? player : nullptr);
 
     if (ow->sailing) {
         // Afloat and under way: straight on along the course, no sliding
@@ -176,7 +189,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         } else {
             ow->sailing = false;   // run aground: wait for a push off
         }
-        if (!feet_on_water()) ow->sailing = false;   // landed
+        if (!feet_on_water(ow, player, map)) ow->sailing = false;   // landed
         player->is_moving = 0;
     } else if (dx != 0.0f || dy != 0.0f) {
         OWCollCtx ctx = { map, resources, item_raft_worn(player) || player->at_sea != 0, player->at_sea != 0, lava_ok };
@@ -188,6 +201,8 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
             // Asked before the move rather than after it, so that a player who
             // is somewhere they cannot be gets out by walking, which is the
             // only thing they will think to try.
+            if (dy > 0.0f && !player->at_sea)
+                tilemap_behind_try_enter(map, ow->x + HB_X1, ow->x + HB_X2, ow->y + HB_Y2);
             unwedge_feet(&ctx, &ow->x, &ow->y, ow_solid);
             if (!move_feet(&ctx, &ow->x, &ow->y,
                            dx * speed * dt, dy * speed * dt, ow_solid))
@@ -198,10 +213,11 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         // is not, and follows the player through the seam on its own.
         ow->x = wrap_px(ow->x);
         ow->y = wrap_py(ow->y);
+        tilemap_behind_update(ow->x + HB_X1, ow->x + HB_X2, ow->y + HB_Y2);
 
         // Stepped onto the water with a raft: cast off the way the player was
         // walking, and hold it.
-        if (feet_on_water()) {
+        if (feet_on_water(ow, player, map)) {
             float len = sqrtf(dx * dx + dy * dy);
             ow->sailing = true;
             ow->sail_dx = dx / len;
@@ -218,7 +234,9 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         int tx = (int)floorf(feet_x / TILE_SIZE);
         int ty = (int)floorf(feet_y / TILE_SIZE);
         ow->at_dungeon_entrance = 0;
-        if (overworld_entrance_at(map, feet_x, feet_y) && in_world(&tx, &ty)) {
+        // Under the island nothing on its top can be taken.
+        const bool under = tilemap_behind_active();
+        if (!under && overworld_entrance_at(map, feet_x, feet_y) && in_world(&tx, &ty)) {
             ow->at_dungeon_entrance = 1;
             for (int i = 0; i < map->num_dungeon_entrances; i++) {
                 const DungeonEntrance& e = map->dungeon_entrances[i];
@@ -232,6 +250,7 @@ void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
         }
 
         int door = tilemap_door_at(map, feet_x, feet_y);
+        if (under) door = -1;
         ow->at_interior_door = door >= 0;
         if (door >= 0) ow->interior_door_idx = door;
     }
@@ -250,6 +269,19 @@ void player_draw(const Player* player, float world_x, float world_y,
     SDL_Rect src = { frame * 14, 0, 14, 20 };
     SDL_Rect dst = { sx, sy, (int)(player->width * z), (int)(player->height * z) };
     SDL_RenderCopy(ren, sprite, &src, &dst);
+}
+
+void player_draw_bike(const Player* player, float world_x, float world_y,
+                      const Camera* cam, SDL_Renderer* ren, SDL_Texture* bike)
+{
+    // A 24 x 24 frame over the walk's 14 x 20: centred on its column, its
+    // bottom on the same ground line, so the feet box is where it was.
+    float z  = cam->zoom;
+    int sx = cam_screen_x(cam, world_x - 5.0f * 2.0f);
+    int sy = cam_screen_y(cam, world_y - 4.0f * 2.0f);
+    SDL_Rect src = { player_bike_frame(player) * 24, 0, 24, 24 };
+    SDL_Rect dst = { sx, sy, (int)(48 * z), (int)(48 * z) };
+    SDL_RenderCopy(ren, bike, &src, &dst);
 }
 
 void overworld_draw_swing(const Overworld* ow, const Camera* cam, SDL_Renderer* ren)

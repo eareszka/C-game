@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit-try4_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 2272 characters>",
+          "format": "png"
+        },
+        "width": 86,
+        "height": 43
+      }
+    ],
+    "image_size": {
+      "width": 86,
+      "height": 43
+    },
+    "description": "<elided 1102 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f998a116-a704-4a0c-8f78-fdedd6edf665",
+    "generation_id": "dad8ed3f-e685-4594-8181-ce2bcb0e76e2"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "19-skeljaskrimsli-idle-frame0-try4.png"
+  ]
+}

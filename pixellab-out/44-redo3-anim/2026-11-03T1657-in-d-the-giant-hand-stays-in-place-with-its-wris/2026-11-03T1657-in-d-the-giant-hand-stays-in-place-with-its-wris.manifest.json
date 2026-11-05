@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1657-in-d-the-giant-hand-stays-in-place-with-its-wris",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 8616 characters>",
+      "format": "png"
+    },
+    "action": "The giant hand stays in place with its wrist fixed: all its mouths open wider and gape, the long tongues whip and curl, the fingers flex and spread a little, then settle. Same size, same design, same flat colours, no effects, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1571
+  },
+  "links": {},
+  "seed": 1571,
+  "ids": {
+    "background_job_id": "4431df89-cac2-4704-87b3-34443d9ac4ee",
+    "generation_id": "d285bf91-2e34-4ff2-be15-49ea02989131"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idled-00.png",
+    "idled-01.png",
+    "idled-02.png",
+    "idled-03.png",
+    "idled-04.png"
+  ]
+}

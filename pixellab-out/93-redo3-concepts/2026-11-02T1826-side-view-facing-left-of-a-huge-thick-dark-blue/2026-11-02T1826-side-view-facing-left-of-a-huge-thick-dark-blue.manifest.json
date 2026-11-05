@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1826-side-view-facing-left-of-a-huge-thick-dark-blue",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 350 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "west",
+    "no_background": true,
+    "seed": 843
+  },
+  "links": {},
+  "seed": 843,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c3.png"
+  ]
+}

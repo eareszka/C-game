@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1559-tiny-overworld-boss-massive-armoured-titan-seen",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny overworld boss, massive armoured titan seen from the front at ground level, dark grey body, bone white mask, tall feather headdress, enormous purple crystal axe beside it, heavy legs, black outline, flat colours, very few pixels",
+    "image_size": {
+      "width": 48,
+      "height": 36
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/FgwP/t8159x8AQE4J3KjWodsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1464
+  },
+  "links": {},
+  "seed": 1464,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "m4.png"
+  ]
+}

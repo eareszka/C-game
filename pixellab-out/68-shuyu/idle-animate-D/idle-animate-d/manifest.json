@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-28T09:19:59Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "68-shuyu-idle-d-00.png",
+        "68-shuyu-idle-d-01.png",
+        "68-shuyu-idle-d-02.png",
+        "68-shuyu-idle-d-03.png",
+        "68-shuyu-idle-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "822b4177-3776-4514-a529-2e6b94193bc6",
+        "generation_id": "b78a7c17-6743-4a85-9092-f345976286a1"
+      }
+    }
+  ]
+}

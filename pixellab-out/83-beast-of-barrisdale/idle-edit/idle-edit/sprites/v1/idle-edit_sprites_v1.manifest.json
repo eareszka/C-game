@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 2240 characters>",
+          "format": "png"
+        },
+        "width": 100,
+        "height": 65
+      }
+    ],
+    "image_size": {
+      "width": 100,
+      "height": 65
+    },
+    "description": "<elided 1064 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4e261058-92ff-4483-a84a-02ea1af6328f",
+    "generation_id": "92640cfb-3ffa-451a-a894-264cf77547fa"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "83-beast-of-barrisdale-idle-frame0.png"
+  ]
+}

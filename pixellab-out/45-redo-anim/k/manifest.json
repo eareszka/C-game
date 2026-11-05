@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "subject": "k",
+  "generated": "2026-11-02T16:02:03Z",
+  "spent": {
+    "calls": 6,
+    "generations": 6.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "k_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "flyd-00.png",
+        "flyd-01.png",
+        "flyd-02.png",
+        "flyd-03.png",
+        "flyd-04.png",
+        "flyd-05.png",
+        "flyd-06.png"
+      ],
+      "ids": {
+        "background_job_id": "a8f172e5-90ed-4207-b785-196fc70b59df",
+        "generation_id": "24166fde-4ae5-4022-b02a-9265619dc787"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "k_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "flydr-00.png",
+        "flydr-01.png",
+        "flydr-02.png",
+        "flydr-03.png",
+        "flydr-04.png",
+        "flydr-05.png",
+        "flydr-06.png"
+      ],
+      "ids": {
+        "background_job_id": "d71f8ee4-d6cd-40f4-bd3a-c642455c6c8a",
+        "generation_id": "17efa997-e320-4fb2-a1b0-16748c4b5d3e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "k_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "flyr-00.png",
+        "flyr-01.png",
+        "flyr-02.png",
+        "flyr-03.png",
+        "flyr-04.png",
+        "flyr-05.png",
+        "flyr-06.png"
+      ],
+      "ids": {
+        "background_job_id": "64dc4c59-3a3c-4001-b10e-1e178588d8f2",
+        "generation_id": "18a986db-4045-49d5-87e6-31d80778db42"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "k_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "flyur-00.png",
+        "flyur-01.png",
+        "flyur-02.png",
+        "flyur-03.png",
+        "flyur-04.png",
+        "flyur-05.png",
+        "flyur-06.png"
+      ],
+      "ids": {
+        "background_job_id": "bcb71a54-d1af-4ef0-9080-771482c48135",
+        "generation_id": "1daffbf6-c719-42cf-97fb-b9a33b22048e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "k_animations_v5",
+      "directory": "animations/v5",
+      "files": [
+        "flyu-00.png",
+        "flyu-01.png",
+        "flyu-02.png",
+        "flyu-03.png",
+        "flyu-04.png",
+        "flyu-05.png",
+        "flyu-06.png"
+      ],
+      "ids": {
+        "background_job_id": "cf9adab5-7555-4e43-be8a-790351e430f8",
+        "generation_id": "5785947d-84d3-4d4c-a654-f736d4f0b33f"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "k_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "87359dde-d83a-4183-ae19-fe549f1479b4",
+        "generation_id": "65464335-c801-4e8e-bb7a-2ab6ca20e03a"
+      }
+    }
+  ]
+}

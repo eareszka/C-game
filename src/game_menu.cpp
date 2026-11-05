@@ -81,7 +81,7 @@ namespace {
         switch(c.item){
             case ITEM_RAFT: case ITEM_SAIL: return 1;
             case ITEM_ESCAPE_CHARM: case ITEM_O2_CHARM: return 2;
-            case ITEM_COLD_GEAR: case ITEM_DIVING_FINS: case ITEM_SWIFT_BOOTS: return 3;
+            case ITEM_COLD_GEAR: case ITEM_DIVING_FINS: case ITEM_BICYCLE: return 3;
             case ITEM_SPYGLASS: case ITEM_COMPASS: case ITEM_BINOCULARS: return 4;
             case ITEM_BAND_AID: case ITEM_MEDKIT: return 5;
             case ITEM_ANTIDOTE: return 6;
@@ -172,12 +172,14 @@ namespace {
         row+=down-up;
         m->sel=list[std::max(0,std::min(row,n-1))];
     }
-    // What's worn rather than used: the boots or fins, and the raft.
-    bool wearable(Item it){return it==ITEM_SWIFT_BOOTS||it==ITEM_DIVING_FINS||it==ITEM_RAFT;}
-    bool worn(const Player* p,Item it){return it==ITEM_RAFT?item_raft_worn(p):item_footwear_equipped(p,it);}
-    bool wear(Player* p,Item it,bool on){return it==ITEM_RAFT?item_equip_raft(p,on):item_equip_footwear(p,it,on);}
-    // Why it can't come off now: only the raft, and only while it holds you up.
+    // What's worn rather than used: the fins, the raft and the bike.
+    bool wearable(Item it){return it==ITEM_BICYCLE||it==ITEM_DIVING_FINS||it==ITEM_RAFT;}
+    bool worn(const Player* p,Item it){return it==ITEM_RAFT?item_raft_worn(p):it==ITEM_BICYCLE?item_bike_worn(p):item_footwear_equipped(p,it);}
+    bool wear(Player* p,Item it,bool on){return it==ITEM_RAFT?item_equip_raft(p,on):it==ITEM_BICYCLE?item_equip_bike(p,on):item_equip_footwear(p,it,on);}
+    // Why it can't change now: the raft while it holds you up; the bike on
+    // water or in a fight.
     const char* wear_block(const GameMenu* m,const Player* p,Item it){
+        if(it==ITEM_BICYCLE)return m->bike_block;
         return it==ITEM_RAFT&&worn(p,it)?m->raft_block:nullptr;
     }
     const char* medical_block(const GameMenu* m,const Player* p,Item it){
@@ -527,7 +529,7 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
             fitted(r,item_name(it),LST_X+14,218,LST_W-28,2,white);
             if(const char* desc=item_description(it)){
                 wrapped(r,desc,LST_X+14,250,LST_W-28,3);
-                if(it!=ITEM_ESCAPE_CHARM&&it!=ITEM_BAND_AID&&it!=ITEM_MEDKIT&&it!=ITEM_ANTIDOTE&&it!=ITEM_SWIFT_BOOTS&&it!=ITEM_DIVING_FINS&&((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_PLAGUE_RESIDUE))text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
+                if(it!=ITEM_ESCAPE_CHARM&&it!=ITEM_BAND_AID&&it!=ITEM_MEDKIT&&it!=ITEM_ANTIDOTE&&it!=ITEM_BICYCLE&&it!=ITEM_DIVING_FINS&&((it>=ITEM_BAND_AID&&it<=ITEM_BINOCULARS)||it==ITEM_PLAGUE_RESIDUE))text(r,"NOT USABLE YET",LST_X+14,314,2,grey);
             }
             else{
                 text(r,"USED FOR:",LST_X+14,250,2,grey);

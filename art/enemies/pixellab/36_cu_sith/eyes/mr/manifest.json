@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "mr",
+  "generated": "2026-10-29T16:24:34Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "mr_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "eyesr.png"
+      ],
+      "ids": {
+        "background_job_id": "0e9febf7-6acc-48ad-9bdd-ae975e1f6029",
+        "generation_id": "07a47f3f-db8a-4497-93c6-e7d6cca46c2c"
+      }
+    }
+  ]
+}

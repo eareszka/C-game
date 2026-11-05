@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "k_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1868 characters>",
+      "format": "png"
+    },
+    "description": "Kusa Kap: a colossal sea eagle, crimson-rust body and wings, dark brown feather ends, cream breast patch, pale face, hooked yellow beak, yellow talons gripping a grey dugong. Flat colours, black outline.",
+    "no_background": true,
+    "seed": 471
+  },
+  "links": {},
+  "seed": 471,
+  "ids": {
+    "background_job_id": "87359dde-d83a-4183-ae19-fe549f1479b4",
+    "generation_id": "65464335-c801-4e8e-bb7a-2ab6ca20e03a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "bike_animations_v12",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 328 characters>",
+      "format": "png"
+    },
+    "action": "The rider's head and upper body stay perfectly still and do not bob or stretch. The bicycle's frame and wheel outlines stay exactly where they are. Only the spokes inside the wheels turn and the shoes move up and down on the pedals.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 21
+  },
+  "links": {},
+  "seed": 21,
+  "ids": {
+    "background_job_id": "1bd8139d-b8eb-4658-81bc-f8ede415a971",
+    "generation_id": "a94b8304-19f5-43a9-b695-ac9770dffe22"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "stroke-ur-00.png",
+    "stroke-ur-01.png",
+    "stroke-ur-02.png",
+    "stroke-ur-03.png",
+    "stroke-ur-04.png"
+  ]
+}

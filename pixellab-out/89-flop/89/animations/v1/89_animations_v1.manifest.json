@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "89_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1708 characters>",
+      "format": "png"
+    },
+    "action": "<elided 260 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "783c4a08-729c-4ef5-affd-96899ab07d75",
+    "generation_id": "c8396901-ceaf-4926-99ab-12dc9b41ca7f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ripple-00.png",
+    "ripple-01.png",
+    "ripple-02.png",
+    "ripple-03.png",
+    "ripple-04.png"
+  ]
+}

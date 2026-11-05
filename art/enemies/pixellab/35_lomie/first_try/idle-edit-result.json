@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-edit\\idle-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-edit\\idle-edit\\sprites\\v1\\35-lomie-idle-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\35-lomie\\idle-edit\\idle-edit\\sprites\\v1\\idle-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "d4ded540-ebe3-460a-87f9-e3da35fc37a9",
+    "generation_id": "591e3ead-bf2c-492b-b120-7b99d941fe60"
+  },
+  "route": "edit-images-v2"
+}

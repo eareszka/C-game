@@ -1,0 +1,226 @@
+{
+ "image": "style_bc_native_512.png",
+ "native_pixels": true,
+ "placements": [
+  {
+   "id": 25,
+   "name": "MYRMECOLEON",
+   "rect": [
+    0,
+    0,
+    98,
+    78
+   ]
+  },
+  {
+   "id": 44,
+   "name": "ITQIIRPAK",
+   "rect": [
+    100,
+    0,
+    75,
+    75
+   ]
+  },
+  {
+   "id": 92,
+   "name": "SIEHNAM",
+   "rect": [
+    177,
+    0,
+    65,
+    64
+   ]
+  },
+  {
+   "id": 18,
+   "name": "VATNAORMUR",
+   "rect": [
+    244,
+    0,
+    88,
+    63
+   ]
+  },
+  {
+   "id": 93,
+   "name": "CHIPIQUE",
+   "rect": [
+    334,
+    0,
+    79,
+    61
+   ]
+  },
+  {
+   "id": 27,
+   "name": "GROOTSLANG",
+   "rect": [
+    415,
+    0,
+    81,
+    60
+   ]
+  },
+  {
+   "id": 60,
+   "name": "RUMPTIFUSEL",
+   "rect": [
+    0,
+    80,
+    87,
+    59
+   ]
+  },
+  {
+   "id": 62,
+   "name": "HUGAG",
+   "rect": [
+    89,
+    80,
+    59,
+    58
+   ]
+  },
+  {
+   "id": 86,
+   "name": "LEUCROCOTTA",
+   "rect": [
+    150,
+    80,
+    32,
+    58
+   ]
+  },
+  {
+   "id": 36,
+   "name": "CU SITH",
+   "rect": [
+    184,
+    80,
+    22,
+    55
+   ]
+  },
+  {
+   "id": 29,
+   "name": "KARNABO",
+   "rect": [
+    208,
+    80,
+    60,
+    54
+   ]
+  },
+  {
+   "id": 88,
+   "name": "AMIXSAK",
+   "rect": [
+    270,
+    80,
+    88,
+    53
+   ]
+  },
+  {
+   "id": 32,
+   "name": "ANGONT",
+   "rect": [
+    360,
+    80,
+    80,
+    51
+   ]
+  },
+  {
+   "id": 82,
+   "name": "NADUBI",
+   "rect": [
+    442,
+    80,
+    58,
+    50
+   ]
+  },
+  {
+   "id": 45,
+   "name": "KUSA KAP",
+   "rect": [
+    0,
+    141,
+    92,
+    50
+   ]
+  },
+  {
+   "id": 83,
+   "name": "BEAST OF BARRISDALE",
+   "rect": [
+    94,
+    141,
+    66,
+    48
+   ]
+  },
+  {
+   "id": 87,
+   "name": "COROCOTTA",
+   "rect": [
+    162,
+    141,
+    40,
+    48
+   ]
+  },
+  {
+   "id": 89,
+   "name": "CUERO",
+   "rect": [
+    204,
+    141,
+    81,
+    46
+   ]
+  },
+  {
+   "id": 57,
+   "name": "DINGBAT",
+   "rect": [
+    287,
+    141,
+    82,
+    42
+   ]
+  },
+  {
+   "id": 28,
+   "name": "OPIMACHUS",
+   "rect": [
+    371,
+    141,
+    35,
+    36
+   ]
+  },
+  {
+   "id": 77,
+   "name": "HOGA",
+   "rect": [
+    408,
+    141,
+    45,
+    36
+   ]
+  },
+  {
+   "id": 72,
+   "name": "MAHWOT",
+   "rect": [
+    0,
+    193,
+    89,
+    30
+   ]
+  }
+ ]
+}

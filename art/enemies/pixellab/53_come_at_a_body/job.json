@@ -1,0 +1,73 @@
+{
+  "id": 53,
+  "name": "53-come-at-a-body",
+  "dir": "art/enemies/pixellab/53_come_at_a_body",
+  "description": "Come-at-a-body: a small plump woodchuck-like critter with soft velvety golden-brown kitten fur, small round ears, a pale cream muzzle and belly, short legs and a bushy tail. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt_short.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/53_come_at_a_body.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place, it puffs its fur up and spits like a cat, mouth open with its red mouth and white fangs bared and a few white flecks of spit flying from its mouth, then settles back. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3
+        ],
+        "U": [
+          0,
+          1,
+          0
+        ]
+      },
+      "extra": [
+        "fcfcfc",
+        "b6433d"
+      ],
+      "ground": true,
+      "despeckle": 1
+    },
+    "dash": {
+      "png": "assets/enemies/53_come_at_a_body_dash.png",
+      "frames": 4,
+      "rows": false,
+      "ms": 90,
+      "from": "idle",
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "A low flat-out gallop in place: the body stretched long and low to the ground, the short legs reaching out then bunching under it, the tail streaming behind. Same facing, same size, ground line. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  },
+  "match": null
+}

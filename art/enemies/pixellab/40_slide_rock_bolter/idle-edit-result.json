@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\40-slide-rock-bolter\\idle-edit\\idle-edit\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\40-slide-rock-bolter\\idle-edit\\idle-edit\\sprites\\v1\\40-slide-rock-bolter-idle-frame0.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\40-slide-rock-bolter\\idle-edit\\idle-edit\\sprites\\v1\\idle-edit_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a2912fc9-e886-4421-b239-b85c923bdafc",
+    "generation_id": "0548e99e-1878-4a9b-964e-6c871016f1b4"
+  },
+  "route": "edit-images-v2"
+}

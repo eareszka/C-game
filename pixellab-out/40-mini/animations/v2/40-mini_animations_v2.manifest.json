@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "40-mini_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1320 characters>",
+      "format": "png"
+    },
+    "action": "legless stone whale sliding along the ground on its flat belly, the whole body stays in place with no legs and no hopping, jaws gaping wider then settling back, tail swaying slightly",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c6c15ea0-8ae3-4591-ac6a-5ed27fb0d5c3",
+    "generation_id": "228c259a-4625-449e-b6cb-aa9d0805f345"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slidel-00.png",
+    "slidel-01.png",
+    "slidel-02.png",
+    "slidel-03.png",
+    "slidel-04.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1180 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: it breathes, lowers its glowing antlers and raises them again, the rainbow flame on its antlers flickering. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e4a5f0be-aace-40c8-9632-d4694e4d733a",
+    "generation_id": "5aae24f5-d7e9-4133-a3b4-eef8574597d7"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "37-celestial-stag-idle-dr-00.png",
+    "37-celestial-stag-idle-dr-01.png",
+    "37-celestial-stag-idle-dr-02.png",
+    "37-celestial-stag-idle-dr-03.png",
+    "37-celestial-stag-idle-dr-04.png"
+  ]
+}

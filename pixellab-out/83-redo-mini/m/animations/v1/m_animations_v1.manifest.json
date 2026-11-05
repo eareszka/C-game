@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1476 characters>",
+      "format": "png"
+    },
+    "action": "Hovering in place: both wings beat strongly up and down, its body bobbing slightly, feet tucked, same size, same place.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 921
+  },
+  "links": {},
+  "seed": 921,
+  "ids": {
+    "background_job_id": "8fa72278-d4a1-4939-a46e-8c0c714898fc",
+    "generation_id": "3d1550b0-d3eb-4e67-b6c6-e69a88cef1e2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyd-00.png",
+    "flyd-01.png",
+    "flyd-02.png",
+    "flyd-03.png",
+    "flyd-04.png"
+  ]
+}

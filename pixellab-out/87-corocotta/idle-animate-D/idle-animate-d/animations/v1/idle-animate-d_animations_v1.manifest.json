@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1240 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: its dark mane bristles up along its back, then it throws its jaws wide open on its two great teeth as if speaking, then closes them. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d4feb17e-4ecf-4142-bf23-73cc7f333a78",
+    "generation_id": "316b0263-1b2f-4cb3-a0e3-37f7b937be67"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "87-corocotta-idle-d-00.png",
+    "87-corocotta-idle-d-01.png",
+    "87-corocotta-idle-d-02.png",
+    "87-corocotta-idle-d-03.png",
+    "87-corocotta-idle-d-04.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v2",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Celestial Stag, a monster battle sprite, keep its design exactly",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 1144 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 60,
+      "height": 60
+    },
+    "target_size": {
+      "width": 84,
+      "height": 84
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-84.png"
+  ]
+}

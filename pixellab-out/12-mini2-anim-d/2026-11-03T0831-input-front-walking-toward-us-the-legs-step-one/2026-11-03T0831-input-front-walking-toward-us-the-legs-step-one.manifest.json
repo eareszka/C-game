@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0831-input-front-walking-toward-us-the-legs-step-one",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 672 characters>",
+      "format": "png"
+    },
+    "action": "Walking toward us: the legs step one side then the other, the body sways slightly, the head stays low, the ears and fins stay, same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1211
+  },
+  "links": {},
+  "seed": 1211,
+  "ids": {
+    "background_job_id": "a7b5e5c4-76fb-43c7-a89d-068cb8400c5d",
+    "generation_id": "a0ab938b-7a8b-4de6-9eea-614f7a85bdde"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

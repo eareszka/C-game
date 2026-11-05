@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1460 characters>",
+      "format": "png"
+    },
+    "action": "<elided 268 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4f070000-93f4-4e19-b18a-060c4ad15c06",
+    "generation_id": "64462c3e-09a7-470c-8bc7-e4bc0e429869"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "79-ugjuknarpak-idle-d-00.png",
+    "79-ugjuknarpak-idle-d-01.png",
+    "79-ugjuknarpak-idle-d-02.png",
+    "79-ugjuknarpak-idle-d-03.png",
+    "79-ugjuknarpak-idle-d-04.png",
+    "79-ugjuknarpak-idle-d-05.png",
+    "79-ugjuknarpak-idle-d-06.png",
+    "79-ugjuknarpak-idle-d-07.png",
+    "79-ugjuknarpak-idle-d-08.png"
+  ]
+}

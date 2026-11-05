@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0734-hideous-crocodile-dragon-of-old-france-long-low",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 300 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1113
+  },
+  "links": {},
+  "seed": 1113,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "g3.png"
+  ]
+}

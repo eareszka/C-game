@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 66 × 77 px, 9 colours including black.
+Unmet: nothing.

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "35-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1116 characters>",
+      "format": "png"
+    },
+    "action": "running in place, its long legs striding, the big water bladder under its neck swinging, its antlers bobbing, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3e743c41-e130-41ee-a3d6-e58e1da434e8",
+    "generation_id": "affd0570-bc59-41d3-a685-7f9b53c4aac5"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runu-00.png",
+    "runu-01.png",
+    "runu-02.png",
+    "runu-03.png",
+    "runu-04.png"
+  ]
+}

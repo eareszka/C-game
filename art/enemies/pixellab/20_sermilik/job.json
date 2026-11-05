@@ -1,0 +1,50 @@
+{
+  "id": 20,
+  "name": "20-sermilik",
+  "dir": "art/enemies/pixellab/20_sermilik",
+  "description": "Sermilik: an enormous white polar bear whose very long shaggy fur is covered in ice, pale blue icicles hanging from its fur, its four paws like lumps of blue ice, small dark eyes. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/20_sermilik.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 200,
+      "views": [
+        "D",
+        "R",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Standing in place breathing heavily: its icy back rises, its head dips, and a puff of frosty white breath blows from its mouth, then it settles. Feet planted, facing the same way, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3,
+          6,
+          8
+        ],
+        "R": [
+          0,
+          2,
+          4,
+          6,
+          8
+        ],
+        "U": [
+          0,
+          1,
+          7,
+          8,
+          1
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "subject": "s",
+  "generated": "2026-11-05T14:41:40Z",
+  "spent": {
+    "calls": 2,
+    "generations": 2.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "s_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "e2751.png"
+      ],
+      "ids": {
+        "background_job_id": "ee501547-fd43-43f7-86b6-045948852b5e",
+        "generation_id": "9c1fadd1-7f2a-4272-bf57-396ae4066142"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "s_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "e2752.png"
+      ],
+      "ids": {
+        "background_job_id": "41ddf036-533d-48a8-8092-b35493072607",
+        "generation_id": "58b1837f-88bc-4f36-bd6b-527629860fb9"
+      }
+    }
+  ]
+}

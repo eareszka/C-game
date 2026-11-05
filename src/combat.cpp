@@ -7,6 +7,7 @@
 #include "collision.h"  // HB_*: where the feet are in the player's frame
 #include "audio.h"
 #include "crafting.h"   // item_slot: a prop's drops
+#include "tumbleweed.h" // the desert's rolling ones break too (overworld only: tiles)
 #include "player_swing.inc"   // SWING_HAND: the hand in each swing frame
 #include <SDL2/SDL_image.h>
 #include <math.h>
@@ -101,8 +102,10 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
                 ws->slash_angle  = facing_angle(player->facing);
                 ws->swing_weapon = weapon;
             }
-            int rn_hit = resource_nodes_try_hit(resources, hx, hy, 40, weapon, out);
-            // Map tiles are only reached when no node was in range.
+            // A tumbleweed rolling by first; then nodes, and map tiles only when
+            // no node was in range.
+            int tw_hit = tiles ? tumble_try_hit(hx, hy, 40, out) : 0;
+            int rn_hit = tw_hit ? 1 : resource_nodes_try_hit(resources, hx, hy, 40, weapon, out);
             if (rn_hit == 0 && tiles)
                 tilemap_try_hit(tiles, hx, hy, 40, weapon, out);
 
@@ -138,9 +141,11 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
 
         resource_nodes_sweep(resources, hx, hy, sp.radius, ws->swing_angle,
                              t0 * sp.span, t1 * sp.span, ws->swing_weapon, out);
-        if (tiles)
+        if (tiles) {
             tilemap_sweep(tiles, hx, hy, sp.radius, ws->swing_angle,
                           t0 * sp.span, t1 * sp.span, ws->swing_weapon, out);
+            tumble_sweep(hx, hy, sp.radius, ws->swing_angle, t0 * sp.span, t1 * sp.span, out);
+        }
 
         if (ws->swing_t >= sp.seconds) ws->swing_t = -1.0f;
     }
@@ -162,12 +167,16 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
             float ang = atan2f(t.dy, t.dx);
             resource_nodes_thrust(resources, t.ox, t.oy, ang, tw.radius,
                                   t.flown, t.flown + step, t.weapon, out);
-            if (tiles)
+            if (tiles) {
                 tilemap_thrust(tiles, t.ox, t.oy, ang, tw.radius,
                                t.flown, t.flown + step, t.weapon, out);
+                tumble_thrust(t.ox, t.oy, ang, tw.radius, t.flown, t.flown + step, out);
+            }
             t.flown += step;
         } else {
-            int struck = resource_nodes_strike_point(resources, t.x, t.y,
+            int struck = tiles ? tumble_strike_point(t.x, t.y, tw.radius, out) : 0;
+            if (!struck)
+                struck = resource_nodes_strike_point(resources, t.x, t.y,
                                                      tw.radius, t.weapon, out);
             if (!struck && tiles)
                 struck = tilemap_strike_point(tiles, t.x, t.y, t.weapon, out);

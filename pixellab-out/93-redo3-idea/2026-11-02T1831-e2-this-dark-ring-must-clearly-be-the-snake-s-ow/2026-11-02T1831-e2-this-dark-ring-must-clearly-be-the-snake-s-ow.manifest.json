@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1831-e2-this-dark-ring-must-clearly-be-the-snake-s-ow",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3920 characters>",
+      "format": "png"
+    },
+    "description": "<elided 376 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 883
+  },
+  "links": {},
+  "seed": 883,
+  "ids": {
+    "background_job_id": "e6d1572b-95b5-4377-a72f-2613678521fb",
+    "generation_id": "9585f438-f4dd-4b87-8582-024e39d73ee8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "d3.png"
+  ]
+}

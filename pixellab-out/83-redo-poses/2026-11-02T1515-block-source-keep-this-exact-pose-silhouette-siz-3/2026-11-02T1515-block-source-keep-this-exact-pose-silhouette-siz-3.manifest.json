@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1515-block-source-keep-this-exact-pose-silhouette-siz-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1464 characters>",
+      "format": "png"
+    },
+    "description": "<elided 417 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 883
+  },
+  "links": {},
+  "seed": 883,
+  "ids": {
+    "background_job_id": "212a6305-5c88-4957-9126-1b5ea3f0d0dc",
+    "generation_id": "8b27479b-b46b-438d-bc8c-b0cc725b4ce2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c3.png"
+  ]
+}

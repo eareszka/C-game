@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "xuelin-wall_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 303 characters>",
+    "image_size": {
+      "width": 160,
+      "height": 160
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "medium detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "gate-tower.png"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1821-sketch-keep-this-composition-exactly-a-huge-very-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1412 characters>",
+      "format": "png"
+    },
+    "description": "<elided 482 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 823
+  },
+  "links": {},
+  "seed": 823,
+  "ids": {
+    "background_job_id": "b43fee55-1d11-44e2-8181-028dc73e0857",
+    "generation_id": "e4fec012-7955-4826-83b1-6b29bd7e0bae"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "j3.png"
+  ]
+}

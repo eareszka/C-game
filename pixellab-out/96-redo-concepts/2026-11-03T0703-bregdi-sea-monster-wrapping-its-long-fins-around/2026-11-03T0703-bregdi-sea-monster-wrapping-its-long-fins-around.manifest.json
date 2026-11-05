@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0703-bregdi-sea-monster-wrapping-its-long-fins-around",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "Bregdi, sea monster wrapping its long fins around a small wooden Shetland rowing boat, dragging it down, huge grey shark body with a gaping mouth, broken planks, big flat colour areas, simple silhouette, full body, game enemy sprite, no water, no ground",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1053
+  },
+  "links": {},
+  "seed": 1053,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "b3.png"
+  ]
+}

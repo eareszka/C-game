@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "idle-rotate_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1768 characters>",
+      "format": "png"
+    },
+    "description": "Corocotta: a cross of hyena and wolf, grey-steel fur, dark bristling mane along its sloping back, snarling jaws with a single great unbroken tooth in each jaw, yellow eyes. Flat black-outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4e6f58ae-2e75-4f12-8a89-37e885f068bf",
+    "generation_id": "0e030c25-ad92-4e7e-8a5b-31a88ff49316"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "87-corocotta-idle-views-south-00.png",
+    "87-corocotta-idle-views-south-east-01.png",
+    "87-corocotta-idle-views-east-02.png",
+    "87-corocotta-idle-views-north-east-03.png",
+    "87-corocotta-idle-views-north-04.png",
+    "87-corocotta-idle-views-north-west-05.png",
+    "87-corocotta-idle-views-west-06.png",
+    "87-corocotta-idle-views-south-west-07.png"
+  ]
+}

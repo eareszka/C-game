@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1500 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: the big water bladder under its neck swells fuller and sags, it breathes, then it lowers its great antlers and tosses them up. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4a3f13c2-7884-4f76-be46-dc294b9e7406",
+    "generation_id": "759d911e-2dd7-44c8-9fec-c68f7c333ce1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "35-lomie-idle-dr-00.png",
+    "35-lomie-idle-dr-01.png",
+    "35-lomie-idle-dr-02.png",
+    "35-lomie-idle-dr-03.png",
+    "35-lomie-idle-dr-04.png"
+  ]
+}

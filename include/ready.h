@@ -9,12 +9,12 @@
 // nowhere else, when it passes the per-enemy loop.
 //
 // Left out for Beta 0.1: the placeholders 65 and 89-100, and the old
-// prototype patterns 13 29 31 34-38 40 41 44-49 51 52.
+// prototype patterns 13 29 31 34 36-38 40 41 44-49 51 52.
 static const int READY_ENEMIES[] = {
      0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
     10, 11, 12,     14, 15, 16, 17, 18, 19,
     20, 21, 22, 23, 24, 25, 26, 27, 28,
-    30,     32, 33,                     39,
+    30,     32, 33,         35,         39,
             42, 43,
     50,         53, 54, 55, 56, 57, 58, 59,
     60, 61, 62, 63, 64,     66, 67, 68, 69,

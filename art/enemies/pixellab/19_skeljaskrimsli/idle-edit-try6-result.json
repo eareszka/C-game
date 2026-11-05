@@ -1,0 +1,19 @@
+{
+  "run": "idle-edit-try6_sprites_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-edit-try6\\idle-edit-try6\\sprites\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-edit-try6\\idle-edit-try6\\sprites\\v1\\19-skeljaskrimsli-idle-frame0-try6.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-edit-try6\\idle-edit-try6\\sprites\\v1\\idle-edit-try6_sprites_v1.manifest.json",
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a4e81292-3ff5-446e-a24d-8150e0f56cf4",
+    "generation_id": "e3f0f8f0-cff1-4adc-a0d1-36ddc5c8deeb"
+  },
+  "route": "edit-images-v2"
+}

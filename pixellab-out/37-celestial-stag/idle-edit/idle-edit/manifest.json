@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-30T05:54:18Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "37-celestial-stag-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "e5e32ff1-a218-42b0-b3f9-1e6b3fa0240f",
+        "generation_id": "d34ffdb8-eca5-4dac-a239-79b7e8de821f"
+      }
+    }
+  ]
+}

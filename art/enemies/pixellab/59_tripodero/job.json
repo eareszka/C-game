@@ -1,0 +1,79 @@
+{
+  "id": 59,
+  "name": "59-tripodero",
+  "dir": "art/enemies/pixellab/59_tripodero",
+  "description": "Tripodero: a pipefish-like creature seen from the side, green head with a long tube snout flaring at the tip, hunched orange body with dark green stripes, a long tail down to the ground, two long brown telescoping legs and orange clawed feet. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/59_tripodero.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place on its two long thin telescoping legs: the legs extend longer, lifting its body high as it aims its long tube snout, then shorten again, lowering it. Tail and feet stay planted, same facing. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    },
+    "walk": {
+      "png": "assets/enemies/59_tripodero_walk.png",
+      "frames": 4,
+      "rows": false,
+      "ms": 150,
+      "from": "idle",
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": {
+        "": "Dancing in place on its two long thin stilt legs: one leg takes a big high step out to the side while the other telescopes, then the other leg steps. Same facing, same size. Black one-pixel outlines, flat fills.",
+        "left": "Dancing in place on its two long thin stilt legs: the leg on the LEFT side of the picture lifts high and steps out to the left of the picture, bent at the knee, while the leg on the right side of the picture stays planted. Body, head and tail as they are, same facing, same size. Black one-pixel outlines, flat fills."
+      },
+      "map": {
+        "*": [
+          1,
+          0,
+          3,
+          0
+        ],
+        "D": [
+          "step:1",
+          0,
+          3,
+          0
+        ],
+        "U": [
+          "step:1",
+          0,
+          3,
+          0
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  },
+  "reference": "art/enemies/pixellab/59_tripodero/reference_abookofcreatures.jpg (https://abookofcreatures.com/2021/06/28/tripodero/, the user, 2026-10-28)"
+}

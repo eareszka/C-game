@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "subject": "83b",
+  "generated": "2026-11-02T12:58:43Z",
+  "spent": {
+    "calls": 2,
+    "generations": 11.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "interpolation-v2",
+      "run": "83b_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "sweep-00.png",
+        "sweep-01.png"
+      ],
+      "ids": {
+        "background_job_id": "0dc3ddc8-1fd0-4e88-a2e9-cf29d51b2237",
+        "generation_id": "6dc6da39-d66e-4d8c-b8eb-223259e8009c"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "83b_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "brace-00.png",
+        "brace-01.png",
+        "brace-02.png",
+        "brace-03.png",
+        "brace-04.png"
+      ],
+      "ids": {
+        "background_job_id": "71823a84-7069-4f42-81de-e52a2900ac9e",
+        "generation_id": "629201fc-1a20-4080-a593-62b2872991dd"
+      }
+    }
+  ]
+}

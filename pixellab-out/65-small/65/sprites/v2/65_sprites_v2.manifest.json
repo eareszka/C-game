@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "65_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "three tiny grey mice side by side with big round ears holding one straight iron bar. Very small simple sprite",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 201
+  },
+  "links": {},
+  "seed": 201,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s2.png"
+  ]
+}

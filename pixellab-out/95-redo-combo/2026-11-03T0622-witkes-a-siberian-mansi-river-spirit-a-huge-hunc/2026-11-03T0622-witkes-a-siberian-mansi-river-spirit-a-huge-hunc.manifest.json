@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0622-witkes-a-siberian-mansi-river-spirit-a-huge-hunc",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 422 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 85052 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 256,
+          "height": 241
+        },
+        "usage_description": "the creature's anatomy and colours"
+      }
+    ],
+    "no_background": true,
+    "seed": 981
+  },
+  "links": {},
+  "seed": 981,
+  "ids": {
+    "background_job_id": "b973a121-3752-44bc-b6c5-e18c8e677a2e",
+    "generation_id": "3814b712-20a3-4b27-94bd-b444cb65a207"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "a1-00.png",
+    "a1-01.png",
+    "a1-02.png",
+    "a1-03.png",
+    "a1-04.png",
+    "a1-05.png",
+    "a1-06.png",
+    "a1-07.png",
+    "a1-08.png"
+  ]
+}

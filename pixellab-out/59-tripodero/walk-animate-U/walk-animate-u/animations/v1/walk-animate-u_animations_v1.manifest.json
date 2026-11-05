@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "walk-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1168 characters>",
+      "format": "png"
+    },
+    "action": "Dancing in place on its two long thin stilt legs: one leg takes a big high step out to the side while the other telescopes, then the other leg steps. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "aeb8639d-d2e3-4eef-bfde-3871c0529e8a",
+    "generation_id": "ea04ee94-9e80-4043-9210-77285a7f9e9a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "59-tripodero-walk-u-00.png",
+    "59-tripodero-walk-u-01.png",
+    "59-tripodero-walk-u-02.png",
+    "59-tripodero-walk-u-03.png",
+    "59-tripodero-walk-u-04.png"
+  ]
+}

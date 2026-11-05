@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v21",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 372 characters>",
+      "format": "png"
+    },
+    "description": "<elided 258 characters>",
+    "no_background": true,
+    "seed": 82
+  },
+  "links": {},
+  "seed": 82,
+  "ids": {
+    "background_job_id": "0bb61b71-96c5-47f2-9497-3277445a67dc",
+    "generation_id": "2f412c1a-d2ae-413e-a625-271a5766e9e9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wedit-82.png"
+  ]
+}

@@ -2433,10 +2433,13 @@ static const EnemyTier BAND_TIER[5] = { T_LOW, T_MEDIUM, T_UPPER, T_HARD, T_SEVE
 static const float ELITE_DIFFICULTY = 0.510f;
 
 int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng) {
+    return pick_enemy_in_region(spawner_enemy_base(type) / 7,
+                                type == DUNGEON_ENT_RUINS || difficulty >= ELITE_DIFFICULTY, difficulty, rng);
+}
+
+int pick_enemy_in_region(int region, bool elites, float difficulty, uint32_t* rng) {
     int home = 0;
     while (home < 4 && difficulty >= TIER_CUTS[home]) home++;
-    int base = spawner_enemy_base(type);
-    bool elites = type == DUNGEON_ENT_RUINS || difficulty >= ELITE_DIFFICULTY;
     // Weighted pool: the band's tier, the region's own enemies weighing most;
     // the tier below now and then, so a dungeon isn't one tier wall to wall;
     // elites where they live. Only ready enemies (include/ready.h): a band
@@ -2451,7 +2454,7 @@ int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng
         for (int e = 0; e < ENEMY_COUNT; e++) {
             if (!enemy_ready(e)) continue;
             EnemyTier t = enemy_tier(e);
-            bool native = enemy_region(e) == base / 7;
+            bool native = enemy_region(e) == region;
             int w = t == tier ? (native ? 4 : 2) : t == below ? 1 : (t == T_ELITE && elites) ? 2 : 0;
             if (w) { pick[n] = e; weight[n] = w; n++; total += w; }
         }
@@ -4218,11 +4221,32 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     HarvestResult local = {};
     HarvestResult* h = out_harvest ? out_harvest : &local;
 
+    const float ART = 16.0f / DMAP_TILE;                   // art pixels a world pixel
+    auto feet_art = [&](float* fx, float* fy) {
+        *fx = (dp->x + (HB_X1 + HB_X2) * 0.5f) * ART - dmap->tree_ox;
+        *fy = (dp->y + (HB_Y1 + HB_Y2) * 0.5f) * ART - dmap->tree_oy;
+    };
+    // On a ladder, or pressing onto one (way: up or down, as pressed).
+    auto on_ladder = [&](float way) {
+        if (!terraced(dmap)) return false;
+        float fx, fy;
+        feet_art(&fx, &fy);
+        return tree_on_ladder(dmap, fx, fy) || cave_exit_ladder_at(dmap, fx, fy) >= 0 ||
+               (way != 0.0f && tree_ladder_at(dmap, fx, fy, way) >= 0) ||
+               (way < 0.0f && cave_exit_ladder_at(dmap, fx, fy, 4) >= 0);
+    };
+
+    // On the bike (worn; the oasis is all water, so there it waits): one
+    // pace and no tool swung. A ladder takes them off it until the ground.
+    const bool bike_here = item_bike_worn(player) && dmap->type != DUNGEON_ENT_OASIS;
+    const bool riding_at_start = bike_here && !on_ladder(0.0f);
+
     // Same trigger/dispatch/advance machinery as overworld_update()
     // (src/overworld.cpp) -- tiles is null since a dungeon has no tile-based
     // harvest system, only rock nodes.
-    weapon_swing_update(&dp->swing, player, in, dt, hx, hy, &dmap->dungeon_rocks,
-                       nullptr, cam, (int)dmap->ore, h);
+    if (riding_at_start) dp->swing = WeaponSwingState();
+    else weapon_swing_update(&dp->swing, player, in, dt, hx, hy, &dmap->dungeon_rocks,
+                             nullptr, cam, (int)dmap->ore, h);
 
     // A destroyed rock node carves the wall tile it sat in open into floor --
     // the dungeon's equivalent of the gravestone-reveal tile write in
@@ -4240,17 +4264,12 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
     if (!weapon_swing_frozen_tick(&dp->swing, player, dt))
         player_read_input(player, in, &dx, &dy);
 
-    player_gait(in, &dp->speed, &anim_speed, dmap->type==DUNGEON_ENT_OASIS?nullptr:player);
+    player_gait(in, &dp->speed, &anim_speed, bike_here && !on_ladder(dy) ? player : nullptr);
 
     // The giant tree's ladders, climbed as EarthBound's are (user): pressing
     // up or down at one draws the player across onto it -- a slide at walking
     // pace, not a jump -- and on it they go only up or down. LADDER_LEAN: where
     // on it, art pixels left of its middle (user: one).
-    const float ART = 16.0f / DMAP_TILE;                   // art pixels a world pixel
-    auto feet_art = [&](float* fx, float* fy) {
-        *fx = (dp->x + (HB_X1 + HB_X2) * 0.5f) * ART - dmap->tree_ox;
-        *fy = (dp->y + (HB_Y1 + HB_Y2) * 0.5f) * ART - dmap->tree_oy;
-    };
     if (terraced(dmap) && !noclip) {
         float fx, fy;
         feet_art(&fx, &fy);
@@ -4340,6 +4359,7 @@ void dungeon_player_update(DungeonPlayer* dp, Player* player, const Input* in,
         if (tree_on_ladder(dmap, fx, fy) || cave_exit_ladder_at(dmap, fx, fy) >= 0) player->facing = FACE_UP;
     }
 
+    dp->climbing = on_ladder(dy);
     dp->at_link = dmap->type == DUNGEON_ENT_CATACOMBS ? cat_link_at(dmap, dp) : -1;
 
     // which way out (entry or exit) the player has walked into.
@@ -5250,7 +5270,7 @@ static void draw_graveyard(const DungeonMap* d, const Camera* cam, SDL_Renderer*
     // (user: three frames, as the NES would); the top of each holds, its tip
     // swings 3; each pixel moved, never resampled, so none comes or goes
     // (user); hidden where it swings behind a nearer slab
-    float t = (float)(world_ms() / 1000u % 3u) / 3.0f;
+    float t = (float)(world_ms() / AMBIENT_FRAME_MS % AMBIENT_FRAMES) / (float)AMBIENT_FRAMES;
     int px = tsz / 16 > 0 ? tsz / 16 : 1;
     std::vector<SDL_Rect> rects;
     uint32_t colour = 0;
@@ -6210,14 +6230,14 @@ static void draw_oasis(const DungeonMap* d, const Camera* cam, SDL_Renderer* ren
         const auto& w = d->oasis_weed[i];
         int sx = bx + w.x * s;
         if (sx + 16 * s < 0 || sx > cam->screen_w) continue;
-        oasis_piece(ren, OP_WEED0 + (int)((now / 1000 + w.x / 32) % 3), sx, by + w.y * s, s);
+        oasis_piece(ren, OP_WEED0 + (int)((now / AMBIENT_FRAME_MS + w.x / 32) % AMBIENT_FRAMES), sx, by + w.y * s, s);
     }
     SDL_RenderSetClipRect(ren, nullptr);
     // the level: rock, the water's dots, the air
     if (s_oasis.tex) SDL_RenderCopy(ren, s_oasis.tex, nullptr, &lvl);
     // the water lines, between each hollow's lips, rolling a frame a second
     if (s_oasis.art_px) {
-        const short* q = OASIS_PIECE[OP_SURF0 + (int)((now / 1000) % 3)];
+        const short* q = OASIS_PIECE[OP_SURF0 + (int)((now / AMBIENT_FRAME_MS) % AMBIENT_FRAMES)];
         for (int i = 0; i < d->num_oasis_air; i++) {
             const auto& a = d->oasis_air[i];
             for (int px = a.x0; px < a.x1; px++) {

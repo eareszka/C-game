@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "bears_sprites_v5",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 476 characters>",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "seed": 4102
+  },
+  "links": {},
+  "seed": 4102,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "b20-s4102.png"
+  ]
+}

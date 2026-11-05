@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T03:55:50Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "20-sermilik-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "5a0518fe-3059-43e8-bd6e-1dfbb6e55b8f",
+        "generation_id": "6d461c02-e822-4483-8671-22a469d16ae6"
+      }
+    }
+  ]
+}

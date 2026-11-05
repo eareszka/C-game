@@ -1,0 +1,50 @@
+== redo/anim/block_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 50 tall (columns 21-79, rows 8-57)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 9.5% of 1980 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_1.png
+  palette: 0 off-palette pixels; 5 colours plus black
+  drawn box: 50 wide x 56 tall (columns 25-74, rows 1-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.4% of 2224 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_2.png
+  palette: 0 off-palette pixels; 5 colours plus black
+  drawn box: 50 wide x 55 tall (columns 25-74, rows 2-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.5% of 2174 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_3.png
+  palette: 0 off-palette pixels; 5 colours plus black
+  drawn box: 50 wide x 54 tall (columns 25-74, rows 3-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.5% of 2131 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_4.png
+  palette: 0 off-palette pixels; 5 colours plus black
+  drawn box: 50 wide x 55 tall (columns 25-74, rows 2-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.5% of 2174 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_5.png
+  palette: 0 off-palette pixels; 5 colours plus black
+  drawn box: 50 wide x 56 tall (columns 25-74, rows 1-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.4% of 2224 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== redo/anim/block_6.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 59 wide x 50 tall (columns 21-79, rows 8-57)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 9.5% of 1980 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+PASS

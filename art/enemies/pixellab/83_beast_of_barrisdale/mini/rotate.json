@@ -1,0 +1,25 @@
+{
+  "run": "83-mini_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\rot-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\83-mini\\rotations\\v1\\83-mini_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "921aee43-50d3-4630-890c-df5960ef0cb7",
+    "generation_id": "1f3fd4da-31f0-4aba-be0d-19923ffd36a4"
+  }
+}

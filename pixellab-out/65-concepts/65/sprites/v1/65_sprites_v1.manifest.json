@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "65_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "a fat little grey mouse with rust-flecked fur, big round ears, a long thin tail and oversized iron front teeth, gnawing on a chewed iron bar held in its paws. One small creature, flat pixel art",
+    "image_size": {
+      "width": 64,
+      "height": 48
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 102
+  },
+  "links": {},
+  "seed": 102,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

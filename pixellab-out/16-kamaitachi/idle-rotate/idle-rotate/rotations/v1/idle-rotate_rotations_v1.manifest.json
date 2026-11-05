@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "idle-rotate_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 856 characters>",
+      "format": "png"
+    },
+    "description": "Kamaitachi: a white weasel riding a pale blue whirlwind, long sickle blades for forepaws, a long tail. Flat black-outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f25496e9-51f8-408d-8106-cae2613b6ca8",
+    "generation_id": "840f6b5e-71f7-44e2-9a2f-d99fae927b1c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "16-kamaitachi-idle-views-south-00.png",
+    "16-kamaitachi-idle-views-south-east-01.png",
+    "16-kamaitachi-idle-views-east-02.png",
+    "16-kamaitachi-idle-views-north-east-03.png",
+    "16-kamaitachi-idle-views-north-04.png",
+    "16-kamaitachi-idle-views-north-west-05.png",
+    "16-kamaitachi-idle-views-west-06.png",
+    "16-kamaitachi-idle-views-south-west-07.png"
+  ]
+}

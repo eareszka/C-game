@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-10-30T06:16:58Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "37-celestial-stag-idle-ur-00.png",
+        "37-celestial-stag-idle-ur-01.png",
+        "37-celestial-stag-idle-ur-02.png",
+        "37-celestial-stag-idle-ur-03.png",
+        "37-celestial-stag-idle-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "6823841b-4d7b-495c-8826-7c930325c716",
+        "generation_id": "b23a182b-8098-4c15-9501-001102708a02"
+      }
+    }
+  ]
+}

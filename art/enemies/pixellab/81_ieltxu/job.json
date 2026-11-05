@@ -1,0 +1,11 @@
+{
+  "id": 81, "name": "81-ieltxu", "dir": "art/enemies/pixellab/81_ieltxu",
+  "description": "Ieltxu: a near-black night bird with broad spread wings, a dark purple-black body, a hooked beak and small dark red eyes. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/81_ieltxu.png", "frames": 3, "rows": false, "ms": 200,
+    "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+    "action": "Hovering in place, one wingbeat: both broad dark wings sweep up high, then beat down low, then back. Body and head steady. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "map": {"*": [0, 1, 3]}, "despeckle": 2
+  }}
+}

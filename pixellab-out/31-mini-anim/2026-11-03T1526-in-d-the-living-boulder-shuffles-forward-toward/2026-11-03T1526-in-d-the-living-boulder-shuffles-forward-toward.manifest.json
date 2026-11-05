@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1526-in-d-the-living-boulder-shuffles-forward-toward",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 696 characters>",
+      "format": "png"
+    },
+    "action": "The living boulder shuffles forward toward us at level camera with no legs: it heaves up and settles, rocking side to side, jaws opening and closing. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1421
+  },
+  "links": {},
+  "seed": 1421,
+  "ids": {
+    "background_job_id": "799a9aff-269a-4f18-b1fd-3cbfd8867fdf",
+    "generation_id": "cae48ceb-d252-451b-b887-66f027d715a9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

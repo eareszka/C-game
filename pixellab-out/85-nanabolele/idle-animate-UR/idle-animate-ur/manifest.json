@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-10-29T06:51:15Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "85-nanabolele-idle-ur-00.png",
+        "85-nanabolele-idle-ur-01.png",
+        "85-nanabolele-idle-ur-02.png",
+        "85-nanabolele-idle-ur-03.png",
+        "85-nanabolele-idle-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "86ef2c84-dbe0-4308-a32a-f9446cea0730",
+        "generation_id": "3ba8fa06-5fe8-4bfc-ad5b-32f6ef8e4a4c"
+      }
+    }
+  ]
+}

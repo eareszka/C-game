@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "idle-rotate",
+  "generated": "2026-10-29T04:25:11Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "idle-rotate_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "42-nykur-idle-views-south-00.png",
+        "42-nykur-idle-views-south-east-01.png",
+        "42-nykur-idle-views-east-02.png",
+        "42-nykur-idle-views-north-east-03.png",
+        "42-nykur-idle-views-north-04.png",
+        "42-nykur-idle-views-north-west-05.png",
+        "42-nykur-idle-views-west-06.png",
+        "42-nykur-idle-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "99797a0e-6864-4f91-b4dd-b443803eb838",
+        "generation_id": "2cdb5bb3-e946-49c2-b044-4e101afba7ea"
+      }
+    }
+  ]
+}

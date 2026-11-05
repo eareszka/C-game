@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "bike_animations_v7",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 344 characters>",
+      "format": "png"
+    },
+    "action": "The rider's head and upper body stay perfectly still and do not bob or stretch. Only the feet pedal in a circle and the bicycle wheels spin, their spokes turning. Returns to the first pose.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 8
+  },
+  "links": {},
+  "seed": 8,
+  "ids": {
+    "background_job_id": "b487328c-83a5-43c4-96f3-e22164bf27e2",
+    "generation_id": "cd96862e-3589-4368-b6df-4b018271381f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "stroke-ur-00.png",
+    "stroke-ur-01.png",
+    "stroke-ur-02.png",
+    "stroke-ur-03.png",
+    "stroke-ur-04.png"
+  ]
+}

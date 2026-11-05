@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1453-tiny-overworld-map-sprite-stooped-figure-seen-fr",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 289 characters>",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "west",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNkYGD4778sneHHwlcMK0tfMwAAM20G6artVy4AAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1351
+  },
+  "links": {},
+  "seed": 1351,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s1.png"
+  ]
+}

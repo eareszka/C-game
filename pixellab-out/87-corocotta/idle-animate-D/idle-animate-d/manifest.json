@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-29T07:58:20Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "87-corocotta-idle-d-00.png",
+        "87-corocotta-idle-d-01.png",
+        "87-corocotta-idle-d-02.png",
+        "87-corocotta-idle-d-03.png",
+        "87-corocotta-idle-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "d4feb17e-4ecf-4142-bf23-73cc7f333a78",
+        "generation_id": "316b0263-1b2f-4cb3-a0e3-37f7b937be67"
+      }
+    }
+  ]
+}

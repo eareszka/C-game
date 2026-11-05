@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1831-v3-remove-all-the-water-ripples-puddle-and-splas",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2092 characters>",
+      "format": "png"
+    },
+    "description": "Remove ALL the water, ripples, puddle and splash completely, leaving only the creature and its canoe on a transparent background. Keep the serpent, the canoe and the hooded figure exactly. Flat fills, few shades, one-pixel black outline.",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 882
+  },
+  "links": {},
+  "seed": 882,
+  "ids": {
+    "background_job_id": "8b497fbf-60d3-4901-9d17-000a7f9d6735",
+    "generation_id": "94188d60-7ed2-4d0f-9265-897d4a35f85d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "d2.png"
+  ]
+}

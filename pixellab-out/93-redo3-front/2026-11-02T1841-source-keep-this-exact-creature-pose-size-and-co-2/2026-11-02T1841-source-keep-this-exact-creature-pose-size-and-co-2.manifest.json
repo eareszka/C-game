@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1841-source-keep-this-exact-creature-pose-size-and-co-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1700 characters>",
+      "format": "png"
+    },
+    "description": "<elided 498 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 912
+  },
+  "links": {},
+  "seed": 912,
+  "ids": {
+    "background_job_id": "b5b29a7b-21b4-417a-80d6-d314b54048dc",
+    "generation_id": "ba947132-0f1c-4642-adab-17d1bad2b0e9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f2.png"
+  ]
+}

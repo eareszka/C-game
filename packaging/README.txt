@@ -29,7 +29,7 @@ TIPS
   The book shop sells recipe books; craft a raft to leave the island.
   If you lose a fight you wake up at home, with nothing lost.
   Nothing grows back: trees you cut and enemies you beat are gone for good.
-  The raft is worn like boots; take it off in ITEMS if you need to.
+  The raft is worn like the bicycle; take it off in ITEMS if you need to.
 
 REPORTING BUGS
   Please leave a comment on the itch.io page: what happened, what you

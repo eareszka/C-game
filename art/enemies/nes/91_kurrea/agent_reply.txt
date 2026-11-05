@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 74x79, 8 colours plus black.
+Unmet: The brief says dark purple, but the hide's main tone is a mid purple (`664b95`, shaded `3b2a58`) so the body reads on black.

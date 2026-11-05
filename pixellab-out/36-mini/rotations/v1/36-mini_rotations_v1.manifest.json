@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "36-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1960 characters>",
+      "format": "png"
+    },
+    "description": "small cu sith: a green fairy hound, mossy green coat, pale mint chest and legs, dark grey far legs, long tail coiled over its back, dark green muzzle, small pale eyes edged in black, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a91bbcb4-8b7d-47d8-b658-5e4a5879c208",
+    "generation_id": "ca0b2038-5fb7-4de8-bded-ae4a32849d6a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

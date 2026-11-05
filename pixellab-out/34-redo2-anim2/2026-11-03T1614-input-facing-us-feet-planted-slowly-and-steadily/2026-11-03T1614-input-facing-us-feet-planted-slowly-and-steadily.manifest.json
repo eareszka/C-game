@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1614-input-facing-us-feet-planted-slowly-and-steadily",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 4552 characters>",
+      "format": "png"
+    },
+    "action": "<elided 354 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1501
+  },
+  "links": {},
+  "seed": 1501,
+  "ids": {
+    "background_job_id": "175cf66a-567b-49a4-915a-baf7b937ae53",
+    "generation_id": "f147c1d1-a918-4c6f-8cec-409deed3ffff"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "lift-00.png",
+    "lift-01.png",
+    "lift-02.png",
+    "lift-03.png",
+    "lift-04.png",
+    "lift-05.png",
+    "lift-06.png",
+    "lift-07.png",
+    "lift-08.png"
+  ]
+}

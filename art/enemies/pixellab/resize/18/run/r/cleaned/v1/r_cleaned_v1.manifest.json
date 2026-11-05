@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Vatnaormur, a monster battle sprite, keep its design exactly",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 1692 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 92,
+      "height": 92
+    },
+    "target_size": {
+      "width": 72,
+      "height": 72
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-72.png"
+  ]
+}

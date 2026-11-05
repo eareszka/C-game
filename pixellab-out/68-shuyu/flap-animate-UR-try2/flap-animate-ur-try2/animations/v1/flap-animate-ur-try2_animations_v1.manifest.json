@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "flap-animate-ur-try2_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 728 characters>",
+      "format": "png"
+    },
+    "action": "<elided 270 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0c6ff212-b8b7-4233-8743-b983ae7e6963",
+    "generation_id": "88dfe278-3436-44b3-9d7a-118365853bf8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "68-shuyu-flap-ur-try2-00.png",
+    "68-shuyu-flap-ur-try2-01.png",
+    "68-shuyu-flap-ur-try2-02.png",
+    "68-shuyu-flap-ur-try2-03.png",
+    "68-shuyu-flap-ur-try2-04.png"
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v4",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 472 characters>",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "style_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 300 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 24,
+        "height": 24
+      }
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 564 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 64,
+          "height": 96
+        },
+        "usage_description": "the bicycle and pose to match"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 520 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 56,
+          "height": 80
+        },
+        "usage_description": "the rider's character"
+      }
+    ],
+    "no_background": true,
+    "seed": 41
+  },
+  "links": {},
+  "seed": 41,
+  "ids": {
+    "background_job_id": "67e1b1a5-7e1d-4077-8fc1-f58c0d79fe41",
+    "generation_id": "d4096ea7-96d8-4c9e-8ec5-9109aafebf07"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "front-00.png",
+    "front-01.png",
+    "front-02.png",
+    "front-03.png",
+    "front-04.png",
+    "front-05.png",
+    "front-06.png",
+    "front-07.png",
+    "front-08.png",
+    "front-09.png",
+    "front-10.png",
+    "front-11.png",
+    "front-12.png",
+    "front-13.png",
+    "front-14.png",
+    "front-15.png",
+    "front-16.png",
+    "front-17.png",
+    "front-18.png",
+    "front-19.png",
+    "front-20.png",
+    "front-21.png",
+    "front-22.png",
+    "front-23.png",
+    "front-24.png",
+    "front-25.png",
+    "front-26.png",
+    "front-27.png",
+    "front-28.png",
+    "front-29.png",
+    "front-30.png",
+    "front-31.png",
+    "front-32.png",
+    "front-33.png",
+    "front-34.png",
+    "front-35.png",
+    "front-36.png",
+    "front-37.png",
+    "front-38.png",
+    "front-39.png",
+    "front-40.png",
+    "front-41.png",
+    "front-42.png",
+    "front-43.png",
+    "front-44.png",
+    "front-45.png",
+    "front-46.png",
+    "front-47.png",
+    "front-48.png",
+    "front-49.png",
+    "front-50.png",
+    "front-51.png",
+    "front-52.png",
+    "front-53.png",
+    "front-54.png",
+    "front-55.png",
+    "front-56.png",
+    "front-57.png",
+    "front-58.png",
+    "front-59.png",
+    "front-60.png",
+    "front-61.png",
+    "front-62.png",
+    "front-63.png"
+  ]
+}

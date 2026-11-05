@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1834-source-the-head-turns-three-quarters-toward-the",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "description": "<elided 375 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 891
+  },
+  "links": {},
+  "seed": 891,
+  "ids": {
+    "background_job_id": "90cd4644-5f6b-41e7-9f85-fa9b5354e95a",
+    "generation_id": "81303fc5-f32c-44b8-930c-fda44c0971df"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "dl.png"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-11-04T07:20:01Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "34-anaye-bc-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "e4e32c34-8f61-4124-8bfc-6621cbc1e2ea",
+        "generation_id": "6c0e4461-7872-4c78-96cd-615ff774b2ea"
+      }
+    }
+  ]
+}

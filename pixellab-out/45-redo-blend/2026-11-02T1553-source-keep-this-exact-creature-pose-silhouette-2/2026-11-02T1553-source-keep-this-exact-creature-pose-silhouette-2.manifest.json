@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1553-source-keep-this-exact-creature-pose-silhouette-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2316 characters>",
+      "format": "png"
+    },
+    "description": "<elided 386 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 463
+  },
+  "links": {},
+  "seed": 463,
+  "ids": {
+    "background_job_id": "f85589ef-0e2f-4ed6-b57f-a02471cb9b48",
+    "generation_id": "37927c55-a881-44c5-9636-ac1c8abb38ab"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e3.png"
+  ]
+}

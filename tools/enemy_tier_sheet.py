@@ -28,11 +28,12 @@ def ready_ids():
     # READY_ENEMIES in include/ready.h: the enemies a player can meet
     return {int(v) for v in re.findall(r'\d+', table('include/ready.h', 'READY_ENEMIES[] = {').split('{', 1)[1])}
 
-def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
+def main(out, done=(), tags=None, dim=(), title=None, row_note=None, chips=None):
     # done: ids whose bullet patterns are finished -- drawn with a green DONE mark
     # For charts built on this one (tools/enemy_redraw_sheet.py):
     #   tags(i) -> [(corner, text, fill)]: 'tr' a large mark top right, 'bl' / 'br' a small one at the bottom
     #   dim: ids drawn faded;  title: a line across the top;  row_note(ids) -> the text under a row's name
+    #   chips(i) -> [(text, fill)]: a line of small marks under its name, left to right
     sheets = [(m.group(1), int(m.group(2) or 3), m.group(3) == 'true') for m in re.finditer(
         # a row is { "path", {loop}, frames, rows, ... } -- or { nullptr } for an
         # enemy with no sprite yet, which still takes its slot
@@ -41,7 +42,7 @@ def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
     tiers = re.findall(r'T_([A-Z0-9]+)', table('include/enemy.h', 'ENEMY_TIERS[] = {'))
     names = re.findall(r'"([^"]+)"', table('src/main.cpp', 'ENEMY_NAMES[] = {'))
     assert len(names) == len(tiers) >= len(sheets), (len(names), len(tiers), len(sheets))
-    CELL, LAB, LEFT = 96, 26, 130
+    CELL, LAB, LEFT = 96, 26 + (16 if chips else 0), 130
     COLS = max(sum(1 for t in tiers if t == k) for k, _, _ in ORDER)
     rows = [(n, c, [i for i, t in enumerate(tiers) if t == k]) for k, n, c in ORDER]
     rows = [r for r in rows if r[2]]
@@ -54,6 +55,13 @@ def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
     except OSError:
         font = big = small = ImageFont.load_default()
     if title: d.text((10, 8), title, fill=(235, 235, 235), font=font)
+    def chip_line(x0, y, i):
+        x = x0
+        for text, fill in chips(i):
+            w = int(d.textlength(text, font=small)) + 6
+            d.rectangle([x, y, x + w, y + 13], fill=fill)
+            d.text((x + 3, y + 1), text, fill=(255, 255, 255), font=small)
+            x += w + 3
     def tag(x0, y, corner, text, fill):
         f, h = (big, 20) if corner == 'tr' else (small, 14)
         w = int(d.textlength(text, font=f)) + 8
@@ -74,6 +82,7 @@ def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
                 d.rectangle([x0, y, x0 + CELL, y + 2], fill=col)
                 d.text((x0 + 18, y + CELL // 2 - 6), 'NO SPRITE', fill=(120, 120, 130), font=font)
                 d.text((x0 + 2, y + CELL + 5), '%02d %s' % (i, nm), fill=(235, 235, 235), font=font)
+                if chips: chip_line(x0, y + CELL + 22, i)
                 continue
             path, frames, byrow = sheets[i]
             im = Image.open(os.path.join(ROOT, path)).convert('RGBA')
@@ -90,6 +99,7 @@ def main(out, done=(), tags=None, dim=(), title=None, row_note=None):
             if i in dim: sp.putalpha(sp.getchannel('A').point(lambda a: a * 3 // 10))
             img.paste(sp, (x0 + (CELL - nw) // 2, y + (CELL - nh) // 2), sp)
             d.text((x0 + 2, y + CELL + 5), '%02d %s' % (i, nm), fill=(235, 235, 235), font=font)
+            if chips: chip_line(x0, y + CELL + 22, i)
             if i in done: tag(x0, y, 'br', 'DONE', (40, 160, 70))   # patterns finished: a green tag in the corner
             for corner, text, fill in (tags(i) if tags else ()): tag(x0, y, corner, text, fill)
         y += CELL + LAB + 14

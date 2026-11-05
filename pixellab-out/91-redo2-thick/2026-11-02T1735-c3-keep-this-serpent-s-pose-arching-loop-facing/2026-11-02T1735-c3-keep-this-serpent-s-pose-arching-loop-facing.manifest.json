@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1735-c3-keep-this-serpent-s-pose-arching-loop-facing",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2784 characters>",
+      "format": "png"
+    },
+    "description": "<elided 399 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 673
+  },
+  "links": {},
+  "seed": 673,
+  "ids": {
+    "background_job_id": "39f9c1f0-0cc4-41b2-b9f8-686c7d9c578e",
+    "generation_id": "dbef2e41-d701-445e-b57d-0c3818ec23a2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "t3.png"
+  ]
+}

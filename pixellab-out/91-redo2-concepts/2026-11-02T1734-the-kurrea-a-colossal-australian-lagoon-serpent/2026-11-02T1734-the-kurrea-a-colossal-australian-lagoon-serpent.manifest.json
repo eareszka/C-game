@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1734-the-kurrea-a-colossal-australian-lagoon-serpent",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 386 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAECAYAAADvRz3UAAAAO0lEQVR4nGNkYGD4z4AEtOUdkLkM1jqhKPyAwEgUvtmLDhQ+X4IQCn8djwkK/852XRQ+E8MAA6YR7wAAQekIG5MnTboAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 661
+  },
+  "links": {},
+  "seed": 661,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c1.png"
+  ]
+}

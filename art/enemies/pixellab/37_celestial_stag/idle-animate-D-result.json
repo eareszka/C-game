@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\37-celestial-stag-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\37-celestial-stag-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\37-celestial-stag-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\37-celestial-stag-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\37-celestial-stag-idle-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\37-celestial-stag\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "af7e0df9-b956-4a38-a4c2-272bb74d4d78",
+    "generation_id": "c8689521-363f-465b-a860-5ee019549429"
+  }
+}

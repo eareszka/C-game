@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1511-input-the-living-boulder-stays-put-its-stone-jaw",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2732 characters>",
+      "format": "png"
+    },
+    "action": "<elided 278 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1391
+  },
+  "links": {},
+  "seed": 1391,
+  "ids": {
+    "background_job_id": "fa2b4f8a-a37e-4482-a324-788d8a332ec5",
+    "generation_id": "698578e2-3cc6-472f-85be-b67b0525ebbc"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png"
+  ]
+}

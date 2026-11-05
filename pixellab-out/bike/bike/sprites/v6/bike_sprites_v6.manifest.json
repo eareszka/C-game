@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v6",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 635 characters>",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "style_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 292 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 24,
+        "height": 24
+      }
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 688 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "usage_description": "the same bicycle and rider from the side"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 612 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "usage_description": "the same bicycle and rider from the back"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 560 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 64,
+          "height": 96
+        },
+        "usage_description": "the bicycle style to match"
+      }
+    ],
+    "no_background": true,
+    "seed": 52
+  },
+  "links": {},
+  "seed": 52,
+  "ids": {
+    "background_job_id": "19ce177d-13be-40d2-8ba3-964838bfe512",
+    "generation_id": "6e4ab0e4-1659-419d-9971-92db4174a3c9"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "diagup-00.png",
+    "diagup-01.png",
+    "diagup-02.png",
+    "diagup-03.png",
+    "diagup-04.png",
+    "diagup-05.png",
+    "diagup-06.png",
+    "diagup-07.png",
+    "diagup-08.png",
+    "diagup-09.png",
+    "diagup-10.png",
+    "diagup-11.png",
+    "diagup-12.png",
+    "diagup-13.png",
+    "diagup-14.png",
+    "diagup-15.png",
+    "diagup-16.png",
+    "diagup-17.png",
+    "diagup-18.png",
+    "diagup-19.png",
+    "diagup-20.png",
+    "diagup-21.png",
+    "diagup-22.png",
+    "diagup-23.png",
+    "diagup-24.png",
+    "diagup-25.png",
+    "diagup-26.png",
+    "diagup-27.png",
+    "diagup-28.png",
+    "diagup-29.png",
+    "diagup-30.png",
+    "diagup-31.png",
+    "diagup-32.png",
+    "diagup-33.png",
+    "diagup-34.png",
+    "diagup-35.png",
+    "diagup-36.png",
+    "diagup-37.png",
+    "diagup-38.png",
+    "diagup-39.png",
+    "diagup-40.png",
+    "diagup-41.png",
+    "diagup-42.png",
+    "diagup-43.png",
+    "diagup-44.png",
+    "diagup-45.png",
+    "diagup-46.png",
+    "diagup-47.png",
+    "diagup-48.png",
+    "diagup-49.png",
+    "diagup-50.png",
+    "diagup-51.png",
+    "diagup-52.png",
+    "diagup-53.png",
+    "diagup-54.png",
+    "diagup-55.png",
+    "diagup-56.png",
+    "diagup-57.png",
+    "diagup-58.png",
+    "diagup-59.png",
+    "diagup-60.png",
+    "diagup-61.png",
+    "diagup-62.png",
+    "diagup-63.png"
+  ]
+}

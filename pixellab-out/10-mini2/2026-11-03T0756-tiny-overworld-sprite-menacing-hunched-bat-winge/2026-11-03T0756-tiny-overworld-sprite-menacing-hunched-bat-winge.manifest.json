@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0756-tiny-overworld-sprite-menacing-hunched-bat-winge",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny overworld sprite, menacing hunched bat-winged demon hovering facing the viewer, blue hide, tan beak like a long spike, tan belly, wide dark charcoal wings, black outline, flat colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD4bx41heHvrVUMdUk6DAAunwWzXET13wAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1144
+  },
+  "links": {},
+  "seed": 1144,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-overworld-sprite-menacing-hunched-bat-winge.png"
+  ]
+}

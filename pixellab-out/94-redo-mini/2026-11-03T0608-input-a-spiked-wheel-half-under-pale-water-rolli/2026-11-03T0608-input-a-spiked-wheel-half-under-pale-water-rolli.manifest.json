@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0608-input-a-spiked-wheel-half-under-pale-water-rolli",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 532 characters>",
+      "format": "png"
+    },
+    "action": "A spiked wheel half under pale water rolling in place: the bone spikes and blue rim rotate around the hub at the waterline, the pale water ripples and stays at the bottom. Same size, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 971
+  },
+  "links": {},
+  "seed": 971,
+  "ids": {
+    "background_job_id": "f8185baf-a66e-4a5e-b876-e47c1878bb74",
+    "generation_id": "1c54f7d3-c43f-463c-8973-8ef746aec438"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "roll-00.png",
+    "roll-01.png",
+    "roll-02.png",
+    "roll-03.png",
+    "roll-04.png"
+  ]
+}

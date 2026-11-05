@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0815-input-facing-left-airborne-the-creature-leaps-an",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2332 characters>",
+      "format": "png"
+    },
+    "action": "<elided 272 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1182
+  },
+  "links": {},
+  "seed": 1182,
+  "ids": {
+    "background_job_id": "e0b301d1-bbfa-4439-8fa9-e6e29c0b2268",
+    "generation_id": "8183d9cf-715e-42da-bd3f-7c03dc4cc6d1"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "fly-00.png",
+    "fly-01.png",
+    "fly-02.png",
+    "fly-03.png",
+    "fly-04.png",
+    "fly-05.png",
+    "fly-06.png",
+    "fly-07.png",
+    "fly-08.png"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T10:22:12Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "14-lodsilungur-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "14285e69-9c07-4f24-a42f-924836fb4e63",
+        "generation_id": "74657187-7a3e-43d9-8434-ce5d81704370"
+      }
+    }
+  ]
+}

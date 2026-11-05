@@ -1,0 +1,4 @@
+m1|tiny overworld map sprite, heavy dark slate rat-bodied predator walking, side view facing left, big round pale ear, tall peach jagged fins along its back, long peach ringed tail, open toothy mouth, ivory claws, black outline, flat colours, very few pixels
+m2|tiny map enemy sprite, hunched slate grey giant rat monster, side view facing left, peach spiky sail on its back, large round ear, small horn, snarling, long thin curved tail, black outline, flat simple colours, very few pixels
+m3|tiny game map sprite of a charcoal rodent beast stalking low, facing left, head forward, jagged peach back fin, big pale ear, long tail curling behind, black outline, flat colours, simple silhouette, very few pixels
+m4|tiny overworld enemy, grey rat dinosaur crouched and running to the left, tall peach fins on its back, round ear, ivory teeth and claws, peach tail, black outline, flat colours, very few pixels

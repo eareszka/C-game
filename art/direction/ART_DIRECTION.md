@@ -47,6 +47,14 @@ The item and weapon icons, and a craftable's drawing where it is placed in
 the world, follow `ITEM_STYLE.md`: one drawing in four key tones, coloured by
 one of the world's ramps. `python tools/item_style.py` checks them.
 
+## Enemies
+
+**NES style at every size (the user, 2026-11-04), growing with tier and difficulty.** `SPRITE_STYLE.md` is the rule, measured from the 26 sprites the user picked, and `tools/sprite_agent/` makes each sprite with a fresh agent that reads only the rule, the prompt and its brief. The rest of this section describes the old B and C rule.
+
+Battle sprites follow `SPRITE_STYLE.md`: every enemy is a combination of styles B
+and C, at most three tones per material, drawn to read on the battle's pure
+black. `python tools/enemy_style.py` checks them.
+
 ## Keeping sprites consistent
 
 A colour that is off the palette goes where `fcremap.py` sends it:

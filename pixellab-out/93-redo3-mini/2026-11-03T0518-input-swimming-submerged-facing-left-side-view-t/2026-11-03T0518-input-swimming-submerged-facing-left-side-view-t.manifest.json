@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0518-input-swimming-submerged-facing-left-side-view-t",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 564 characters>",
+      "format": "png"
+    },
+    "action": "Swimming submerged, facing left, side view. The purple serpent's neck bobs and sways out of the pale water, its tail hook rolls, the small rider in the brown canoe works the paddle, the pale water ripples. Same size and design, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 981
+  },
+  "links": {},
+  "seed": 981,
+  "ids": {
+    "background_job_id": "615485af-8053-4f4c-9573-e59e67bd99f2",
+    "generation_id": "4288c9f1-995c-4a63-bf4d-a58d3ad7ded2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "swim-00.png",
+    "swim-01.png",
+    "swim-02.png",
+    "swim-03.png",
+    "swim-04.png"
+  ]
+}

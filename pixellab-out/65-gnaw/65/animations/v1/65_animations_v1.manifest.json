@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "65_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 556 characters>",
+      "format": "png"
+    },
+    "action": "three tiny mice gnawing on the iron bar in their paws, heads bobbing down one after another, bodies stay still, same size and colours",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6a6323f0-2e61-4620-84f8-75b663c134fc",
+    "generation_id": "7c9390fb-2b9d-48dc-a274-c77232b84fe0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "gnaw-00.png",
+    "gnaw-01.png",
+    "gnaw-02.png",
+    "gnaw-03.png",
+    "gnaw-04.png"
+  ]
+}

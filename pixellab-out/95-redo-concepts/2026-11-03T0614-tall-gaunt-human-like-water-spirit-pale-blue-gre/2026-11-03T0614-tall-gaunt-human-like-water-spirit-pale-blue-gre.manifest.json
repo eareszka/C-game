@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0614-tall-gaunt-human-like-water-spirit-pale-blue-gre",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tall gaunt human-like water spirit, pale blue-grey skin, long dripping hair over its face, giant curved mammoth tusk antlers on its head, bowing and offering a small steaming cup of tea, flat colours, full body, no water, game enemy sprite",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 952
+  },
+  "links": {},
+  "seed": 952,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

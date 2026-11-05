@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1530-in-l-the-living-boulder-shuffles-to-the-left-at",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1292 characters>",
+      "format": "png"
+    },
+    "action": "The living boulder shuffles to the left at level camera with no legs: it heaves up and rocks forward and settles, jaws opening and closing. Same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1423
+  },
+  "links": {},
+  "seed": 1423,
+  "ids": {
+    "background_job_id": "86d7ade5-baa2-41b3-8055-4702c93158b8",
+    "generation_id": "c59cfa08-adf5-44e7-9c54-d62266b4afdf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-ur_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1460 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place on its two long thin telescoping legs: the legs extend longer, lifting its body high as it aims its long tube snout, then shorten again, lowering it. Tail and feet stay planted, same facing. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "38218716-997c-4f26-a596-1edffad48a03",
+    "generation_id": "f7809006-f441-4f79-9653-35c6586de670"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "59-tripodero-idle-ur-00.png",
+    "59-tripodero-idle-ur-01.png",
+    "59-tripodero-idle-ur-02.png",
+    "59-tripodero-idle-ur-03.png",
+    "59-tripodero-idle-ur-04.png"
+  ]
+}

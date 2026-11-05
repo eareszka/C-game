@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-ur_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1204 characters>",
+      "format": "png"
+    },
+    "action": "Floating in place, bobbing: its empty hide sags and swells, its flippers grope outward, then both flippers fling up high to seize and its empty mouth gapes, then it settles. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b90cb188-dfc1-42a0-abc9-b7e19a522ae6",
+    "generation_id": "16e2614c-4827-40e0-a859-1342001644bc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "88-amixsak-idle-ur-00.png",
+    "88-amixsak-idle-ur-01.png",
+    "88-amixsak-idle-ur-02.png",
+    "88-amixsak-idle-ur-03.png",
+    "88-amixsak-idle-ur-04.png"
+  ]
+}

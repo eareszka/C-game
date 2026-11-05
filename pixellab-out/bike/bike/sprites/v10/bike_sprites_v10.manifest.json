@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v10",
+  "provider": "pixellab",
+  "route": "inpaint-v3",
+  "arguments": {
+    "description": "two round bicycle wheels, each with a thick black rubber tyre around the outside and light grey metal spokes filling the inside, a small grey hub in the centre. Both wheels identical. Flat colours, black and grey only, no dithering.",
+    "inpainting_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 368 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "mask_image": {
+      "image": {
+        "type": "base64",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAAAAABWESUoAAAAIUlEQVR4nGNgGAWjYIgBRhjjP5yPYIEAEyETmIaCgsEAAMs1Ag5S5YtaAAAAAElFTkSuQmCC",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "no_background": true,
+    "crop_to_mask": false,
+    "seed": 61
+  },
+  "links": {},
+  "seed": 61,
+  "ids": {
+    "background_job_id": "8879e498-f45f-4587-ace7-ba10d7051848",
+    "generation_id": "a5709ac2-7636-4ce6-b157-fd78afc2e016"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wheels-rt.png"
+  ]
+}

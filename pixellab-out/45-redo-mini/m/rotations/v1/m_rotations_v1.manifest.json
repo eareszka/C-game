@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "m_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1768 characters>",
+      "format": "png"
+    },
+    "description": "Kusa Kap: a giant crimson-rust sea eagle in flight, dark brown feather ends, cream breast, hooked yellow beak, a grey dugong in its yellow talons. Black outline, flat pixel art.",
+    "no_background": true,
+    "seed": 491
+  },
+  "links": {},
+  "seed": 491,
+  "ids": {
+    "background_job_id": "d63b1277-2769-4aed-8a3a-dc3d9c0feac1",
+    "generation_id": "e38b8ffe-ae9d-46ba-adc2-0a6160c78e7a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

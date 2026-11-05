@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "40-mini_animations_v3",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1180 characters>",
+      "format": "png"
+    },
+    "action": "legless stone whale seen from behind sliding along the ground on its flat belly, no legs and no hopping, the long tail swaying side to side",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a20e6d71-b622-49ab-8835-c75cfe86ade7",
+    "generation_id": "4e661aae-7b7f-4133-bf6c-da22218a38e4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slideu-00.png",
+    "slideu-01.png",
+    "slideu-02.png",
+    "slideu-03.png",
+    "slideu-04.png"
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "subject": "18",
+  "generated": "2026-11-02T12:17:52Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "18_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "e3.png"
+      ],
+      "ids": {
+        "background_job_id": "e2c2c227-30f0-49c1-a7da-3eaa873f71ff",
+        "generation_id": "210736f3-bb8b-495d-ae88-24e78a63438d"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "18_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "e2.png"
+      ],
+      "ids": {
+        "background_job_id": "301a7280-df74-4639-ae8a-d74d8f6f43de",
+        "generation_id": "011a9c29-e826-4646-a500-288d32aafd76"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "18_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "s1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "18_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "s2.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

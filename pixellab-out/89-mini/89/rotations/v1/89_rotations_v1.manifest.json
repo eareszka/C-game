@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "89_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 664 characters>",
+      "format": "png"
+    },
+    "description": "Cuero: a living stretched cowhide spread flat on the ground like a star, pale cream leather, dark maroon claws on each point, a small round face in the middle. Very small game sprite, 1px black outline, flat colours.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "de1d4e03-0c8b-4023-8206-9b92e38ddec4",
+    "generation_id": "26615bbf-a639-4c52-9e1b-4d77b0368fba"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

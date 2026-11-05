@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "subject": "a",
+  "generated": "2026-11-05T14:35:08Z",
+  "spent": {
+    "calls": 3,
+    "generations": 3.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "a_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "c3201.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "a_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "c3202.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "a_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "c3203.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 61 tall (columns 10-88, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.1% of 2670 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_1.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 62 tall (columns 10-88, rows 2-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.5% of 2671 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_2.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 62 tall (columns 10-88, rows 2-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.5% of 2675 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((19, 35), 'b6433d')]; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_3.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 62 tall (columns 10-88, rows 2-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.2% of 2685 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_4.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 81 wide x 61 tall (columns 10-90, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.3% of 2700 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_5.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 82 wide x 60 tall (columns 10-91, rows 4-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.5% of 2673 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_6.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 81 wide x 61 tall (columns 10-90, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.2% of 2679 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== C:/Users/13178/OneDrive - UWM/Desktop/projects/C-game/art/enemies/pixellab/93_chipique/redo3/whole/c_7.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 81 wide x 61 tall (columns 10-90, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.2% of 2669 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+PASS

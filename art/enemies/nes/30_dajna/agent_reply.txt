@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 193x133, 8 colours plus black.
+Unmet: nothing, but "thunder" isn't drawn as lightning or any other storm mark, because the reference shows none.

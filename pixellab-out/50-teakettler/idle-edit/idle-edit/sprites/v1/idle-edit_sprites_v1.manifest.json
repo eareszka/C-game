@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 312 characters>",
+          "format": "png"
+        },
+        "width": 32,
+        "height": 32
+      }
+    ],
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "description": "<elided 1120 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "70dea81e-6ae2-4c81-929e-5902316f397c",
+    "generation_id": "4c8d039f-8dc3-4dfd-abaa-3fc9b163ec03"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "50-teakettler-idle-frame0.png"
+  ]
+}

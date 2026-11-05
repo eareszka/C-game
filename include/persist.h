@@ -15,6 +15,7 @@
 //   dungeons:  per dungeon (its interior seed, as DungeonChestRecord), a bit
 //              per spawner whose enemy was beaten, and a bit per dungeon_rocks
 //              node broken (ore veins, opened chests' wood).
+//   wilds:     every overworld pack member beaten (wild_key, wilds.h).
 //
 // Read by the phase-2 world thread while the game records, so every call
 // takes one lock.
@@ -35,6 +36,12 @@ void persist_spawner_beaten(uint32_t dungeon_seed, int spawner);
 void persist_node_broken(uint32_t dungeon_seed, int node);
 // The dungeon's record, or all-zero when it has none.
 DungeonDeadRecord persist_dungeon(uint32_t dungeon_seed);
+
+void persist_wild_beaten(uint32_t key);
+bool persist_wild_has(uint32_t key);
+// The wilds' block, after the rest (save version 20): a count, then the keys.
+bool persist_wilds_write(FILE* f);
+bool persist_wilds_read(FILE* f);
 
 // The save's block: counts, then the lists. False on a short or bad read.
 bool persist_write(FILE* f);

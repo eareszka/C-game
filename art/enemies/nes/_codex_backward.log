@@ -1,0 +1,22 @@
+ELITE: 12 to redraw, 11 already finished, 1 to draw now: 29
+--- 1 of 1: 29 Karnabo
+The other run has this one, so moving on.
+=== ELITE: 11 of 12 finished.
+The other run is still drawing: 29
+Review board: art\enemies\nes\_boards\ELITE.png
+SEVERE: 15 to redraw, 11 already finished, 4 to draw now: 40 46 94 91
+--- 1 of 4: 40 Slide-Rock Bolter
+Job 40 finished, exit code 1.
+Tools used: {}
+Commands it ran:
+
+--- 2 of 4: 46 Lusca
+Job 46 finished, exit code 1.
+Tools used: {}
+Commands it ran:
+
+Stopping after two failures in a row. This is often a usage limit. Run the same command again to carry on.
+=== SEVERE: 11 of 15 finished.
+Failed this run: 40 46
+Still to draw: 40 46 94 91
+Review board: art\enemies\nes\_boards\SEVERE.png

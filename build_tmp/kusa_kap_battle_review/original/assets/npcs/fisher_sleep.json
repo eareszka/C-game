@@ -1,0 +1,37 @@
+{
+  "frame_width": 14,
+  "frame_height": 20,
+  "frames": 3,
+  "duration_ms": 700,
+  "playback": [
+    0,
+    1,
+    2,
+    1
+  ],
+  "source": "art/npcs/fisher_sleep_exact.aseprite",
+  "reference": "assets/npcs/fisher.png",
+  "reference_row": 2,
+  "reference_sha256": "07d290e2148c05a9dabf994364a6051ac8802fc6d2537af8d26fd57b7a4be8e3",
+  "palette": {
+    "0": "000000",
+    "1": "2850a0",
+    "2": "9797aa",
+    "3": "d7a175"
+  },
+  "face_edits": [
+    [
+      5,
+      10
+    ],
+    [
+      4,
+      11
+    ],
+    [
+      4,
+      12
+    ]
+  ],
+  "plugin_pixel_verified": true
+}

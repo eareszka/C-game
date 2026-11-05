@@ -1,0 +1,8 @@
+{
+  "sha256": {
+    "assets/enemies/45_kusa_kap.png": "0b37bae2914c400729d817d34d6617ecb0776a225997cb3e2afe92f565082b85",
+    "assets/enemies/45_kusa_kap.aseprite": "8257b4719208c46bf1d61228faef2fc71a7a3f5d27bca8b448d584db0b77bb9c",
+    "art/enemies/claude/45_kusa_kap/45_kusa_kap.png": "fcfe1731a6860b99171948a9dd15d4ce6539d9511ef07823b98902408d267adb",
+    "art/direction/approved_enemy_study/approved_42_fronts_native_512.png": "1fb1b19cae804a51cc02c75d6fed057829c6c2cd98e35e5cef126a70da40cac2"
+  }
+}

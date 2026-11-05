@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "walk-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 424 characters>",
+      "format": "png"
+    },
+    "action": "Walking backwards in place, trotting tail-first: it keeps facing the same way while its four thin legs step back toward its tail, one diagonal pair then the other. Same facing, same size, ground line. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "39754d3a-c37a-44fb-84be-b29f4396125a",
+    "generation_id": "a9b9cbf7-6f53-4421-9396-127fe977af46"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "50-teakettler-walk-u-00.png",
+    "50-teakettler-walk-u-01.png",
+    "50-teakettler-walk-u-02.png",
+    "50-teakettler-walk-u-03.png",
+    "50-teakettler-walk-u-04.png"
+  ]
+}

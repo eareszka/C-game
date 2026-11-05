@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "s_animations_v5",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2428 characters>",
+      "format": "png"
+    },
+    "action": "Standing still and watching: it breathes slowly, its head and huge antlers sway and dip a little lower, blood dripping from the antler tips. Feet stay planted, same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 745
+  },
+  "links": {},
+  "seed": 745,
+  "ids": {
+    "background_job_id": "d7838a76-8bf1-4b26-9f4f-5f01b2d48a60",
+    "generation_id": "2c21cb63-2151-45f4-a030-fb683d2a8673"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idleu-00.png",
+    "idleu-01.png",
+    "idleu-02.png",
+    "idleu-03.png",
+    "idleu-04.png",
+    "idleu-05.png",
+    "idleu-06.png"
+  ]
+}

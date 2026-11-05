@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "dash-animate-dr",
+  "generated": "2026-10-28T08:48:48Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "dash-animate-dr_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "53-come-at-a-body-dash-dr-00.png",
+        "53-come-at-a-body-dash-dr-01.png",
+        "53-come-at-a-body-dash-dr-02.png",
+        "53-come-at-a-body-dash-dr-03.png",
+        "53-come-at-a-body-dash-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "0086ee8a-e956-4985-9411-cb613aa7eb20",
+        "generation_id": "7d99789c-93fa-41ea-856d-a767d5836d33"
+      }
+    }
+  ]
+}

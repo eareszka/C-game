@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 31x31, 8 colours plus black.
+Unmet: Red eyes are kept to the rule's 2 px each instead of the reference's large red patches, so they read small at game size.

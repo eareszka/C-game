@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "c1_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 349 characters>",
+    "image_size": {
+      "width": 64,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "medium detail",
+    "view": "side",
+    "direction": "south-east",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "cu-sith-the-highland-fairy-hound-a-huge-wolfhoun.png"
+  ]
+}

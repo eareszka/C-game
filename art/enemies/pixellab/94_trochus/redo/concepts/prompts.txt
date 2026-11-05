@@ -1,0 +1,4 @@
+c1|huge sea monster curled into a giant wheel, a whale-like body rolled in a full circle nose to tail, tall spiny crest around the rim, small shy eye, flat colours, side view, no water, transparent background, game enemy sprite
+c2|giant wheel-shaped sea beast standing on its edge like a cartwheel, round dark blue-grey body, ring of long spines and a crest radiating from the rim, small timid face in the hub, flat colours, no water, game enemy sprite
+c3|enormous whale rolling forward in a tight arc, back arched into a wheel, row of large spines and a high crest along its curved back, tail curling under to meet the head, small eye, flat colours, side view, no water, game enemy sprite
+c4|great armoured sea monster coiled like a spoked wheel, pale belly plates as spokes, dark hide rim with big spines and a crest on top, flippers tucked, small shy eyes peeking out, flat colours, no water, game enemy sprite

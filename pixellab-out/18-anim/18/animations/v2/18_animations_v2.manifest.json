@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "18_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1668 characters>",
+      "format": "png"
+    },
+    "action": "<elided 271 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "340ab10c-d8e8-4137-b6e5-9da95bcd1c7c",
+    "generation_id": "159a689d-af77-487a-a2f7-bca7be61b299"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "heave-00.png",
+    "heave-01.png",
+    "heave-02.png",
+    "heave-03.png",
+    "heave-04.png"
+  ]
+}

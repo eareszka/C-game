@@ -12,7 +12,10 @@ tones and black, one ramp placed by form, flat fills), in a strip:
         place_cave_nodes) in its own ore's -- tools/gen_cave_tiles.py swaps
         G for the ore's lit tone and g for its base (the user, 2026-10-15:
         "same shape but instead of gold vein its whatever material the cave offers")
-  vein_a, vein_b, vein_c  the vein with one nugget flared, its twinkle's frames
+  vein_a, vein_b, vein_c  the vein with one nugget flared, its twinkle's frames:
+        the game plays the plain vein, vein_a and vein_b, three frames on the
+        world's ambient beat (src/core.h, include/resource_node.h vein_frame);
+        vein_c stays drawn, unplayed, so the cells keep their places
 K/S/B/L are the stone key tones -- line, shade, base, lit (gen_cave_entrances.py
 TONES), as in art/items/items_design.py; G/g an ore's lit and base, here kharvite's.
 """

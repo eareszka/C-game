@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-u",
+  "generated": "2026-10-29T13:48:42Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "35-lomie-idle-u-00.png",
+        "35-lomie-idle-u-01.png",
+        "35-lomie-idle-u-02.png",
+        "35-lomie-idle-u-03.png",
+        "35-lomie-idle-u-04.png"
+      ],
+      "ids": {
+        "background_job_id": "493a6896-fc7f-482c-83fa-349cb69e0edc",
+        "generation_id": "5bbc47db-e8fb-4689-9d80-69338b5f7827"
+      }
+    }
+  ]
+}

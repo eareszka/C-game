@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur",
+  "generated": "2026-11-02T14:46:56Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "45-kusa-kap-idle-ur-00.png",
+        "45-kusa-kap-idle-ur-01.png",
+        "45-kusa-kap-idle-ur-02.png",
+        "45-kusa-kap-idle-ur-03.png",
+        "45-kusa-kap-idle-ur-04.png"
+      ],
+      "ids": {
+        "background_job_id": "e4005094-bba8-475b-a895-cd0839c6051e",
+        "generation_id": "9b571e86-3bec-41be-9aa0-6095952993e9"
+      }
+    }
+  ]
+}

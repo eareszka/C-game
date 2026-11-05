@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "subject": "hb",
+  "generated": "2026-11-05T12:54:13Z",
+  "spent": {
+    "calls": 5,
+    "generations": 5.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "cleaned",
+      "route": "resize",
+      "run": "hb_cleaned_v1",
+      "directory": "cleaned/v1",
+      "files": [
+        "old63-pad-48.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "cleaned",
+      "route": "resize",
+      "run": "hb_cleaned_v2",
+      "directory": "cleaned/v2",
+      "files": [
+        "old63-pad-52.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "hb_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "e6301.png"
+      ],
+      "ids": {
+        "background_job_id": "79f1136f-322f-4b39-8f02-c6a6ffd62aa2",
+        "generation_id": "2c5658aa-69fe-43a4-97b1-d92a0ac656e0"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "hb_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "e6302.png"
+      ],
+      "ids": {
+        "background_job_id": "4461aadc-bb52-440c-81a3-d36bbb282ae7",
+        "generation_id": "e6e3cf1c-7c36-4692-b490-4caf4133ad0f"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "hb_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "e6303.png"
+      ],
+      "ids": {
+        "background_job_id": "9e9aa4fb-d635-45ca-8c4b-9ca7cb087593",
+        "generation_id": "338ebf9e-ee80-48c7-bfbd-094288876c08"
+      }
+    }
+  ]
+}

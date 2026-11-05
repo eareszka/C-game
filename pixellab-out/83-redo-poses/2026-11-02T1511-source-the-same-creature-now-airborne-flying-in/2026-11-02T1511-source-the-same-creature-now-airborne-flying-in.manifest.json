@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1511-source-the-same-creature-now-airborne-flying-in",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1780 characters>",
+      "format": "png"
+    },
+    "description": "<elided 350 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 862
+  },
+  "links": {},
+  "seed": 862,
+  "ids": {
+    "background_job_id": "1d59a9f9-a7fe-4b58-9590-3ed775f513a0",
+    "generation_id": "efe4b1e4-933f-48e9-84c7-c7f231b79e46"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f2.png"
+  ]
+}

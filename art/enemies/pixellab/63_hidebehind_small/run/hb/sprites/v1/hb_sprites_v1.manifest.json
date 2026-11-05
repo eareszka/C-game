@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "hb_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2016 characters>",
+      "format": "png"
+    },
+    "description": "Redraw this same creature much smaller as a clean chunky sprite. Same design, pose and colours: a tall dark brown cloaked shape with a pointed hood, glowing eyes, raised arms and long pale claws. Fewer pixels, simple clean hard shapes, no fur texture.",
+    "width": 48,
+    "height": 48,
+    "no_background": true,
+    "seed": 6301
+  },
+  "links": {},
+  "seed": 6301,
+  "ids": {
+    "background_job_id": "79f1136f-322f-4b39-8f02-c6a6ffd62aa2",
+    "generation_id": "2c5658aa-69fe-43a4-97b1-d92a0ac656e0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e6301.png"
+  ]
+}

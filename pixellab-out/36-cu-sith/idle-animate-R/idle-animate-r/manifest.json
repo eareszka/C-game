@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-r",
+  "generated": "2026-10-29T16:06:27Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-r_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "36-cu-sith-idle-r-00.png",
+        "36-cu-sith-idle-r-01.png",
+        "36-cu-sith-idle-r-02.png",
+        "36-cu-sith-idle-r-03.png",
+        "36-cu-sith-idle-r-04.png"
+      ],
+      "ids": {
+        "background_job_id": "d2cfaa4a-fec9-4ded-badf-657f59dbd0b5",
+        "generation_id": "365c6fc2-7b0a-4b60-9914-9aee4dcfdcf1"
+      }
+    }
+  ]
+}

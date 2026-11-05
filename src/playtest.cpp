@@ -12,6 +12,7 @@
 #endif
 
 static const char* const ORDER_PATH  = "playtest/order.txt";
+static const char* const RECHECK_PATH = "playtest/recheck.txt";
 static const char* const TRIALS_PATH = "playtest/trials.csv";
 static const char* const TRIALS_OLD  = "playtest/trials_v1.csv";   // rows from before the knife (timed, shots did nothing)
 static const char* const TRIALS_HEAD =
@@ -57,10 +58,27 @@ int playtest_order(int* ids, int max) {
     return n;
 }
 
-void playtest_run_label(char* out, size_t n, bool reverse) {
+int playtest_recheck(int* ids, int n) {
+    // Keep the ids listed in RECHECK_PATH (one a line, id first; # a
+    // comment), in the order they came. No file, or none listed: none kept.
+    bool want[ENEMY_COUNT] = {};
+    if (FILE* f = fopen(RECHECK_PATH, "r")) {
+        char ln[160];
+        int id;
+        while (fgets(ln, sizeof(ln), f))
+            if (ln[0] != '#' && sscanf(ln, "%d", &id) == 1 && id >= 0 && id < ENEMY_COUNT) want[id] = true;
+        fclose(f);
+    }
+    int m = 0;
+    for (int i = 0; i < n; i++) if (want[ids[i]]) ids[m++] = ids[i];
+    return m;
+}
+
+void playtest_run_label(char* out, size_t n, bool reverse, bool check) {
     time_t now = time(nullptr);
     struct tm* lt = localtime(&now);
-    snprintf(out, n, "%04d-%02d-%02d-%s", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday, reverse ? "rev" : "fwd");
+    snprintf(out, n, "%04d-%02d-%02d-%s%s", lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
+             reverse ? "rev" : "fwd", check ? "-chk" : "");
 }
 
 bool playtest_logged(const char* run, int id) {

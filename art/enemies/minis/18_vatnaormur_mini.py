@@ -1,69 +1,97 @@
-"""18 Vatnaormur's map mini: the lake serpent coming at you through its own water, its head turned three
-quarters, at the player's scale, one drawing for every way it goes, two frames (tools/minis.py).
+"""18 Vatnaormur's map mini, redone with its battle sprite (the user, 2026-11-02): the slug-faced serpent, symmetrical,
+looking straight down. The old mini is kept in art/enemies/pixellab/18_vatnaormur/mini/old/.
 
-Its battle sheet only faces front (it never leaves its lake). The user, 2026-10-14: "has a single dashing
-sprite for all directions where the head is tilted 3/4 directions"; then "should be big size and more
-intimadating"; then "should be much bigger and move pretty much straight". So one drawing in all four views,
-44 px tall, near its battle size (its battle frames stand 51): the shrink of its battle frame, its bound
-tail ends cut so it fits an 80 x 48 canvas (too big for the sheet's 40 x 28 cells, it has a strip of its own,
-assets/enemies/minis_18.png), with by hand: its slug's face as in battle (the user: "needs to look more like a
-slug in the face like the orignal sprite"), the eye stalks on top and the small round toothed mouth, the mouth
-moved 3 px to its right to turn the face three quarters; the lake under it with a clean edge. The second frame
-sinks it a pixel as it surges. Four of its battle colours and black, one over the bible's three, as a giant
-battle sprite may have more (its slug's face needs its light grey): its dark grey, its grey (the face, the
-light down its neck and coils), its pink (the stalk eyes, the teeth, its throat and the undersides of its
-coils), its lake blue. Its white goes.
+The user's standing wishes for this mini (2026-10-14) stay: big and intimidating, near its battle size, one drawing in all
+four views, moving pretty much straight. So 42 px tall on an 80x48 canvas with a strip of its own (assets/enemies/minis_18.png).
 
-Its chase: straight at you, at the chase pace (the default in chase_speed(), src/main.cpp).
+Through PixelLab (art/enemies/pixellab/18_vatnaormur/mini, pixellab-out/18-mini, one generation): its battle frame sent at this
+size and given a surge. Frame 0 lies low, frame 1 its body heaved up, on the mini's palette, mirrored from the left half so
+it stays exactly symmetrical. One black outline. Submerged as the old mini was (the user): its lower body cut at the waterline, its lake under it with a clean
+edge, in the old mini's lake blue; the second frame sinks a pixel as it surges. Peach, dark grey, lake blue and black: the bible's three.
+
+Its chase: straight at you, at the chase pace (the default in chase_speed(), src/main.cpp), as before.
 
     python art/enemies/minis/18_vatnaormur_mini.py
 """
 from pathlib import Path
+from collections import Counter
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tools'))
+from PIL import Image
+ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(ROOT / 'tools'))
 import minis, first_frame as ff
 
-PAL = {'K': '000000', 'G': '595965', 'H': '848694', 'P': 'ec8476', 'B': '3e91cc'}
+PAL = {'K': '000000', 'P': 'f0b890', 'D': '34343e', 'W': '3e91cc'}
 CHASE = 'straight'
-CW, CH = 80, 48                              # its canvas; the feet on row 46, the outline under them on 47
-LETTERS = {'595965': 'G', '474751': 'G', '848694': 'H', 'a4aaba': 'H', '3e91cc': 'B', '84a7e9': 'B',
-           'ec8476': 'P', 'fcfcfc': 'P'}
-X0, Y0 = -19, -15                            # the shrink's columns -19..59 and rows -15..27 are the drawing's 0..78, 0..42
-MOUTH = (36, 12, 6, 3)                       # its battle mouth, small, round, toothed: column, row, width, height
+CW, CH = 80, 48
+HEIGHT = 44
+SRC = next((ROOT / 'pixellab-out/18-mini').rglob('surge-00.png')).parent
+PICKS = (1, 4)
+N4 = ff.N4
 
 
-def drawing():
-    g = minis.clean(minis.shrink(minis.battle_views(18)['D'], 44, LETTERS))
-    rows = [[g.get((x + X0, y + Y0), '.') for x in range(79)] for y in range(43)]
-    x0, y0, w, h = MOUTH                     # its face turned three quarters: the mouth moved 3 to its right
-    mouth = [rows[y][x0:x0 + w] for y in range(y0, y0 + h)]
-    for y in range(y0, y0 + h):
-        rows[y][x0:x0 + w] = 'H' * w
-    for i, m in enumerate(mouth):
-        for j, c in enumerate(m):
-            if c in 'KP': rows[y0 + i][x0 + 3 + j] = c
-    for y in range(27, 35):                  # the cut tail ends: the humps' outer walls closed
-        for x in (0, 1, 2, 76, 77, 78):
-            rows[y][x] = '.'
-        if rows[y][3] != '.': rows[y][3] = 'K'
-        if rows[y][75] != '.': rows[y][75] = 'K'
-    rows[34][:3] = rows[34][76:] = '...'
-    rows = [''.join(r)[1:78] for r in rows]  # 77 wide: a column clear either side of the canvas
-    rows[35] = '.' + 'K' * 75 + '.'          # the water's edge
-    for y in range(36, 40):
-        rows[y] = 'K' + 'B' * 75 + 'K'
-    return rows
+def fold(p):
+    if sum(p) < 95: return 'K'
+    r, g, b = p
+    if r < 110: return 'D'                                  # the greys
+    return 'P'                                              # peach and its salmon shade alike: one flat slug
 
 
-def sink(rows):
-    """Its body a pixel lower, the water as it was."""
-    return ['.' * 77] + rows[:34] + rows[35:]
+def flat(g, most=2):
+    seen, out = set(), dict(g)
+    for p, c in g.items():
+        if p in seen: continue
+        piece, todo = {p}, [p]
+        while todo:
+            a = todo.pop()
+            for dx, dy in N4:
+                q = (a[0] + dx, a[1] + dy)
+                if q not in piece and g.get(q) == c: piece.add(q); todo.append(q)
+        seen |= piece
+        if c == 'K' or len(piece) > most: continue
+        n = Counter(g[q] for a in piece for q in ((a[0] + dx, a[1] + dy) for dx, dy in N4) if q in g and q not in piece and g[q] != 'K')
+        if n:
+            for a in piece: out[a] = n.most_common(1)[0][0]
+    return out
 
 
-BASE = drawing()
-VIEWS = {v: [BASE, sink(BASE)] for v in 'DULR'}
-FRAMES = {v: [ff.grid([(5 + y, 1, r) for y, r in enumerate(rows)], PAL) for rows in fs] for v, fs in VIEWS.items()}
+def frame(i):
+    im = Image.open(SRC / f'surge-{i:02d}.png').convert('RGBA')
+    g = {(x, y): fold(im.getpixel((x, y))[:3]) for y in range(im.height) for x in range(im.width) if im.getpixel((x, y))[3] > 127}
+    xs = [x for x, y in g]
+    # its own middle: the head's centre, found on the stalks' row span
+    mid2 = min(xs) + max(xs)
+    left = flat({p: c for p, c in g.items() if p[0] * 2 <= mid2})
+    both = dict(left)
+    for (x, y), c in left.items(): both[mid2 - x, y] = c
+    edge = {p for p, c in both.items() if c == 'K' and any((p[0] + a, p[1] + b) not in both for a, b in N4)}
+    body = {p: c for p, c in both.items() if p not in edge}
+    xs, ys = [x for x, y in body], [y for x, y in body]
+    dx, dy = CW // 2 - (min(xs) + max(xs)) // 2, CH - 2 - max(ys)
+    placed = {(x + dx, y + dy): c for (x, y), c in body.items()}
+    return placed
+
+
+WATERLINE = CH - 8           # rows from here down are under the lake
+RX, RY = 34, 6               # the lake's half width and half height
+SINK = (0, 1)                # frame: rows it has sunk
+
+
+def submerged(g, f):
+    """Its lower body gone under: cut at the waterline, the lake's clean oval below, one black outline round all of it."""
+    above = {(x, y + SINK[f]): c for (x, y), c in g.items() if y + SINK[f] < WATERLINE}
+    cx, cy = CW // 2, CH - 2 - RY
+    lake = {}
+    for y in range(cy - RY, cy + RY + 1):
+        for x in range(cx - RX, cx + RX + 1):
+            if ((x - cx) / RX) ** 2 + ((y - cy) / RY) ** 2 < 1: lake[x, y] = 'W'
+    lake.update(above)
+    return ff.outline(lake)
+
+
+pics = [submerged(frame(i), f) for f, i in enumerate(PICKS)]
+FRAMES = {v: pics for v in 'DULR'}      # one drawing every way (the user)
 
 if __name__ == '__main__':
-    minis.make(18, 'vatnaormur', FRAMES, PAL, cap=44, cell=(CW, CH), colours=4)
+    minis.make(18, 'vatnaormur', FRAMES, PAL, cap=HEIGHT, cell=(CW, CH))
     minis.chase_gif(18, CHASE, FRAMES, PAL, cell=(CW, CH))

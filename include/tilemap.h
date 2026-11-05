@@ -11,7 +11,7 @@
 // The world a seed grows. Bump it whenever generation changes what a seed
 // grows: a save names the version it was played in, and one from another is
 // refused (save.cpp), since its dungeons, landmarks and ground have moved.
-enum { WORLDGEN_VERSION = 9 };   // 3: the props (2026-10-26); 4: the snow's props (2026-10-27); 5: the wasteland overhaul, void pools and volcanoes (2026-10-27); 6: its stage 2, walls, mazes, the gate, rubble; 7: wasteland rivers are void; 8: their change cut across the river; 9: the wasteland's roster filled out, its remains
+enum { WORLDGEN_VERSION = 10 };   // 3: the props (2026-10-26); 4: the snow's props (2026-10-27); 5: the wasteland overhaul, void pools and volcanoes (2026-10-27); 6: its stage 2, walls, mazes, the gate, rubble; 7: wasteland rivers are void; 8: their change cut across the river; 9: the wasteland's roster filled out, its remains; 10: town 2 (Xuelin) on the snow's edge
 
 // The shape of the world. Two opposite edges are hard borders -- the ocean and
 // the mountain edge across from it -- and the other two are joined: walk off
@@ -372,6 +372,11 @@ void tilemap_draw_depth(const Tilemap* map, const Camera* cam, SDL_Renderer* ren
 // where their feet meet the ground, the bottom of the feet box.
 void tilemap_draw_over_player(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
                               float x, float y, float w, float h, float feet_y);
+// The world rects of the tree crowns tilemap_draw_depth lays over the box
+// (x, y, w, h) that belong to trees behind feet at feet_y -- the ones a
+// sprite there should show over; up to max of them, the count returned.
+int tilemap_canopy_cells(const Tilemap* map, float x, float y, float w, float h, float feet_y,
+                         SDL_Rect* out, int max);
 
 // What a cell of overworld art means to the player, pixel by pixel
 // (art/structures/gen_entrance_art.py writes one for every cell of a structure
@@ -476,6 +481,11 @@ void minimap_draw(const Tilemap* map, SDL_Renderer* renderer,
 bool tilemap_is_walkable(const Tilemap* map, int tile_x, int tile_y);
 // TileSolidFn-compatible wrapper: returns true if pixel (px,py) is on a non-walkable tile.
 bool tilemap_pixel_solid(const void* map, float px, float py);
+// Whether what stands on pixel (px, py)'s tile is something low enough to
+// bounce over -- a prop, a rock, a tree, a vein, a node -- rather than the
+// ground itself being shut (a cliff, water, a wall). A tumbleweed hops the
+// one and glances off the other (src/tumbleweed.cpp).
+bool tilemap_low_obstacle(const Tilemap* map, float px, float py);
 // Whether pixel (px,py) is water -- sea, river, the ring round the start, a
 // pond -- along the same smoothed waterline the collision and the drawing use.
 // Not lava. What a raft floats on.
@@ -515,6 +525,8 @@ bool minimap_click_to_world(int screen_w, int screen_h, int mx, int my,
                              float* out_world_x, float* out_world_y);
 
 // Signal the background generation thread to abort early (call before join on shutdown).
+// Whether phase 2 has finished: the whole world laid, roads and props too.
+bool tilemap_world_done();
 void tilemap_cancel_gen();
 void tilemap_reset_gen_cancel();
 
@@ -538,9 +550,29 @@ float wrap_px(float px);      // a pixel position back to canonical
 float wrap_py(float py);
 
 bool tilemap_face_at(int x, int y);
+// Behind an island: the player on the low ground, past its back outline, hidden
+// by it, as far as the real back edge (src/tilemap.cpp, BackRun). One player, so
+// one state. try_enter takes the feet box's sides and bottom, pressing south;
+// update clears it once the feet are out; safe_y is how far to move the feet
+// (negative, up the screen) to stand clear of the outline, for a save.
+bool  tilemap_behind_active(void);
+void  tilemap_behind_clear(void);
+bool  tilemap_behind_try_enter(const Tilemap* map, float x1, float x2, float y2);
+void  tilemap_behind_update(float x1, float x2, float y2);
+bool  tilemap_behind_solid(const Tilemap* map, float px, float py);
+float tilemap_behind_safe_y(float x1, float x2, float y2);
+void  tilemap_draw_behind_cover(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
+                                float x, float y, float w, float h);
+// Walks every outline in the built world; for tools/cliff_leak_check.cpp. An
+// escape is a way behind an island that comes out on top of a plateau.
+struct BehindAudit { int runs, usable, escapes; long long positions; int first_x, first_y; };
+void  tilemap_behind_audit(const Tilemap* map, BehindAudit* out);
 // The plateau level a tile stands at, 0 for the flat. For the tools' ground
 // dumps, which otherwise cannot tell a plateau top from the field below.
 int  tilemap_cliff_elev_at(int x, int y);
+// The biome a tile reads as (TILE_SNOW, TILE_WASTELAND, TILE_SAND, TILE_TREE for
+// forest, TILE_GRASS for open ground), as worldgen's own biome_of answers.
+int  tilemap_biome_at(const Tilemap* map, int x, int y);
 // Whether the cave entrance on this tile is a ladder down a hole (flat ground,
 // a storey's top) rather than a mouth walked into at a wall's foot.
 bool tilemap_cave_hole_at(const Tilemap* map, int x, int y);

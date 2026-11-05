@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d-try5_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\19-skeljaskrimsli-idle-d-try5-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-D-try5\\idle-animate-d-try5\\animations\\v1\\idle-animate-d-try5_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "74ac6ab5-5599-497c-be0a-768b4a069dcb",
+    "generation_id": "c8c84470-8a5d-4687-bf4a-57ee509697e5"
+  }
+}

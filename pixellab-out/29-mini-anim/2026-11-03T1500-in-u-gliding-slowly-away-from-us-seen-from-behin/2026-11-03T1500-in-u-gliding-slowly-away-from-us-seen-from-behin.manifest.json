@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1500-in-u-gliding-slowly-away-from-us-seen-from-behin",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 952 characters>",
+      "format": "png"
+    },
+    "action": "Gliding slowly away from us, seen from behind at level camera: the robe's hem sways side to side, the long arms sway and the hands open and close. Same size and design, same flat colours, no face, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1372
+  },
+  "links": {},
+  "seed": 1372,
+  "ids": {
+    "background_job_id": "b332f077-86ce-472b-961b-3efaf3cbc3b1",
+    "generation_id": "612707fc-bd6f-445f-9e71-74fcae2a1536"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walku-00.png",
+    "walku-01.png",
+    "walku-02.png",
+    "walku-03.png",
+    "walku-04.png"
+  ]
+}

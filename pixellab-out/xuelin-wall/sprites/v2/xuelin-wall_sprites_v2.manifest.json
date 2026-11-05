@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "xuelin-wall_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 294 characters>",
+    "image_size": {
+      "width": 128,
+      "height": 128
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "medium detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wall-corner.png"
+  ]
+}

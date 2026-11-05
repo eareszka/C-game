@@ -1,0 +1,46 @@
+{
+  "id": 79,
+  "name": "79-ugjuknarpak",
+  "dir": "art/enemies/pixellab/79_ugjuknarpak",
+  "description": "Ugjuknarpak: a giant grey bearded seal reared up on its hind flippers like a bear, two long ivory tusks, a pale whiskery beard, clawed fore-flippers raised. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/79_ugjuknarpak.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 200,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Reared up in place, clawing the air: it raises its left clawed flipper high and rakes down, opens its tusked mouth wide in a roar, then raises its right clawed flipper and rakes down. Hind flippers planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4,
+          6,
+          7
+        ],
+        "U": [
+          0,
+          2,
+          8,
+          1,
+          8
+        ]
+      },
+      "ground": true,
+      "despeckle": 2,
+      "views_note": "views reassigned by eye (views.py): PixelLab's rotate names ran a step round"
+    }
+  }
+}

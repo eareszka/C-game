@@ -58,12 +58,19 @@ bool overworld_entrance_at(const Tilemap* map, float feet_x, float feet_y);
 void overworld_update(Overworld* ow, Player* player, const Input* in, float dt,
                       ResourceNodeList* resources, Tilemap* map, const Camera* cam,
                       bool noclip = false, HarvestResult* out_harvest = nullptr);
+// Whether the worn bike is being ridden right now: not while the raft (afloat
+// or run aground) or the boat is under them.
+bool overworld_riding(const Overworld* ow, const Player* player, const Tilemap* map);
 
 // Draw the player sprite at any world position — used in all game states.
 // `frame` is the sheet frame to draw instead of the walk's: a swing frame
 // while a weapon is in use (WeaponSwingState::body_frame), -1 for the walk.
 void player_draw(const Player* player, float world_x, float world_y,
                  const Camera* cam, SDL_Renderer* ren, SDL_Texture* sprite, int frame = -1);
+// The player on the bicycle (assets/player_bike.png, player_bike_frame) at
+// the same place: drawn instead of player_draw wherever they are riding.
+void player_draw_bike(const Player* player, float world_x, float world_y,
+                      const Camera* cam, SDL_Renderer* ren, SDL_Texture* bike);
 
 // Draw whatever the weapon is doing right now — a sweeping blade, a stab, or
 // a thrown object in flight. Does nothing when idle.

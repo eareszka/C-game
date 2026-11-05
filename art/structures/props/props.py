@@ -80,7 +80,7 @@ PROPS = [
     ('berry_bush',    F + 'berry_bush.png',       0, 1, 2, 1, FOREST, ['TH_UNDERGROWTH'], False, 3, 0, 5,   'axe',   [('VINE', 1), ('FLOWER', 1)]),
     ('bramble',       F + 'bramble.png',          0, 2, 1, 1, FOREST, ['TH_UNDERGROWTH'], False, 3, 0, 'low', 'axe',  [('VINE', 2)]),
     ('nest_stump',    F + 'nest_stump.png',       0, 1, 2, 1, FOREST, ['TH_UNDERGROWTH'], False, 2, 0, 5,   'axe',   [('WOOD', 2), ('FEATHER', 1)]),
-    ('sapling',       F + 'sapling.png',          0, 1, 2, 4, FOREST, ['TH_UNDERGROWTH'], False, 3, 0, 3,   'axe',   [('WOOD', 1), ('VINE', 1)]),
+    ('sapling',       F + 'sapling.png',          0, 1, 2, 3, FOREST, ['TH_UNDERGROWTH'], False, 3, 0, 3,   'axe',   [('WOOD', 1), ('VINE', 1)]),
     ('deer_skull',    F + 'deer_skull.png',       0, 1, 1, 1, FOREST, ['TH_UNDERGROWTH'], False, 1, 0, 'lying', 'any', [('BONE', 1), ('HORN', 1)]),
 
     # -- plains: a farmstead, or Mayan ruins; never the two together --
@@ -105,7 +105,7 @@ PROPS = [
     ('maize',         P + 'maize.png',            0, 2, 2, 1, PLAINS, ['TH_MAYAN'], False, 3, 0, 5,       'axe',   [('VINE', 2), ('FLOWER', 1)]),
 
     # -- snow: the ice field, an abandoned expedition's camp, a mammoth graveyard --
-    ('ice_spire',     S + 'ice_spire.png',        0, 2, 3, 4, SNOW, ['TH_ICE'], True,  1, 0, 6,           'stone', [('STONE', 3)]),
+    ('ice_spire',     S + 'ice_spire.png',        0, 2, 3, 3, SNOW, ['TH_ICE'], True,  1, 0, 6,           'stone', [('STONE', 3)]),
     ('ice_cluster',   S + 'ice_cluster.png',      0, 1, 1, 1, SNOW, ['TH_ICE'], False, 3, 1, 'low',       'stone', [('STONE', 1)]),
     ('ice_block',     S + 'ice_block.png',        0, 1, 1, 1, SNOW, ['TH_ICE'], False, 3, 0, 8,           'stone', [('STONE', 1)]),
     ('snow_boulder',  S + 'snow_boulder.png',     0, 2, 2, 1, SNOW, ['TH_ICE'], False, 2, 0, 8,           'stone', [('STONE', 3)]),

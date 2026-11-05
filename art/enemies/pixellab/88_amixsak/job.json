@@ -1,0 +1,52 @@
+{
+  "id": 88,
+  "name": "88-amixsak",
+  "dir": "art/enemies/pixellab/88_amixsak",
+  "description": "Amixsak: an empty walrus hide risen from the sea as a vengeful monster, a sagging hollow brown skin floating upright, a dark empty hollow inside, long yellowed tusks, flippers spread to seize. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/88_amixsak.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Floating in place, bobbing: its empty hide sags and swells, its flippers grope outward, then both flippers fling up high to seize and its empty mouth gapes, then it settles. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2,
+          1,
+          0
+        ],
+        "R": [
+          0,
+          1,
+          2,
+          3,
+          0
+        ],
+        "U": [
+          0,
+          2,
+          4,
+          3,
+          0
+        ]
+      },
+      "ground": false,
+      "despeckle": 2
+    }
+  }
+}

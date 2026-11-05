@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "40-flop_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1736 characters>",
+      "format": "png"
+    },
+    "action": "<elided 305 characters>",
+    "frame_count": 6,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "27ba5bdc-1c77-4f74-8af2-20f1067b122d",
+    "generation_id": "73e0e722-79a3-4bbb-bcd6-cd7a57360094"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flop-00.png",
+    "flop-01.png",
+    "flop-02.png",
+    "flop-03.png",
+    "flop-04.png",
+    "flop-05.png",
+    "flop-06.png"
+  ]
+}

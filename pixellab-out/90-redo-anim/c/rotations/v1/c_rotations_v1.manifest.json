@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "c_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2120 characters>",
+      "format": "png"
+    },
+    "description": "Chipekwe: a huge heavy periwinkle-blue beast with smooth hairless skin, a long curling elephant trunk, one ivory horn above it on the middle of its face, massive legs, navy far legs and belly, a thick tail. Flat colours, black outline.",
+    "no_background": true,
+    "seed": 601
+  },
+  "links": {},
+  "seed": 601,
+  "ids": {
+    "background_job_id": "ad6829ff-4725-4232-913b-42c2efebf750",
+    "generation_id": "22fc582a-db70-4763-8146-40e36d25ae9a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

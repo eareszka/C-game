@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "walk-animate-d",
+  "generated": "2026-10-28T11:17:48Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "walk-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "59-tripodero-walk-d-00.png",
+        "59-tripodero-walk-d-01.png",
+        "59-tripodero-walk-d-02.png",
+        "59-tripodero-walk-d-03.png",
+        "59-tripodero-walk-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "24b115b0-2158-49e0-8d9d-105194a8f2a7",
+        "generation_id": "536d4b0e-ebfa-44bc-bcd3-4a43b194bde6"
+      }
+    }
+  ]
+}

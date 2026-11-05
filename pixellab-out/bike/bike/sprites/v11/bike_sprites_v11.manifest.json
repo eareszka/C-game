@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v11",
+  "provider": "pixellab",
+  "route": "inpaint-v3",
+  "arguments": {
+    "description": "two bicycle wheels seen at a three quarter angle, narrow upright ellipses, each with a thick black rubber tyre around the outside and light grey metal spokes filling the inside. Both wheels identical. Flat colours, black and grey only, no dithering.",
+    "inpainting_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 364 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "mask_image": {
+      "image": {
+        "type": "base64",
+        "base64": "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAAAAABWESUoAAAAL0lEQVR4nGNgGAWjgJqAEc76j8qFASZCJjARUsCCRew/smWUW8FEvBsYaWXFYAAAO3QCGbx4k9kAAAAASUVORK5CYII=",
+        "format": "png"
+      },
+      "size": {
+        "width": 32,
+        "height": 32
+      }
+    },
+    "no_background": true,
+    "crop_to_mask": false,
+    "seed": 62
+  },
+  "links": {},
+  "seed": 62,
+  "ids": {
+    "background_job_id": "ba65c791-576c-45ac-91af-a33b2c4ff979",
+    "generation_id": "d9c9c3b4-ed23-4a96-a6e5-f648cbad31c0"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wheels-dr.png"
+  ]
+}

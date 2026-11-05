@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 428 characters>",
+      "format": "png"
+    },
+    "action": "<elided 261 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5d87ee62-b503-44d1-90f3-dea56a3c53bb",
+    "generation_id": "13095b3b-8b08-461a-a703-22f1cf748b16"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "53-come-at-a-body-idle-d-00.png",
+    "53-come-at-a-body-idle-d-01.png",
+    "53-come-at-a-body-idle-d-02.png",
+    "53-come-at-a-body-idle-d-03.png",
+    "53-come-at-a-body-idle-d-04.png"
+  ]
+}

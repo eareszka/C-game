@@ -1,0 +1,106 @@
+== anim/D_0.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 92 wide x 50 tall (columns 3-94, rows 13-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 8.6% of 2184 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/D_1.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 87 wide x 52 tall (columns 5-91, rows 7-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 9.1% of 2164 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/D_2.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 80 wide x 60 tall (columns 9-88, rows 2-61)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 8.5% of 2112 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/DR_0.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 71 wide x 49 tall (columns 14-84, rows 13-61)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.4% of 1671 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/DR_1.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 71 wide x 55 tall (columns 13-83, rows 8-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.7% of 1626 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/DR_2.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 69 wide x 59 tall (columns 11-79, rows 4-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 12.9% of 1726 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/R_0.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 29 wide x 46 tall (columns 35-63, rows 13-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.8% of 821 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/R_1.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 35 wide x 44 tall (columns 29-63, rows 16-59)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 13.9% of 847 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/R_2.png
+  palette: 0 off-palette pixels; 8 colours plus black
+  drawn box: 34 wide x 60 tall (columns 30-63, rows 3-62)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 11.9% of 932 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/UR_0.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 71 wide x 47 tall (columns 9-79, rows 12-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.7% of 1705 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/UR_1.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 84 wide x 47 tall (columns 7-90, rows 10-56)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 8.1% of 1924 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/UR_2.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 80 wide x 55 tall (columns 10-89, rows 5-59)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 8.5% of 1981 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/U_0.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 92 wide x 44 tall (columns 3-94, rows 14-57)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.7% of 2144 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/U_1.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 74 wide x 53 tall (columns 12-85, rows 6-58)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.1% of 2019 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== anim/U_2.png
+  palette: 0 off-palette pixels; 6 colours plus black
+  drawn box: 67 wide x 56 tall (columns 15-81, rows 5-60)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.4% of 1975 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+PASS

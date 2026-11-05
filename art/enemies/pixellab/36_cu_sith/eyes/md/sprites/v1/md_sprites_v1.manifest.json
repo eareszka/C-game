@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "md_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 976 characters>",
+          "format": "png"
+        },
+        "width": 100,
+        "height": 68
+      }
+    ],
+    "image_size": {
+      "width": 100,
+      "height": 68
+    },
+    "description": "<elided 334 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 1264 characters>",
+        "format": "png"
+      },
+      "width": 100,
+      "height": 68
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "65fb889d-2037-450b-9459-f2f86b0540b7",
+    "generation_id": "f7c59d48-4527-4468-8a05-93cd24d92659"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "eyesd.png"
+  ]
+}

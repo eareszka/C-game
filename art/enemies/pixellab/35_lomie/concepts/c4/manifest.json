@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "c4",
+  "generated": "2026-10-29T13:29:32Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "c4_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "c4.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1109-input-facing-us-and-looking-down-feet-planted-th",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1764 characters>",
+      "format": "png"
+    },
+    "action": "<elided 306 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1281
+  },
+  "links": {},
+  "seed": 1281,
+  "ids": {
+    "background_job_id": "4096b169-2449-4773-9101-29673f79100b",
+    "generation_id": "93322b5d-1132-424e-a5af-8dea013b9624"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png"
+  ]
+}

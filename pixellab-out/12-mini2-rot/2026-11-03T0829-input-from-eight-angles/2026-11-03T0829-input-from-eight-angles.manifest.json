@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0829-input-from-eight-angles",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 728 characters>",
+      "format": "png"
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "30232c84-7934-4440-8f3b-36da398dad6a",
+    "generation_id": "5839906d-e5aa-41b9-ae94-f57a575f7a86"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "input-south-00.png",
+    "input-south-east-01.png",
+    "input-east-02.png",
+    "input-north-east-03.png",
+    "input-north-04.png",
+    "input-north-west-05.png",
+    "input-west-06.png",
+    "input-south-west-07.png"
+  ]
+}

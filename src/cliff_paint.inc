@@ -60,18 +60,19 @@ static void cliff_paint_load(SDL_Surface* rgba) {
 // ground in front of or behind it. Nor is the wall's foot a cave mouth lifts
 // (cave_foot_lifted), which is drawn and walked as ground: the wall's outline
 // runs round it rather than being cut by it.
-static bool cliff_paint_ink(int wx, int wy) {
+static bool cliff_rock_ink(const Tilemap* map, int wx, int wy) {
     int tx = (wx >= 0 ? wx : wx - 15) / 16, ty = (wy >= 0 ? wy : wy - 15) / 16;
     int ax = wx - tx * 16, ay = wy - ty * 16;
     int c = cliff_cell_at(tx, ty);
     if (!c || ISLAND_KIND[c] != 1 || !((s_cliff_ink[c][ay] >> ax) & 1)) return false;
-    return !(s_cliff_paint_map && cave_foot_lifted(s_cliff_paint_map, tx, ty, ax, ay));
+    return !(map && cave_foot_lifted(map, tx, ty, ax, ay));
 }
-static bool cliff_paint_rock(int wx, int wy) {
-    return cliff_paint_ink(wx, wy) ||
-           (cliff_paint_ink(wx - 1, wy) && cliff_paint_ink(wx + 1, wy) &&
-            cliff_paint_ink(wx, wy - 1) && cliff_paint_ink(wx, wy + 1));
+static bool cliff_rock_at(const Tilemap* map, int wx, int wy) {
+    return cliff_rock_ink(map, wx, wy) ||
+           (cliff_rock_ink(map, wx - 1, wy) && cliff_rock_ink(map, wx + 1, wy) &&
+            cliff_rock_ink(map, wx, wy - 1) && cliff_rock_ink(map, wx, wy + 1));
 }
+static bool cliff_paint_rock(int wx, int wy) { return cliff_rock_at(s_cliff_paint_map, wx, wy); }
 
 static unsigned cliff_paint_hash(unsigned v) {
     v ^= v >> 16; v *= 0x7FEB352Du; v ^= v >> 15; v *= 0x846CA68Bu; v ^= v >> 16;
@@ -169,6 +170,24 @@ static bool cliff_paint_draw(SDL_Renderer* renderer, const Tilemap* map, int x, 
     if (!slot) return false;
     SDL_Rect src = { (x - cx * CP_CHUNK) * 16, (y - cy * CP_CHUNK) * 16, 16, 16 };
     SDL_Rect dst = { sx, sy, size, size };
+    SDL_RenderCopy(renderer, slot->tex, &src, &dst);
+    return true;
+}
+
+// Art pixels [ax0, ax1) of row ay of the painted cliff on tile (x, y), at the
+// place and scale cliff_paint_draw put them: for laying the rock back over
+// someone standing behind it. False when there is nothing painted to copy.
+static bool cliff_paint_draw_run(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
+                                 int ax0, int ax1, int ay, int sx, int sy, int size) {
+    if (!s_cliff_px_ready || !s_island_cell[y][x]) return false;
+    s_cliff_paint_map = map;
+    int cx = x / CP_CHUNK, cy = y / CP_CHUNK;
+    CliffChunk* slot = cliff_cache_get(renderer, s_cliff_chunks, CP_CACHE, cx, cy, CP_CHUNK * 16, CP_CHUNK * 16,
+                                       [&](SDL_Texture* t) { cliff_paint_chunk(t, cx, cy); });
+    if (!slot) return false;
+    SDL_Rect src = { (x - cx * CP_CHUNK) * 16 + ax0, (y - cy * CP_CHUNK) * 16 + ay, ax1 - ax0, 1 };
+    SDL_Rect dst = { sx + ax0 * size / 16, sy + ay * size / 16,
+                     ax1 * size / 16 - ax0 * size / 16, (ay + 1) * size / 16 - ay * size / 16 };
     SDL_RenderCopy(renderer, slot->tex, &src, &dst);
     return true;
 }

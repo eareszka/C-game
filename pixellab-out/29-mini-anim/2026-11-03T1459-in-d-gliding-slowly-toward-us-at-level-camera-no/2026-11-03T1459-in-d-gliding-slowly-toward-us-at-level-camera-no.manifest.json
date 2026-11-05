@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1459-in-d-gliding-slowly-toward-us-at-level-camera-no",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 712 characters>",
+      "format": "png"
+    },
+    "action": "Gliding slowly toward us at level camera, no feet showing: the robe's hem sways side to side, the long arms sway and the clawed hands open and close, the head stays still. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1371
+  },
+  "links": {},
+  "seed": 1371,
+  "ids": {
+    "background_job_id": "c117e48c-582f-41f7-bbe1-da8c755dfd1f",
+    "generation_id": "8d1efa35-131c-4426-a6e2-fd62bdb25c42"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": 9, "name": "09-questing-beast", "dir": "art/enemies/pixellab/09_questing_beast",
+  "description": "Questing Beast: a green snake's head on a long green neck, a tawny golden leopard body with dark spots, four thin deer legs with hooves, a thin tail. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/09_questing_beast.png", "frames": 3, "rows": false, "ms": 250,
+      "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+      "action": "Standing in place, its snake head sways on its long neck and flicks out a thin red forked tongue, then draws it back. Body and legs still. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {"*": [0, 2, 3]},
+      "extra": ["b6433d"],
+      "ground": true, "despeckle": 1
+    },
+    "walk": {
+      "png": "assets/enemies/09_questing_beast_walk.png", "frames": 4, "rows": false, "ms": 110, "from": "idle",
+      "views": ["D", "DR", "R", "UR", "U"], "make": "animate", "count": 4,
+      "action": "Galloping in place: its four thin deer legs reach out and gather under it in a gallop, the spotted body rising and falling a little, neck and snake head held forward. Same facing, same size, ground line. Black one-pixel outlines, flat fills.",
+      "map": {"*": [1, 2, 3, 4]},
+      "ground": true, "despeckle": 2
+    }
+  }
+}

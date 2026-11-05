@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "idle-rotate_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1288 characters>",
+      "format": "png"
+    },
+    "description": "Celestial Stag: a slender stag of the deep mines, its coat the purple of the reality-shard cave, lilac stars on its back, antlers like the cave torches' rainbow flame. Flat black-outline pixel art.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ca677417-565d-49a6-bb71-db79f3d97c53",
+    "generation_id": "44e1be9f-0507-4ac8-b36d-4f05cf72414b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "37-celestial-stag-idle-views-south-00.png",
+    "37-celestial-stag-idle-views-south-east-01.png",
+    "37-celestial-stag-idle-views-east-02.png",
+    "37-celestial-stag-idle-views-north-east-03.png",
+    "37-celestial-stag-idle-views-north-04.png",
+    "37-celestial-stag-idle-views-north-west-05.png",
+    "37-celestial-stag-idle-views-west-06.png",
+    "37-celestial-stag-idle-views-south-west-07.png"
+  ]
+}

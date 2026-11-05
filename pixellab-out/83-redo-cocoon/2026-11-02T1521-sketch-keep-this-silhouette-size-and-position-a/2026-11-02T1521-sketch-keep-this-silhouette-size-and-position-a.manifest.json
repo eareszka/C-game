@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1521-sketch-keep-this-silhouette-size-and-position-a",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 872 characters>",
+      "format": "png"
+    },
+    "description": "<elided 447 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 892
+  },
+  "links": {},
+  "seed": 892,
+  "ids": {
+    "background_job_id": "358478c5-5999-4b43-b812-12b43023ca05",
+    "generation_id": "f38ff483-aaeb-4523-8d1a-f16c4cfaf3b1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s2.png"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "subject": "r",
+  "generated": "2026-11-05T14:26:46Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "r_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "e9002.png"
+      ],
+      "ids": {
+        "background_job_id": "d4099362-0555-4999-8a56-2130a928658d",
+        "generation_id": "159c5113-c271-4ad7-a821-3c2e6dce338c"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "r_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "e9003.png"
+      ],
+      "ids": {
+        "background_job_id": "88bc0e22-a167-4841-a4f6-8b41a279cbeb",
+        "generation_id": "2d65b758-fd72-4bbd-9038-43433f4083a6"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "r_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "e9004.png"
+      ],
+      "ids": {
+        "background_job_id": "72ec4c28-5904-4e4b-b6f7-15c8413998bf",
+        "generation_id": "f38bd14d-dd30-4231-bc2e-9911d693b239"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "r_sprites_v5",
+      "directory": "sprites/v5",
+      "files": [
+        "e9005.png"
+      ],
+      "ids": {
+        "background_job_id": "1584af4c-847f-4868-9297-4479c618bca6",
+        "generation_id": "a930b6ff-8e1d-4864-a42b-9e834194c4a2"
+      }
+    }
+  ]
+}

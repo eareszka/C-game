@@ -1,0 +1,1 @@
+PixelLab returned 422: init_image size (98x65) must match image_size (96x64) (arguments={'description': '<elided 422 characters>', 'image_size': {'width': 96, 'height': 64}, 'no_background': True, 'init_image': {'type': 'base64', 'base64': '<elided 7840 characters>', 'format': 'png'}, 'seed': 983}, route='create-image-pixflux')

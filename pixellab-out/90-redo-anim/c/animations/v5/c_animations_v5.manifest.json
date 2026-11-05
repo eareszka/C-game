@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "c_animations_v5",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3164 characters>",
+      "format": "png"
+    },
+    "action": "Standing heavily in place: its huge body breathes and shifts its weight, its long trunk swings slowly and curls, head lowering and rising. Feet stay planted, same size, same place, same facing.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 614
+  },
+  "links": {},
+  "seed": 614,
+  "ids": {
+    "background_job_id": "8bca547c-28e4-458b-b6d5-52f20b244533",
+    "generation_id": "f822d3ed-1105-4eb8-9a87-80244d53bfdd"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idleur-00.png",
+    "idleur-01.png",
+    "idleur-02.png",
+    "idleur-03.png",
+    "idleur-04.png",
+    "idleur-05.png",
+    "idleur-06.png"
+  ]
+}

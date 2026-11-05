@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T11:51:02Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "26-akhekh-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "5565b439-a87d-4ba6-a4db-0aef8863722b",
+        "generation_id": "a5f5b2a8-0d3e-48a3-bb06-defb4b555c80"
+      }
+    }
+  ]
+}

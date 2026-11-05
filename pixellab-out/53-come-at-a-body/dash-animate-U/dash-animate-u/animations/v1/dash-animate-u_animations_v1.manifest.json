@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "dash-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 356 characters>",
+      "format": "png"
+    },
+    "action": "A low flat-out gallop in place: the body stretched long and low to the ground, the short legs reaching out then bunching under it, the tail streaming behind. Same facing, same size, ground line. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dd97dc6f-16ff-419b-99bc-6ebae2bc408d",
+    "generation_id": "1d1f888b-f34f-43d1-aab9-a3490e227c1d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "53-come-at-a-body-dash-u-00.png",
+    "53-come-at-a-body-dash-u-01.png",
+    "53-come-at-a-body-dash-u-02.png",
+    "53-come-at-a-body-dash-u-03.png",
+    "53-come-at-a-body-dash-u-04.png"
+  ]
+}

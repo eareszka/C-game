@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "k_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Karnabo, a dark grey cloaked blob creature with a green serpent head rising from it and green clawed hands, keep its design exactly, nothing cropped",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 1420 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 68,
+      "height": 68
+    },
+    "target_size": {
+      "width": 92,
+      "height": 92
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-92.png"
+  ]
+}

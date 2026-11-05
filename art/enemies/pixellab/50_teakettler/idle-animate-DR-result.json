@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-dr_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\50-teakettler-idle-dr-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\50-teakettler-idle-dr-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\50-teakettler-idle-dr-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\50-teakettler-idle-dr-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\50-teakettler-idle-dr-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\50-teakettler\\idle-animate-DR\\idle-animate-dr\\animations\\v1\\idle-animate-dr_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "90c63554-f0fe-46fa-9b99-d47c39b1fa9a",
+    "generation_id": "5bee3162-75c1-4376-b54c-8c4ac427fc2e"
+  }
+}

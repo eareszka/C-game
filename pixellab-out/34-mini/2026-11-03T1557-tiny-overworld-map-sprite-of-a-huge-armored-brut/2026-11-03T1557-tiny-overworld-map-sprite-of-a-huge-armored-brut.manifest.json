@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1557-tiny-overworld-map-sprite-of-a-huge-armored-brut",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 356 characters>",
+    "image_size": {
+      "width": 48,
+      "height": 36
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/FgwP/t8159x8AQE4J3KjWodsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1461
+  },
+  "links": {},
+  "seed": 1461,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "m1.png"
+  ]
+}

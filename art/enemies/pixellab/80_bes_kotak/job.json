@@ -1,0 +1,51 @@
+{
+  "id": 80,
+  "name": "80-bes-kotak",
+  "dir": "art/enemies/pixellab/80_bes_kotak",
+  "description": "Bes Kotak: a floating wooden box spirit, a brown wooden chest with a lid on top, two glowing yellow-orange eyes, a dark mouth slot, and two little stubby arms at its sides. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/80_bes_kotak.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 200,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Floating in place: the box bobs gently, then its lid lifts up off the top and its mouth slot gapes wide open, then the lid drops shut again. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4,
+          6,
+          7
+        ],
+        "UR": [
+          0,
+          1,
+          2,
+          1,
+          8
+        ],
+        "U": [
+          0,
+          2,
+          3,
+          2,
+          8
+        ]
+      },
+      "despeckle": 2
+    }
+  }
+}

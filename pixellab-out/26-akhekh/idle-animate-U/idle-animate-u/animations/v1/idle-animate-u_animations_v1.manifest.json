@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 984 characters>",
+      "format": "png"
+    },
+    "action": "Hovering in place, one full wingbeat: both blue wings sweep up high above its back, then beat down below the body, then back. Body, falcon head, crown and tail stay level. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "9139e5f0-96b2-444b-9936-3ebfc174ce57",
+    "generation_id": "831d3b07-aa0b-46a0-acc4-f27f53f60ab3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "26-akhekh-idle-u-00.png",
+    "26-akhekh-idle-u-01.png",
+    "26-akhekh-idle-u-02.png",
+    "26-akhekh-idle-u-03.png",
+    "26-akhekh-idle-u-04.png"
+  ]
+}

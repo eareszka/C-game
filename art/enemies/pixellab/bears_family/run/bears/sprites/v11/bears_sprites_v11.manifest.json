@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "bears_sprites_v11",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1620 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact bear, pose and shapes. Recolour it as a white polar bear with a grey shadow. Bright orange tufts on its ears and one tall orange and cream striped horn on its brow with a small gold star at the tip.",
+    "width": 64,
+    "height": 64,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f261589f-35fa-4e11-ab36-0dd973f455f1",
+    "generation_id": "739307de-ba16-4e18-9686-978488c54883"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e48.png"
+  ]
+}

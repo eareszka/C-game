@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "65_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 740 characters>",
+      "format": "png"
+    },
+    "description": "<elided 285 characters>",
+    "width": 32,
+    "height": 32,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "14c0f72f-8ffc-49e8-b3f2-bdc23bb6be8f",
+    "generation_id": "09c01617-576a-4b84-88d6-1efbbf2c232c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s1.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-u",
+  "generated": "2026-10-28T11:16:14Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-u_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "59-tripodero-idle-u-00.png",
+        "59-tripodero-idle-u-01.png",
+        "59-tripodero-idle-u-02.png",
+        "59-tripodero-idle-u-03.png",
+        "59-tripodero-idle-u-04.png"
+      ],
+      "ids": {
+        "background_job_id": "c2a5c29b-f40d-4260-ad9d-23433d79b2b7",
+        "generation_id": "744eef1d-0465-483d-8c0c-bb19e99fd6a3"
+      }
+    }
+  ]
+}

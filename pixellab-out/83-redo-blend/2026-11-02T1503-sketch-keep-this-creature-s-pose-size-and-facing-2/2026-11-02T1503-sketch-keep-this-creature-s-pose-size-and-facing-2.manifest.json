@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1503-sketch-keep-this-creature-s-pose-size-and-facing-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2956 characters>",
+      "format": "png"
+    },
+    "description": "<elided 400 characters>",
+    "width": 96,
+    "height": 64,
+    "no_background": true,
+    "seed": 842
+  },
+  "links": {},
+  "seed": 842,
+  "ids": {
+    "background_job_id": "5b06d3d5-7654-43ea-a362-3041736d442e",
+    "generation_id": "43fb33ac-afce-404e-a1b1-ae58770397bf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e2.png"
+  ]
+}

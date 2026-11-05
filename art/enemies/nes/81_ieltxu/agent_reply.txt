@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 47x32, 6 colours plus black.
+Unmet: The body is still mostly near black (65% of its colour, flagged as LOOK warnings), which conflicts with the rule's "no body mostly close to black"; I kept it because the brief asks for near black, with a purple rim and fire accents to show on black.

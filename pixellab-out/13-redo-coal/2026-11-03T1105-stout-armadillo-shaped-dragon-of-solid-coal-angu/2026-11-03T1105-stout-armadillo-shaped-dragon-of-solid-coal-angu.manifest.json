@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1105-stout-armadillo-shaped-dragon-of-solid-coal-angu",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 295 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAUAAAABCAYAAAAW/mTzAAAAHklEQVR4nGOIjEz9r6Gh8Z+BgeH/nxkW///8+fMfAF7NC0vFmfshAAAAAElFTkSuQmCC",
+      "format": "png"
+    },
+    "seed": 1264
+  },
+  "links": {},
+  "seed": 1264,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k4.png"
+  ]
+}

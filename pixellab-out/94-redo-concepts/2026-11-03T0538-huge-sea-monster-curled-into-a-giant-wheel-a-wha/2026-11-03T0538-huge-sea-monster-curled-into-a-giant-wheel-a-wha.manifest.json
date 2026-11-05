@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0538-huge-sea-monster-curled-into-a-giant-wheel-a-wha",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "huge sea monster curled into a giant wheel, a whale-like body rolled in a full circle nose to tail, tall spiny crest around the rim, small shy eye, flat colours, side view, no water, transparent background, game enemy sprite",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "seed": 941
+  },
+  "links": {},
+  "seed": 941,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c1.png"
+  ]
+}

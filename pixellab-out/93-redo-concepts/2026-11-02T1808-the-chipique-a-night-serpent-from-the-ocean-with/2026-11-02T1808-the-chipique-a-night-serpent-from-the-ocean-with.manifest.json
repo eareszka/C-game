@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1808-the-chipique-a-night-serpent-from-the-ocean-with",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 345 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south-west",
+    "no_background": true,
+    "seed": 773
+  },
+  "links": {},
+  "seed": 773,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c3.png"
+  ]
+}

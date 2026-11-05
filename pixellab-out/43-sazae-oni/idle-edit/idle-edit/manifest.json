@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T04:41:16Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "43-sazae-oni-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "77baf132-ff91-4f99-96b5-2c65c3ce0c4a",
+        "generation_id": "8dbebe70-f819-457c-884c-0621a8affe09"
+      }
+    }
+  ]
+}

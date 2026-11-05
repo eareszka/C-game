@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1523-input-block-hovering-tightly-wrapped-in-its-clos",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1444 characters>",
+      "format": "png"
+    },
+    "action": "Hovering, tightly wrapped in its closed wings, the wings shudder slightly as if struck, wrists trembling, feet still. Wings stay completely shut, same size, same place.",
+    "frame_count": 6,
+    "no_background": true,
+    "seed": 903
+  },
+  "links": {},
+  "seed": 903,
+  "ids": {
+    "background_job_id": "e278dc30-02a0-4142-b4c3-d8cd5360cb48",
+    "generation_id": "144e08e2-8847-4373-bed4-7505008244c0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "block-00.png",
+    "block-01.png",
+    "block-02.png",
+    "block-03.png",
+    "block-04.png",
+    "block-05.png",
+    "block-06.png"
+  ]
+}

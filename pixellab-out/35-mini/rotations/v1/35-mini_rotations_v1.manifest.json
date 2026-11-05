@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "35-mini_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1812 characters>",
+      "format": "png"
+    },
+    "description": "small lomie: a tall blue moose with broad brown palmate antlers, long dark legs, a big round pale tan water bladder hanging under its neck, pitch black eyes, black outline, flat shading pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b24753cd-961c-4433-8917-23adc7bddf41",
+    "generation_id": "a6e7d171-92db-40b2-97f8-69f325d9b420"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

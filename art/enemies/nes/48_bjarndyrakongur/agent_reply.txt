@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 93x91, 7 colours plus black.
+Unmet: Each eye is a 2x2 block, so 2 px across but 4 px in total, which breaks the eye rule if "1 to 2 px" means total pixels; I also kept 2x2 without being able to confirm the eyes stand out clearly from the brows at game size.

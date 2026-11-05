@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0539-great-armoured-sea-monster-coiled-like-a-spoked",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "great armoured sea monster coiled like a spoked wheel, pale belly plates as spokes, dark hide rim with big spines and a crest on top, flippers tucked, small shy eyes peeking out, flat colours, no water, game enemy sprite",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "seed": 944
+  },
+  "links": {},
+  "seed": 944,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c4.png"
+  ]
+}

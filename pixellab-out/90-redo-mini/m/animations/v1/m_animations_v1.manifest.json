@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1328 characters>",
+      "format": "png"
+    },
+    "action": "Plodding slowly on the spot, a heavy walk: its legs step one after another, its huge body rocking, its trunk swinging. Same size, same place.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 632
+  },
+  "links": {},
+  "seed": 632,
+  "ids": {
+    "background_job_id": "19d5248d-b5e9-4869-be44-a8ece0fdc498",
+    "generation_id": "b24c31b0-88dc-489f-8ba7-610b436fd655"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "plodu-00.png",
+    "plodu-01.png",
+    "plodu-02.png",
+    "plodu-03.png",
+    "plodu-04.png"
+  ]
+}

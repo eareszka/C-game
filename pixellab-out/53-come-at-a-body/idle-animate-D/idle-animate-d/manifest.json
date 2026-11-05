@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d",
+  "generated": "2026-10-28T08:40:14Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "53-come-at-a-body-idle-d-00.png",
+        "53-come-at-a-body-idle-d-01.png",
+        "53-come-at-a-body-idle-d-02.png",
+        "53-come-at-a-body-idle-d-03.png",
+        "53-come-at-a-body-idle-d-04.png"
+      ],
+      "ids": {
+        "background_job_id": "5d87ee62-b503-44d1-90f3-dea56a3c53bb",
+        "generation_id": "13095b3b-8b08-461a-a703-22f1cf748b16"
+      }
+    }
+  ]
+}

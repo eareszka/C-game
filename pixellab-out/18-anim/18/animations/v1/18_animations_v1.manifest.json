@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "18_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1668 characters>",
+      "format": "png"
+    },
+    "action": "front view, symmetrical. The slug-faced serpent rears its head and neck up and opens a wide round mouth on its face to spit, then closes it. Its low spiked body stays still. Long eyestalks stay. Same size and colours, flat fills, black one-pixel outline.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7a45bf13-acb0-4f19-b77c-c3855f090f07",
+    "generation_id": "a814fa11-d629-43d2-9f76-a3508b1b5d90"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "spit-00.png",
+    "spit-01.png",
+    "spit-02.png",
+    "spit-03.png",
+    "spit-04.png"
+  ]
+}

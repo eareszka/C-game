@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0814-input-facing-left-feet-planted-it-crouches-rears",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2332 characters>",
+      "format": "png"
+    },
+    "action": "Facing left, feet planted: it crouches, rears its head and opens its jaws very wide in a screaming screech showing ivory teeth, then the back fins flare up tall and it shuts its mouth. Same size, same design, same flat colours, camera fixed, no effects.",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1181
+  },
+  "links": {},
+  "seed": 1181,
+  "ids": {
+    "background_job_id": "98f1b2ee-d051-4854-9823-9fb4250a95e1",
+    "generation_id": "5dde6372-de17-464e-8b1d-cdcc4d0ded0b"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png"
+  ]
+}

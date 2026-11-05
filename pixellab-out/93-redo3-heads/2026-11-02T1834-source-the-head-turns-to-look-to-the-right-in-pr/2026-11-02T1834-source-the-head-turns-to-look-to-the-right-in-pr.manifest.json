@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1834-source-the-head-turns-to-look-to-the-right-in-pr",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "description": "<elided 352 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 894
+  },
+  "links": {},
+  "seed": 894,
+  "ids": {
+    "background_job_id": "a35fa009-fa4e-4c3e-954b-a11c5096cd23",
+    "generation_id": "f400f77d-412c-41d0-bedf-f202bef2abbf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "r.png"
+  ]
+}

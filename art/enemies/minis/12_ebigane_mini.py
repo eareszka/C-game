@@ -1,154 +1,56 @@
-"""12 Ebigane's map mini: the purple tusked pig-bat with red wings and a curly pink tail, flying, at the player's
-scale, four views of two frames (tools/minis.py).
+"""12 Ebigane's map mini: the rat-bodied predator stalking, four true views (the user: "mini should be done in pixellab having u d l r"), two frames each (tools/minis.py).
 
-Placed by hand over the shrink of its fly sheet (assets/enemies/12_ebigane_fly.png, python tools/minis.py 12):
-the wings held up either side, the horned head with its pink snout and tusks, the legs tucked up under it as
-it flies, the tail curled behind. The first frame is the wings up, the second the downstroke, as Alber's and
-the Grand Goule's. 24 px tall, Alber's size (the user, 2026-10-14: "Ebigane should be alber size and flying
-again"; an 18 px one is in art/_backup/12_mini_18px_20261014/). Three of its battle colours and black: its
-purple, its dark red (the wings), its pink (snout, horns, tusks, tail). Its dark purple legs, cream and red
-wing veins go.
-
-Its chase: jink -- as a bat flies, it darts at you off one side of your line, then the other: its heading
-0.8 rad off the line for 0.25 s, then 0.8 rad the other way, at 1.2x the chase pace (closes at 0.84).
-chase_speed() and chase_bend() in src/main.cpp and tools/minis.py.
+Drawn by PixelLab alone (the user: "minis should use pixellab"): sprite at the mini's size and palette (pixellab-out/12-mini2, m2, 1 of 4 generations), then a stalking walk (pixellab-out/12-mini2-anim, 1 generation);
+frames 0 and 3. Its rotation looked from above (the user: "up and down dont match the games way of depth and drawing"), so front and back are straight-on at ground level as the approved minis are: the front from sprite --view side --direction south (fb/front2), the back PixelLab's turn of that front (fb/t1), each given a walk (pixellab-out/12-mini2-fb, -anim); front frames 0 and 1, back 0 and 2. The right view is the left mirrored. Three colours and black: hide slate, fins peach, pale ivory. A walker: the dash chase.
 
     python art/enemies/minis/12_ebigane_mini.py
 """
 from pathlib import Path
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tools'))
+from PIL import Image
+ROOT = Path(__file__).resolve().parents[3]
+HERE = ROOT / 'art/enemies/pixellab/12_ebigane/redo2/mini'
+sys.path.insert(0, str(ROOT / 'tools'))
 import minis, first_frame as ff
 
-PAL = {'K': '000000', 'P': '5e486a', 'W': '531b1c', 'C': 'ec8476'}
-CHASE = 'jink'
-
-# Front and back: the left half and the middle column, the right half its mirror.
-FRONT = [
-    '...K..........' '.',
-    '..KWKK........' '.',
-    '.KWWWWK.......' '.',
-    'KWWWWWWK......' '.',
-    'KWWWWWWK......' '.',
-    '.KWWWWWWK.....' '.',
-    '..KWWWWWWK....' '.',
-    '..KWWWWWWK.K..' '.',
-    '..KWWWWWWWKCKK' 'K',
-    '..KWWWWWWWKCKP' 'P',
-    '...KWWWWWWKPPP' 'P',
-    '....KKWWWWKPKP' 'P',
-    '......KKKKPPCC' 'C',
-    '.........KPPCK' 'C',
-    '.........KCPPP' 'P',
-    '.........KKPPP' 'P',
-    '........KPPPPP' 'P',
-    '.......KPPPPPP' 'P',
-    '.......KPPPPPP' 'P',
-    '.......KPPPPPP' 'P',
-    '........KPPPKK' 'K',
-    '.........KKK..' '.',
-]
-BACK = FRONT[:10] + [
-    '...KWWWWWWKPPP' 'P',
-    '....KKWWWWKPPP' 'P',
-    '......KKKKPPPP' 'P',
-    '.........KPPPP' 'P',
-    '.........KPPPP' 'P',
-    '.........KKPPP' 'P',
-    '........KPPPPP' 'P',
-    '.......KPPPPPP' 'P',
-    '.......KPPPPPP' 'C',
-    '.......KPPPPPK' 'C',
-    '........KPPPKK' 'C',
-    '.........KKK..' 'K',
-]
-# The downstroke: the wings taken off, then swept down and out beside the body from the shoulders.
-DOWN = {
-    9:  '........KK',
-    10: '......KKWW',
-    11: '....KKWWWW',
-    12: '..KKWWWWWK',
-    13: '.KWWWWWWWK',
-    14: 'KWWWWWWWWK',
-    15: 'KWWWWWWWK.',
-    16: 'KWWWWWWK..',
-    17: 'KWWWWWK...',
-    18: 'KWKWKWK...',
-    19: '.K.K.K....',
-}
+PAL = {'K': '000000', 'S': '595965', 'P': 'f0b890', 'I': 'e8e0c0'}
+CHASE = 'dash'
+HEIGHT = 28
+CW, CH = minis.W, minis.H
+RAW = [l.strip() for l in (HERE / 'anim.log').read_text().splitlines() if l.strip().endswith('.png')]
+RGB = {k: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) for k, c in PAL.items()}
 
 
-def downstroke(rows):
-    g = [list(r) for r in rows]
-    for y in range(15):
-        g[y][:10] = '.' * 10
-    for y, t in DOWN.items():
-        for i, c in enumerate(t):
-            if c != '.':
-                g[y][i] = c
-    return [''.join(r) for r in g]
+def frame(path, tail_from=None, trim_top=0):
+    im = Image.open(path).convert('RGBA')
+    g = {}
+    for y in range(im.height):
+        for x in range(im.width):
+            p = im.getpixel((x, y))
+            if p[3] > 127: g[x, y] = min(RGB, key=lambda k: sum((a - b) ** 2 for a, b in zip(RGB[k], p[:3])))
+    if tail_from is not None:                # the tail is a thin black line in PixelLab's side frames: slate, or stripping the outline would cut it off
+        for p, c in list(g.items()):
+            if c == 'K' and p[0] >= tail_from: g[p] = 'S'
+    g = {p: c for p, c in g.items() if not (c == 'K' and any((p[0] + a, p[1] + b) not in g for a, b in ff.N4))}
+    top = min(y for x, y in g)
+    g = {p: c for p, c in g.items() if p[1] >= top + trim_top}   # its ears' tips, a row over the cell
+    xs, ys = [x for x, y in g], [y for x, y in g]
+    dx, dy = CW // 2 - (min(xs) + max(xs)) // 2, CH - 2 - max(ys)
+    return ff.outline({(x + dx, y + dy): c for (x, y), c in g.items()})
 
 
-def whole(halves):
-    return [h + h[13::-1] for h in halves]
+def logged(name):
+    return [l.strip() for l in (HERE / name).read_text().splitlines() if l.strip().endswith('.png')]
 
 
-SIDE = [
-    '......KKK............K.....',
-    '.....KWWWK..........KWK....',
-    '....KWWWWK.........KWWWK...',
-    '.....KWWWWK.......KWWWWWK..',
-    '.....KWWWWWK......KWWWWWWK.',
-    '....KWWWWWWK.....KWWWWWWWK.',
-    '.....KWWWWWWK...KWWWWWWWK..',
-    '...K..KWWWWWWK..KWWWWWWWK..',
-    '..KCKKKKKKWKKKKKWWWWWWWWK..',
-    '.KCCPKPKKKPPPPPWWWWWWWWWK..',
-    '.KCKPPPKKPPPPPPPKWWWWWKK...',
-    'KCPPPPPPPPPPPPPPPPKWKK.....',
-    'KCPPPPPPPPPPPPPPPPPPKK.....',
-    '.KKKKKPPPPPPPPPPPPPPPPK....',
-    '.....KPPPPPPPPPPPPPPPPK....',
-    '......KKPPPPPPPPPPPPPPPKK..',
-    '.......KPPPPPPPPPPPPPPKCCK.',
-    '.......KKPPKKKKKKPPPKKKCCCK',
-    '........KPPK....KPPPK.KCCK.',
-    '.........KK......KKK...KK..',
-]
-# From the side the downstroke hides the wings, as Alber's: the far one's tip over its back, the near one
-# hanging over its flank to below its belly.
-SIDE_DOWN = [
-    '...........................',
-    '...........................',
-    '...........................',
-    '...........................',
-    '...........................',
-    '.............K.............',
-    '............KWK............',
-    '...K.......KWWK............',
-    '..KCKKKKKKKKWWKKK..........',
-    '.KCCPKPKKKPPPPPPPKK........',
-    '.KCKPPPKKPPPPPPPPPPK.......',
-    'KCPPPPPPPPPPPPPPPPPPKK.....',
-    'KCPPPPPPPKKKKPPPPPPPPK.....',
-    '.KKKKKPPKWWWWKPPPPPPPPK....',
-    '.....KPKWWWWWWKPPPPPPPK....',
-    '......KKWWWWWWWKPPPPPPPKK..',
-    '.......KWWWWWWWWKPPPPPKCCK.',
-    '.......KWWWWWWWWKPPPKKKCCCK',
-    '........KWKWKWKWKPPPK.KCCK.',
-    '.........K.K.K.K.KKK...KK..',
-]
-
-VIEWS = {
-    'D': [(5, 4, whole(FRONT)), (5, 4, whole(downstroke(FRONT)))],
-    'U': [(5, 4, whole(BACK)), (5, 4, whole(downstroke(BACK)))],
-    'L': [(6, 6, SIDE), (6, 6, SIDE_DOWN)],
-}
-VIEWS['R'] = [(40 - x0 - len(rows[0]), top, [r[::-1] for r in rows]) for x0, top, rows in VIEWS['L']]
-FRAMES = {v: [ff.grid([(top + y, x0, r) for y, r in enumerate(rows)], PAL) for x0, top, rows in fs]
-          for v, fs in VIEWS.items()}
+LEFT = [frame(RAW[0], 32), frame(RAW[3], 32)]
+RIGHT = [{(CW - 1 - x, y): c for (x, y), c in g.items()} for g in LEFT]
+FRONT = [frame(logged('fb/anim_d.log')[0]), frame(logged('fb/anim_d.log')[1], trim_top=1)]
+BACK = [frame(logged('fb/anim_u.log')[i]) for i in (0, 2)]
+FRAMES = {'L': LEFT, 'R': RIGHT, 'D': FRONT, 'U': BACK}
 
 if __name__ == '__main__':
-    minis.make(12, 'ebigane', FRAMES, PAL, cap=24)
+    minis.make(12, 'ebigane', FRAMES, PAL, cap=HEIGHT)
     minis.chase_gif(12, CHASE, FRAMES, PAL)
+    for v, gs in FRAMES.items():
+        print(v, [(max(x for x, y in g) - min(x for x, y in g) + 1, max(y for x, y in g) - min(y for x, y in g) + 1) for g in gs])

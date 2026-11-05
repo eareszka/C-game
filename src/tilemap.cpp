@@ -4,6 +4,7 @@
 #include "dungeon.h"         // material_min_difficulty, for the guarantee pass
 #include "core.h"
 #include "collision.h"    // the walked-into rule, for the ways in
+#include <unordered_set>
 #include <SDL2/SDL_image.h>
 #include "resource_node.h"
 #include "towns.h"
@@ -38,6 +39,9 @@ int s_bridges_laid = 0, s_bridges_short = 0;
 // last network routed -- the roads. How many places were asked for, and how
 // many of them had ground close enough to start a route from.
 int s_route_nodes = 0, s_route_anchors = 0, s_route_lone = 0;
+// Phase 2 has run to its end: the roads and the props are all down.
+static std::atomic<bool> s_world_done{false};
+bool tilemap_world_done()       { return s_world_done; }
 void tilemap_cancel_gen()       { s_gen_cancel = true; }
 void tilemap_reset_gen_cancel() { s_gen_cancel = false; }
 
@@ -677,7 +681,6 @@ static constexpr int SIGN_CELL = TILE_TOWN0_BASE;
 // top left, and breaks whole for what it drops (prop_strike).
 #include "props.inc"
 static const int PROP_KIND_N = (int)(sizeof PROP_KINDS / sizeof *PROP_KINDS);
-static const int PROP_FRAME_MS = 160;      // an animated prop's frame
 // Which prop a sheet id is a cell of: its kind, the cell within its frame,
 // and which frame; false if none.
 static bool prop_at(int id, int* k, int* cx, int* cy, int* frame = nullptr) {
@@ -695,6 +698,11 @@ static bool prop_at(int id, int* k, int* cx, int* cy, int* frame = nullptr) {
     return false;
 }
 static inline bool is_prop_cell(int id) { int k, cx, cy; return prop_at(id, &k, &cx, &cy); }
+// The kind named so in props.py, or -1.
+static int prop_kind_named(const char* name) {
+    for (int i = 0; i < PROP_KIND_N; i++) if (!strcmp(PROP_NAMES[i], name)) return i;
+    return -1;
+}
 // The top left tile of the prop whose cell is at (x, y), and its kind.
 static bool prop_origin(const Tilemap* map, int x, int y, int* ox, int* oy, int* kind) {
     int k, cx, cy;
@@ -736,12 +744,19 @@ static inline bool is_coast_art(int t) {
 // mausoleum, the church -- takes over the wall's cells in the overlay, but the
 // wall runs on behind it: a cell of entrance art with the same wall on both
 // sides along its row has that wall drawn under it. Drawn only; such a cell
-// keeps the art's collision.
+// keeps the art's collision. Not Xuelin's art (its own rows of the sheet,
+// gen_entrance_art.py XUELIN_BAND): a pine or a lantern in its square
+// (2026-10-29) is not a building on the walls' line, and the walls' sides
+// there are sides, not a wall running across under it.
 static int yard_wall_at(const Tilemap* map, int x, int y) {
     if (!in_world(&x, &y)) return 0;
     int ov = map->overlay[y][x];
     if (is_yard_wall(ov)) return ov;
-    if (entrance_art_role(ov) == ART_NONE) return 0;
+    auto carries = [](int id) {
+        int row = (id - TILE_TOWN0_BASE) / TOWN0_SHEET_COLS;
+        return entrance_art_role(id) != ART_NONE && !(row >= 64 && row <= 175);
+    };
+    if (!carries(ov)) return 0;
     int found[2] = { 0, 0 };
     for (int side = 0; side < 2; side++) {
         for (int i = 1; i <= 16; i++) {                  // wider than any building
@@ -749,7 +764,7 @@ static int yard_wall_at(const Tilemap* map, int x, int y) {
             if (!in_world(&nx, &ny)) break;
             int n = map->overlay[ny][nx];
             if (is_yard_wall(n)) { found[side] = n; break; }
-            if (entrance_art_role(n) == ART_NONE) break;
+            if (!carries(n)) break;
         }
     }
     return found[0] == found[1] ? found[0] : 0;
@@ -808,14 +823,31 @@ static int art_src(const Tilemap* map, int x, int y, int id) {
     }
     return id;
 }
+// A cell of Xuelin's art that sways (its lantern posts, tools/town2_layout.py
+// XUELIN_ANIM) at the frame of the moment, on the world's ambient beat
+// (core.h) -- 0 for nothing there now; any other cell as it is. Its feet are
+// the same in every frame.
+static int xuelin_frame(int id) {
+    int rel = id - TILE_TOWN0_BASE, row = rel / TOWN0_SHEET_COLS;
+    if (rel < 0 || row < 64 || row > 175) return id;              // not Xuelin's (gen_entrance_art.py XUELIN_BAND)
+    for (const auto& a : XUELIN_ANIM) {
+        if (TILE_TOWN0_BASE + a[0] - 6 != id) continue;
+        int f = (int)((world_ms() / AMBIENT_FRAME_MS + (unsigned)a[4]) % AMBIENT_FRAMES);
+        return a[1 + f] ? TILE_TOWN0_BASE + a[1 + f] - 6 : 0;
+    }
+    return id;
+}
 static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
     int n = 0;
     int bx = x, by = y + 1;
     bool below = in_world(&bx, &by);
-    if (below && yard_wall_at(map, bx, by))
-        out[n++] = { yard_wall_piece(map, bx, by, true), bx, by };
+    // The wall here, then the top of one rising into it from the tile below:
+    // a row nearer, so drawn over it -- where a side runs back from a corner,
+    // its top crosses the face of the wall across beside the corner.
     if (yard_wall_at(map, x, y))
         out[n++] = { yard_wall_piece(map, x, y, false), x, y };
+    if (below && yard_wall_at(map, bx, by))
+        out[n++] = { yard_wall_piece(map, bx, by, true), bx, by };
     int ov = map->overlay[y][x];
     int pk, pcx, pcy;
     if (prop_at(ov, &pk, &pcx, &pcy)) {
@@ -823,10 +855,11 @@ static int art_cells_at(const Tilemap* map, int x, int y, ArtAt out[3]) {
         int ox = x - pcx, oy = y - pcy;
         in_world(&ox, &oy);
         if (p.frames > 1)                   // each one on its own beat
-            ov += (int)((world_ms() / PROP_FRAME_MS + (unsigned)(ox * 7 + oy * 13)) % p.frames) * p.w;
+            ov += (int)((world_ms() / AMBIENT_FRAME_MS + (unsigned)(ox * 7 + oy * 13)) % p.frames) * p.w;
         out[n++] = { ov, ox, oy };
-    } else if (entrance_art_role(ov) != ART_NONE)
-        out[n++] = { ov, x, y };
+    } else if (entrance_art_role(ov) != ART_NONE) {
+        if (int id = xuelin_frame(ov)) out[n++] = { id, x, y };
+    }
     else if (is_node(ov))
         out[n++] = { node_cell(ov, x, y), x, y };
     return n;
@@ -2008,7 +2041,19 @@ static void clear_hills_round(Tilemap* map, int x, int y) {
 // is meadow (the user, 2026-10-13: "town 1's grass is meadow"). biome_at reads
 // this for a town's drawn cells, so its streets take the meadow's trail tones
 // and its footprint fringes against the country round it as any biome does.
-static const int TOWN_GROUND[3] = { TILE_GRASS, TILE_MEADOW, TILE_GRASS };
+static const int TOWN_GROUND[3] = { TILE_GRASS, TILE_MEADOW, TILE_SNOW };   // Xuelin stands on the snow
+
+// A town's own ground, [x0, x1) x [y0, y1): what nothing else is laid on and
+// no road runs through. The whole footprint, but for Xuelin, whose own is its
+// cleared ground -- the country round that is left as it lies, and is the
+// country's, roads and props and all.
+static void town_box(const TownPlacement& t, int* x0, int* y0, int* x1, int* y1) {
+    if (t.index == 2) {
+        *x0 = t.x + XUELIN_BOX_X0; *y0 = t.y + XUELIN_BOX_Y0; *x1 = t.x + XUELIN_BOX_X1; *y1 = t.y + XUELIN_BOX_Y1;
+        return;
+    }
+    *x0 = t.x; *y0 = t.y; *x1 = t.x + TOWN_W; *y1 = t.y + TOWN_H;
+}
 
 // One cell of a town blueprint onto the map.
 // Canvas value encoding: 0=blank, 1=the town's ground, 2=path, 3=hub, 4=water, 5=tree, >=6=sprite.
@@ -2035,6 +2080,14 @@ static void stamp_town_cell(Tilemap* map, int val, int wx, int wy, bool filled, 
     } else if (val == 4) { tile = TILE_WATER;
     } else if (val >= 6) {
         tile = TILE_TOWN0_BASE + (val - 6);
+        // The stone yard wall (Xuelin's square, tools/town2_layout.py YARD):
+        // a mark in the overlay, as the catacombs' yard has, the piece picked
+        // from its neighbours when drawn (yard_wall_piece).
+        if (tile == YARD_WALL_MARK) {
+            map->tiles[wy][wx]   = ground;
+            map->overlay[wy][wx] = tile;
+            return;
+        }
         // A cell of a building laid out in the blueprint (the coastal town's)
         // is entrance art: it stands on the ground in the overlay, as the
         // starting town's houses do, so the feet meet it to the pixel and it
@@ -2222,6 +2275,16 @@ static void stamp_town_pier(Tilemap* map, int tx, int ty, bool lay) {
 // stop at the edge of its block wherever they reach it.
 static const int TOWN_GATE_RUN = 6;     // tiles of road laid straight out from the gate (the Roads pass)
 static bool town_gate(const Tilemap* map, int town_idx, int tx, int ty, int* x, int* y, int* dir) {
+    if (town_idx == 2) {
+        // Xuelin: the street across its front, out of whichever end looks
+        // home, to the edge of its cleared ground -- outside that the country
+        // is as it lies, and the road is laid over it from there.
+        const bool west = wrap_dx(MAP_WIDTH / 2 - (tx + TOWN_W / 2)) < 0;
+        *dir = west ? -1 : 1;
+        *x = west ? tx + XUELIN_BOX_X0 - 1 : tx + XUELIN_BOX_X1;
+        *y = ty + XUELIN_MAIN_Y;
+        return true;
+    }
     if (town_idx != 1) return false;
     const int side = map->ocean_side;                       // 0 west, 1 east, 2 north, 3 south
     const bool west = side == 1 || (side >= 2 && tx + TOWN_W / 2 > MAP_WIDTH / 2);
@@ -2244,10 +2307,16 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
             for (int dx = 0; dx < TOWN_W; dx++)
                 if (int v = layout[dy][dx]; v != 0 && v != 1 && v != 5) clear_hills_round(map, tx + dx, ty + dy);
         if (town_idx == 1) stamp_town_pier(map, tx, ty, false);
+        // Xuelin's walls and the ground round them, whole: placement chose
+        // the site on the understanding that its hills there go.
+        if (town_idx == 2) {
+            for (int dy = XUELIN_BOX_Y0; dy < XUELIN_BOX_Y1; dy++)
+                for (int dx = XUELIN_BOX_X0; dx < XUELIN_BOX_X1; dx++) remove_island_at(map, tx + dx, ty + dy);
+        }
         // and the way in: the street out to the gate, and the run of road past it
         int gx, gy, gdir;
         if (town_gate(map, town_idx, tx, ty, &gx, &gy, &gdir))
-            for (int k = -(TOWN_W - TOWN1_MAIN_E); k < TOWN_GATE_RUN; k++)
+            for (int k = town_idx == 1 ? -(TOWN_W - TOWN1_MAIN_E) : 0; k < TOWN_GATE_RUN; k++)
                 for (int row = 0; row < 2; row++) clear_hills_round(map, gx + k * gdir, gy + row);
     }
 
@@ -2276,11 +2345,16 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
     // its round hub ring showing through the square footprint's corners.
     // Pre-filling those corners would paint over the ring it is meant to
     // show.
+    //
+    // Xuelin pre-fills only within its walls' extent, where its unbuilt lots
+    // are: outside that its 0 cells are the country as worldgen left it.
     if (town_idx != 0) {
-        for (int dy = 0; dy < TOWN_H; dy++)
-            for (int dx = 0; dx < TOWN_W; dx++) {
+        const bool x2 = town_idx == 2;
+        for (int dy = x2 ? XUELIN_WALL_Y0 : 0; dy < (x2 ? XUELIN_WALL_Y1 : TOWN_H); dy++)
+            for (int dx = x2 ? XUELIN_WALL_X0 : 0; dx < (x2 ? XUELIN_WALL_X1 : TOWN_W); dx++) {
                 int wx = tx + dx, wy = ty + dy;
                 if (wx < 0 || wy < 0 || wx >= MAP_WIDTH || wy >= MAP_HEIGHT || wet[dy][dx]) continue;
+                if (x2 && (dx + dy < XUELIN_KW || dx + dy > XUELIN_KE)) continue;    // outside the walls
                 map->tiles[wy][wx]   = TILE_BLUEPRINT;
                 map->overlay[wy][wx] = 0;
             }
@@ -2290,6 +2364,13 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
         for (int dx = 0; dx < TOWN_W; dx++)
             if (!wet[dy][dx]) stamp_town_cell(map, layout[dy][dx], tx + dx, ty + dy, town_idx != 0, TOWN_GROUND[town_idx]);
     if (town_idx == 1) stamp_town_pier(map, tx, ty, true);
+    // Xuelin's buildings: their art into the overlay over the ground the
+    // blueprint laid, a roof free to hang over a street (tools/town2_layout.py).
+    if (town_idx == 2)
+        for (const auto& a : XUELIN_ART) {
+            int id = TILE_TOWN0_BASE + (a[2] - 6), wx = tx + a[0], wy = ty + a[1];
+            if (entrance_art_role(id) != ART_NONE && in_bounds(wx, wy)) map->overlay[wy][wx] = id;
+        }
     // The town hall's door (tools/town1_layout.py HALL and the hall design's
     // door foot, written to towns.h): opens room 3 until the hall has a room
     // of its own -- the story's keeper stands inside (src/story.cpp).
@@ -2300,7 +2381,8 @@ static void stamp_town_blueprint(Tilemap* map, int town_idx, int tx, int ty) {
     {
         int gx, gy, gdir;
         if (town_gate(map, town_idx, tx, ty, &gx, &gy, &gdir)) {
-            const int cap = tx + (gdir < 0 ? TOWN1_MAIN_W : TOWN1_MAIN_E);
+            const int cap = tx + (town_idx == 2 ? (gdir < 0 ? XUELIN_MAIN_W : XUELIN_MAIN_E)
+                                                : (gdir < 0 ? TOWN1_MAIN_W  : TOWN1_MAIN_E));
             for (int x = gx - gdir; x != cap - gdir; x -= gdir)
                 for (int row = 0; row < 2 && in_bounds(x, gy + row); row++) {
                     // the street across: "67" over "68" (tools/town1_layout.py)
@@ -2739,6 +2821,7 @@ static void dress_cave_entrances(Tilemap* map, unsigned int seed) {
 static void apply_destroyed(Tilemap* map);   // below tilemap_strike
 
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
+    s_world_done = false;
     // Which edge the ocean takes (0=W, 1=E, 2=N, 3=S), and with it which pair
     // of edges joins: the ocean and the edge across from it are the borders,
     // the other two wrap. Rolled here rather than in phase 2 so the runtime
@@ -4528,8 +4611,11 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
     auto kept_clear = [&](int x, int y) {
         int ddx = wrap_dx(x - cx), ddy = wrap_dy(y - cy);
         if (ddx * ddx + ddy * ddy <= (hw + 8) * (hw + 8)) return true;
-        for (const TownPlacement& t : map->towns)
-            if (t.x >= 0 && x > t.x - 4 && x < t.x + TOWN_W + 4 && y > t.y - 4 && y < t.y + TOWN_H + 4) return true;
+        for (const TownPlacement& t : map->towns) {
+            int x0, y0, x1, y1;
+            town_box(t, &x0, &y0, &x1, &y1);
+            if (t.x >= 0 && x > x0 - 4 && x < x1 + 4 && y > y0 - 4 && y < y1 + 4) return true;
+        }
         for (int i = 0; i < map->num_dungeon_entrances; i++) {
             const DungeonEntrance& e = map->dungeon_entrances[i];
             int dx = wrap_dx(x - e.x), dy = wrap_dy(y - e.y);
@@ -4695,6 +4781,7 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
 
     // The lone things between: the plains' only its grass, so nothing of
     // either country strays into the other's.
+    const int tumbleweed = prop_kind_named("tumbleweed");
     for (int y = iy0; y < iy1 && !s_gen_cancel; y++)
         for (int x = ix0; x < ix1; x++) {
             if (tile_noise(x, y, s ^ 0x9A0C0) <= STRAY_ROLL) continue;
@@ -4707,6 +4794,9 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
             int r = tile_noise(x, y, s ^ 0x9A0C1) % total, k = 0;
             for (; k < PROP_KIND_N; k++)
                 if (PROP_KINDS[k].biome == biome && (r -= PROP_KINDS[k].stray) < 0) break;
+            // The tumbleweed is not laid: it blows through instead (src/tumbleweed.cpp).
+            // Its roll is still made, so every other stray lands where it did.
+            if (k == tumbleweed) continue;
             const PropKind& p = PROP_KINDS[k];
             int ox = x, oy = y - p.h + 1;
             if (fits(k, ox, oy, map->tiles[y][x], false)) { lay(k, ox, oy, false); stats_strays[biome]++; }
@@ -5999,11 +6089,100 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
 
-        // -- Town 2: random walkable location, far from towns 0 and 1 --
+        // -- Town 2, Xuelin: on the edge of the snow --
+        // A walled town on the snowfield's rim (the user, 2026-10-28): its
+        // walls (XUELIN_WALL_, from tools/town2_layout.py) stand wholly on
+        // snow, and the rest of the footprint reaches past the
+        // snow's edge onto the open land beside it (grass, meadow or sand: a
+        // river through the snow is no edge). Both are counted on a 4-tile
+        // grid first, which is cheap enough to score every window on the map;
+        // the windows that score are then tried in a seeded order against
+        // core_ok, which is exact and dear. Failing that, the old random roll
+        // below, so the town is never lost for want of snow.
         {
             const int MIN_TOWN_DIST = 600;
-            unsigned int ts = seed ^ 0xF4EE7002u;
             bool placed = false;
+            {
+                const int G = 4, GW = MAP_WIDTH / G, GH = MAP_HEIGHT / G;
+                const int FW = TOWN_W / G;                              // 39 grid cells a side
+                // the walls' extent, in whole grid cells
+                const int WX = (XUELIN_WALL_X0 + G - 1) / G, WY = (XUELIN_WALL_Y0 + G - 1) / G;
+                const int WW = XUELIN_WALL_X1 / G - WX, WH = XUELIN_WALL_Y1 / G - WY;
+                // prefix sums over the grid: snow tiles, and open land that is not snow
+                std::vector<int> snow_sum((size_t)(GW + 1) * (GH + 1), 0), land_sum(snow_sum.size(), 0);
+                for (int gy = 0; gy < GH; gy++)
+                    for (int gx = 0; gx < GW; gx++) {
+                        int ns = 0, nl = 0;
+                        for (int y = gy * G; y < gy * G + G; y++)
+                            for (int x = gx * G; x < gx * G + G; x++) {
+                                int t = map->tiles[y][x];
+                                ns += t == TILE_SNOW;
+                                nl += t == TILE_GRASS || t == TILE_MEADOW || t == TILE_SAND;
+                            }
+                        const size_t i = (size_t)(gy + 1) * (GW + 1) + gx + 1;
+                        snow_sum[i] = ns + snow_sum[i - 1] + snow_sum[i - (GW + 1)] - snow_sum[i - (GW + 1) - 1];
+                        land_sum[i] = nl + land_sum[i - 1] + land_sum[i - (GW + 1)] - land_sum[i - (GW + 1) - 1];
+                    }
+                auto box = [&](const std::vector<int>& sum, int gx, int gy, int w, int h) {
+                    return sum[(size_t)(gy + h) * (GW + 1) + gx + w] - sum[(size_t)gy * (GW + 1) + gx + w]
+                         - sum[(size_t)(gy + h) * (GW + 1) + gx] + sum[(size_t)gy * (GW + 1) + gx];
+                };
+                // Only the walls and what is round them need clean ground: the
+                // snow lies on the mountain half, where hardly a 156-tile
+                // window is free of cliff and river, and the country outside
+                // the wall is left as it lies (stamp_town_blueprint: town 2's
+                // 0 cells keep their terrain). A hill in there is no bar -- it
+                // is an island, taken away whole when the town is stamped, as
+                // the other towns' drawn cells take theirs -- so long as there
+                // is not so much of it that the town would level a range.
+                // Highland that is no island (and water, and river) is.
+                const int XUELIN_LEVEL_MAX = 1400;   // hill tiles the stamp may take away
+                auto core_ok = [&](int tx, int ty) -> bool {
+                    int hill = 0;
+                    for (int dy = XUELIN_BOX_Y0; dy < XUELIN_BOX_Y1; dy++)
+                        for (int dx = XUELIN_BOX_X0; dx < XUELIN_BOX_X1; dx++) {
+                            int bt = map->tiles[ty+dy][tx+dx];
+                            if (bt == TILE_WATER || bt == TILE_RIVER) return false;
+                            if (s_island_id[ty+dy][tx+dx]) { if (++hill > XUELIN_LEVEL_MAX) return false; }
+                            else if (is_cliff(bt)) return false;
+                        }
+                    return true;
+                };
+                // Strict first, then a looser edge, before giving up on snow.
+                const float core_min[] = { 0.97f, 0.90f }, snow_lo[] = { 0.50f, 0.40f }, land_lo[] = { 0.12f, 0.04f };
+                const float area = float(FW * FW * G * G);
+                for (int pass = 0; pass < 2 && !placed; pass++) {
+                    std::vector<std::pair<int,int>> cand;
+                    for (int gy = margin_y(TOWN_H) / G; (gy + FW) * G <= MAP_HEIGHT - margin_y(TOWN_H); gy++)
+                        for (int gx = margin_x(TOWN_W) / G; (gx + FW) * G <= MAP_WIDTH - margin_x(TOWN_W); gx++) {
+                            if (box(snow_sum, gx + WX, gy + WY, WW, WH) < core_min[pass] * WW * WH * G * G) continue;
+                            if (box(snow_sum, gx, gy, FW, FW) < snow_lo[pass] * area) continue;
+                            if (box(land_sum, gx, gy, FW, FW) < land_lo[pass] * area) continue;
+                            cand.push_back({ gx * G, gy * G });
+                        }
+                    unsigned int ts = seed ^ 0x5E0E7002u;
+                    for (size_t i = cand.size(); i > 1; i--) {                  // seeded Fisher-Yates
+                        ts = ts * 1664525u + 1013904223u;
+                        std::swap(cand[i - 1], cand[(ts >> 8) % i]);
+                    }
+                    for (auto [tx, ty] : cand) {
+                        int ddx = tx - cx, ddy = ty - cy;
+                        if (ddx*ddx + ddy*ddy <= (hw+TOWN_H)*(hw+TOWN_H)) continue;
+                        bool far_enough = true;
+                        for (int i = 0; i < 2 && far_enough; i++) {
+                            if (map->towns[i].x < 0) continue;
+                            int ex = wrap_dx(map->towns[i].x - tx), ey = wrap_dy(map->towns[i].y - ty);
+                            if (ex*ex + ey*ey < MIN_TOWN_DIST*MIN_TOWN_DIST) far_enough = false;
+                        }
+                        if (!far_enough) continue;
+                        if (!core_ok(tx, ty)) continue;
+                        stamp_town_blueprint(map, 2, tx, ty);
+                        placed = true;
+                        break;
+                    }
+                }
+            }
+            unsigned int ts = seed ^ 0xF4EE7002u;
             for (int attempt = 0; attempt < 50000 && !placed; attempt++) {
                 ts = ts * 1664525u + 1013904223u;
                 int tx = roll_span(ts >> 16, MAP_WIDTH,  TOWN_W, margin_x(TOWN_W));
@@ -6509,9 +6688,10 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             const int sy0 = ey - 2,                          sy1 = ey + sz + yard_h + 1;
             for (int i = 0; i < 3; i++) {
                 if (map->towns[i].x < 0) continue;
-                int tw = map->towns[i].x, th = map->towns[i].y;
-                if (sx1 > tw && sx0 < tw + TOWN_W &&
-                    sy1 > th && sy0 < th + TOWN_H) return false;
+                int bx0, by0, bx1, by1;
+                town_box(map->towns[i], &bx0, &by0, &bx1, &by1);
+                if (sx1 > bx0 && sx0 < bx1 &&
+                    sy1 > by0 && sy0 < by1) return false;
             }
             // and a village's footprint the same way: a catacombs' yard laid
             // across a hamlet walled off its street and a house (the user,
@@ -7261,9 +7441,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 if (!bare(x + cx, y + k.h, tile)) return false;
             int ddx = x - cx, ddy = y - cy;
             if (ddx * ddx + ddy * ddy <= (hw + 8) * (hw + 8)) return false;
-            for (const TownPlacement& t : map->towns)
-                if (t.x >= 0 && x + k.w + LM_FROM_TOWN > t.x && x - LM_FROM_TOWN < t.x + TOWN_W
-                             && y + k.h + LM_FROM_TOWN > t.y && y - LM_FROM_TOWN < t.y + TOWN_H) return false;
+            for (const TownPlacement& t : map->towns) {
+                int x0, y0, x1, y1;
+                town_box(t, &x0, &y0, &x1, &y1);
+                if (t.x >= 0 && x + k.w + LM_FROM_TOWN > x0 && x - LM_FROM_TOWN < x1
+                             && y + k.h + LM_FROM_TOWN > y0 && y - LM_FROM_TOWN < y1) return false;
+            }
             for (int i = 0; i < map->num_dungeon_entrances; i++)
                 if (abs(map->dungeon_entrances[i].x - x) < LM_FROM_ENTRANCE &&
                     abs(map->dungeon_entrances[i].y - y) < LM_FROM_ENTRANCE) return false;
@@ -7332,9 +7515,12 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         if (!bare(cx, cy, tile) || !tilemap_is_walkable(map, cx, cy)) return false;
                 int sdx = wrap_dx(x - MAP_WIDTH / 2), sdy = wrap_dy(y - MAP_HEIGHT / 2);
                 if (sdx * sdx + sdy * sdy < min_tiles * min_tiles) return false;
-                for (const TownPlacement& t : map->towns)
-                    if (t.x >= 0 && x + SITE_FROM_TOWN > t.x && x - SITE_FROM_TOWN < t.x + TOWN_W
-                                 && y + SITE_FROM_TOWN > t.y && y - SITE_FROM_TOWN < t.y + TOWN_H) return false;
+                for (const TownPlacement& t : map->towns) {
+                    int x0, y0, x1, y1;
+                    town_box(t, &x0, &y0, &x1, &y1);
+                    if (t.x >= 0 && x + SITE_FROM_TOWN > x0 && x - SITE_FROM_TOWN < x1
+                                 && y + SITE_FROM_TOWN > y0 && y - SITE_FROM_TOWN < y1) return false;
+                }
                 for (int e = 0; e < map->num_dungeon_entrances; e++)
                     if (abs(map->dungeon_entrances[e].x - x) < SITE_FROM_ENTRANCE &&
                         abs(map->dungeon_entrances[e].y - y) < SITE_FROM_ENTRANCE) return false;
@@ -7481,8 +7667,11 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // A town's ground is its own -- its green, its woods, the grass round
         // its houses -- and a road comes to it, not through it.
         auto in_town = [&](int x, int y) {
-            for (const TownPlacement& t : map->towns)
-                if (t.x >= 0 && x >= t.x && x < t.x + TOWN_W && y >= t.y && y < t.y + TOWN_H) return true;
+            for (const TownPlacement& t : map->towns) {
+                int x0, y0, x1, y1;
+                town_box(t, &x0, &y0, &x1, &y1);
+                if (t.x >= 0 && x >= x0 && x < x1 && y >= y0 && y < y1) return true;
+            }
             return false;
         };
         auto road_region = [&](int x, int y) {
@@ -7513,7 +7702,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
         // it came.
         //
         // The rest are aimed at the middle. There is nothing better to aim
-        // at: every village blueprint is empty and so is town 2, so they
+        // at: every village blueprint is empty, so they
         // stamp a placeholder block and no interior. The anchor search then
         // walks out to the nearest open ground, which is the block's edge —
         // which is where a road should stop anyway.
@@ -7715,6 +7904,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
     dress_cave_entrances(map, seed);
     apply_destroyed(map);   // and over the whole world, once it is all there
     GEN_STAGE(map, "final");
+    s_world_done = !s_gen_cancel;
 }
 
 static void draw_tile_ascii(SDL_Renderer* renderer, int tile_id,
@@ -8533,6 +8723,13 @@ static bool cave_foot_lifted(const Tilemap* map, int tx, int ty, int ax, int ay)
     return false;
 }
 
+// The column of the sheet a tree on tile (tx, ty) is drawn from.
+static int tree_col_at(const Tilemap* map, int tx, int ty) {
+    uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty * 40503u) & 1;
+    bool is_snow = (map->tiles[ty][tx] == TILE_SNOW);
+    return is_snow ? (h ? 19 : 18) : (h ? 16 : 17);
+}
+
 static void cliff_build_solid(SDL_Surface* sheet) {
     memset(s_cliff_ink, 0, sizeof s_cliff_ink);
     memset(s_mouth_ink, 0, sizeof s_mouth_ink);
@@ -8618,6 +8815,151 @@ static bool cliff_pixel_solid(int x, int y, int ax, int ay) {
     int c = cliff_cell_at(x, y);
     if (!c || !ISLAND_KIND[c]) return false;
     return (s_cliff_ink[c][ay] >> ax) & 1;
+}
+
+// Behind an island. A plateau is raised, so its back outline is drawn higher
+// on the screen than where that edge meets the ground: the real back edge is
+// the straight line between the two places the outline meets rock (the user,
+// 2026-11-03, drawing it in red). Someone on the low ground north of the island
+// walks on past the outline, hidden by the island, until their feet reach that
+// line. The ground back there is under the plateau's top, so the same pixels
+// are two places, and only the player's state says which: they are behind from
+// crossing the outline southward until their feet are clear of it again. Only
+// the player: everyone else stops at the outline, as they always have.
+static const int BEHIND_MIN_DEPTH = 8;    // art rows under the outline worth walking into
+static const int BEHIND_MIN_RUN   = 8;    // art columns of outline
+static const int BEHIND_RUN_CAP   = 60000;
+
+struct BackRun {
+    int x0 = 0, y0 = 0, n = 0, level = 0;   // art pixels; top and red relative to y0
+    std::vector<int> top, red;              // per column: the outline, the real back edge
+};
+static BackRun s_behind;
+static bool s_behind_on = false;
+static long long s_behind_failed = -1;      // the outline pixel last found not to lead anywhere
+
+static inline bool cliff_line_ink(int wx, int wy) {
+    int tx = (wx >= 0 ? wx : wx - 15) / 16, ty = (wy >= 0 ? wy : wy - 15) / 16;
+    int c = cliff_cell_at(tx, ty);
+    return c && ISLAND_KIND[c] == 2 && ((s_cliff_ink[c][wy - ty * 16] >> (wx - tx * 16)) & 1);
+}
+static inline long long art_key(int wx, int wy) {
+    int mw = MAP_WIDTH * 16, mh = MAP_HEIGHT * 16;
+    return (long long)(((wy % mh) + mh) % mh) * mw + ((wx % mw) + mw) % mw;
+}
+
+// The outline through art pixel (sx, sy): every line pixel joined to it, and
+// the line between its outermost meetings with rock. False if it has no such
+// line to offer. seen, if given, collects the pixels walked.
+static bool back_run_trace(const Tilemap* map, int sx, int sy, BackRun* out,
+                           std::unordered_set<long long>* seen = nullptr) {
+    std::unordered_set<long long> local;
+    std::unordered_set<long long>& vis = seen ? *seen : local;
+    std::vector<std::pair<int, int> > px, stack;
+    if (!vis.insert(art_key(sx, sy)).second) return false;
+    stack.push_back({ sx, sy });
+    int cx0 = INT_MAX, cy0 = 0, cx1 = INT_MIN, cy1 = 0;
+    bool capped = false;
+    while (!stack.empty()) {
+        std::pair<int, int> p = stack.back();
+        stack.pop_back();
+        if ((int)px.size() >= BEHIND_RUN_CAP) { capped = true; break; }
+        px.push_back(p);
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dx = -1; dx <= 1; dx++) {
+                if (!dx && !dy) continue;
+                int qx = p.first + dx, qy = p.second + dy;
+                if (cliff_rock_ink(map, qx, qy)) {
+                    if (p.first < cx0 || (p.first == cx0 && p.second > cy0)) { cx0 = p.first; cy0 = p.second; }
+                    if (p.first > cx1 || (p.first == cx1 && p.second > cy1)) { cx1 = p.first; cy1 = p.second; }
+                }
+                if (cliff_line_ink(qx, qy) && vis.insert(art_key(qx, qy)).second) stack.push_back({ qx, qy });
+            }
+    }
+    if (capped || cx0 == INT_MAX || cx1 - cx0 + 1 < BEHIND_MIN_RUN) return false;
+    int n = cx1 - cx0 + 1;
+    out->x0 = cx0; out->y0 = cy0; out->n = n;
+    out->top.assign(n, INT_MAX);
+    out->red.resize(n);
+    for (int i = 0; i < n; i++)
+        out->red[i] = (cy1 - cy0) * i / (n - 1);
+    for (const std::pair<int, int>& p : px) {
+        int i = p.first - cx0;
+        if (i >= 0 && i < n) out->top[i] = std::min(out->top[i], p.second - cy0);
+    }
+    out->level = 0;
+    for (int i = 0; i < n; i++) {
+        if (out->top[i] == INT_MAX) { out->top[i] = out->red[i]; continue; }
+        // The tile just inside the outline says what stands here.
+        int ty_art = cy0 + out->top[i] + 2, tx_art = cx0 + i;
+        int tx = (tx_art >= 0 ? tx_art : tx_art - 15) / 16, ty = (ty_art >= 0 ? ty_art : ty_art - 15) / 16;
+        if (in_world(&tx, &ty)) out->level = std::max(out->level, (int)s_cliff_elev[ty][tx]);
+    }
+    return out->level > 0;
+}
+
+static inline int behind_col(float px) { return (int)floorf(wrap_dpx(px - s_behind.x0 * 2.0f) / 2.0f); }
+static inline int behind_row(float py) { return (int)floorf(wrap_dpy(py - s_behind.y0 * 2.0f) / 2.0f); }
+
+bool tilemap_behind_active(void) { return s_behind_on; }
+void tilemap_behind_clear(void) { s_behind_on = false; s_behind_failed = -1; }
+
+bool tilemap_behind_try_enter(const Tilemap* map, float x1, float x2, float y2) {
+    if (s_behind_on) return true;
+    int cx = (int)floorf((x1 + x2) * 0.25f), y = (int)floorf(y2 / 2.0f);
+    static const int ORDER[7] = { 0, -1, 1, -2, 2, -3, 3 };
+    for (int d = 0; d < 4; d++)
+        for (int o : ORDER) {
+            if (!cliff_line_ink(cx + o, y + d)) continue;
+            long long key = art_key(cx + o, y + d);
+            if (key == s_behind_failed) return false;
+            BackRun r;
+            if (back_run_trace(map, cx + o, y + d, &r)) {
+                int i = cx - r.x0;
+                if (i >= 0 && i < r.n && r.red[i] - r.top[i] >= BEHIND_MIN_DEPTH) {
+                    s_behind = std::move(r);
+                    s_behind_on = true;
+                    return true;
+                }
+            }
+            s_behind_failed = key;
+            return false;
+        }
+    return false;
+}
+
+void tilemap_behind_update(float x1, float x2, float y2) {
+    if (!s_behind_on) return;
+    int c0 = behind_col(x1), c1 = behind_col(x2), row = behind_row(y2);
+    bool in = false;
+    for (int c = std::max(c0, 0); c <= std::min(c1, s_behind.n - 1) && !in; c++)
+        in = row >= s_behind.top[c] - 1;
+    if (!in) s_behind_on = false;
+}
+
+bool tilemap_behind_solid(const Tilemap* map, float px, float py) {
+    int c = behind_col(px), r = behind_row(py);
+    if (c >= 0 && c < s_behind.n) {
+        if (r >= s_behind.red[c]) return true;
+        if (r >= s_behind.top[c]) {
+            int wx = (int)floorf(wrap_px(px) / 2.0f), wy = (int)floorf(wrap_py(py) / 2.0f);
+            return cliff_rock_ink(map, wx, wy);
+        }
+    } else {
+        // Past the ends of the run, nothing raised as high as this is open:
+        // what lies round there is the plateau's own top.
+        int tx = (int)floorf(wrap_px(px) / TILE_SIZE), ty = (int)floorf(wrap_py(py) / TILE_SIZE);
+        if (in_world(&tx, &ty) && s_cliff_elev[ty][tx] >= s_behind.level) return true;
+    }
+    return tilemap_pixel_solid(map, px, py);
+}
+
+float tilemap_behind_safe_y(float x1, float x2, float y2) {
+    if (!s_behind_on) return 0.0f;
+    int c0 = std::max(behind_col(x1), 0), c1 = std::min(behind_col(x2), s_behind.n - 1);
+    int row = behind_row(y2), up = 0;
+    for (int c = c0; c <= c1; c++) up = std::max(up, row - (s_behind.top[c] - 2));
+    return -2.0f * up;
 }
 
 // The ground a plateau's surface is made of. Each of the three cliff families
@@ -9073,7 +9415,7 @@ static int tile_shake(int tx, int ty, float z) {
 }
 
 static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
-                               bool depth_pass) {
+                               bool depth_pass, const SDL_Rect* window = nullptr) {
     float z = cam->zoom;
     int draw_size = (int)(TILE_SIZE * z);
     if (draw_size < 1) draw_size = 1;
@@ -9097,6 +9439,11 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
         if (end_y > MAP_HEIGHT) end_y = MAP_HEIGHT;
     }
 
+    if (window) {       // only these tiles, unwrapped: the caller has set a clip
+        start_x = window->x; end_x = window->x + window->w;
+        start_y = window->y; end_y = window->y + window->h;
+    }
+
     for (int uy = start_y; uy < end_y; uy++) {
         for (int ux = start_x; ux < end_x; ux++) {
             const int x = wrap_x(ux), y = wrap_y(uy);
@@ -9109,11 +9456,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
             // ground (cols 16, 17), two conifers on snow (18, 19), half and
             // half by position. The canopy (row 0) and the trunk (row 1) are
             // drawn in different passes and must agree, so both ask here.
-            auto tree_col = [&](int tx, int ty2) -> int {
-                uint32_t h = (uint32_t)(tx * 2654435761u ^ (uint32_t)ty2 * 40503u) & 1;
-                bool is_snow = (map->tiles[ty2][tx] == TILE_SNOW);
-                return is_snow ? (h ? 19 : 18) : (h ? 16 : 17);
-            };
+            auto tree_col = [&](int tx, int ty2) -> int { return tree_col_at(map, tx, ty2); };
             auto tree_jox = [&](int tx, int ty2) -> int { return tile_shake(tx, ty2, z); };
 
             // Helper: draw a 2-tile tree's canopy (top sprite) for the tile at (tx, ty2).
@@ -9140,7 +9483,7 @@ static void tilemap_draw_impl(const Tilemap* map, const Camera* cam, SDL_Rendere
                 // breathe in step.
                 if (is_steam_cell(map->overlay[y][x])) {
                     unsigned int phase = ((unsigned int)x * 2654435761u ^ (unsigned int)y * 40503u) >> 16;
-                    int frame = (int)((world_ms() / 220u + phase) % STEAM_COUNT);
+                    int frame = (int)((world_ms() / AMBIENT_FRAME_MS + phase) % AMBIENT_FRAMES);   // the world's beat (core.h)
                     blit_tile(renderer, steam_cell(frame), screen_x, screen_y - draw_size, draw_size);   // rising off the water into the air
                 }
                 if (below && map->overlay[by][bx] == TILE_DEAD_TREE) {
@@ -9388,6 +9731,48 @@ void tilemap_draw_cell_over(SDL_Renderer* renderer, int id, int sx, int sy, int 
     }
 }
 
+// The rock of tile (tx, ty) -- at (ux, uy) in the box's frame, (sx, sy) on the
+// screen -- that stands in front of feet at feet_y, over the box: every pixel
+// whose column of rock ends nearer the viewer than the feet do. The foot of a
+// wall is the bottom of its rock, not of the tile, and a wall runs on over the
+// tiles below, so the column is followed down to wherever it ends.
+static void cliff_draw_over(const Tilemap* map, SDL_Renderer* renderer, int tx, int ty, int ux, int uy,
+                            int sx, int sy, int draw_size, float x, float y, float w, float h, float feet_y) {
+    int c = s_island_cell[ty][tx];
+    if (!c || ISLAND_KIND[c] != 1) return;
+    const float AP = TILE_SIZE / 16.0f;
+    float wx = ux * (float)TILE_SIZE, wy = uy * (float)TILE_SIZE;
+    int ay0 = (int)floorf((y - wy) / AP), ay1 = (int)ceilf((y + h - wy) / AP);
+    int ax0 = (int)floorf((x - wx) / AP), ax1 = (int)ceilf((x + w - wx) / AP);
+    if (ay0 < 0) ay0 = 0;
+    if (ay1 > 16) ay1 = 16;
+    if (ax0 < 0) ax0 = 0;
+    if (ax1 > 16) ax1 = 16;
+    if (ax0 >= ax1 || ay0 >= ay1) return;
+    static const int MAX_RUN = 16 * 12;        // no wall is deeper than this
+    bool front[16][16] = {};
+    for (int ax = ax0; ax < ax1; ax++) {
+        int ax_w = tx * 16 + ax;
+        int foot = -1;                         // art row, the world's, just past the rock
+        for (int ay = ay1 - 1; ay >= ay0; ay--) {
+            int ay_w = ty * 16 + ay;
+            if (!cliff_rock_at(map, ax_w, ay_w)) { foot = -1; continue; }
+            if (foot < 0) {
+                foot = ay_w + 1;
+                while (foot < ay_w + MAX_RUN && cliff_rock_at(map, ax_w, foot)) foot++;
+            }
+            front[ay][ax] = wy + (foot - ty * 16) * AP > feet_y;
+        }
+    }
+    for (int ay = ay0; ay < ay1; ay++)
+        for (int ax = ax0; ax < ax1; ) {
+            if (!front[ay][ax]) { ax++; continue; }
+            int run = ax;
+            while (ax < ax1 && front[ay][ax]) ax++;
+            cliff_paint_draw_run(renderer, map, tx, ty, run, ax, ay, sx, sy, draw_size);
+        }
+}
+
 // Over the player -- the box (x, y, w, h) their sprite covers, in world
 // pixels, their feet meeting the ground at feet_y -- every pixel of a
 // structure entrance or a yard wall that stands in front of them: its ground
@@ -9410,8 +9795,160 @@ void tilemap_draw_over_player(const Tilemap* map, const Camera* cam, SDL_Rendere
                 tilemap_draw_cell_over(renderer, art[i].id, sx + tile_shake(art[i].shake_x, art[i].shake_y, z),
                                        sy, draw_size, ux * TILE_SIZE, uy * TILE_SIZE, x, y, w, h, feet_y,
                                        art_src(map, tx, ty, art[i].id));
+            cliff_draw_over(map, renderer, tx, ty, ux, uy, sx, sy, draw_size, x, y, w, h, feet_y);
+            // A trunk or a sign whose foot is nearer than the feet: only the
+            // sprite's sides can reach one, the tile being solid.
+            int ov = map->overlay[ty][tx];
+            if ((ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == SIGN_CELL) && (uy + 1) * TILE_SIZE > feet_y) {
+                if (ov == SIGN_CELL) {
+                    blit_tile(renderer, ov, sx + tile_shake(tx, ty, z), sy, draw_size);
+                } else if (s_town0_tex) {
+                    SDL_Rect src = { (ov == TILE_TREE ? tree_col_at(map, tx, ty) : 20) * 16, 1 * 16, 16, 16 };
+                    SDL_Rect dst = { sx + tile_shake(tx, ty, z), sy, draw_size, draw_size };
+                    SDL_RenderCopy(renderer, s_town0_tex, &src, &dst);
+                }
+            }
         }
     }
+    // A cave mouth's jambs, whose foot is nearer than the feet. They are drawn
+    // lifted, so a tile a row below the box can reach into it; the middle
+    // column is the way in, and its dark is walked into rather than behind.
+    for (int uy = (int)floorf(y / TILE_SIZE); uy <= (int)floorf((y + h - 1) / TILE_SIZE) + 1; uy++) {
+        for (int ux = (int)floorf(x / TILE_SIZE); ux <= (int)floorf((x + w - 1) / TILE_SIZE); ux++) {
+            int tx = ux, ty = uy, dx, dy;
+            if (!in_world(&tx, &ty) || !cave_mouth_pos(map->overlay[ty][tx], &dx, &dy) || dx == 1) continue;
+            float foot = (uy + CAVE_MOUTH_H - dy) * (float)TILE_SIZE - CAVE_MOUTH_LIFT_AY * TILE_SIZE / 16.0f;
+            if (foot <= feet_y) continue;
+            blit_tile(renderer, map->overlay[ty][tx], cam_px(cam, ux * TILE_SIZE),
+                      cam_py(cam, uy * TILE_SIZE) - CAVE_MOUTH_LIFT_AY * draw_size / 16, draw_size);
+        }
+    }
+}
+
+// The island back over the player behind it: every pixel of the box, padded
+// for the bicycle, from the outline down, as the ground pass drew it. Its top,
+// the outline, the rock and whatever stands up there are all in that pass.
+void tilemap_draw_behind_cover(const Tilemap* map, const Camera* cam, SDL_Renderer* renderer,
+                               float x, float y, float w, float h) {
+    if (!s_behind_on) return;
+    x -= 10.0f; w += 20.0f; y -= 8.0f; h += 8.0f;
+    int c0 = std::max(behind_col(x), 0), c1 = std::min(behind_col(x + w - 1), s_behind.n - 1);
+    float bottom = y + h;
+    float col0_x = x + wrap_dpx(s_behind.x0 * 2.0f - x);    // column 0, in the box's frame
+    float row0_y = y + wrap_dpy(s_behind.y0 * 2.0f - y);
+    for (int c = c0; c <= c1; ) {
+        int run = c, top = s_behind.top[c];
+        while (c <= c1 && s_behind.top[c] == top) c++;
+        float wx0 = col0_x + run * 2.0f, wx1 = col0_x + c * 2.0f, wy0 = row0_y + top * 2.0f;
+        if (wy0 >= bottom) continue;
+        int sx0 = cam_px(cam, wx0), sy0 = cam_py(cam, wy0);
+        SDL_Rect clip = { sx0, sy0, cam_px(cam, wx1) - sx0, cam_py(cam, bottom) - sy0 };
+        int tx0 = (int)floorf(wx0 / TILE_SIZE), tx1 = (int)floorf((wx1 - 1) / TILE_SIZE);
+        int ty0 = (int)floorf((wy0 - 16.0f) / TILE_SIZE), ty1 = (int)floorf((bottom - 1) / TILE_SIZE) + 1;
+        SDL_Rect tiles = { tx0, ty0, tx1 - tx0 + 1, ty1 - ty0 + 1 };
+        SDL_RenderSetClipRect(renderer, &clip);
+        tilemap_draw_impl(map, cam, renderer, false, &tiles);
+    }
+    SDL_RenderSetClipRect(renderer, nullptr);
+}
+
+// Every outline in the world walked from its north, the feet flooded through
+// the way behind it as the game moves them: none may come out on a plateau.
+void tilemap_behind_audit(const Tilemap* map, BehindAudit* a) {
+    *a = {};
+    a->first_x = a->first_y = -1;
+    const bool was = s_behind_on;
+    std::unordered_set<long long> seen;
+    const int FEET = (HB_X2 - HB_X1) / 2;
+    for (int ty = 0; ty < MAP_HEIGHT; ty++)
+        for (int tx = 0; tx < MAP_WIDTH; tx++) {
+            int cell = s_island_cell[ty][tx];
+            if (!cell || ISLAND_KIND[cell] != 2) continue;
+            for (int ay = 0; ay < 16; ay++)
+                for (int ax = 0; ax < 16; ax++) {
+                    if (!((s_cliff_ink[cell][ay] >> ax) & 1)) continue;
+                    int wx = tx * 16 + ax, wy = ty * 16 + ay;
+                    if (seen.count(art_key(wx, wy))) continue;
+                    BackRun r;
+                    a->runs++;
+                    if (!back_run_trace(map, wx, wy, &r, &seen)) continue;
+                    s_behind = r;
+                    s_behind_on = true;
+                    int lo = 0, hi = 0;
+                    for (int i = 0; i < r.n; i++) { lo = std::min(lo, r.top[i]); hi = std::max(hi, r.red[i]); }
+                    const int PAD = 10;
+                    int w = r.n + 2 * PAD, h = hi - lo + 2 * PAD;
+                    int bx = r.x0 - PAD, by = r.y0 + lo - PAD;
+                    std::vector<char> solid((size_t)w * h), fit((size_t)w * h, 0), reached((size_t)w * h, 0);
+                    for (int y = 0; y < h; y++)
+                        for (int x = 0; x < w; x++)
+                            solid[(size_t)y * w + x] = tilemap_behind_solid(map, (bx + x) * 2.0f + 1.0f, (by + y) * 2.0f + 1.0f);
+                    for (int y = 0; y + FEET <= h; y++)
+                        for (int x = 0; x + FEET <= w; x++) {
+                            bool ok = true;
+                            for (int j = 0; j < FEET && ok; j++)
+                                for (int i = 0; i < FEET && ok; i++) ok = !solid[(size_t)(y + j) * w + x + i];
+                            fit[(size_t)y * w + x] = ok;
+                        }
+                    std::vector<int> stack;
+                    for (int i = 0; i < r.n; i++) {        // feet just north of the outline, centred on column i
+                        if (r.red[i] - r.top[i] < BEHIND_MIN_DEPTH) continue;
+                        int x = i + PAD - FEET / 2, y = r.top[i] - lo + PAD - FEET;
+                        if (x < 0 || y < 0 || x + FEET > w || y + FEET > h) continue;
+                        size_t k = (size_t)y * w + x;
+                        if (fit[k] && !reached[k]) { reached[k] = 1; stack.push_back((int)k); }
+                    }
+                    a->usable += !stack.empty();
+                    bool escaped = false;
+                    while (!stack.empty()) {
+                        int k = stack.back();
+                        stack.pop_back();
+                        a->positions++;
+                        int x = k % w, y = k / w;
+                        // Clear of the run's columns on ground raised this high: out on the top.
+                        int cl = bx + x - r.x0, cr = cl + FEET - 1;
+                        int mx = bx + x + FEET / 2, my = by + y + FEET - 1;
+                        int ttx = (mx >= 0 ? mx : mx - 15) / 16, tty = (my >= 0 ? my : my - 15) / 16;
+                        if ((cr < 0 || cl >= r.n) && in_world(&ttx, &tty) && s_cliff_elev[tty][ttx] >= r.level) escaped = true;
+                        // Clear of the outline again is the way out, and the flood stops.
+                        bool in = false;
+                        for (int c = std::max(cl, 0); c <= std::min(cr, r.n - 1) && !in; c++)
+                            in = by + y + FEET - 1 - r.y0 >= r.top[c] - 1;
+                        if (!in) continue;
+                        const int q[4][2] = { { x - 1, y }, { x + 1, y }, { x, y - 1 }, { x, y + 1 } };
+                        for (auto& n : q) {
+                            if (n[0] < 0 || n[1] < 0 || n[0] >= w || n[1] >= h) continue;
+                            size_t nk = (size_t)n[1] * w + n[0];
+                            if (fit[nk] && !reached[nk]) { reached[nk] = 1; stack.push_back((int)nk); }
+                        }
+                    }
+                    if (escaped) {
+                        a->escapes++;
+                        if (a->first_x < 0) { a->first_x = (r.x0 + r.n / 2) / 16; a->first_y = (r.y0 + lo) / 16; }
+                    }
+                }
+        }
+    s_behind_on = was;
+}
+
+// The tree crowns the depth pass draws over the box (x, y, w, h), world
+// pixels, of trees standing behind feet at feet_y: the foot of the trunk,
+// the bottom of the tile below the crown, higher up than the feet. Each a
+// tile's world rect, unwrapped as the box is; up to max of them.
+int tilemap_canopy_cells(const Tilemap* map, float x, float y, float w, float h, float feet_y,
+                         SDL_Rect* out, int max) {
+    int n = 0;
+    for (int uy = (int)floorf(y / TILE_SIZE); uy <= (int)floorf((y + h - 1) / TILE_SIZE); uy++) {
+        if ((uy + 2) * TILE_SIZE >= feet_y) break;   // this row's trees and all below stand in front
+        for (int ux = (int)floorf(x / TILE_SIZE); ux <= (int)floorf((x + w - 1) / TILE_SIZE); ux++) {
+            int bx = ux, by = uy + 1;
+            if (!in_world(&bx, &by)) continue;
+            int ov = map->overlay[by][bx];
+            if (ov != TILE_TREE && ov != TILE_DEAD_TREE) continue;
+            if (n < max) out[n++] = { ux * TILE_SIZE, uy * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+        }
+    }
+    return n;
 }
 
 // ── Public: debug tile-grid overlay ─────────────────────────────────────────
@@ -10073,6 +10610,10 @@ int tilemap_cliff_elev_at(int x, int y) {
     return in_world(&x, &y) ? (int)s_cliff_elev[y][x] : 0;
 }
 
+int tilemap_biome_at(const Tilemap* map, int x, int y) {
+    return in_world(&x, &y) ? biome_of(map, x, y) : TILE_GRASS;
+}
+
 bool tilemap_cave_hole_at(const Tilemap* map, int x, int y) {
     return in_world(&x, &y) && !is_cave_mouth_cell(map->overlay[y][x]);   // as dress_cave_entrances draws it
 }
@@ -10225,6 +10766,14 @@ bool tilemap_pixel_void(const Tilemap* map, float px, float py) {
     if (t == TILE_WASTE_BRIDGE || t == TILE_ROAD_BRIDGE) return false;   // on its deck, not in the void under it
     int owner = field_owner_at(map, tx, ty, px, py);
     return owner >= 0 && s_biomes[owner].cover == &COVER_LAVA;
+}
+
+bool tilemap_low_obstacle(const Tilemap* map, float px, float py) {
+    int tx = (int)floorf(wrap_px(px) / TILE_SIZE), ty = (int)floorf(wrap_py(py) / TILE_SIZE);
+    if (!in_bounds(tx, ty)) return false;
+    int ov = map->overlay[ty][tx];
+    return is_prop_cell(ov) || ov == TILE_TREE || ov == TILE_DEAD_TREE || ov == TILE_ROCK
+        || ov == TILE_GOLD_ORE || is_node(ov);
 }
 
 bool tilemap_pixel_solid(const void* vmap, float px, float py) {

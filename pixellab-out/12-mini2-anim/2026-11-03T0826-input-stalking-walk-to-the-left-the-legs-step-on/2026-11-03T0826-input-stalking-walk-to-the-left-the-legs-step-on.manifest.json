@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0826-input-stalking-walk-to-the-left-the-legs-step-on",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 728 characters>",
+      "format": "png"
+    },
+    "action": "Stalking walk to the left: the legs step one pair then the other, the head stays low and forward with jaws open, the tail sways, same size and design, same flat colours, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1201
+  },
+  "links": {},
+  "seed": 1201,
+  "ids": {
+    "background_job_id": "05469bfb-ec3f-4d42-b2b7-d5e39303b3c0",
+    "generation_id": "f37e791a-ed88-4fc0-b760-017dec8ba194"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walk-00.png",
+    "walk-01.png",
+    "walk-02.png",
+    "walk-03.png",
+    "walk-04.png"
+  ]
+}

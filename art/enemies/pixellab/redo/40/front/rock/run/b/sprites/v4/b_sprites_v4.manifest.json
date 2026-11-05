@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "run": "b_sprites_v4",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1316 characters>",
+          "format": "png"
+        },
+        "width": 64,
+        "height": 84
+      }
+    ],
+    "image_size": {
+      "width": 64,
+      "height": 84
+    },
+    "description": "<elided 382 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 2432 characters>",
+        "format": "png"
+      },
+      "width": 85,
+      "height": 59
+    },
+    "no_background": true,
+    "seed": 4034
+  },
+  "links": {},
+  "seed": 4034,
+  "ids": {
+    "background_job_id": "1948b575-9077-42df-8e20-5808f56db613",
+    "generation_id": "70d3246d-da42-40a0-9bb5-f804ef877a96"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "m4034.png"
+  ]
+}

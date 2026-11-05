@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T15:47:47Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "36-cu-sith-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "29c2999c-c37d-41d2-b026-c7a4363fbd8c",
+        "generation_id": "c2164189-ce0f-4d4b-b1ad-072baf31be8e"
+      }
+    }
+  ]
+}

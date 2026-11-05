@@ -212,67 +212,67 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/07_alber.png",                  {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 72x64), 4 dirs (front, side, back; left mirrored): its one animation, flying -- a 6-frame wingbeat, 0.72 s
     { "assets/enemies/08_snawfus.png",                {0, 1, 0, 2} },
     { "assets/enemies/09_questing_beast.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/09_questing_beast_walk.png" },
-    { "assets/enemies/10_grand_goule.png",            {0, 1, 0, 2} },
+    { "assets/enemies/redraws/10_grand_goule.png",            {0, 1, 0, 2} },   // big (frame 98x65), one view in all 8 dirs: gaunt blue bat-winged gargoyle, long beak; 1 head drawn back, 2 beak gaping: the frame its ring leaves on
     { "assets/enemies/11_paoxiao.png",                {0, 1, 0, 2}, 3, false,
       "assets/enemies/11_paoxiao_leap.png", "assets/enemies/11_paoxiao_closed.png" },
-    { "assets/enemies/12_ebigane.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/12_ebigane_fly.png" },
-    { "assets/enemies/13_beast_of_the_charred_forests.png", {0, 1, 0, 2} },
+    { "assets/enemies/redraws/12_ebigane.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/12_ebigane_fly.png" },   // big (frame 104x68), left view, right-hand directions mirrored: rat-bodied predator, peach fins, ringed tail; 1 fins flared (the pentagram), 2 jaws wide (the screech); fly = running through the air
+    { "assets/enemies/redraws/13_beast_of_the_charred_forests.png", {0, 1, 0, 1} },   // big (frame 98x68), one view in all 8 dirs: eyeless coal beast looking down at you, orange gullet; idle 0 and 1, pose 2 reared with an ember ring, held as a shot leaves its mouth
     { "assets/enemies/14_lodsilungur.png",            {0, 1, 0, 2} },
     { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2}, 3, false, "assets/enemies/15_ofuguggi_swim.png" },  // swim = backwards, tail first
-    { "assets/enemies/16_kamaitachi.png",             {0, 1, 0, 2} },  // medium (45x47), 8 dirs: its old drawing half as big again
+    { "assets/enemies/redraws/16_kamaitachi.png",             {0, 1, 0, 2} },  // medium (45x47), 8 dirs: its old drawing half as big again
     { "assets/enemies/redraws/17_qiqirn.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/17_qiqirn_run.png" },  // reviewed first pose; breathing fallback also used while running
-    { "assets/enemies/18_vatnaormur.png",             {}, 5 },
-    { "assets/enemies/19_skeljaskrimsli.png",         {}, 5 },
-    { "assets/enemies/20_sermilik.png",               {}, 5 },
+    { "assets/enemies/redraws/18_vatnaormur.png",     {}, 5 },         // big (frame 98x65), front only, symmetrical: slug-faced lake serpent, no water; frame 1 spits the gold ring, 3-4 its body heaves as a ripple leaves (Vatnaormur::anim_frame)
+    { "assets/enemies/redraws/19_skeljaskrimsli.png",         {}, 5 },
+    { "assets/enemies/redraws/20_sermilik.png",               {}, 5 },
     { "assets/enemies/21_asp.png",                    {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 42x35), 4 dirs (front, side, back; left mirrored): coiled serpent; 10 frames in the old 1.3 s loop -- it sways, bounces and breathes, its tail in its ear on 3-5, its tongue out on 8-9 (the hiss)
     { "assets/enemies/22_cactus_cat.png",             {}, 8, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 170 },   // medium (frame 50x35), 3/4 only: sitting, its cactus tail swaying a pixel a frame, the breath a frame behind; 8 frames in a 1.36 s loop
     { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 12, true, "assets/enemies/23_olgoi_khorkhoi_spinup.png", "assets/enemies/23_olgoi_khorkhoi_spin.png", nullptr, 1, 1, nullptr, 170 },   // giant (frame 320x124: the whole arena, its ringed body runs off the right edge), one view, one row per direction: the arch heaves and leans, the body slithers, the head dips and the maw's lobes spread, feelers whip; flap = the spin firing up (11 frames, once, as it enrages); alt = the head and blades spinning with the body pumping; 12 frames in a 2.04 s loop
     { "assets/enemies/24_zoureg.png",                 {}, 6, false, "assets/enemies/24_zoureg_dash.png", "assets/enemies/24_zoureg_windup.png", nullptr, 1, 1, nullptr, 170 },  // medium (frame 44x29), 4 dirs (front, side, back; left mirrored): 6-frame idle; flap = the dash, uncoiled and thrown like a knife; alt = drawn back and glowing hotter, shown while it aims
     { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
-    { "assets/enemies/26_akhekh.png",                 {0, 1, 0, 2} },
+    { "assets/enemies/redraws/26_akhekh.png",                 {0, 1, 0, 2} },
     { "assets/enemies/27_grootslang.png",             {}, 5 },
     { "assets/enemies/28_opimachus.png",              {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 50x39), one view, never mirrored: sitting, tail curling up then stretching out, crest in the wind; 10 frames in the old 1.3 s loop
-    { "assets/enemies/29_karnabo.png",                {0, 1, 0, 2} },
+    { "assets/enemies/redraws/29_karnabo.png",                {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: stooped green bogey in a huge slate robe, trunk of a nose; idle 0 and 1, pose 2 hands flung out, trunk coiled in a ring, held as a shot leaves it
     { "assets/enemies/30_dajna.png",                  {}, 8, true, "assets/enemies/30_dajna_sit.png", "assets/enemies/30_dajna_sat.png" },   // fills the top of the arena: one row per direction
-    { "assets/enemies/31_man_eating_boulder.png",     {0, 1, 0, 2} },
+    { "assets/enemies/redraws/31_man_eating_boulder.png",     {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: moss-draped boulder that is mostly mouth; idle 0 jaws open and 1 shut, pose 2 reared, jaws widest, held as rocks leave its gullet
     { "assets/enemies/redraws/32_angont.png",         {}, 5 },          // gold-olive coils, shaded poison skulls; reviewed first pose, breathing
     { "assets/enemies/33_tsenagahi.png",              {0, 1, 0, 2} },
-    { "assets/enemies/34_anaye.png",                  {}, 8, true },   // giant: one row per direction
-    { "assets/enemies/35_lomie.png",                  {0, 1, 0, 2} },
-    { "assets/enemies/36_cu_sith.png",                {0, 1, 0, 2} },
-    { "assets/enemies/37_celestial_stag.png",         {0, 1, 0, 2} },
-    { "assets/enemies/38_igtuk.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/redraws/34_anaye.png",                  {}, 9, true },   // giant (frame 130x118), one view in all 8 dirs: armoured bone-masked titan, feather crest, reality-shard axe; 9 poses 260 ms, picked by Anaye::anim_frame: idle, lift, slam
+    { "assets/enemies/redraws/35_lomie.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/redraws/36_cu_sith.png",                {0, 1, 0, 2} },
+    { "assets/enemies/redraws/37_celestial_stag.png",         {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 150 },   // big (frame 98x65), 4 dirs (front, side, back; left mirrored): the spectral stag of the shard caves; 5 frames at the torches' 150 ms, its antlers' rainbow stripes a step along each frame, strobing as the torch flames do
+    { "assets/enemies/redraws/38_igtuk.png",                  {0, 1, 0, 2} },
     { "assets/enemies/redraws/39_ajaju.png",                  {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 62x47), 4 dirs (front, side, back; left mirrored): its idle, 10 frames in the old 1.3 s loop -- breath on 2-4, tongues fanned on 3, a flick on 8, the tail flipping on 5-8
-    { "assets/enemies/40_slide_rock_bolter.png",      {}, 5 },
+    { "assets/enemies/redraws/40_slide_rock_bolter.png",      {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 98x65), side on, right views mirrored: the rock-hided, moss-backed whale, beached and flopping uncomfortably (the user)
     { "assets/enemies/redraws/41_sasnalkahi.png",     {}, 5 },
-    { "assets/enemies/42_nykur.png",                  {0, 1, 0, 2} },
-    { "assets/enemies/43_sazae_oni.png",              {0, 1, 0, 2} },
-    { "assets/enemies/44_itqiirpak.png",              {}, 8, true },   // giant: one row per direction
-    { "assets/enemies/45_kusa_kap.png",               {0, 1, 0, 2} },
-    { "assets/enemies/46_lusca.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/redraws/42_nykur.png",                  {0, 1, 0, 2} },
+    { "assets/enemies/redraws/43_sazae_oni.png",              {0, 1, 0, 2} },
+    { "assets/enemies/redraws/44_itqiirpak.png",              {0, 1, 0, 1} },   // giant (frame 130x88), 8 dirs (DL mirrored): a huge hand, a palm mouth with a long tongue, a mouth and tongue on each fingertip, a plain thumb; idle 0 1, pose 2 mouths wide, held on each shot
+    { "assets/enemies/redraws/45_kusa_kap.png",       {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (left mirrored): rust sea eagle, a dugong in its talons; wings level, raised, highest
+    { "assets/enemies/redraws/46_lusca.png",          {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (left mirrored): tall shark head on crimson octopus arms; jaws open, half open, nearly shut
     { "assets/enemies/47_moha_moha.png",              {}, 24, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 100 },  // approved side view: 24 frames at 100 ms, always facing right
     { "assets/enemies/48_bjarndyrakongur.png",        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on 5-9; 12 frames in a 1.94 s loop; one row per direction
     { "assets/enemies/redraws/49_physeter.png",       {}, 8, true },   // mutant sperm whale first pose, breathing; one row per direction
-    { "assets/enemies/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
+    { "assets/enemies/redraws/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
     { "assets/enemies/redraws/51_aspidochelone.png",   {}, 8, true },  // island turtle first pose, no water beneath; breathing fallback
     { "assets/enemies/redraws/52_sannaja.png", {}, 8, true, "assets/enemies/redraws/52_sannaja_turn.png", "assets/enemies/redraws/52_sannaja_body.png", nullptr, 1, 1, nullptr, 0, "assets/enemies/redraws/52_sannaja_eyes.png" },  // biggest enemy (352x224 frames): legs only (rock pillars bound by flesh); flap: the turn -- it backs right and lowers its head (forward), lifts it (backward); alt: head down, mouthless, void eyes; parts: the glints turned on the player, then each eye's shut lid
-    { "assets/enemies/53_come_at_a_body.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/53_come_at_a_body_dash.png" },  // frame 1: it spits; dash = rush and flight
+    { "assets/enemies/redraws/53_come_at_a_body.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/53_come_at_a_body_dash.png" },  // frame 1: it spits; dash = rush and flight
     { "assets/enemies/54_billdad.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/54_billdad_slap.png", "assets/enemies/54_billdad_jump.png" },  // medium, front only; frame 1: the spring; alt = the leap and the slam it lands on; flap = phase 2, its back to us: in the air, tail raised, tail down, standing
     { "assets/enemies/55_wapaloosie.png",             {0, 1, 0, 2}, 3, false, nullptr,
       "assets/enemies/55_wapaloosie_up.png", "assets/enemies/55_wapaloosie_log.png", 8, 3 },                         // medium, front + 3/4 front only: rust inchworm-squirrel; frame 1: the full hump; alt: reared up on its back legs
     { "assets/enemies/56_moskitto.png",               {}, 5, false, "assets/enemies/56_moskitto_grab.png" },  // big, front view only (every direction is it): always aloft, frame 4 the needle thrust; grab = legs snapping open and shut
     { "assets/enemies/57_dingbat.png",                {}, 5, false, "assets/enemies/57_dingbat_stare.png", "assets/enemies/57_dingbat_catch.png" },  // big, 6 dirs; alt = catching pose (perched); flap = the stare's wingbeat
     { "assets/enemies/58_agropelter.png",             {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, front only, one row a direction: squatting, both long arms in a sine wave; 8 frames in the old 1.3 s loop; an arm fullest out on frames 2 and 6, the scream on 4
-    { "assets/enemies/59_tripodero.png",              {0, 1, 0, 2}, 3, false, "assets/enemies/59_tripodero_walk.png" },  // frame 1: fires a clay slug; walk = big steps left then right
+    { "assets/enemies/redraws/59_tripodero.png",              {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/59_tripodero_walk.png" },  // frame 1: fires a clay slug; walk = big steps left then right
     { "assets/enemies/60_rumptifusel.png",            {}, 12, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, one 3/4 view, always facing left as drawn (the same in every direction of the sheet, never mirrored): a fur pelt, hood swaying; frame 2 reared highest, purple belly bared; frames 3-8 the roll comes down over the belly, eyes shut on 7-8; 12 frames in a 1.94 s loop (it was 1.3 s)
     { "assets/enemies/redraws/61_roperite.png",       {}, 5 },         // approved running cycle, 8 dirs (left views mirrored); existing frame-2 lasso hook and timing
     { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png" },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
     { "assets/enemies/redraws/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
     { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
-    { nullptr },                                                       // 65 Mice That Eat Iron: skipped for now
+    { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 150 },   // small (frame 38x22), front only: three mice sharing an iron beam, gnawing it out of step (the user)
     { "assets/enemies/redraws/66_ayotochtli.png",     {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/66_ayotochtli_roll.png" },  // approved eight-direction stand/hunch and curled-ball roll; existing timings and frame-1 attack
-    { "assets/enemies/67_lagopus.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/67_lagopus_fly.png" },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
-    { "assets/enemies/68_shuyu.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/68_shuyu_flap.png" },  // frames 1, 2: heads plucking the air; flap (phase 2) = wings beating
+    { "assets/enemies/redraws/67_lagopus.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/67_lagopus_fly.png" },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
+    { "assets/enemies/redraws/68_shuyu.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/68_shuyu_flap.png" },  // frames 1, 2: heads plucking the air; flap (phase 2) = wings beating
     { "assets/enemies/69_bes_chem.png",               {0, 1, 0, 2} },  // big (59x45 frame), one view: 3/4 right, mirrored for the left; a still breathed into 3 frames
     { "assets/enemies/70_trollgadda.png",             {}, 5 },         // big, side view only (mirrored when the player is on its left): green pike, a tree wedged in its jaws; tail flicking, crown swaying; frame 2 jaws strained widest
     { "assets/enemies/redraws/71_namungumi.png",              {}, 12, false, nullptr, "assets/enemies/redraws/71_namungumi_flash.png", nullptr, 1, 1, nullptr, 162 },   // big, front view only: veined black cloak over a red skirt, one eye, fang comb; frames 1-6 a long breath (crest highest on 2), 7-11 its steps; alt: the same frames with the eye pure white (the warning before a beam); 12 frames in a 1.94 s loop (it was 1.3 s)
@@ -283,24 +283,24 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/76_loch_oich_monster.png", {}, 5 },       // reviewed first pose; breathing fallback
     { "assets/enemies/redraws/77_hoga.png",           {}, 5 },         // reviewed first pose; breathing fallback
     { "assets/enemies/78_zankallala.png",             {}, 10, false, "assets/enemies/78_zankallala_run.png", nullptr, nullptr, 1, 1, nullptr, 130 },  // medium (frame 58x53), 4 dirs (front, side, back; left mirrored): hairy trickster in a beehive hat riding a jerboa; 10 frames in the old 1.3 s loop, frames 3-4 the boast, staff raised; flap = the dash, staff levelled ahead
-    { "assets/enemies/79_ugjuknarpak.png",            {}, 5 },         // big, 8 dirs: giant tusked bearded seal reared on its hind legs, clawing the air; frame 2 widest roar
-    { "assets/enemies/80_bes_kotak.png",              {}, 5 },         // big, 8 dirs: blocky floating box spirit; frame 2 lid lifts, mouth slot gapes
+    { "assets/enemies/redraws/79_ugjuknarpak.png",            {}, 5 },         // big, 8 dirs: giant tusked bearded seal reared on its hind legs, clawing the air; frame 2 widest roar
+    { "assets/enemies/redraws/80_bes_kotak.png",              {}, 5 },         // big, 8 dirs: blocky floating box spirit; frame 2 lid lifts, mouth slot gapes
     { "assets/enemies/81_ieltxu.png",                 {0, 1, 0, 2}, 3, false, nullptr, "assets/enemies/81_ieltxu_fire.png" },  // medium, 8 dirs: near-black night bird, dark; alt = lit up breathing fire (frame 1 the jet)
     { "assets/enemies/82_nadubi.png",                 {}, 5, false, "assets/enemies/82_nadubi_crawl.png", "assets/enemies/82_nadubi_scratch.png" },  // big, 8 dirs: barbed spirit on all fours; flap = spider crawl; alt = reared, raking claws
-    { "assets/enemies/83_beast_of_barrisdale.png",    {}, 10, true, nullptr, "assets/enemies/83_beast_of_barrisdale_fly.png", nullptr, 1, 1, nullptr, 130 },  // 100x65, 10 frames at 130 ms: planted breathing idle; alt = tucked airborne pose for all phase two; one left-facing view
-    { "assets/enemies/84_kigutilik.png",              {}, 5 },  // big, 8 dirs: violet stilt-legged beast, walrus head, cup on its head; frame 2 jaws open
-    { "assets/enemies/85_nanabolele.png",                    {}, 5 },  // big, 8 dirs: glowing-scaled river dragon; frame 2 jaws gape, lights blaze
+    { "assets/enemies/redraws/83_beast_of_barrisdale.png",    {}, 10, true, "assets/enemies/redraws/83_beast_of_barrisdale_block.png", "assets/enemies/redraws/83_beast_of_barrisdale_fly.png", nullptr, 1, 1, nullptr, 130 },  // 100x65, one left-facing view, Dingbat's choppiness: 5 poses each held two 130 ms cells; alt = airborne for all phase two; flap = the block, wrapped in its wings for the whole hang (7 frames: closing, A B C B A, opening)
+    { "assets/enemies/redraws/84_kigutilik.png",              {}, 5 },  // big, 8 dirs: violet stilt-legged beast, walrus head, cup on its head; frame 2 jaws open
+    { "assets/enemies/redraws/85_nanabolele.png",                    {}, 5 },  // big, 8 dirs: glowing-scaled river dragon; frame 2 jaws gape, lights blaze
     { "assets/enemies/86_leucrocotta.png",                   {}, 5, false, "assets/enemies/86_leucrocotta_run.png", nullptr, nullptr, 1, 1, nullptr, 170 },  // big (frame 98x65), 4 dirs (front, side, back; left mirrored): stag-legged lion, badger head; 5 frames, 0.85 s, its call's beat -- mouth gaping on 2-3 (Leucrocotta::anim_frame keeps it on the call); flap = the gallop, drawn from the side only
-    { "assets/enemies/87_corocotta.png",                     {}, 5 },  // big, 8 dirs: grey hyena-wolf, bristling mane, colour-shifting eyes; frame 2 jaws wide
-    { "assets/enemies/88_amixsak.png",                       {}, 5 },  // big, 8 dirs: risen empty walrus hide, floating; frame 2 flippers flung high to seize
-    { "assets/enemies/89_cuero.png",                         {}, 5 },  // big, 8 dirs: living stretched cowhide, rim of eyes and hooked claws; frame 2 heaves up, claws flared
-    { "assets/enemies/90_chipekwe.png",                      {}, 5 },  // big, 8 dirs: massive dark rhino-reptile, one ivory horn; frame 2 head down, horn thrust to gore
-    { "assets/enemies/91_kurrea.png",                        {}, 5 },  // big, 8 dirs: huge lagoon serpent reared from its coils; frame 2 drawn back, jaws open to strike
-    { "assets/enemies/92_siehnam.png",                       {}, 5 },  // big, 8 dirs: gaunt night deer, huge bone antlers, bloodied muzzle; frame 2 antlers levelled to stab
-    { "assets/enemies/93_chipique.png",                      {}, 5 },  // big, 8 dirs: black river serpent looping through white water, small grey head; frame 2 head darts, jaws open
-    { "assets/enemies/94_trochus.png",                       {}, 5 },  // big, 8 dirs: great spined sea wheel half sunk in white water; frame 2 spins hard, spines drawn in
-    { "assets/enemies/95_witkes.png",                        {}, 5 },  // big, 8 dirs: half-shaped water spirit rising from a whirlpool, offering tea; frame 2 arms spread, pool surging
-    { "assets/enemies/96_bregdi.png",                        {}, 8, true },  // giant, 8 dirs: dark sea beast surfacing, two huge wing-fins; frames 3-4 fins wrap round in front, jaws open
+    { "assets/enemies/redraws/87_corocotta.png",                     {}, 5 },  // big, 8 dirs: grey hyena-wolf, bristling mane, colour-shifting eyes; frame 2 jaws wide
+    { "assets/enemies/redraws/88_amixsak.png",                       {}, 5 },  // big, 8 dirs: risen empty walrus hide, floating; frame 2 flippers flung high to seize
+    { "assets/enemies/redraws/89_cuero.png",                  {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 250 },   // big (frame 98x65), one view: the living stretched cowhide, clawed rim, rippling and heaving (the user)
+    { "assets/enemies/redraws/90_chipekwe.png",              {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (R, UL, DL mirrored): huge periwinkle beast, one ivory horn, a trunk in the middle of its face; weight shifting, trunk swinging, feet planted
+    { "assets/enemies/redraws/91_kurrea.png",                {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (L, UR, DL mirrored): dark purple serpent of reality shard in one great loop, rainbow crystal plates, one colour each; a slow ripple
+    { "assets/enemies/redraws/92_siehnam.png",               {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (UL, L, DL mirrored): skull-faced night deer, vast bone antlers bloodied at the tips; head and antlers swaying
+    { "assets/enemies/redraws/93_chipique.png",              {}, 8, true },   // big (frame 98x65), one view in all 8 rows (no turning, the user): grey and purple serpent arching over the canoe held in its coil, hooded rider paddling; neck, tail and paddle move, blood falls
+    { "assets/enemies/redraws/94_trochus.png",               {0, 1, 0, 2} },   // big (frame 98x69), one view in all 8 dirs: the "wheel" of Aelian, a blue spoked wheel with long bone spikes and a taller crest; rocks round its hub
+    { "assets/enemies/redraws/95_wendigo.png",               {0, 1, 0, 2} },   // big (frame 102x66), one front view in all 8 dirs: bone demon of the winter, skull face, crimson eyes, huge spiked arms, ice horns, icicles; arms rise and spread
+    { "assets/enemies/redraws/96_bregdi.png",                {0, 1, 0, 2} },   // big (frame 98x72), one view in all 8 dirs, no water: tall gray sea beast of Shetland, gaping jaws, ivory teeth, long fins that sweep up over its head
     { "assets/enemies/redraws/97_ro.png",             {}, 8, true },   // the only black enemy: charcoal hide, black outline, red accents; reviewed first pose, breathing
     { "assets/enemies/98_boiuna.png",                        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },  // giant (frame 192x176, drawn 163x162), front view only: great green river snake, its winding body laid out behind, its front reared and arched over, head hanging open-mouthed, yellow slit eyes; 12 frames in a 1.56 s loop -- a wave runs back along it to the tail's tip (the back moves more than the front), it breathes, the head lifts a pixel on 4-8; one row per direction
     { "assets/enemies/redraws/99_fad_felen.png", {}, 10, true, nullptr, "assets/enemies/redraws/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 180 },  // approved crouched idle; alt = standing on hind legs, ten frames at 180ms

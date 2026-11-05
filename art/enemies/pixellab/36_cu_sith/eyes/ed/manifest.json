@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "ed",
+  "generated": "2026-10-29T16:22:59Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "ed_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "eyesd.png"
+      ],
+      "ids": {
+        "background_job_id": "dc624dee-1aa7-4034-9ad1-9bb15a0766d6",
+        "generation_id": "a0182a30-f901-4236-9b11-0b6dc27c78db"
+      }
+    }
+  ]
+}

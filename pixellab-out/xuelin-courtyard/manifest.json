@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "subject": "xuelin-courtyard",
+  "generated": "2026-10-28T08:58:43Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-bitforge",
+      "run": "xuelin-courtyard_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "courtyard-styled-1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-bitforge",
+      "run": "xuelin-courtyard_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "courtyard-styled-2.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "xuelin-courtyard_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "courtyard-free-1.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "xuelin-courtyard_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "courtyard-free-2.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

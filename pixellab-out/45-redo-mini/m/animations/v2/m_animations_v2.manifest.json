@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "action": "Flying in place: both wings beat strongly up and down, the dugong held in its talons, same size, same place.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 501
+  },
+  "links": {},
+  "seed": 501,
+  "ids": {
+    "background_job_id": "8350fbe2-095b-4866-88ff-4dddcd763e25",
+    "generation_id": "51220a44-18c4-4f4a-af6d-ac6d6c802a7e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flyd-00.png",
+    "flyd-01.png",
+    "flyd-02.png",
+    "flyd-03.png",
+    "flyd-04.png"
+  ]
+}

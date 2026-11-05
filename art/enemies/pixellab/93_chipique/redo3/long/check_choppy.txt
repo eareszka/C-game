@@ -1,0 +1,57 @@
+== long/c_0.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 56 tall (columns 10-88, rows 8-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.8% of 2452 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== long/c_1.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 58 tall (columns 10-88, rows 6-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.7% of 2467 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((18, 32), 'b6433d')]; teeth 0
+== long/c_2.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 61 tall (columns 10-88, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.9% of 2508 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+== long/c_3.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 61 tall (columns 10-88, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.9% of 2550 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((75, 42), '595965')]; teeth 0
+== long/c_4.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 61 tall (columns 10-88, rows 3-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.7% of 2544 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((75, 42), '595965')]; teeth 0
+== long/c_5.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 59 tall (columns 10-88, rows 5-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 6.9% of 2535 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((75, 42), '595965')]; teeth 0
+== long/c_6.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 55 tall (columns 10-88, rows 9-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.1% of 2459 px (reference 9-14%)
+  alpha: binary
+  specks: 1 lone pixels [((75, 42), '595965')]; teeth 0
+== long/c_7.png
+  palette: 0 off-palette pixels; 7 colours plus black
+  drawn box: 79 wide x 54 tall (columns 10-88, rows 10-63)
+  outline: closed (0 colour px on the edge, all on parts drawn without one)
+  interior black: 7.0% of 2427 px (reference 9-14%)
+  alpha: binary
+  specks: 0 lone pixels; teeth 0
+PASS

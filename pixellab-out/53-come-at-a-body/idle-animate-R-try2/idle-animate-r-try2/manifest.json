@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-r-try2",
+  "generated": "2026-10-28T08:55:21Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-r-try2_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "53-come-at-a-body-idle-r-try2-00.png",
+        "53-come-at-a-body-idle-r-try2-01.png",
+        "53-come-at-a-body-idle-r-try2-02.png",
+        "53-come-at-a-body-idle-r-try2-03.png",
+        "53-come-at-a-body-idle-r-try2-04.png"
+      ],
+      "ids": {
+        "background_job_id": "65357d64-26c9-4479-8c18-64a05d64b988",
+        "generation_id": "77b3e89e-1b1c-4cb2-aa30-d0ff80380b70"
+      }
+    }
+  ]
+}

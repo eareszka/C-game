@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "m_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 900 characters>",
+      "format": "png"
+    },
+    "description": "Kurrea: a long dark purple serpent arching in one loop, a lilac underside, big pastel crystal plates along its spine. Black outline, flat pixel art.",
+    "no_background": true,
+    "seed": 701
+  },
+  "links": {},
+  "seed": 701,
+  "ids": {
+    "background_job_id": "eab46581-046d-4303-bdc1-7873a8fc6665",
+    "generation_id": "7fcf3c78-fbf0-4e2e-989b-2a2e10c6ebf5"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

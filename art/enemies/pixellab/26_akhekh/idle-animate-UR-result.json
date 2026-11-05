@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-ur_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\26-akhekh-idle-ur-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\26-akhekh-idle-ur-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\26-akhekh-idle-ur-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\26-akhekh-idle-ur-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\26-akhekh-idle-ur-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\26-akhekh\\idle-animate-UR\\idle-animate-ur\\animations\\v1\\idle-animate-ur_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "44f18e4c-6e78-4d21-be41-b247265e5175",
+    "generation_id": "f8f911d5-6acd-42d7-becc-2b1e36569c02"
+  }
+}

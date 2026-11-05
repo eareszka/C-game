@@ -209,6 +209,26 @@ COAST = {
     'gazebo':     ((87, 186, 5, 5), ('slate',)),
 }
 PIECES.update({n: (at, 'built', ('white paint',) + made) for n, (at, made) in COAST.items()})
+# Xuelin's (art/structures/xuelin/*_design.py), every one a material named
+# above: its grey brick is stone's two darker tones laid with the lightest as the joint
+MATERIALS['grey brick'] = {'tones': MATERIALS['stone']['tones'][1:], 'joint': MATERIALS['stone']['tones'][0]}
+XUELIN = {
+    'courtyard': ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint'),
+    'shophouse': ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'bookshop':  ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'inn':       ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'drumtower': ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'shrine':    ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'elder':     ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood'),
+    'town':      ('grey brick', 'slate', 'snowpack', 'red paint', 'yellow paint', 'wood', 'foliage',
+                  'bark', 'snow', 'glass'),             # the wall and all (town_design.py), the snow props laid in it
+    'town_anim': ('red paint', 'yellow paint', 'wood'),  # its lantern posts' other frames
+}
+PIECES.update({n: ('art/structures/xuelin/%s.png' % n, 'built', made) for n, made in XUELIN.items()})
+XUELIN_AT = {                                       # where each lies on the sheet (gen_entrance_art.py XUELIN):
+    'town': (0, 64),                                # the whole town, every building in place (xuelin/town_design.py)
+    'town_anim': (0, 136),                          # under it (64 + its 72 rows): its lantern posts' other frames
+}
 PIECES.update({                                     # the green's things: art/structures/coast/park_design.py
     'bench':        ((93, 190, 1, 1), 'object', ('wood',)),
     'street lamp':  ((94, 188, 1, 3), 'object', ('slate', 'lamplight')),

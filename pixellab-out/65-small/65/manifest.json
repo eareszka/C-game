@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "subject": "65",
+  "generated": "2026-11-02T09:49:11Z",
+  "spent": {
+    "calls": 3,
+    "generations": 3.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "65_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "s1.png"
+      ],
+      "ids": {
+        "background_job_id": "14c0f72f-8ffc-49e8-b3f2-bdc23bb6be8f",
+        "generation_id": "09c01617-576a-4b84-88d6-1efbbf2c232c"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "65_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "s2.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "65_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "s3.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

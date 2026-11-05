@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 49x46, 5 colours plus black.
+Unmet: "faceless" is only partly met, because I kept the reference's two 1 px ivory eye marks in the shadow under the brim, and there is no other face.

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1437-in-u-heavy-stomping-walk-straight-away-from-us-a",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 776 characters>",
+      "format": "png"
+    },
+    "action": "Heavy stomping walk straight away from us at level camera, seen from behind: the back legs step one then the other, the body rocks side to side, the tail sways. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1322
+  },
+  "links": {},
+  "seed": 1322,
+  "ids": {
+    "background_job_id": "e5bb0d0b-02c3-44fa-8a56-aa64ca7456e7",
+    "generation_id": "f85f81cc-24ab-4b15-bfaa-f2f8965dbb84"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walku-00.png",
+    "walku-01.png",
+    "walku-02.png",
+    "walku-03.png",
+    "walku-04.png"
+  ]
+}

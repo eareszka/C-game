@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1601-input-heavy-slow-walk-straight-toward-us-at-leve",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1048 characters>",
+      "format": "png"
+    },
+    "action": "Heavy slow walk straight toward us at level camera: one thick leg steps then the other, the shoulders rock side to side, the axe stays held upright at its side, the crest stays. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1471
+  },
+  "links": {},
+  "seed": 1471,
+  "ids": {
+    "background_job_id": "77f41bb8-dd9a-4627-9c83-5ee05c2574a3",
+    "generation_id": "8e25514a-0452-47e2-ba10-7208ebe145cc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walk-00.png",
+    "walk-01.png",
+    "walk-02.png",
+    "walk-03.png",
+    "walk-04.png"
+  ]
+}

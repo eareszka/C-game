@@ -1,0 +1,633 @@
+{
+"_": "By-eye ratings of each sprite, made on 2026-11-05 with all 101 at game size on black. Rebuilds mark a rating stale if its sprite has changed.",
+"0": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "95d8e4925c1a44f86923ab893288abc92d090f61",
+"style": "chunky"
+},
+"1": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "ea0ee6c375a84a0d055450c9db583047207a7695",
+"style": "chunky"
+},
+"2": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "b8ad98c8f2807ca1aa44ad181be80ee64a4ce0aa",
+"style": "chunky"
+},
+"3": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "238710d56e802dc00f6001f72c7526ec939cf9a6",
+"style": "chunky"
+},
+"4": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "534b8f8ca0a20c42e951c040e2581db71c985d1c",
+"style": "chunky"
+},
+"5": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "d3d7f7e92fde4a68cda02e15ad8b3225912b9370",
+"style": "chunky"
+},
+"6": {
+"rating": "old",
+"why": "Size open: 237 px against a 160 px target.",
+"hash": "339d302737a41d7f352ac45f3401ce53bf06a730",
+"style": "soft"
+},
+"7": {
+"rating": "standard",
+"why": "You chose this front-facing flier, made with PixelLab from your reference.",
+"hash": "d329deb5dc50eb61bf8b01b4f31a518769ed6a9f",
+"source": "pixellab",
+"style": "ref"
+},
+"8": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "2c4ae590625a93d4fc25c16846a6faf71ba26088",
+"style": "chunky"
+},
+"9": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "6c99fe5416d6d604c6bb698ab8256de7d821776c",
+"style": "chunky"
+},
+"10": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "9a370b7e6cd7a7cb6bca6e9ef294d4aa8faa1545",
+"source": "pixellab",
+"style": "soft"
+},
+"11": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "494182b8cf47287669e833635bfa46cf07bff693",
+"style": "chunky"
+},
+"12": {
+"rating": "standard",
+"why": "Old design turned to face forward with PixelLab, chosen by you.",
+"hash": "59cfb0f9731014d362b152bb992828e13e8ab9cf",
+"style": "soft",
+"source": "pixellab"
+},
+"13": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "4005c516d4713fb19e81b5adc241c38b32cdf9cb",
+"source": "pixellab",
+"style": "soft"
+},
+"14": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "ce61f762cd6ef4f6b3ecb62ad3e51ba6e5d40364",
+"style": "chunky"
+},
+"15": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "a56dad0f6f93a09f55386e18db789a6e430ea9db",
+"style": "chunky"
+},
+"16": {
+"rating": "close",
+"why": "Clean, but the bands are stock stripes.",
+"hash": "dcc6d5390dcecbdf9b191a4ae7510c4062d244f4",
+"style": "line"
+},
+"17": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "cd0b41961d7ceef019280557ad39f447203a7053",
+"style": "chunky"
+},
+"18": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "aa12bf0871be566d44dd2713249ac3712562d975",
+"source": "pixellab",
+"style": "soft"
+},
+"19": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "5d597ab084566d88d683f0400c076705325a7465",
+"source": "pixellab",
+"style": "soft"
+},
+"20": {
+"rating": "standard",
+"why": "You chose this bear family version, made with PixelLab from the old 41.",
+"hash": "d1991aa154bbba58b1da694cb7f385d962996753",
+"source": "pixellab",
+"style": "family"
+},
+"21": {
+"rating": "standard",
+"why": "You chose this snake family version, made with PixelLab from 27 Grootslang.",
+"hash": "bb62e7532d403ed921d189be4a5f43d306668ca3",
+"source": "pixellab",
+"style": "family"
+},
+"22": {
+"rating": "match",
+"why": "Its repeated marks are fine at this tier, by your rule.",
+"hash": "33985d5687867792e916fe744a76e5bf5ee47f84",
+"style": "line"
+},
+"23": {
+"rating": "old",
+"why": "Size open: 221 px on the sheet, against the 160 px you set earlier. Your answer is needed.",
+"hash": "a9562102ca539b0d8cc95b820b3db7cea9a14ae3",
+"style": "soft"
+},
+"24": {
+"rating": "old",
+"why": "Size open: 26 px against a 43 px target.",
+"hash": "cd97e1fa0cff584e83a97ccf7de5a061263843b4",
+"style": "soft"
+},
+"25": {
+"rating": "close",
+"why": "Good lion. The legs and ball do not attach.",
+"hash": "ab9c0176ad228c4404b60d289a1d9b599dbb6be8",
+"style": "line"
+},
+"26": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "51c00b62b63b60c6d5f4b4f1b2ebe5e49c5e86c6",
+"style": "chunky"
+},
+"27": {
+"rating": "standard",
+"why": "The base of the snake family, which you chose.",
+"hash": "a560ef8b38c08ccce01ca92b458cf63080408487",
+"style": "family"
+},
+"28": {
+"rating": "no",
+"why": "Tail rings, wings and torso merge. No limb can be traced.",
+"hash": "5e198f9a256a245c7da0c7b88fa7bc1b575cef5a",
+"style": "line"
+},
+"29": {
+"rating": "standard",
+"why": "Old design resized with PixelLab and cleaned, chosen by you.",
+"hash": "2ab40fad9e17e7d0e40a996602d226505015b6ea",
+"style": "soft",
+"source": "pixellab"
+},
+"30": {
+"rating": "old",
+"why": "Size open: 248 px against a 195 px target.",
+"hash": "1c4e7e1bbb9434a8b52ab56c13a96982fc749a74",
+"style": "soft"
+},
+"31": {
+"rating": "old",
+"why": "Fits its size at 85 px.",
+"hash": "e517f779e5120caccbb06b8083d9c9f0d6f00955",
+"style": "soft"
+},
+"32": {
+"rating": "standard",
+"why": "You chose this snake family version, with its head facing down like 27 Grootslang.",
+"hash": "8957978d64b769d74d4dc988d2639254915a3d95",
+"source": "pixellab",
+"style": "family"
+},
+"33": {
+"rating": "old",
+"why": "Size open: 38 px against a 65 px target.",
+"hash": "d8f520e2658eb0b16982fcfcee56592e9f26b7bc",
+"style": "soft"
+},
+"34": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "f2537b1e0ec936eaa295ae56c91e3e4b0e6c2db2",
+"style": "rich"
+},
+"35": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "633f6f1f136b7a309b776fb201052f4216279282",
+"source": "pixellab",
+"style": "soft"
+},
+"36": {
+"rating": "standard",
+"why": "You approved it on 2026-11-05.",
+"hash": "416e15fe9daae39b8f21029ef2989fae11f210c4",
+"style": "plain"
+},
+"37": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "b23771a51b3b855af441a74acbeb2728c5a24594",
+"source": "pixellab",
+"style": "soft"
+},
+"38": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "c70db5e28944ece1e1b8d5c49ec337590b3decf9",
+"source": "pixellab",
+"style": "soft"
+},
+"39": {
+"rating": "close",
+"why": "Reads well. The legs are near copies, which your rule counts as a fault at this tier. You edited it.",
+"hash": "5924bbf040070169def33afb7d2fee763366964f",
+"style": "line"
+},
+"40": {
+"rating": "standard",
+"why": "You chose this front-facing redo from your reference, with the boulder texture of 31.",
+"hash": "5c01d251bf2ef48e67ae77d09216a6245e51fc55",
+"style": "ref",
+"source": "pixellab"
+},
+"41": {
+"rating": "standard",
+"why": "You chose this bear family version, made with PixelLab from the old 41.",
+"hash": "cc4cbca4e859e25d3ff32f2129ff649403180366",
+"source": "pixellab",
+"style": "family"
+},
+"42": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "81e4d5bd73cea9177fe2050f2d58d65d085ee8dc",
+"source": "pixellab",
+"style": "soft"
+},
+"43": {
+"rating": "close",
+"why": "Stock grin on an ornamental shell. Grown from 30 px. You edited it.",
+"hash": "23d1fdbc1cdf2f1af2212d0304fbb7a55409db79",
+"style": "line"
+},
+"44": {
+"rating": "old",
+"why": "Size open: 75 px against a 90 px target.",
+"hash": "8afa01b2de39a1deec7a75aa94b00bab3c6f57e2",
+"style": "soft"
+},
+"45": {
+"rating": "close",
+"why": "The same feather stroke fills both mirrored wings, which reads as AI-made at this tier.",
+"hash": "46bb34e470a3ce40fdb17cec98ff8d14684b4242",
+"style": "line"
+},
+"46": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "7af90cf09f62ae0790a1b746a9788214bb3087eb",
+"source": "pixellab",
+"style": "soft"
+},
+"47": {
+"rating": "standard",
+"why": "You approved it on 2026-11-05.",
+"hash": "793691465602c40b7eafd36f6cc7d48079d20332",
+"style": "plain"
+},
+"48": {
+"rating": "standard",
+"why": "You chose this bear family version, made with PixelLab from the old 41.",
+"hash": "c0bf0cb2faf14f30bb3dd00d9803f91563913b05",
+"source": "pixellab",
+"style": "family"
+},
+"49": {
+"rating": "old",
+"why": "Size open: 265 px against a 145 px target.",
+"hash": "5c3ac01c7856c609988eb8577a8f080a73b08e52",
+"style": "soft"
+},
+"50": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "25e459097b9e0bf77540eca6bea3db3c0cdc0947",
+"style": "chunky"
+},
+"51": {
+"rating": "standard",
+"why": "Old design resized with PixelLab, approved by you.",
+"hash": "67407d74e822ef3c925c37373c83bf942c6c9688",
+"source": "pixellab",
+"style": "soft"
+},
+"52": {
+"rating": "old",
+"why": "Size open: 354 px against a 270 px target, and it runs off the frame.",
+"hash": "be03868a272128721993165eef25ffc6e0201ce0",
+"style": "soft"
+},
+"53": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "31598b76209c6f5ae92d09cdc29c78eb95c1f646",
+"style": "chunky"
+},
+"54": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "2c95cc08a26927ca224d681d09f61df92c55a768",
+"style": "chunky"
+},
+"55": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "cc7e430dc7fde7bf0db49c9282ea335d607d65d3",
+"style": "chunky"
+},
+"56": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "4f50ea10cb71e2b7565b9a31f12aae8099334d4e",
+"style": "chunky"
+},
+"57": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "a54f6e9fff820667233edc21d79f327c9c861980",
+"style": "chunky"
+},
+"58": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "a7d54a971645103cd19b41c23ec48c5e38512def",
+"style": "chunky"
+},
+"59": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "ec449b3a0c52f6cc7d1d0e11afd964316abedff0",
+"style": "chunky"
+},
+"60": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "60c9e3c5d383b0d3f15ea8f70e70473ec31957c7",
+"style": "chunky"
+},
+"61": {
+"rating": "no",
+"why": "The head folds into the body, so no face reads.",
+"hash": "2efca029104bd3f69990a0acd3889d50873a484f",
+"style": "line"
+},
+"62": {
+"rating": "no",
+"why": "The head is a blob with merged features, on copied trunks.",
+"hash": "9e960107bc7fbd38599bfb3b65bb46dc45a11519",
+"style": "line"
+},
+"63": {
+"rating": "standard",
+"why": "You chose the NES redraw over the old sprite and the PixelLab versions on 2026-11-05.",
+"hash": "04e219567ae564a1e67badd3b8dbbc45943ff7b1",
+"style": "line"
+},
+"64": {
+"rating": "close",
+"why": "Good mace. The body is a tangle in one brown.",
+"hash": "f762a765b32ec8d5ca4e347a2c724fd75aa54c8b",
+"style": "line"
+},
+"65": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "3ca541754c241135868db40317f6d3b8d9cdf11c",
+"style": "chunky"
+},
+"66": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "3a335b42482cfc3c3b5e3d13a131ce52241bec64",
+"style": "chunky"
+},
+"67": {
+"rating": "match",
+"why": "Its repeated marks are fine at this tier, by your rule.",
+"hash": "52dc2f992d000e8292e6f610be200e9369c3568e",
+"style": "line"
+},
+"68": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "f3979994f351cb1d51a3c8d335499b646e7407dd",
+"style": "chunky"
+},
+"69": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "4c84906639015b46b57fae9a6bef5ac713899b35",
+"style": "chunky"
+},
+"70": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "7f64c3affcc0af6a922e02d86f462363aa348f43",
+"style": "chunky"
+},
+"71": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "be53909355c7c7dee26d3faef5e92f613991f32d",
+"style": "chunky"
+},
+"72": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "dae303e3792abdfa666b28810c7349f3ff8a558d",
+"style": "chunky"
+},
+"73": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "aaa8b32526e807f928fa45bcc177cb06fd382669",
+"style": "chunky"
+},
+"74": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "e14f413d6f016c963c6745b5185a77aec23d30bc",
+"style": "chunky"
+},
+"75": {
+"rating": "standard",
+"why": "You called everything up to Medium perfect on 2026-11-05.",
+"hash": "1caf08784f1dcf5936428e3414303044c9ccdb3d",
+"style": "chunky"
+},
+"76": {
+"rating": "close",
+"why": "Funny and clean. One hue, so the humps barely separate.",
+"hash": "a9f645cc3ab82e78ccf2c4a399a9b9b6d5b72b34",
+"style": "line"
+},
+"77": {
+"rating": "no",
+"why": "A fish and a cow head butted together, with no join.",
+"hash": "2ec9bdc767869489d8b584d2085f462530f71c18",
+"style": "line"
+},
+"78": {
+"rating": "old",
+"why": "Fits its size at 43 px.",
+"hash": "9ea0214134dc5d213c3adc3eeaf923e871c4ba4b",
+"style": "soft"
+},
+"79": {
+"rating": "match",
+"why": "Big clear parts and a clear animal.",
+"hash": "fd5a820b146f67341d1fae64241615f0f48d09a2",
+"style": "line"
+},
+"80": {
+"rating": "match",
+"why": "A funny face on a box. It is plain and it works.",
+"hash": "73886d5cd834149009a2e915247346ccf68b036c",
+"style": "line"
+},
+"81": {
+"rating": "match",
+"why": "Strong colour marks. Watch this one: 65% of its colour is close to black.",
+"hash": "a73dfa95f64e377b1b783bddbe613fe6a6673816",
+"style": "line"
+},
+"82": {
+"rating": "match",
+"why": "Great face. Its repeated marks are fine at this tier.",
+"hash": "e64cfccb1665d7287edd5462cc8cda1ebf7242cd",
+"style": "line"
+},
+"83": {
+"rating": "standard",
+"why": "One of your picks, in the game as it is.",
+"hash": "90bfccc5090c1ab090dcf0f9e0095c61fd806812",
+"style": "rich"
+},
+"84": {
+"rating": "standard",
+"why": "You chose this PixelLab redo from your reference, facing down and narrowed.",
+"hash": "b5cbd5bb1460b54b1921cfc221c944729f7f0195",
+"source": "pixellab",
+"style": "ref"
+},
+"85": {
+"rating": "close",
+"why": "Mirrored front pose with rib ticks. Grown from 45 px.",
+"hash": "070e0f8026e614c490fe1b40c1afdce2155b7edf",
+"style": "line"
+},
+"86": {
+"rating": "close",
+"why": "Strong head. Body and legs merge into brown strips. You edited it.",
+"hash": "3710c6a218f79ebc99e24da53205361d50f7f557",
+"style": "line"
+},
+"87": {
+"rating": "close",
+"why": "Sharper and busier than its neighbours.",
+"hash": "f533677c903d396a9160e0c4b792af2969ab4d47",
+"style": "line"
+},
+"88": {
+"rating": "match",
+"why": "One big mass with tusks.",
+"hash": "234dfc1c3a5ac75741b3d51519bd2437696468b0",
+"style": "line"
+},
+"89": {
+"rating": "close",
+"why": "Good flat shape with a stock grin.",
+"hash": "f880f602c806e936f2c65c8c9ee1177dd05bec06",
+"style": "line"
+},
+"90": {
+"rating": "standard",
+"why": "You chose this front-facing sauropod redo from your reference.",
+"hash": "6c28cd7677604921f901b6f432ac894b9b1422a8",
+"source": "pixellab",
+"style": "ref"
+},
+"91": {
+"rating": "close",
+"why": "Crystal crumbs on a hard-to-trace coil, with repeated plates. You edited it.",
+"hash": "170cb876d92cc68e56901a08f0739d02dacbc782",
+"style": "line"
+},
+"92": {
+"rating": "close",
+"why": "Strong head. The lower body is a dark lump.",
+"hash": "c5e76f15349d90e4a23e46038661ee730b4f5539",
+"style": "line"
+},
+"93": {
+"rating": "standard",
+"why": "You approved it on 2026-11-05.",
+"hash": "d1a8c80569a310881dc0eb5aac03d26ba6304a22",
+"style": "plain"
+},
+"94": {
+"rating": "standard",
+"why": "You chose this PixelLab redo of the current design on 2026-11-05.",
+"hash": "f5ffa6b47ae220d16f8388370bc9257284a48985",
+"source": "pixellab",
+"style": "ref"
+},
+"95": {
+"rating": "standard",
+"why": "You approved it larger, resized with PixelLab.",
+"hash": "60ac0f0add969d998b7cede5929a90d59eeec7a3",
+"source": "pixellab",
+"style": "rich"
+},
+"96": {
+"rating": "standard",
+"why": "You liked how this one turned out and then made your own edit to it on 2026-11-05.",
+"hash": "8fdf6e90733ca781af16feed1d0d88497ac96970",
+"style": "plain"
+},
+"97": {
+"rating": "standard",
+"why": "You chose this PixelLab redo from your reference, sized to match 7 and 10.",
+"hash": "63da5ec0f89a645363ab6eae67e4ad4130e3c792",
+"source": "pixellab",
+"style": "ref"
+},
+"98": {
+"rating": "old",
+"why": "Size open: 163 px against a 240 px target.",
+"hash": "3572201ae97c148cf1372bf17cc5db2bafe4d3ba",
+"style": "soft"
+},
+"99": {
+"rating": "old",
+"why": "Size open: 67 px against an 86 px target.",
+"hash": "5f1cbbde37e908a9024d4caab1f89861bb2dfd61",
+"style": "soft"
+},
+"100": {
+"rating": "old",
+"why": "Size open: 117 px against a 280 px target, which is taller than the screen.",
+"hash": "b56bb44e78aea815278ecaea018a2e9a43abc634",
+"style": "soft"
+}
+}

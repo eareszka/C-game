@@ -1,0 +1,4 @@
+m1|tiny overworld map sprite of a blue bat-winged gargoyle hovering in the air facing us, hunched body, long pale tan beak pointing down, tan chest, dark charcoal bat wings spread, thin limbs with claws, black outline, flat colours, very few pixels
+m2|tiny map enemy sprite, flying blue gargoyle seen from the front, big dark charcoal wings raised, narrow head with a long tan beak, tan ribbed chest, long thin arms hanging, black outline, flat simple colours, very few pixels
+m3|tiny game map sprite, gaunt gargoyle flying, wings half raised dark gray, slate blue body, tan beak and chest, spindly legs dangling with claws, front view, black outline, flat colours, simple silhouette, very few pixels
+m4|tiny overworld sprite, menacing hunched bat-winged demon hovering facing the viewer, blue hide, tan beak like a long spike, tan belly, wide dark charcoal wings, black outline, flat colours, very few pixels

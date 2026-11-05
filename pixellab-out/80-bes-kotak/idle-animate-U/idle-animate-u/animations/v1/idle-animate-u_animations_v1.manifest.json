@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 796 characters>",
+      "format": "png"
+    },
+    "action": "Floating in place: the box bobs gently, then its lid lifts up off the top and its mouth slot gapes wide open, then the lid drops shut again. Same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "55d33b2f-c7d4-43d1-9f47-917e20315304",
+    "generation_id": "37507b66-5876-4e7e-bac2-372d8dd73459"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "80-bes-kotak-idle-u-00.png",
+    "80-bes-kotak-idle-u-01.png",
+    "80-bes-kotak-idle-u-02.png",
+    "80-bes-kotak-idle-u-03.png",
+    "80-bes-kotak-idle-u-04.png",
+    "80-bes-kotak-idle-u-05.png",
+    "80-bes-kotak-idle-u-06.png",
+    "80-bes-kotak-idle-u-07.png",
+    "80-bes-kotak-idle-u-08.png"
+  ]
+}

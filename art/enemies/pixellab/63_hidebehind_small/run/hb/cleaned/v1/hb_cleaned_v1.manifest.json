@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "hb_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "a tall dark brown cloaked creature with a pointed hood, raised arms and long pale claws",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 2016 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 76,
+      "height": 76
+    },
+    "target_size": {
+      "width": 48,
+      "height": 48
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "old63-pad-48.png"
+  ]
+}

@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 45x48, 7 colours plus black.
+Unmet: The eyes are 1x2 px black marks on the pale face mask, but I couldn't clearly make them out in `review.png`, so how well they read is unconfirmed. The mask is also equally bright on both sides of the face, which departs slightly from upper-left lighting.

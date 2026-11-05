@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0733-grand-goule-the-big-mouth-dragon-of-poitiers-bat",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 324 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1111
+  },
+  "links": {},
+  "seed": 1111,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "g1.png"
+  ]
+}

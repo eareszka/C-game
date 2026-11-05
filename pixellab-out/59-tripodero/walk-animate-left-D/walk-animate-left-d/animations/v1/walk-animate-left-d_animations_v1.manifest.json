@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "walk-animate-left-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1096 characters>",
+      "format": "png"
+    },
+    "action": "<elided 317 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b467d4a8-b470-44e2-8936-b1a881f8d378",
+    "generation_id": "4e157f93-e73a-4249-8159-2dbf907fd26d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "59-tripodero-walk-left-d-00.png",
+    "59-tripodero-walk-left-d-01.png",
+    "59-tripodero-walk-left-d-02.png",
+    "59-tripodero-walk-left-d-03.png",
+    "59-tripodero-walk-left-d-04.png"
+  ]
+}

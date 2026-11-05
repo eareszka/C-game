@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "m_animations_v2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1408 characters>",
+      "format": "png"
+    },
+    "action": "Swimming in place: its octopus arms pulse and writhe, pushing it, its jaws open and shut, same size, same place.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 562
+  },
+  "links": {},
+  "seed": 562,
+  "ids": {
+    "background_job_id": "d8abe019-6bcf-4245-a262-f91f75144a5c",
+    "generation_id": "9baa6891-a616-4066-a8e0-9b934d7e1f90"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "swimu-00.png",
+    "swimu-01.png",
+    "swimu-02.png",
+    "swimu-03.png",
+    "swimu-04.png"
+  ]
+}

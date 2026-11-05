@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "xuelin-courtyard_sprites_v3",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 415 characters>",
+    "image_size": {
+      "width": 144,
+      "height": 144
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "medium detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "courtyard-free-1.png"
+  ]
+}

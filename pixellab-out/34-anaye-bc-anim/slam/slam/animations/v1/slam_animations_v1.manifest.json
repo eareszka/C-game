@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "slam_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 4528 characters>",
+      "format": "png"
+    },
+    "action": "<elided 352 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6d1146bb-4792-408d-93ff-01e7d71c39c8",
+    "generation_id": "4b538088-7e2c-4aca-a815-ba68a860ad75"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slam-00.png",
+    "slam-01.png",
+    "slam-02.png",
+    "slam-03.png",
+    "slam-04.png",
+    "slam-05.png",
+    "slam-06.png",
+    "slam-07.png",
+    "slam-08.png"
+  ]
+}

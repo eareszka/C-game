@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "t2",
+  "generated": "2026-11-03T16:07:39Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "t2_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "t2.png"
+      ],
+      "ids": {
+        "background_job_id": "7f7621df-fd85-4a18-829f-14bda81e968e",
+        "generation_id": "0c104c7f-e437-4516-8bae-27e536c29e54"
+      }
+    }
+  ]
+}

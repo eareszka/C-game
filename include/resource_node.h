@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include "camera.h"
+#include "core.h"     // world_ms, the ambient beat
 #include "entity.h"   // WeaponType, weapon_harvest_damage, weapon_sweeps
 
 #define MAX_RESOURCE_NODES 512
@@ -31,13 +32,13 @@ inline int& ore_count(Player* p, Material m) {
     return m == MAT_STONE ? p->inventory[RESOURCE_ROCK] : p->ore[m];
 }
 
-// Which frame an ore vein on tile (tx, ty) shows: 0 plain, 1-3 one of its
-// nuggets flared (art/structures/nodes/nodes_design.py) -- a step every 0.7 s,
-// as the cave's glints twinkle, each vein on a clock of its own.
+// Which frame an ore vein on tile (tx, ty) shows: 0 plain, 1-2 one of its
+// nuggets flared (art/structures/nodes/nodes_design.py) -- on the world's
+// ambient beat (core.h), each vein a whole frame off its neighbours.
 inline int vein_frame(int tx, int ty) {
     unsigned h = (unsigned)tx * 0x9E3779B1u ^ (unsigned)ty * 0x85EBCA77u;
     h ^= h >> 15;
-    return (int)((SDL_GetTicks() / 700u + h) % 4u);
+    return (int)((world_ms() / AMBIENT_FRAME_MS + h) % AMBIENT_FRAMES);
 }
 
 typedef struct ResourceNode

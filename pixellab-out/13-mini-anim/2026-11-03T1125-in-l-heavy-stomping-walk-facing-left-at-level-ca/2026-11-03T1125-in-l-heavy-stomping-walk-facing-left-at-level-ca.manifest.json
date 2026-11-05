@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1125-in-l-heavy-stomping-walk-facing-left-at-level-ca",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 628 characters>",
+      "format": "png"
+    },
+    "action": "Heavy stomping walk facing left at level camera: the legs step one pair then the other, the body rocks a little, jaws stay wide open glowing orange, tail sways. Same size and design, same flat colours, no eyes, camera fixed.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1311
+  },
+  "links": {},
+  "seed": 1311,
+  "ids": {
+    "background_job_id": "e7dd7956-9c74-4cef-b6c6-5afab8a44d46",
+    "generation_id": "b0ea97ae-b688-478e-abd1-183fee6f8747"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkl-00.png",
+    "walkl-01.png",
+    "walkl-02.png",
+    "walkl-03.png",
+    "walkl-04.png"
+  ]
+}

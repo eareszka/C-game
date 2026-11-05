@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 29x35, 6 colours plus black.
+Unmet: The hide is dark charcoal rather than true jet-black, because the rule bars bodies that are mostly close to black. The fin tips also point towards the head to show "fins on backwards", so the fins may differ from the reference, which was too small to read their direction clearly.

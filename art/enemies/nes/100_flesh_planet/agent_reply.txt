@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 277x282, 7 colours plus black.
+Unmet: Lit pink faces use the pale skin colour `f0b890` as a highlight, so that flesh arguably has 4 tones instead of the 3 allowed; the checker doesn't print the 8 to 15% inside-black share, so I couldn't confirm it; user approval is still pending.

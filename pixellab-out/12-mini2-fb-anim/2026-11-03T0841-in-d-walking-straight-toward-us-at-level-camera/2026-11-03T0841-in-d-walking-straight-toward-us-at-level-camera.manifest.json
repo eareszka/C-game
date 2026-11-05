@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0841-in-d-walking-straight-toward-us-at-level-camera",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 700 characters>",
+      "format": "png"
+    },
+    "action": "Walking straight toward us at level camera: the front legs step one then the other, the body sways a little side to side, the head stays forward, the tail stays to the side. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1241
+  },
+  "links": {},
+  "seed": 1241,
+  "ids": {
+    "background_job_id": "755c3dbe-5aab-415d-8031-b471a672f345",
+    "generation_id": "dbc967f7-70c9-4979-b3f1-bc77c79ab4d8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkd-00.png",
+    "walkd-01.png",
+    "walkd-02.png",
+    "walkd-03.png",
+    "walkd-04.png"
+  ]
+}

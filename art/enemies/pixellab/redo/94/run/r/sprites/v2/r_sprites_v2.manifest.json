@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "r_sprites_v2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2952 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact blue spiked wheel, its hub and gold spikes. Replace the thin black struts and stained-glass panels with thick solid spokes and flat tones, and vary the spikes. No repeated identical parts. Hard edges.",
+    "no_background": true,
+    "seed": 9402
+  },
+  "links": {},
+  "seed": 9402,
+  "ids": {
+    "background_job_id": "65d16bb2-661d-4bf2-a8e5-13b982174efa",
+    "generation_id": "e3766595-dc8f-4fa2-bc15-65bd3ef45b58"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e9402.png"
+  ]
+}

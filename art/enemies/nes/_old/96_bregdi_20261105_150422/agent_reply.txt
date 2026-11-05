@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 74x56, 8 colours plus black.
+Unmet: The checker still gives one LOOK, "3 shades of one colour, the limit is 2", which I left because the brief's own colours (375a94, 37387b, 664b95) most likely trigger it. The neck has only two drawn gill slits, with its back edge reading as a third, to stay inside the black limit. The tail's green underside is a flat strip inside the tail's closed shape, with no black line of its own. The sprite is 56 px tall, against about 50 px in reference.png's proportions, because I lowered the flipper hands to show more of each flipper.

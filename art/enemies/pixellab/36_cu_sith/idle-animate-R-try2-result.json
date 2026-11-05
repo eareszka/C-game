@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-r-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\36-cu-sith-idle-r-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\36-cu-sith-idle-r-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\36-cu-sith-idle-r-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\36-cu-sith-idle-r-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\36-cu-sith-idle-r-try2-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-animate-R-try2\\idle-animate-r-try2\\animations\\v1\\idle-animate-r-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "7de666fe-df91-44af-9fa6-92f96a1cc1d4",
+    "generation_id": "5dad8bf9-c45f-4c09-8b3c-32b52a362920"
+  }
+}

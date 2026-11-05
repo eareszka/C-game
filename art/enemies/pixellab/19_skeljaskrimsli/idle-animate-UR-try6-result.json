@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-ur-try6_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\19-skeljaskrimsli-idle-ur-try6-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\idle-animate-UR-try6\\idle-animate-ur-try6\\animations\\v1\\idle-animate-ur-try6_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "672d34a2-abb1-438d-a9fd-2ac831a10b09",
+    "generation_id": "1f1846e9-1b0e-494d-81dd-ab6bde092c91"
+  }
+}

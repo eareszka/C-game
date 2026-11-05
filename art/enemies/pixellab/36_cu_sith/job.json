@@ -1,0 +1,37 @@
+{
+  "id": 36,
+  "name": "36-cu-sith",
+  "dir": "art/enemies/pixellab/36_cu_sith",
+  "description": "Cu Sith: the green fairy hound of the Scottish Highlands, big as a calf, a shaggy mossy green mane over its shoulders, pale green belly and legs, a long tail coiled up over its back, oversized paws, pointed ears. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "art/enemies/pixellab/36_cu_sith/base/36_cu_sith.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place: it breathes, its mossy mane rising and settling, its coiled tail swishing, then it lifts its head and gives one silent bark. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3
+        ]
+      },
+      "ground": true,
+      "despeckle": 2,
+      "replaces": "assets/enemies/36_cu_sith.png"
+    }
+  }
+}

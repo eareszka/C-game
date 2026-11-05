@@ -1,0 +1,55 @@
+{
+  "id": 19,
+  "name": "19-skeljaskrimsli",
+  "dir": "art/enemies/pixellab/19_skeljaskrimsli",
+  "description": "Skeljaskrimsli: a dark charcoal furry beast with a shaggy mane, small pointed ears, a glowing green eye and glowing green teeth, white claws, its back and long tail covered in overlapping pale grey banded shell plates. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt_mouth.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/19_skeljaskrimsli.png",
+      "frames": 5,
+      "rows": false,
+      "ms": 200,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 8,
+      "action": "Breathing heavily in place: as it breathes out its four thick legs bend at the knees and its whole body sinks lower, its domed shell back settling down, then as it breathes in its legs straighten and it rises again. Its huge mouth stays wide open the whole time, glowing green teeth. No eyes. Feet planted, same pose, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3,
+          6,
+          8
+        ],
+        "D": [
+          0,
+          1,
+          2,
+          7,
+          8
+        ],
+        "U": [
+          0,
+          1,
+          0,
+          1,
+          0
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  },
+  "reference": "pose: reference_user_pose.jpg; look: reference_user_look.jpg (the user, 2026-10-29)",
+  "match": null,
+  "match_before_face": "art/enemies/pixellab/19_skeljaskrimsli/style_look_right.png"
+}

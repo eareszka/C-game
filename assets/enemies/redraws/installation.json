@@ -540,6 +540,994 @@
       "role": "parts: glint 7x7, then each eye's shut lid 24x24",
       "source": "art/enemies/pixellab/52_sannaja/",
       "png_sha256": "345e635b71b1888c617367e3cc9330347e67bb94445139029457e94d781d54c1"
+    },
+    {
+      "id": 68,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/68_shuyu.png",
+      "aseprite": "assets/enemies/redraws/68_shuyu.aseprite",
+      "source": "art/enemies/pixellab/68_shuyu/idle_frame0_clean.png",
+      "frame_size": [
+        50,
+        41
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/68_shuyu/job.json"
+    },
+    {
+      "id": 68,
+      "sheet": "flap",
+      "png": "assets/enemies/redraws/68_shuyu_flap.png",
+      "aseprite": "assets/enemies/redraws/68_shuyu_flap.aseprite",
+      "source": "art/enemies/pixellab/68_shuyu/flap_frame0_clean.png",
+      "frame_size": [
+        50,
+        41
+      ],
+      "frames": 4,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 110,
+      "job": "art/enemies/pixellab/68_shuyu/job.json"
+    },
+    {
+      "id": 59,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/59_tripodero.png",
+      "aseprite": "assets/enemies/redraws/59_tripodero.aseprite",
+      "source": "art/enemies/pixellab/59_tripodero/idle_frame0_clean.png",
+      "frame_size": [
+        54,
+        61
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/59_tripodero/job.json"
+    },
+    {
+      "id": 59,
+      "sheet": "walk",
+      "png": "assets/enemies/redraws/59_tripodero_walk.png",
+      "aseprite": "assets/enemies/redraws/59_tripodero_walk.aseprite",
+      "source": "art/enemies/pixellab/59_tripodero/walk_frame0_clean.png",
+      "frame_size": [
+        54,
+        61
+      ],
+      "frames": 4,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 150,
+      "job": "art/enemies/pixellab/59_tripodero/job.json"
+    },
+    {
+      "id": 26,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/26_akhekh.png",
+      "aseprite": "assets/enemies/redraws/26_akhekh.aseprite",
+      "source": "art/enemies/pixellab/26_akhekh/idle_frame0_clean.png",
+      "frame_size": [
+        54,
+        43
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/26_akhekh/job.json"
+    },
+    {
+      "id": 67,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/67_lagopus.png",
+      "aseprite": "assets/enemies/redraws/67_lagopus.aseprite",
+      "source": "art/enemies/pixellab/67_lagopus/idle_frame0_clean.png",
+      "frame_size": [
+        62,
+        45
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "R",
+        "UR"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/67_lagopus/job.json"
+    },
+    {
+      "id": 67,
+      "sheet": "fly",
+      "png": "assets/enemies/redraws/67_lagopus_fly.png",
+      "aseprite": "assets/enemies/redraws/67_lagopus_fly.aseprite",
+      "source": "art/enemies/pixellab/67_lagopus/fly_frame0_clean.png",
+      "frame_size": [
+        62,
+        45
+      ],
+      "frames": 4,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 110,
+      "job": "art/enemies/pixellab/67_lagopus/job.json"
+    },
+    {
+      "id": 79,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/79_ugjuknarpak.png",
+      "aseprite": "assets/enemies/redraws/79_ugjuknarpak.aseprite",
+      "source": "art/enemies/pixellab/79_ugjuknarpak/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 200,
+      "job": "art/enemies/pixellab/79_ugjuknarpak/job.json"
+    },
+    {
+      "id": 80,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/80_bes_kotak.png",
+      "aseprite": "assets/enemies/redraws/80_bes_kotak.aseprite",
+      "source": "art/enemies/pixellab/80_bes_kotak/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 200,
+      "job": "art/enemies/pixellab/80_bes_kotak/job.json"
+    },
+    {
+      "id": 16,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/16_kamaitachi.png",
+      "aseprite": "assets/enemies/redraws/16_kamaitachi.aseprite",
+      "source": "art/enemies/pixellab/16_kamaitachi/idle_frame0_clean.png",
+      "frame_size": [
+        45,
+        47
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/16_kamaitachi/job.json"
+    },
+    {
+      "id": 19,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/19_skeljaskrimsli.png",
+      "aseprite": "assets/enemies/redraws/19_skeljaskrimsli.aseprite",
+      "source": "art/enemies/pixellab/19_skeljaskrimsli/idle_frame0_clean.png",
+      "frame_size": [
+        86,
+        43
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 200,
+      "job": "art/enemies/pixellab/19_skeljaskrimsli/job.json"
+    },
+    {
+      "id": 20,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/20_sermilik.png",
+      "aseprite": "assets/enemies/redraws/20_sermilik.aseprite",
+      "source": "art/enemies/pixellab/20_sermilik/idle_frame0_clean.png",
+      "frame_size": [
+        108,
+        59
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "R",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 200,
+      "job": "art/enemies/pixellab/20_sermilik/job.json"
+    },
+    {
+      "id": 42,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/42_nykur.png",
+      "aseprite": "assets/enemies/redraws/42_nykur.aseprite",
+      "source": "art/enemies/pixellab/42_nykur/idle_frame0_clean.png",
+      "frame_size": [
+        58,
+        51
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/42_nykur/job.json"
+    },
+    {
+      "id": 43,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/43_sazae_oni.png",
+      "aseprite": "assets/enemies/redraws/43_sazae_oni.aseprite",
+      "source": "art/enemies/pixellab/43_sazae_oni/idle_frame0_clean.png",
+      "frame_size": [
+        54,
+        51
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/43_sazae_oni/job.json"
+    },
+    {
+      "id": 84,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/84_kigutilik.png",
+      "aseprite": "assets/enemies/redraws/84_kigutilik.aseprite",
+      "source": "art/enemies/pixellab/84_kigutilik/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/84_kigutilik/job.json"
+    },
+    {
+      "id": 85,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/85_nanabolele.png",
+      "aseprite": "assets/enemies/redraws/85_nanabolele.aseprite",
+      "source": "art/enemies/pixellab/85_nanabolele/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/85_nanabolele/job.json"
+    },
+    {
+      "id": 87,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/87_corocotta.png",
+      "aseprite": "assets/enemies/redraws/87_corocotta.aseprite",
+      "source": "art/enemies/pixellab/87_corocotta/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/87_corocotta/job.json"
+    },
+    {
+      "id": 88,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/88_amixsak.png",
+      "aseprite": "assets/enemies/redraws/88_amixsak.aseprite",
+      "source": "art/enemies/pixellab/88_amixsak/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/88_amixsak/job.json"
+    },
+    {
+      "id": 83,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/83_beast_of_barrisdale.png",
+      "aseprite": "assets/enemies/redraws/83_beast_of_barrisdale.aseprite",
+      "source": "art/enemies/pixellab/83_beast_of_barrisdale/redo/anim/idle_0.png",
+      "frame_size": [
+        100,
+        65
+      ],
+      "frames": 10,
+      "rows": true,
+      "tags": [
+        "D",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "frame_ms": 130,
+      "job": "art/enemies/pixellab/83_beast_of_barrisdale/redo/install.py"
+    },
+    {
+      "id": 83,
+      "sheet": "fly",
+      "png": "assets/enemies/redraws/83_beast_of_barrisdale_fly.png",
+      "aseprite": "assets/enemies/redraws/83_beast_of_barrisdale_fly.aseprite",
+      "source": "art/enemies/pixellab/83_beast_of_barrisdale/redo/anim/fly_0.png",
+      "frame_size": [
+        100,
+        65
+      ],
+      "frames": 10,
+      "rows": true,
+      "tags": [
+        "D",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "frame_ms": 130,
+      "job": "art/enemies/pixellab/83_beast_of_barrisdale/redo/install.py"
+    },
+    {
+      "id": 83,
+      "sheet": "block",
+      "png": "assets/enemies/redraws/83_beast_of_barrisdale_block.png",
+      "aseprite": "assets/enemies/redraws/83_beast_of_barrisdale_block.aseprite",
+      "source": "art/enemies/pixellab/83_beast_of_barrisdale/redo/anim/block_0.png",
+      "frame_size": [
+        100,
+        65
+      ],
+      "frames": 7,
+      "rows": true,
+      "tags": [
+        "D",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "frame_ms": 286,
+      "job": "art/enemies/pixellab/83_beast_of_barrisdale/redo/install.py"
+    },
+    {
+      "id": 35,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/35_lomie.png",
+      "aseprite": "assets/enemies/redraws/35_lomie.aseprite",
+      "source": "art/enemies/pixellab/35_lomie/idle_frame0_clean.png",
+      "frame_size": [
+        62,
+        67
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/35_lomie/job.json"
+    },
+    {
+      "id": 36,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/36_cu_sith.png",
+      "aseprite": "assets/enemies/redraws/36_cu_sith.aseprite",
+      "source": "art/enemies/pixellab/36_cu_sith/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/36_cu_sith/job.json"
+    },
+    {
+      "id": 37,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/37_celestial_stag.png",
+      "aseprite": "assets/enemies/redraws/37_celestial_stag.aseprite",
+      "source": "art/enemies/pixellab/37_celestial_stag/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 5,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "frame_ms": 150,
+      "job": "art/enemies/pixellab/37_celestial_stag/job.json"
+    },
+    {
+      "id": 38,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/38_igtuk.png",
+      "aseprite": "assets/enemies/redraws/38_igtuk.aseprite",
+      "source": "art/enemies/pixellab/38_igtuk/idle_frame0_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "R",
+        "UR"
+      ],
+      "make": "animate",
+      "frame_ms": 250,
+      "job": "art/enemies/pixellab/38_igtuk/job.json"
+    },
+    {
+      "id": 45,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/45_kusa_kap.png",
+      "aseprite": "assets/enemies/redraws/45_kusa_kap.aseprite",
+      "source": "art/enemies/pixellab/45_kusa_kap/redo/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/45_kusa_kap/redo/install.py"
+    },
+    {
+      "id": 46,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/46_lusca.png",
+      "aseprite": "assets/enemies/redraws/46_lusca.aseprite",
+      "source": "art/enemies/pixellab/46_lusca/redo/frame0_skinny.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/46_lusca/redo/install.py"
+    },
+    {
+      "id": 90,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/90_chipekwe.png",
+      "aseprite": "assets/enemies/redraws/90_chipekwe.aseprite",
+      "source": "art/enemies/pixellab/90_chipekwe/redo/frame0_final.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/90_chipekwe/redo/install.py"
+    },
+    {
+      "id": 91,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/91_kurrea.png",
+      "aseprite": "assets/enemies/redraws/91_kurrea.aseprite",
+      "source": "art/enemies/pixellab/91_kurrea/redo2/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/91_kurrea/redo2/install.py"
+    },
+    {
+      "id": 92,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/92_siehnam.png",
+      "aseprite": "assets/enemies/redraws/92_siehnam.aseprite",
+      "source": "art/enemies/pixellab/92_siehnam/redo/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/92_siehnam/redo/install.py"
+    },
+    {
+      "id": 93,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/93_chipique.png",
+      "aseprite": "assets/enemies/redraws/93_chipique.aseprite",
+      "source": "art/enemies/pixellab/93_chipique/redo3/clean/c4_clean.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 8,
+      "rows": true,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/93_chipique/redo3/install.py"
+    },
+    {
+      "id": 94,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/94_trochus.png",
+      "aseprite": "assets/enemies/redraws/94_trochus.aseprite",
+      "source": "art/enemies/pixellab/94_trochus/redo/frame0.png",
+      "frame_size": [
+        98,
+        69
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/94_trochus/redo/install.py"
+    },
+    {
+      "id": 96,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/96_bregdi.png",
+      "aseprite": "assets/enemies/redraws/96_bregdi.aseprite",
+      "source": "art/enemies/pixellab/96_bregdi/redo/frame0.png",
+      "frame_size": [
+        98,
+        72
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/96_bregdi/redo/install.py"
+    },
+    {
+      "id": 10,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/10_grand_goule.png",
+      "aseprite": "assets/enemies/redraws/10_grand_goule.aseprite",
+      "source": "art/enemies/pixellab/10_grand_goule/redo2/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/10_grand_goule/redo2/install.py"
+    },
+    {
+      "id": 12,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/12_ebigane.png",
+      "aseprite": "assets/enemies/redraws/12_ebigane.aseprite",
+      "source": "art/enemies/pixellab/12_ebigane/redo2/frame0.png",
+      "frame_size": [
+        104,
+        68
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/12_ebigane/redo2/install.py"
+    },
+    {
+      "id": 12,
+      "sheet": "fly",
+      "png": "assets/enemies/redraws/12_ebigane_fly.png",
+      "aseprite": "assets/enemies/redraws/12_ebigane_fly.aseprite",
+      "source": "art/enemies/pixellab/12_ebigane/redo2/frame0.png",
+      "frame_size": [
+        104,
+        68
+      ],
+      "frames": 4,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/12_ebigane/redo2/install.py"
+    },
+    {
+      "id": 13,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/13_beast_of_the_charred_forests.png",
+      "aseprite": "assets/enemies/redraws/13_beast_of_the_charred_forests.aseprite",
+      "source": "art/enemies/pixellab/13_beast_of_the_charred_forests/redo/frame0.png",
+      "frame_size": [
+        98,
+        68
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/13_beast_of_the_charred_forests/redo/install.py"
+    },
+    {
+      "id": 29,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/29_karnabo.png",
+      "aseprite": "assets/enemies/redraws/29_karnabo.aseprite",
+      "source": "art/enemies/pixellab/29_karnabo/redo/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/29_karnabo/redo/install.py"
+    },
+    {
+      "id": 31,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/31_man_eating_boulder.png",
+      "aseprite": "assets/enemies/redraws/31_man_eating_boulder.aseprite",
+      "source": "art/enemies/pixellab/31_man_eating_boulder/redo/frame0.png",
+      "frame_size": [
+        98,
+        65
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/31_man_eating_boulder/redo/install.py"
+    },
+    {
+      "id": 44,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/44_itqiirpak.png",
+      "aseprite": "assets/enemies/redraws/44_itqiirpak.aseprite",
+      "source": "art/enemies/pixellab/44_itqiirpak/redo3/frame0.png",
+      "frame_size": [
+        130,
+        88
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/44_itqiirpak/redo3/install.py"
+    },
+    {
+      "id": 34,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/34_anaye.png",
+      "aseprite": "assets/enemies/redraws/34_anaye.aseprite",
+      "source": "art/enemies/pixellab/34_anaye/redo_bc/idle_frame0_clean.png",
+      "frame_size": [
+        130,
+        118
+      ],
+      "frames": 9,
+      "rows": true,
+      "tags": [
+        "D",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "frame_ms": 260,
+      "job": "art/enemies/pixellab/34_anaye/redo_bc/job.json"
+    },
+    {
+      "id": 95,
+      "sheet": "idle",
+      "png": "assets/enemies/redraws/95_wendigo.png",
+      "aseprite": "assets/enemies/redraws/95_wendigo.aseprite",
+      "source": "art/enemies/pixellab/95_wendigo/frame0.png",
+      "frame_size": [
+        102,
+        66
+      ],
+      "frames": 3,
+      "rows": false,
+      "tags": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U",
+        "UL",
+        "L",
+        "DL"
+      ],
+      "make": "animate",
+      "job": "art/enemies/pixellab/95_wendigo/install.py"
     }
   ],
   "backup": "art/_backup/enemy_redraw_install_20261016_224715",

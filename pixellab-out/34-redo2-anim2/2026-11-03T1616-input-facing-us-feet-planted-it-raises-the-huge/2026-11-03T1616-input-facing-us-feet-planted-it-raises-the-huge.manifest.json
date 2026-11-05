@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1616-input-facing-us-feet-planted-it-raises-the-huge",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 4552 characters>",
+      "format": "png"
+    },
+    "action": "<elided 352 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1502
+  },
+  "links": {},
+  "seed": 1502,
+  "ids": {
+    "background_job_id": "7eb23e51-001b-4eb6-8f92-a473ab747490",
+    "generation_id": "a5ce48fd-a23c-4530-b1c3-883206f3cf4c"
+  },
+  "cost": {
+    "generations": 3.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "slam-00.png",
+    "slam-01.png",
+    "slam-02.png",
+    "slam-03.png",
+    "slam-04.png",
+    "slam-05.png",
+    "slam-06.png",
+    "slam-07.png",
+    "slam-08.png"
+  ]
+}

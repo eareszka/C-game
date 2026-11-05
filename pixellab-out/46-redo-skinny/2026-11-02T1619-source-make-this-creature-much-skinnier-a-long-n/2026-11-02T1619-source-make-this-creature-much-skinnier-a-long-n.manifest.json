@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1619-source-make-this-creature-much-skinnier-a-long-n",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1984 characters>",
+      "format": "png"
+    },
+    "description": "<elided 372 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 521
+  },
+  "links": {},
+  "seed": 521,
+  "ids": {
+    "background_job_id": "85c97ec5-88a9-4cab-a693-8d325aa569e8",
+    "generation_id": "f216ef90-d8c9-4371-ae35-47a36a782f63"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s1.png"
+  ]
+}

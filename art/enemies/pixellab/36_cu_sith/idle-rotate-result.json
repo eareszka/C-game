@@ -1,0 +1,25 @@
+{
+  "run": "idle-rotate_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\36-cu-sith-idle-views-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\36-cu-sith\\idle-rotate\\idle-rotate\\rotations\\v1\\idle-rotate_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "a1ec6df6-9047-477d-a705-08c16c8e0e37",
+    "generation_id": "21eadaa3-728d-4760-85c9-7174e002df92"
+  }
+}

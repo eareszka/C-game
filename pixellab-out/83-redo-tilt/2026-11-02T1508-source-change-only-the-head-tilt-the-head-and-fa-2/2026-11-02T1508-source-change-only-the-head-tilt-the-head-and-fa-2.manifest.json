@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1508-source-change-only-the-head-tilt-the-head-and-fa-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "description": "<elided 377 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 852
+  },
+  "links": {},
+  "seed": 852,
+  "ids": {
+    "background_job_id": "ed9e92dd-559b-4b08-a74d-78128fc36059",
+    "generation_id": "a39a61ab-6bea-4028-b843-3a229fd428ed"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "t2.png"
+  ]
+}

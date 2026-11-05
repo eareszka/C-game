@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "side-rotate",
+  "generated": "2026-10-29T02:40:24Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "side-rotate_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "19-side-views-south-00.png",
+        "19-side-views-south-east-01.png",
+        "19-side-views-east-02.png",
+        "19-side-views-north-east-03.png",
+        "19-side-views-north-04.png",
+        "19-side-views-north-west-05.png",
+        "19-side-views-west-06.png",
+        "19-side-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "bc238fe2-02e9-46fa-8c0b-f20202cff1f8",
+        "generation_id": "913edf14-9bc4-45c9-bfd5-169eb4cdb6c9"
+      }
+    }
+  ]
+}

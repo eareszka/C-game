@@ -263,6 +263,7 @@ struct DungeonPlayer {
     float slide = 0;  // sliding along a 45-degree edge: how far owed (see dungeon_player_update)
     float vx = 0, vy = 0;   // swimming (the oasis): the drift kept from frame to frame
     int   at_link = -1;     // the catacombs: the hole or ladder stood at (dungeon_link_name), -1 none
+    bool  climbing = false; // on a ladder or pressing onto one: on foot, the worn bike off until the ground
 
     // Weapon swing/throw state -- see combat.h. Shared machinery with
     // the overworld (Overworld, include/overworld.h).
@@ -293,6 +294,9 @@ Material material_for_difficulty(float difficulty);
 // the hard-to-reach dungeons. See src/dungeon.cpp; tools/spawncensus.cpp
 // measures what it does across worlds.
 int dungeon_pick_enemy(DungeonEntranceType type, float difficulty, uint32_t* rng);
+// The same pick for a region (enemy_region's 0..6) rather than a dungeon type:
+// what an overworld pack out in that country holds (src/wilds.cpp).
+int pick_enemy_in_region(int region, bool elites, float difficulty, uint32_t* rng);
 // The lowest difficulty that still yields this material: the bottom edge of
 // its band. material_for_difficulty(material_min_difficulty(m)) == m exactly,
 // because the lookup tests strictly below each band's top. The guarantee pass

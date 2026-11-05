@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1528-in-u-the-living-boulder-shuffles-away-from-us-se",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1024 characters>",
+      "format": "png"
+    },
+    "action": "The living boulder shuffles away from us seen from behind at level camera with no legs: it heaves up and settles, rocking side to side. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1422
+  },
+  "links": {},
+  "seed": 1422,
+  "ids": {
+    "background_job_id": "4106dfbf-75c4-4eb8-a399-3deb6fd28d95",
+    "generation_id": "62c3e74a-b0f4-4fd4-9c82-f75a833874ad"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walku-00.png",
+    "walku-01.png",
+    "walku-02.png",
+    "walku-03.png",
+    "walku-04.png"
+  ]
+}

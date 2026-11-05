@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\79-ugjuknarpak-idle-d-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D\\idle-animate-d\\animations\\v1\\idle-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "4f070000-93f4-4e19-b18a-060c4ad15c06",
+    "generation_id": "64462c3e-09a7-470c-8bc7-e4bc0e429869"
+  }
+}

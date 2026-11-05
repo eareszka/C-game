@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1853-input-long-slow-menacing-idle-facing-left-the-wh",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "action": "<elided 339 characters>",
+    "frame_count": 16,
+    "no_background": true,
+    "seed": 951
+  },
+  "links": {},
+  "seed": 951,
+  "ids": {
+    "background_job_id": "c3f31007-093a-475d-bdc8-78bab8869a1c",
+    "generation_id": "42372584-b68a-4705-981d-db4bb7c235b2"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "lng-00.png",
+    "lng-01.png",
+    "lng-02.png",
+    "lng-03.png",
+    "lng-04.png",
+    "lng-05.png",
+    "lng-06.png",
+    "lng-07.png",
+    "lng-08.png",
+    "lng-09.png",
+    "lng-10.png",
+    "lng-11.png",
+    "lng-12.png",
+    "lng-13.png",
+    "lng-14.png",
+    "lng-15.png",
+    "lng-16.png"
+  ]
+}

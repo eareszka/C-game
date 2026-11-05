@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1558-tiny-map-boss-sprite-straight-on-from-the-front",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny map boss sprite straight on from the front, level camera, broad dark armoured giant, cream mask face, radial cream quill crest, huge pale purple axe blade on a long haft at its side, big fists, black outline, flat simple colours, very few pixels",
+    "image_size": {
+      "width": 48,
+      "height": 36
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "south",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/FgwP/t8159x8AQE4J3KjWodsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1462
+  },
+  "links": {},
+  "seed": 1462,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "m2.png"
+  ]
+}

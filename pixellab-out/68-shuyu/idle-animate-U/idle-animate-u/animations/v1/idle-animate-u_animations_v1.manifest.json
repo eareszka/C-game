@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-u_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 752 characters>",
+      "format": "png"
+    },
+    "action": "<elided 261 characters>",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "1046bb1f-3528-456d-b95f-521eb1ee463b",
+    "generation_id": "c1858dbb-984c-46a1-a246-c11b11da577a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "68-shuyu-idle-u-00.png",
+    "68-shuyu-idle-u-01.png",
+    "68-shuyu-idle-u-02.png",
+    "68-shuyu-idle-u-03.png",
+    "68-shuyu-idle-u-04.png"
+  ]
+}

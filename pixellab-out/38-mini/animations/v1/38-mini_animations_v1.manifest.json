@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "38-mini_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1736 characters>",
+      "format": "png"
+    },
+    "action": "loping forward on its long legs, curled feet stepping, its huge jaw bobbing, its beard swinging, same facing, same size",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3b3904ed-64ed-4152-af64-7373868d1e54",
+    "generation_id": "cdca1ee5-f8e8-4618-aadf-021277c3adb2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "runu-00.png",
+    "runu-01.png",
+    "runu-02.png",
+    "runu-03.png",
+    "runu-04.png"
+  ]
+}

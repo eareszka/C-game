@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0756-tiny-map-enemy-sprite-flying-blue-gargoyle-seen",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny map enemy sprite, flying blue gargoyle seen from the front, big dark charcoal wings raised, narrow head with a long tan beak, tan ribbed chest, long thin arms hanging, black outline, flat simple colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD4bx41heHvrVUMdUk6DAAunwWzXET13wAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1142
+  },
+  "links": {},
+  "seed": 1142,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-map-enemy-sprite-flying-blue-gargoyle-seen.png"
+  ]
+}

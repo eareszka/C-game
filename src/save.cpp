@@ -4,6 +4,7 @@
 #include "legacy_player_v2.h"
 #include "legacy_player_v3.h"
 #include "legacy_player_v4.h"
+#include "legacy_player_v5.h"
 #include "persist.h"     // what has been taken out of the world for good
 #include "crafting.h"
 #include "dungeon.h"   // the dungeons' chests (dungeon_chest_records)
@@ -21,7 +22,7 @@
 
 static const char* SAVE_PATH = "save.dat";
 static const char* SAVE_TMP  = "save.tmp";
-enum { SAVE_VERSION = 19 };
+enum { SAVE_VERSION = 21 };
 // Set by a read that refused the save because it was played in another
 // world (WORLDGEN_VERSION), for the title to say so.
 static bool s_refused_old_world = false;
@@ -50,10 +51,14 @@ using SaveFile = SaveRecord<Player>;
 using LegacySaveFile = SaveRecord<LegacyPlayerV2>;
 using InventorySaveFile = SaveRecord<LegacyPlayerV3>;
 using PoisonSaveFile = SaveRecord<LegacyPlayerV4>;
+using FootwearSaveFile = SaveRecord<LegacyPlayerV5>;
 // raft_worn (version 18) sits in what was the V5 layout's tail padding, so
 // sizeof(Player) did not change: versions 5-17 read whole, and save_read sets
-// it from the raft they own.
+// it from the raft they own. bike_worn (version 21) is appended after it:
+// versions 19 and 20 are read in the V5 layout and the bike set from the
+// retired footwear value.
 static_assert(offsetof(Player, raft_worn) == offsetof(Player, footwear) + sizeof(int), "raft_worn follows footwear");
+static_assert(offsetof(Player, bike_worn) == sizeof(LegacyPlayerV5), "V5 player prefix must stay intact");
 static_assert(offsetof(Player, footwear) == sizeof(LegacyPlayerV4), "V4 player prefix must stay intact");
 static_assert(offsetof(Player, poisoned) == sizeof(LegacyPlayerV3), "V3 player prefix must stay intact");
 static_assert(offsetof(Player, extra_items) == sizeof(LegacyPlayerV2), "V2 player prefix must stay intact");
@@ -99,6 +104,7 @@ bool save_write(unsigned seed, float x, float y, const Player& p,
     ok = persist_write(f) && ok;   // version 18: the harvested, the broken and the beaten
     unsigned worldgen = WORLDGEN_VERSION;   // version 19: which world this was played in
     ok = fwrite(&worldgen, sizeof(worldgen), 1, f) == 1 && ok;
+    ok = persist_wilds_write(f) && ok;   // version 20: the overworld's packs beaten
     ok = fclose(f) == 0 && ok;
     if (!ok) { remove(SAVE_TMP); return false; }
     remove(SAVE_PATH);   // rename does not replace on Windows
@@ -178,20 +184,45 @@ static bool save_read_file(unsigned* seed, float* x, float* y, Player* p,
         valid=read_record(f,old,false);
         if (valid) {
             memcpy(&s.player,&old.player,sizeof(old.player));
-            s.player.footwear = item_count(&s.player,ITEM_SWIFT_BOOTS)>0;
+            s.player.bike_worn = item_count(&s.player,ITEM_BICYCLE)>0;
+            s.player.footwear = FOOTWEAR_NONE;
             s.seed=old.seed; s.x=old.x; s.y=old.y;
             memcpy(s.explored,old.explored,sizeof(s.explored));
             memcpy(s.landmarks,old.landmarks,sizeof(s.landmarks));
             memcpy(s.dungeon_chests,old.dungeon_chests,sizeof(s.dungeon_chests));
             s.story=old.story;
         }
-    } else if (valid && header.version==5 && header.player_size==sizeof(Player)) {
-        valid=read_record(f,s,false);
-    } else if (valid && header.version>=6 && header.version<=SAVE_VERSION && header.player_size==sizeof(Player)) {
+    } else if (valid && header.version==5 && header.player_size==sizeof(LegacyPlayerV5)) {
+        static FootwearSaveFile old;
+        valid=read_record(f,old,false);
+        if (valid) {
+            memcpy(&s.player,&old.player,sizeof(old.player));
+            s.seed=old.seed; s.x=old.x; s.y=old.y;
+            memcpy(s.explored,old.explored,sizeof(s.explored));
+            memcpy(s.landmarks,old.landmarks,sizeof(s.landmarks));
+            memcpy(s.dungeon_chests,old.dungeon_chests,sizeof(s.dungeon_chests));
+            s.story=old.story;
+        }
+    } else if (valid && header.version>=6 && header.version<=SAVE_VERSION &&
+               header.player_size==(header.version<21 ? sizeof(LegacyPlayerV5) : sizeof(Player))) {
         // Version 6's footer ends immediately before the kitchen waypoint.
         const size_t size = header.version==6 ? offsetof(ResidentSave,kitchen_leg) :
                             header.version<9 ? offsetof(ResidentSave,transition_frame) : sizeof(resident);
-        valid=read_record(f,s,false,true) && fread(&resident,size,1,f)==1;
+        if (header.version<21) {
+            // The V5 player layout, before the bike's flag: the record read in
+            // it and copied over, the flag set below from the retired footwear.
+            static FootwearSaveFile old;
+            valid=read_record(f,old,false,true);
+            if (valid) {
+                memcpy(&s.player,&old.player,sizeof(old.player));
+                s.seed=old.seed; s.x=old.x; s.y=old.y;
+                memcpy(s.explored,old.explored,sizeof(s.explored));
+                memcpy(s.landmarks,old.landmarks,sizeof(s.landmarks));
+                memcpy(s.dungeon_chests,old.dungeon_chests,sizeof(s.dungeon_chests));
+                s.story=old.story;
+            }
+        } else valid=read_record(f,s,false,true);
+        valid=valid && fread(&resident,size,1,f)==1;
         if(valid && header.version>=10)valid=fread(&clerk,sizeof(clerk),1,f)==1;
         if(valid && header.version>=11)valid=fread(&grandmother,sizeof(grandmother),1,f)==1;
         if(valid && header.version>=12)valid=fread(&woodcutter,sizeof(woodcutter),1,f)==1;
@@ -206,6 +237,7 @@ static bool save_read_file(unsigned* seed, float* x, float* y, Player* p,
             valid=fread(&worldgen,sizeof(worldgen),1,f)==1;
             if(valid && worldgen!=WORLDGEN_VERSION){ s_refused_old_world=true; valid=false; }
         }
+        if(valid && header.version>=20)valid=persist_wilds_read(f);
         valid=valid && fgetc(f)==EOF;
         // V7's final four bytes were padding, not a saved pause timer.
         if(header.version<8) resident.kitchen_pause=0;
@@ -234,7 +266,11 @@ static bool save_read_file(unsigned* seed, float* x, float* y, Player* p,
     if(header.version>=17)courier_restore(courier);
     *seed=s.seed; *x=s.x; *y=s.y; *p=s.player;
     int snapshot[ITEM_COUNT]={}; items_note_gains(p,snapshot,true);
-    if (!item_footwear_equipped(p,ITEM_SWIFT_BOOTS) && !item_footwear_equipped(p,ITEM_DIVING_FINS)) p->footwear=FOOTWEAR_NONE;
+    // Before version 21 the bike's forerunner was worn through footwear (the
+    // retired value 1): that is a bike worn now.
+    if (header.version<21) p->bike_worn = p->footwear==FOOTWEAR_RETIRED;
+    if (!item_footwear_equipped(p,ITEM_DIVING_FINS)) p->footwear=FOOTWEAR_NONE;
+    if (item_count(p,ITEM_BICYCLE)<=0) p->bike_worn = 0;
     // Before version 18 a raft owned was a raft in use.
     if (header.version<18) p->raft_worn = p->raft>0;
     if (p->raft<=0) p->raft_worn = 0;

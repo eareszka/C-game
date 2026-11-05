@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 80x88, 7 colours plus black.
+Unmet: The checker's LOOK for 3 shades of one colour remains, because the brief sets the horn, horn shadow and claw colours and I also used the horn shadow on the claws. Each eye is a 2x2 block (4 px), following the brief's "2 px each at least" rather than the rule's 1 to 2 px. I could not measure inner black: the checker doesn't report it, and my hand estimate is about 730 px against the 494 to 768 px target.

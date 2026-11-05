@@ -1,0 +1,26 @@
+{
+  "run": "idle-animate-d-try2_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-07.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\79-ugjuknarpak-idle-d-try2-08.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\79-ugjuknarpak\\idle-animate-D-try2\\idle-animate-d-try2\\animations\\v1\\idle-animate-d-try2_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "4400b6e6-1d22-447a-aa6a-984a6ad0d3fb",
+    "generation_id": "ddcd1f89-455a-4e40-a4eb-de34da7856d2"
+  }
+}

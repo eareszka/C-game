@@ -1,0 +1,144 @@
+{
+  "schema": 1,
+  "subject": "b",
+  "generated": "2026-11-05T16:08:43Z",
+  "spent": {
+    "calls": 11,
+    "generations": 11.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "b_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "t4001.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v10",
+      "directory": "sprites/v10",
+      "files": [
+        "l40131.png"
+      ],
+      "ids": {
+        "background_job_id": "ba3e48d8-971a-4c20-b0a7-290a5a69a3ac",
+        "generation_id": "9bb40e41-9936-414a-958c-eb65bee8fd29"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v11",
+      "directory": "sprites/v11",
+      "files": [
+        "l40132.png"
+      ],
+      "ids": {
+        "background_job_id": "267779fd-7468-4ead-8007-90356cc4485f",
+        "generation_id": "4b91b779-4e19-4c24-b667-0e35af6001a7"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "b_sprites_v2",
+      "directory": "sprites/v2",
+      "files": [
+        "t4002.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "b_sprites_v3",
+      "directory": "sprites/v3",
+      "files": [
+        "t4003.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "b_sprites_v4",
+      "directory": "sprites/v4",
+      "files": [
+        "t4004.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v5",
+      "directory": "sprites/v5",
+      "files": [
+        "e4011.png"
+      ],
+      "ids": {
+        "background_job_id": "bfac2c76-cdc1-47c3-bfb2-a95c76d5d2e9",
+        "generation_id": "e1b2e888-ba2f-4215-82cb-edc749b2880e"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v6",
+      "directory": "sprites/v6",
+      "files": [
+        "e4012.png"
+      ],
+      "ids": {
+        "background_job_id": "bfe1d4c2-1e11-48df-bf45-10a3a8ebcb72",
+        "generation_id": "9117238b-4ae7-4de1-b4d2-fa791a263c86"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v7",
+      "directory": "sprites/v7",
+      "files": [
+        "e4013.png"
+      ],
+      "ids": {
+        "background_job_id": "a54fae4e-b42c-4e5b-b247-51ee74d31295",
+        "generation_id": "78818ae3-196d-4adc-8aa8-bd52daa2f5c7"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v8",
+      "directory": "sprites/v8",
+      "files": [
+        "l40111.png"
+      ],
+      "ids": {
+        "background_job_id": "15ffc6f7-0d0e-44a5-adbe-c90c56180378",
+        "generation_id": "5f2af8b4-f479-4c42-be96-88a4e2b26b4f"
+      }
+    },
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "b_sprites_v9",
+      "directory": "sprites/v9",
+      "files": [
+        "l40112.png"
+      ],
+      "ids": {
+        "background_job_id": "7967578c-307e-4752-9e9d-e1026bddad80",
+        "generation_id": "2504b787-bba3-4a4f-8b33-e397cb97cfe2"
+      }
+    }
+  ]
+}

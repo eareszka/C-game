@@ -253,8 +253,8 @@ Enemy* enemy_create(int enemy_id);
 //   MEDIUM   above LOW: 08 09 11 14 15 17 57-60 70-75
 //   UPPER    between MEDIUM and HARD: 21 22 24 26 28 61-64 67 76-82
 //   HARD     above UPPER: 16 18 19 20 27 33 39 42 43 83-89
-//   SEVERE   between HARD and ELITE: 25 35 36 37 38 40 45 46 47 90-95
-//   ELITE    very hard, a tier below the tier-1 bosses: 07 10 12 13 29 31 32 41 48 51 96-99. They
+//   SEVERE   between HARD and ELITE: 25 35 36 37 38 40 45 46 47 90-94 96
+//   ELITE    very hard, a tier below the tier-1 bosses: 07 10 12 13 29 31 32 41 48 51 95 97-99. They
 //            spawn like any enemy, but only in the wastelands and the
 //            hard-to-reach dungeons (place_spawners in src/dungeon.cpp).
 //   BOSS1/2  the bosses the game needs beaten, met where they're placed and
@@ -283,7 +283,7 @@ static const EnemyTier ENEMY_TIERS[] = {
     T_UPPER, T_UPPER, T_UPPER, T_UPPER, T_UPPER, T_UPPER,   // 77-82
     T_HARD, T_HARD, T_HARD, T_HARD, T_HARD, T_HARD,   // 83-88
     T_HARD, T_SEVERE, T_SEVERE, T_SEVERE, T_SEVERE, T_SEVERE,   // 89-94
-    T_SEVERE, T_ELITE, T_ELITE, T_BOSS2, T_ELITE,   // 95-99 (98 Boiuna: boss tier 2)
+    T_ELITE, T_SEVERE, T_ELITE, T_BOSS2, T_ELITE,   // 95-99 (95 Wendigo and 96 Bregdi swapped, the user 2026-11-03; 98 Boiuna: boss tier 2)
     T_BOSS3,                                        // 100 the flesh planet, the final boss
 };
 static const int ENEMY_COUNT = (int)(sizeof(ENEMY_TIERS) / sizeof(ENEMY_TIERS[0]));
@@ -293,8 +293,8 @@ inline bool enemy_is_elite(int id) { return enemy_tier(id) == T_ELITE; }
 // Enemies that fly or float on the map: they cross walls, floors and chests.
 inline bool enemy_flies(int id) {
     switch (id) {
-        case 7: case 10: case 12: case 16: case 56: case 57: case 67: case 68: case 69:
-        case 73: case 80: case 81: case 83: case 88: case 95: case 97: return true;
+        case 7: case 10: case 16: case 26: case 45: case 56: case 57: case 67: case 68: case 69:
+        case 73: case 80: case 81: case 83: case 88: case 97: return true;
     }
     return false;
 }

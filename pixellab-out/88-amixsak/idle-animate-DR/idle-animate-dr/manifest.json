@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-dr",
+  "generated": "2026-10-29T08:55:46Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-dr_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "88-amixsak-idle-dr-00.png",
+        "88-amixsak-idle-dr-01.png",
+        "88-amixsak-idle-dr-02.png",
+        "88-amixsak-idle-dr-03.png",
+        "88-amixsak-idle-dr-04.png"
+      ],
+      "ids": {
+        "background_job_id": "a0eb6649-07a4-41e9-8d59-82ff21e4afdd",
+        "generation_id": "dd6b5515-3c08-4087-addd-bc3d4d323762"
+      }
+    }
+  ]
+}

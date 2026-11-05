@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0630-half-formed-aquatic-beast-bulky-salamander-like",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 320 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1003
+  },
+  "links": {},
+  "seed": 1003,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h3.png"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit-try3_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 464 characters>",
+          "format": "png"
+        },
+        "width": 42,
+        "height": 32
+      }
+    ],
+    "image_size": {
+      "width": 42,
+      "height": 32
+    },
+    "description": "<elided 1330 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 1196 characters>",
+        "format": "png"
+      },
+      "width": 64,
+      "height": 32
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a7abbe61-72d0-496b-893e-0e9e409a9a52",
+    "generation_id": "af87eb35-0368-402b-8f27-1cd6937c1d8a"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "53-come-at-a-body-idle-frame0-try3.png"
+  ]
+}

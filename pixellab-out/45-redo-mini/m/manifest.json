@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "subject": "m",
+  "generated": "2026-11-02T16:10:06Z",
+  "spent": {
+    "calls": 4,
+    "generations": 4.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "flyl-00.png",
+        "flyl-01.png",
+        "flyl-02.png",
+        "flyl-03.png",
+        "flyl-04.png"
+      ],
+      "ids": {
+        "background_job_id": "7cd23792-21bf-4d73-adf3-e5de8baa6dc8",
+        "generation_id": "5bb91516-82d0-470a-9011-4f2bda7aac95"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "flyd-00.png",
+        "flyd-01.png",
+        "flyd-02.png",
+        "flyd-03.png",
+        "flyd-04.png"
+      ],
+      "ids": {
+        "background_job_id": "8350fbe2-095b-4866-88ff-4dddcd763e25",
+        "generation_id": "51220a44-18c4-4f4a-af6d-ac6d6c802a7e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "m_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "flyu-00.png",
+        "flyu-01.png",
+        "flyu-02.png",
+        "flyu-03.png",
+        "flyu-04.png"
+      ],
+      "ids": {
+        "background_job_id": "24f55ac4-f98e-429a-9f5d-27338ea67706",
+        "generation_id": "7fe54d02-b4d2-4ce5-89a9-25aaa5491dc6"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "m_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "d63b1277-2769-4aed-8a3a-dc3d9c0feac1",
+        "generation_id": "e38b8ffe-ae9d-46ba-adc2-0a6160c78e7a"
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "bregdi_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 547 characters>",
+    "image_size": {
+      "width": 84,
+      "height": 68
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "side",
+    "direction": "west",
+    "no_background": true,
+    "seed": 962
+  },
+  "links": {},
+  "seed": 962,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "bregdi-962.png"
+  ]
+}

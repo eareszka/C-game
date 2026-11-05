@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "candidate-931_sprites_v1",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 904 characters>",
+    "image_size": {
+      "width": 76,
+      "height": 60
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "direction": "south",
+    "no_background": true,
+    "seed": 931
+  },
+  "links": {},
+  "seed": 931,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "candidate-931.png"
+  ]
+}

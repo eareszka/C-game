@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-d-try6",
+  "generated": "2026-10-29T03:37:41Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-d-try6_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "19-skeljaskrimsli-idle-d-try6-00.png",
+        "19-skeljaskrimsli-idle-d-try6-01.png",
+        "19-skeljaskrimsli-idle-d-try6-02.png",
+        "19-skeljaskrimsli-idle-d-try6-03.png",
+        "19-skeljaskrimsli-idle-d-try6-04.png",
+        "19-skeljaskrimsli-idle-d-try6-05.png",
+        "19-skeljaskrimsli-idle-d-try6-06.png",
+        "19-skeljaskrimsli-idle-d-try6-07.png",
+        "19-skeljaskrimsli-idle-d-try6-08.png"
+      ],
+      "ids": {
+        "background_job_id": "1849b9e9-94a7-46a6-b46b-060416d8fca1",
+        "generation_id": "1efea1dc-c51e-4690-946f-c05faa35c2f3"
+      }
+    }
+  ]
+}

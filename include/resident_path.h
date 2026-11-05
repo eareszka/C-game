@@ -25,7 +25,8 @@ bool resident_find_route(ResidentPoint start,ResidentPoint target,int step,int o
     bool rejoin,const std::function<bool(ResidentPoint)>& fits,
     const std::function<bool(ResidentPoint,ResidentPoint,bool)>& segment,
     std::vector<ResidentPoint>& route,ResidentPoint& route_start,size_t& next_point,
-    const std::function<float(ResidentPoint)>& weight=nullptr);   // a step's cost multiplier (>= 1), e.g. off the trail
+    const std::function<float(ResidentPoint)>& weight=nullptr,   // a step's cost multiplier (>= 1), e.g. off the trail
+    bool quiet=false);   // no log when there is no way: a chaser asks often (chase_path.h)
 // Whether every position a straight walk from a to b stands at fits: each
 // whole-pixel cell the line crosses is asked once (feet fit exactly when their
 // floored pixel does), so no corner of a diagonal is skipped as sampling does.

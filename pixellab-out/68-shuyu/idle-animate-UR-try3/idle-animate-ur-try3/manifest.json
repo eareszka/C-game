@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "subject": "idle-animate-ur-try3",
+  "generated": "2026-10-28T09:52:13Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "idle-animate-ur-try3_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "68-shuyu-idle-ur-try3-00.png",
+        "68-shuyu-idle-ur-try3-01.png",
+        "68-shuyu-idle-ur-try3-02.png",
+        "68-shuyu-idle-ur-try3-03.png",
+        "68-shuyu-idle-ur-try3-04.png"
+      ],
+      "ids": {
+        "background_job_id": "2691d64b-a192-4a61-8a94-b9ebbac3b265",
+        "generation_id": "a7eac8dd-0a3f-4b43-9bd7-1d54422e6877"
+      }
+    }
+  ]
+}

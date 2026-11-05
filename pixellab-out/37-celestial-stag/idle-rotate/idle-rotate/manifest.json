@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "idle-rotate",
+  "generated": "2026-10-30T06:07:43Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "idle-rotate_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "37-celestial-stag-idle-views-south-00.png",
+        "37-celestial-stag-idle-views-south-east-01.png",
+        "37-celestial-stag-idle-views-east-02.png",
+        "37-celestial-stag-idle-views-north-east-03.png",
+        "37-celestial-stag-idle-views-north-04.png",
+        "37-celestial-stag-idle-views-north-west-05.png",
+        "37-celestial-stag-idle-views-west-06.png",
+        "37-celestial-stag-idle-views-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "ca677417-565d-49a6-bb71-db79f3d97c53",
+        "generation_id": "44e1be9f-0507-4ac8-b36d-4f05cf72414b"
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1722-the-kurrea-a-huge-australian-lagoon-monster-a-lo",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 299 characters>",
+    "image_size": {
+      "width": 96,
+      "height": 64
+    },
+    "outline": "single color black outline",
+    "shading": "basic shading",
+    "detail": "low detail",
+    "direction": "south-west",
+    "no_background": true,
+    "seed": 642
+  },
+  "links": {},
+  "seed": 642,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "c2.png"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit-try4",
+  "generated": "2026-10-29T02:51:01Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit-try4_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "19-skeljaskrimsli-idle-frame0-try4.png"
+      ],
+      "ids": {
+        "background_job_id": "f998a116-a704-4a0c-8f78-fdedd6edf665",
+        "generation_id": "dad8ed3f-e685-4594-8181-ce2bcb0e76e2"
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T10:04:04Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "83-beast-of-barrisdale-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "4e261058-92ff-4483-a84a-02ea1af6328f",
+        "generation_id": "92640cfb-3ffa-451a-a894-264cf77547fa"
+      }
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "run": "walk-animate-d_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\59-tripodero-walk-d-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\59-tripodero-walk-d-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\59-tripodero-walk-d-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\59-tripodero-walk-d-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\59-tripodero-walk-d-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\59-tripodero\\walk-animate-D\\walk-animate-d\\animations\\v1\\walk-animate-d_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "24b115b0-2158-49e0-8d9d-105194a8f2a7",
+    "generation_id": "536d4b0e-ebfa-44bc-bcd3-4a43b194bde6"
+  }
+}

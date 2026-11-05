@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "r_sprites_v3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2468 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact blue beast, front-on pose, horn, tusks and colours. Replace the black plate lines across the hide with big solid body shapes shaded by flat tones. No repeated plates or cracks. Keep clear legs and toes. Hard edges.",
+    "no_background": true,
+    "seed": 9003
+  },
+  "links": {},
+  "seed": 9003,
+  "ids": {
+    "background_job_id": "88bc0e22-a167-4841-a4f6-8b41a279cbeb",
+    "generation_id": "2d65b758-fd72-4bbd-9038-43433f4083a6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "e9003.png"
+  ]
+}

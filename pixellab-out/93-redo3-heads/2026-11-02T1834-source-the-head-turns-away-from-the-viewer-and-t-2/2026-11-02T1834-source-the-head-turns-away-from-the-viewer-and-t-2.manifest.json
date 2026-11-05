@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1834-source-the-head-turns-away-from-the-viewer-and-t-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1784 characters>",
+      "format": "png"
+    },
+    "description": "<elided 377 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 897
+  },
+  "links": {},
+  "seed": 897,
+  "ids": {
+    "background_job_id": "4203d295-8661-4624-9a41-a817e01b9b32",
+    "generation_id": "6cc5730a-7c33-4e4f-bdd1-6a39b2d121e1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ul.png"
+  ]
+}

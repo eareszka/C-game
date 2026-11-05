@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "xuelin-inn",
+  "generated": "2026-10-28T15:03:58Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "xuelin-inn_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "inn.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

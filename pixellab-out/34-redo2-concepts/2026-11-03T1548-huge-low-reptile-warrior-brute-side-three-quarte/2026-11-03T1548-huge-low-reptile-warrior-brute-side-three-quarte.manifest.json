@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1548-huge-low-reptile-warrior-brute-side-three-quarte",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 359 characters>",
+    "image_size": {
+      "width": 128,
+      "height": 80
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "seed": 1444
+  },
+  "links": {},
+  "seed": 1444,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "a4.png"
+  ]
+}

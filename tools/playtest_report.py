@@ -148,6 +148,55 @@ def main():
              title='Difficulty run: %d enemies, %d trials. Badge = score (0 average, + harder); ^TIER/vTIER = past that tier median; bottom right = hits a minute.'
                    % (len(score), len(rows)))
     print('\nwrote %s and %s' % (os.path.relpath(out_csv, ROOT), os.path.relpath(out_png, ROOT)))
+    if not args.run: write_recheck(order, names)
+
+
+# Each tier's target, easiest first: hits a minute (lo, hi) and the 1-5
+# rating (lo, hi). An enemy whose LATEST trial is outside either needs work.
+TARGET = {
+    'STARTER': ((0.0, 3.0),  (1, 2)),
+    'LOW':     ((0.0, 5.0),  (1, 3)),
+    'MEDIUM':  ((1.5, 8.0),  (2, 3)),
+    'UPPER':   ((2.0, 9.0),  (2, 3)),
+    'HARD':    ((3.0, 10.0), (2, 4)),
+    'SEVERE':  ((5.0, 13.0), (2, 4)),
+    'BOSS1':   ((6.0, 15.0), (3, 4)),
+    'ELITE':   ((8.0, 18.0), (3, 5)),
+    'BOSS2':   ((10.0, 22.0), (4, 5)),
+    'BOSS3':   ((10.0, 22.0), (4, 5)),
+}
+NEAR = 0.25   # hits this share past the range are let off while the rating is in range
+
+
+def write_recheck(order, names):
+    """playtest/recheck.txt, the F4 menu's CHECK ONLY run (C): every enemy in
+    the run whose latest trial misses its tier's TARGET (not-played ones left out).
+    Retune one and it stays on until a replay lands it in range."""
+    latest = {}
+    for r in csv.DictReader(open(os.path.join(ROOT, 'playtest', 'trials.csv'), encoding='utf-8')):
+        if int(r['order_index']) >= 0: latest[int(r['id'])] = r   # rows are in time order: the last wins
+    need = []
+    for i, t in order:
+        (hlo, hhi), (flo, fhi) = TARGET[t]
+        r = latest.get(i)
+        if r is None: continue                                     # not played: nothing to go on yet
+        h, f, why = float(r['hits_per_min']), int(r['rating']), []
+        feel_ok = not f or flo <= f <= fhi
+        # One run is noisy: hits just past the range (within NEAR of it) count
+        # only when the rating agrees something is off.
+        if h < hlo and (h < hlo * (1 - NEAR) or not feel_ok): why.append('%.1f hits/min, under %g' % (h, hlo))
+        if h > hhi and (h > hhi * (1 + NEAR) or not feel_ok): why.append('%.1f hits/min, over %g' % (h, hhi))
+        if f and f < flo: why.append('feel %d, under %d' % (f, flo))
+        if f and f > fhi: why.append('feel %d, over %d' % (f, fhi))
+        if why: need.append((i, t, '; '.join(why)))
+    out = os.path.join(ROOT, 'playtest', 'recheck.txt')
+    with open(out, 'w', encoding='utf-8', newline='\n') as f:
+        f.write('# Check only (C in the F4 menu): the enemies needing work -- their latest\n')
+        f.write('# trial outside their tier\'s target (tools/playtest_report.py TARGET).\n')
+        f.write('# Written by tools/playtest_report.py; id, tier, name, why.\n')
+        for i, t, why in need: f.write('%d %s %s -- %s\n' % (i, t, names[i], why))
+    print('\nneeding work (%d) -> %s:' % (len(need), os.path.relpath(out, ROOT)))
+    for i, t, why in need: print('  %02d %-7s %-24s %s' % (i, t, names[i][:24], why))
 
 
 if __name__ == '__main__':

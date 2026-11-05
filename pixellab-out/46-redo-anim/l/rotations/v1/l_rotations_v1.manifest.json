@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "l_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1848 characters>",
+      "format": "png"
+    },
+    "description": "Lusca: half shark half octopus monster, a tall narrow grey shark head with a dorsal fin on top, cream jaw, wide open red mouth with teeth, crimson octopus arms curling out low on each side. Flat colours, black outline.",
+    "no_background": true,
+    "seed": 531
+  },
+  "links": {},
+  "seed": 531,
+  "ids": {
+    "background_job_id": "b4019d49-8a2e-4f55-81b1-b4933e28dbbb",
+    "generation_id": "d26c89f1-d18a-4206-9d84-49dddc041933"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

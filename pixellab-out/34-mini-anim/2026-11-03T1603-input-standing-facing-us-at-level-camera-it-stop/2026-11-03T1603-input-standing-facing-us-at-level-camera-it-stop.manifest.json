@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1603-input-standing-facing-us-at-level-camera-it-stop",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1048 characters>",
+      "format": "png"
+    },
+    "action": "Standing facing us at level camera, it stops and slowly raises the huge axe up over its head with the arm fully extended, the blade high above, chest out, feet planted. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1472
+  },
+  "links": {},
+  "seed": 1472,
+  "ids": {
+    "background_job_id": "d7232b24-c552-4487-aefc-7b99c55be1f6",
+    "generation_id": "304767be-731c-44bf-bc93-7fd9d50ced59"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "raise-00.png",
+    "raise-01.png",
+    "raise-02.png",
+    "raise-03.png",
+    "raise-04.png"
+  ]
+}

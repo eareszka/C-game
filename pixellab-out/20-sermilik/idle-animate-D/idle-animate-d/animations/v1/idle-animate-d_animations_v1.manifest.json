@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-d_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1332 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place breathing heavily: its icy back rises, its head dips, and a puff of frosty white breath blows from its mouth, then it settles. Feet planted, facing the same way, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "869d4fd3-e9bc-44c3-a3bb-065521920c19",
+    "generation_id": "14c34489-1606-4aaa-ada1-af35a33a98bc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "20-sermilik-idle-d-00.png",
+    "20-sermilik-idle-d-01.png",
+    "20-sermilik-idle-d-02.png",
+    "20-sermilik-idle-d-03.png",
+    "20-sermilik-idle-d-04.png",
+    "20-sermilik-idle-d-05.png",
+    "20-sermilik-idle-d-06.png",
+    "20-sermilik-idle-d-07.png",
+    "20-sermilik-idle-d-08.png"
+  ]
+}

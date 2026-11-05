@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1523-input-idle-standing-planted-on-three-feet-facing",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1780 characters>",
+      "format": "png"
+    },
+    "action": "Standing planted on three feet facing left: it breathes, its wings lift and beat down twice, its lowered head bobs and its roaring mouth works. Feet stay planted, same size, same facing.",
+    "frame_count": 10,
+    "no_background": true,
+    "seed": 901
+  },
+  "links": {},
+  "seed": 901,
+  "ids": {
+    "background_job_id": "4af0bd44-a747-4ef4-9541-ab76846a587a",
+    "generation_id": "91c0dab7-ecb7-41db-9ebf-c39b8d090040"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png",
+    "idle-09.png",
+    "idle-10.png"
+  ]
+}

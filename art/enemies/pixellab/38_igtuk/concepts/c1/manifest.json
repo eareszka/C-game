@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "c1",
+  "generated": "2026-10-30T06:50:09Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "create-image-pixflux",
+      "run": "c1_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "igtuk-an-inuit-mountain-spirit-that-resembles-no.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

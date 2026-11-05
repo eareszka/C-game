@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0726-tiny-map-sprite-gray-sinister-sea-monster-rearin",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny map sprite, gray sinister sea monster rearing out of a small pale mint puddle of water, facing left, open jaws, two brown fins raised up, black outline, flat colours, simple silhouette, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD439I2hYHz6W4G6dZcBgAskQVVLb4q3QAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1094
+  },
+  "links": {},
+  "seed": 1094,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-map-sprite-gray-sinister-sea-monster-rearin.png"
+  ]
+}

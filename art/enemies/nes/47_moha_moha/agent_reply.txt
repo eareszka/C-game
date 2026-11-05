@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 110x60, 8 colours plus black.
+Unmet: The front and back toes read as soft blobs at game size, with small claws. The checker doesn't print the inner-black share, so the 9 to 14% is inferred from its "No failures". Outside the rule and brief, `pix.py` says to call `outline()` once, but I outlined each part to get its inner lines, then used `strip_outline` before the final `outline()`.

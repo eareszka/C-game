@@ -41,7 +41,7 @@ enum Item {
     ITEM_COLD_GEAR,
     ITEM_SPYGLASS,
     ITEM_DIVING_FINS,
-    ITEM_SWIFT_BOOTS,
+    ITEM_BICYCLE,                                               // the id the footwear it replaced had: a save's old pair is a bike
     ITEM_COMPASS,
     ITEM_O2_CHARM,
     ITEM_BINOCULARS,
@@ -59,7 +59,7 @@ enum Item {
     ITEM_HALBERD_BOOK,
     ITEM_SPYGLASS_BOOK,
     ITEM_DIVING_FINS_BOOK,
-    ITEM_SWIFT_BOOTS_BOOK,
+    ITEM_BICYCLE_BOOK,
     ITEM_COMPASS_BOOK,
     ITEM_O2_CHARM_BOOK,
     ITEM_BINOCULARS_BOOK,
@@ -96,12 +96,15 @@ bool item_use_band_aid(Player* p);
 // Full recovery, with the same inventory and health guards as Band-Aids.
 bool item_use_medkit(Player* p);
 bool item_use_antidote(Player* p);
-bool item_equip_swift_boots(Player* p, bool equip);
 bool item_footwear_equipped(const Player* p, Item it);
 bool item_equip_footwear(Player* p, Item it, bool equip);
 // The raft: worn, water is walkable and walking onto it sails (overworld.cpp).
 bool item_raft_worn(const Player* p);
 bool item_equip_raft(Player* p, bool equip);
+// The bicycle: worn, the player rides at BIKE_SPEED wherever they could walk
+// (entity.h player_gait); off by itself for ladders and the raft, no tool swung.
+bool item_bike_worn(const Player* p);
+bool item_equip_bike(Player* p, bool equip);
 // Where a thing that is not a material comes from, for the menu to say: "FOUND
 // IN CATACOMBS", "SOLD IN A TOWN BOOK SHOP". Null for a material.
 const char* item_source(Item it);

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "2026-11-02T1511-source-the-same-creature-hovering-facing-left-bl-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1780 characters>",
+      "format": "png"
+    },
+    "description": "<elided 359 characters>",
+    "width": 100,
+    "height": 68,
+    "no_background": true,
+    "seed": 873
+  },
+  "links": {},
+  "seed": 873,
+  "ids": {
+    "background_job_id": "60d01f7e-85a8-4f61-95c9-8d00b2dfe1a3",
+    "generation_id": "1d319bdb-d9dd-4082-a519-f0b95f9f4f65"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "b3.png"
+  ]
+}

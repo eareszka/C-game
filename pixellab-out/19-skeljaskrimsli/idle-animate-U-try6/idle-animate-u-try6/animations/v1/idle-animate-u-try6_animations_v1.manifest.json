@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "idle-animate-u-try6_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1296 characters>",
+      "format": "png"
+    },
+    "action": "<elided 366 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "fca74c4b-5276-4c0b-8309-ba14c252fa93",
+    "generation_id": "ce1145a7-6e1f-41bb-838c-0cc228d3b712"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "19-skeljaskrimsli-idle-u-try6-00.png",
+    "19-skeljaskrimsli-idle-u-try6-01.png",
+    "19-skeljaskrimsli-idle-u-try6-02.png",
+    "19-skeljaskrimsli-idle-u-try6-03.png",
+    "19-skeljaskrimsli-idle-u-try6-04.png",
+    "19-skeljaskrimsli-idle-u-try6-05.png",
+    "19-skeljaskrimsli-idle-u-try6-06.png",
+    "19-skeljaskrimsli-idle-u-try6-07.png",
+    "19-skeljaskrimsli-idle-u-try6-08.png"
+  ]
+}

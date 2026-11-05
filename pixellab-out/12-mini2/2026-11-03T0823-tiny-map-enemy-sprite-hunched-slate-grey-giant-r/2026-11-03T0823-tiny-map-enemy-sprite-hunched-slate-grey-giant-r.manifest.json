@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0823-tiny-map-enemy-sprite-hunched-slate-grey-giant-r",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny map enemy sprite, hunched slate grey giant rat monster, side view facing left, peach spiky sail on its back, large round ear, small horn, snarling, long thin curved tail, black outline, flat simple colours, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGklEQVR4nGNgYGD4HxmZ+v/Djgn/Xzw48B8AP44J1NQPqmsAAAAASUVORK5CYII=",
+      "format": "png"
+    },
+    "seed": 1192
+  },
+  "links": {},
+  "seed": 1192,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-map-enemy-sprite-hunched-slate-grey-giant-r.png"
+  ]
+}

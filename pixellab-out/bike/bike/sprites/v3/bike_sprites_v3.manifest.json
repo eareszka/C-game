@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "run": "bike_sprites_v3",
+  "provider": "pixellab",
+  "route": "generate-image-v2",
+  "arguments": {
+    "description": "<elided 530 characters>",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "style_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 300 characters>",
+        "format": "png"
+      },
+      "size": {
+        "width": 24,
+        "height": 24
+      }
+    },
+    "reference_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 560 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 64,
+          "height": 96
+        },
+        "usage_description": "the bicycle and pose to match"
+      },
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 540 characters>",
+          "format": "png"
+        },
+        "size": {
+          "width": 56,
+          "height": 80
+        },
+        "usage_description": "the rider's character"
+      }
+    ],
+    "no_background": true,
+    "seed": 33
+  },
+  "links": {},
+  "seed": 33,
+  "ids": {
+    "background_job_id": "1d5a0a93-111c-4ff8-b58e-d817b5ec7d5e",
+    "generation_id": "0fb9d9e5-5b84-4275-b31b-4d9915c1df17"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "side-33-00.png",
+    "side-33-01.png",
+    "side-33-02.png",
+    "side-33-03.png",
+    "side-33-04.png",
+    "side-33-05.png",
+    "side-33-06.png",
+    "side-33-07.png",
+    "side-33-08.png",
+    "side-33-09.png",
+    "side-33-10.png",
+    "side-33-11.png",
+    "side-33-12.png",
+    "side-33-13.png",
+    "side-33-14.png",
+    "side-33-15.png",
+    "side-33-16.png",
+    "side-33-17.png",
+    "side-33-18.png",
+    "side-33-19.png",
+    "side-33-20.png",
+    "side-33-21.png",
+    "side-33-22.png",
+    "side-33-23.png",
+    "side-33-24.png",
+    "side-33-25.png",
+    "side-33-26.png",
+    "side-33-27.png",
+    "side-33-28.png",
+    "side-33-29.png",
+    "side-33-30.png",
+    "side-33-31.png",
+    "side-33-32.png",
+    "side-33-33.png",
+    "side-33-34.png",
+    "side-33-35.png",
+    "side-33-36.png",
+    "side-33-37.png",
+    "side-33-38.png",
+    "side-33-39.png",
+    "side-33-40.png",
+    "side-33-41.png",
+    "side-33-42.png",
+    "side-33-43.png",
+    "side-33-44.png",
+    "side-33-45.png",
+    "side-33-46.png",
+    "side-33-47.png",
+    "side-33-48.png",
+    "side-33-49.png",
+    "side-33-50.png",
+    "side-33-51.png",
+    "side-33-52.png",
+    "side-33-53.png",
+    "side-33-54.png",
+    "side-33-55.png",
+    "side-33-56.png",
+    "side-33-57.png",
+    "side-33-58.png",
+    "side-33-59.png",
+    "side-33-60.png",
+    "side-33-61.png",
+    "side-33-62.png",
+    "side-33-63.png"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T08:23:15Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "88-amixsak-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "2f6ef1ab-019a-4631-a411-403b9f627d84",
+        "generation_id": "23a27404-5a57-4631-9581-785551ba3d58"
+      }
+    }
+  ]
+}

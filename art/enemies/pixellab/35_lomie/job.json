@@ -1,0 +1,36 @@
+{
+  "id": 35,
+  "name": "35-lomie",
+  "dir": "art/enemies/pixellab/35_lomie",
+  "description": "Lomie: a blue-grey moose-like beast of the mountains with great brown palmate antlers, a pale tan bib down its chest, a pink muzzle, pale legs. Flat black-outline pixel art.",
+  "prompts": {
+    "idle": "prompt.txt"
+  },
+  "sheets": {
+    "idle": {
+      "png": "assets/enemies/35_lomie.png",
+      "frames": 3,
+      "rows": false,
+      "ms": 250,
+      "views": [
+        "D",
+        "DR",
+        "R",
+        "UR",
+        "U"
+      ],
+      "make": "animate",
+      "count": 4,
+      "action": "Standing in place: the big water bladder under its neck swells fuller and sags, it breathes, then it lowers its great antlers and tosses them up. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2
+        ]
+      },
+      "ground": true,
+      "despeckle": 2
+    }
+  }
+}

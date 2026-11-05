@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "k_sprites_v6",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1748 characters>",
+      "format": "png"
+    },
+    "description": "Keep this exact creature, head, tusks, bowl, colours and fringe. Make the body way skinnier: a narrow gaunt torso half this wide, with long thin legs and big gaps between them. Same height. Hard edges, flat shapes.",
+    "no_background": true,
+    "seed": 8421
+  },
+  "links": {},
+  "seed": 8421,
+  "ids": {
+    "background_job_id": "dfa9911d-a127-464f-83a5-ea0ccfa0b9fe",
+    "generation_id": "d28ac0ae-6416-426f-9f5e-be7e79b8bc5b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s8421.png"
+  ]
+}

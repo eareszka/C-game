@@ -254,11 +254,12 @@ def shadow(frame, cx, gy, rx):
                 if 0 <= cx + x < frame.width and 0 <= gy + y < frame.height: frame.putpixel((cx + x, gy + y), (0, 0, 0, 255))
 
 
-def chase_gif(nn, style, views, pal, spin=False, cell=(W, H), hover=0):
+def chase_gif(nn, style, views, pal, spin=False, cell=(W, H), hover=0, backwards=False):
     """Its mini chasing a standing player across grass, 25 frames a second, by chase_speed() and chase_bend();
     returns how fast it closes on the player on average, a share of the player's running speed. One that flees
     (bend pi) is run down instead: the player starts near it and runs at it. hover: a flier's shadow's half width
-    (mini_hover() in src/main.cpp): it is drawn HOVER_UP art px over its shadow, a pixel lower on its second frame."""
+    (mini_hover() in src/main.cpp): it is drawn HOVER_UP art px over its shadow, a pixel lower on its second frame.
+    backwards: it shows the view opposite the way it goes, tail first (mini_backwards() in src/main.cpp)."""
     dt, fw, fh = 0.04, 220, 130
     cw, ch = cell
     me, cells = ff.player(), {v: [ff.image(g, pal, cw, ch) for g in gs] for v, gs in steps(views).items()}
@@ -276,13 +277,14 @@ def chase_gif(nn, style, views, pal, spin=False, cell=(W, H), hover=0):
         if spin: face = 'DRUL'[int(t / 0.12) % 4]   # it spins whichever way it goes (draw_chaser in src/main.cpp)
         frame = Image.new('RGBA', (fw, fh), GRASS)
         frame.alpha_composite(me, (int(P[0] / 2) - 7, int(P[1] / 2) + 3 - me.height))
-        n = len(cells[face])
+        view = {'D': 'U', 'U': 'D', 'L': 'R', 'R': 'L'}[face] if backwards else face   # backwards: tail first
+        n = len(cells[view])
         step = int(t / 0.15) % max(n, 2) if v > 0 or hover else 0   # moving (or hovering, its wings never still): its next frame, or a hop
         two = n > 1
         if two and chase_frame(style, t, n) is not None: step = chase_frame(style, t, n)
         lift = HOVER_UP - (step if two else 0) if hover else 0
         if hover: shadow(frame, int(x / 2), int(y / 2) + 4 - 2, hover)
-        frame.alpha_composite(cells[face][step if two else 0], (int(x / 2) - cw // 2, int(y / 2) + 4 - ch - (step and not two) - lift))
+        frame.alpha_composite(cells[view][step if two else 0], (int(x / 2) - cw // 2, int(y / 2) + 4 - ch - (step and not two) - lift))
         frames.append(frame)
         x, y, t = x + mx * v * dt, y + my * v * dt, t + dt
         if flees: P = (P[0] - ux * RUN * dt, P[1] - uy * RUN * dt)     # the player running it down

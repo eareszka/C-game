@@ -381,6 +381,14 @@ static const Item TOWN0_BOOK_STOCK[] = { ITEM_RAFT_BOOK, ITEM_KNIFE_BOOK, ITEM_B
 static const Shop TOWN0_BOOKS = {
     "Every craft starts with a book. Read one and your hands will know the rest.",
     TOWN0_BOOK_STOCK, 3 };
+// Town 2's (Xuelin's) book shop, the regional one: the bicycle, and the cold
+// gear, halberd and katana. Its keeper stands behind a counter once the shop
+// has a room (tools/town2_layout.py's 'book shop' lot); until then no one
+// sells these.
+static const Item TOWN2_BOOK_STOCK[] = { ITEM_BICYCLE_BOOK, ITEM_COLD_GEAR_BOOK, ITEM_HALBERD_BOOK, ITEM_KATANA_BOOK };
+static const Shop TOWN2_BOOKS __attribute__((unused)) = {
+    "Books from beyond the snow. Read one on the road and the road gets shorter.",
+    TOWN2_BOOK_STOCK, 4 };
 static const StoryNpc NPCS[] = {
     // The debug speaker, in the spawn house: a line long enough to page, for
     // working on the speech box
@@ -574,7 +582,7 @@ static bool door_in_town(const Tilemap* map, int d, int t) {
 
 const char* story_world_name(){return "Vaalbara";}
 const char* story_town_name(int town) {
-    static const char* names[]={"Bloom",nullptr,nullptr};
+    static const char* names[]={"Bloom",nullptr,"Xuelin"};
     return town>=0&&town<3?names[town]:nullptr;
 }
 const char* story_where_am_i(const StoryNpcPos& p,const StoryWhere& w) {

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0843-in-u-walking-straight-away-from-us-at-level-came",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 952 characters>",
+      "format": "png"
+    },
+    "action": "Walking straight away from us at level camera, seen from behind: the back legs step one then the other, the rump sways a little side to side, the tail swings. Same size and design, same flat colours, camera fixed, not from above.",
+    "frame_count": 4,
+    "no_background": true,
+    "seed": 1242
+  },
+  "links": {},
+  "seed": 1242,
+  "ids": {
+    "background_job_id": "073f271a-4c68-4f22-bcc5-3850897ee56e",
+    "generation_id": "0794ec74-0adc-4438-97b7-201a3fe3b0fd"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walku-00.png",
+    "walku-01.png",
+    "walku-02.png",
+    "walku-03.png",
+    "walku-04.png"
+  ]
+}

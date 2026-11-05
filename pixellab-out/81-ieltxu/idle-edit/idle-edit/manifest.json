@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-28T14:50:31Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "81-ieltxu-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "925cb222-f468-4463-b148-ee089ab6bc00",
+        "generation_id": "bcec5018-d3ae-4bfa-8a84-6489fc3e8588"
+      }
+    }
+  ]
+}

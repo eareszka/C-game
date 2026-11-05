@@ -1,113 +1,67 @@
-"""13 Beast of the Charred Forests' map mini: the long charcoal lizard with ember spines, a glowing grin and
-cracks of fire down its flank, at the player's scale, four views of two frames (tools/minis.py).
+"""13 Beast of the Charred Forests' map mini: the eyeless coal beast stomping, four views at the game's ground-level camera, two frames each (tools/minis.py).
 
-Placed by hand over the shrink of its battle views (python tools/minis.py 13): the head with its spikes and
-its grin of teeth, the grey back with its ridge of spikes, the charcoal belly with its embers, the legs
-splayed; the tail trailing from the side, coming down behind it from the back. Its two frames are stomps (the user,
-2026-10-14: "enemy should look like its stomping more"): a foot lifted high, left then right, or from the
-side the front leg then the back.
-16 px tall, as the Snawfus and the Questing Beast (its battle frames stand 29). Three of its battle colours
-and black: its grey (back, legs from the front, tail), its charcoal (head, belly, legs, feet), its ember
-orange (spikes, eye, teeth, cracks). Its yellow, white teeth and red go: the grin glows.
-
-Its chase: prowl -- it circles in on you, its heading turned 0.6 rad off the line to you the whole way, at
-1.1x the chase pace (closes at 0.91). chase_speed() and chase_bend() in src/main.cpp and tools/minis.py.
+Drawn by PixelLab alone: side sprite at the mini's size and palette (pixellab-out/13-mini, s2; its head's orange mark, which read as an eye, painted out), front and back PixelLab's turns of it (tf2, tb1), each given a walk
+(pixellab-out/13-mini-anim); side frames 0 and 2 (the tail's tip trimmed to fit the cell), front 0 and 3, back 0 and 4. The right view is the left mirrored. Three colours and black: coal grey, ember, white fangs. Its chase: the plod (chase_speed(), src/main.cpp), slow and heavy.
 
     python art/enemies/minis/13_beast_of_the_charred_forests_mini.py
 """
 from pathlib import Path
 import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tools'))
+from PIL import Image
+ROOT = Path(__file__).resolve().parents[3]
+HERE = ROOT / 'art/enemies/pixellab/13_beast_of_the_charred_forests/redo/mini'
+sys.path.insert(0, str(ROOT / 'tools'))
 import minis, first_frame as ff
 
-PAL = {'K': '000000', 'G': '595965', 'B': '282828', 'O': 'fc9838'}
-CHASE = 'prowl'
-
-# Front and back from row 12: the left half and the middle column, the right half its mirror.
-FRONT = [
-    '........K.' 'K',
-    '.......KOK' 'O',
-    '......KBBB' 'B',
-    '.....KBOBB' 'B',
-    '.....KOKOK' 'O',
-    '.....KKKKK' 'K',
-    '....KKBBBB' 'B',
-    '...KGGBOBB' 'B',
-    '..KGGGBBOB' 'B',
-    '.KGGGGBBBB' 'B',
-    '.KGGGGKBBB' 'B',
-    '.KGGGGKBBB' 'B',
-    'KGGGGK.KKK' 'K',
-    'KGGGGK....' '.',
-    'KBBBBK....' '.',
-    '.KKKK.....' '.',
-]
-BACK = FRONT[:3] + [
-    '.....KBBBB' 'B',
-    '.....KBBBB' 'B',
-    '.....KKBBB' 'B',
-    '....KKGGGK' 'O',
-    '...KGGGGGK' 'O',
-    '..KGGGGGGG' 'G',
-    '.KGGGGGGGG' 'G',
-    '.KGGGGKGGG' 'G',
-    '.KGGGGKGGG' 'G',
-    'KGGGGK.KKG' 'G',
-    'KGGGGK...K' 'G',
-    'KBBBBK...K' 'G',
-    '.KKKK.....' 'K',
-]
+PAL = {'K': '000000', 'G': '595965', 'E': 'fc9838', 'W': 'fcfcfc'}
+CHASE = 'plod'
+HEIGHT = 27
+RGB = {k: tuple(int(c[i:i + 2], 16) for i in (0, 2, 4)) for k, c in PAL.items()}
+N8 = ff.N4 + ((1, 1), (1, -1), (-1, 1), (-1, -1))
 
 
-def whole(halves):
-    return [h + h[9::-1] for h in halves]
+def logged(name):
+    return [l.strip() for l in (HERE / name).read_text().splitlines() if l.strip().endswith('.png')]
 
 
-def stomp(rows):
-    """Its left foot lifted high off the ground, the right one planted: the next stomp is the mirror."""
-    out = list(rows)
-    out[11] = 'KBBBBK' + rows[11][6:]
-    out[12] = '.KKKK..' + rows[12][7:]
-    for y in (13, 14, 15):
-        out[y] = '......' + rows[y][6:]
-    return out
+def frame(path, side=False):
+    im = Image.open(path).convert('RGBA')
+    g = {}
+    for y in range(im.height):
+        for x in range(im.width):
+            p = im.getpixel((x, y))
+            if p[3] > 127: g[x, y] = min(RGB, key=lambda k: sum((a - b) ** 2 for a, b in zip(RGB[k], p[:3])))
+    left, pieces = set(g), []
+    while left:                      # its body, the largest piece: PixelLab's stray specks go
+        piece, todo = set(), [left.pop()]
+        while todo:
+            a = todo.pop(); piece.add(a)
+            for d in N8:
+                q = (a[0] + d[0], a[1] + d[1])
+                if q in left: left.discard(q); todo.append(q)
+        pieces.append(piece)
+    g = {p: g[p] for p in max(pieces, key=len)}
+    if side:                         # no eyes: orange above its jaws is coal
+        top = min(y for x, y in g)
+        for p, c in list(g.items()):
+            if c == 'E' and p[1] < top + 10: g[p] = 'G'
+    g = {p: c for p, c in g.items() if not (c == 'K' and any((p[0] + a, p[1] + b) not in g for a, b in ff.N4))}
+    if side:                         # its tail tip: 35 columns of fill centre clear of the cell edges once outlined
+        while max(x for x, y in g) - min(x for x, y in g) + 1 > 35:
+            right = max(x for x, y in g)
+            g = {p: c for p, c in g.items() if p[0] != right}
+    xs, ys = [x for x, y in g], [y for x, y in g]
+    dx, dy = minis.W // 2 - (min(xs) + max(xs)) // 2, minis.H - 2 - max(ys)
+    return ff.outline({(x + dx, y + dy): c for (x, y), c in g.items()})
 
 
-SIDE = [
-    '.....K.K.K......................',
-    '....KOKOKOK.......K.K.K.K.......',
-    '...KBBBBBBBK....KKOKOKOKOK......',
-    '..KBBBBBBBBBKKKKGGGGGGGGGKKK....',
-    '.KBBBBBOBBBBBBGGGGGGGGGGGGGGK...',
-    'KOKOKOKOKOKBBGGGGGGGGGGGGGGGGK..',
-    'KKOKOKOKOKKBBGGGGGGGGGGGGGGGGGK.',
-    '.KBBBBBBBBBBBBBBOOBBBOOBBGGGGGK.',
-    '..KKKKKKKKKBBBBBBBOBBBBOBBBGGGGK',
-    '..........KBBBBBBBBBBBBBBBKGGGK.',
-    '..........KBBBBKKKKKKBBBBKKGGK..',
-]
-# The stomps from the side: the front leg swung up and forward, then the back one raised.
-LEGS = (['........KKBBBBK......KBBBK.KGK..',
-         '.......KBBBBKK.......KBBBK..K...',
-         '........KKKK.........KBBBK......',
-         '....................KBBBBK......',
-         '.....................KKKK.......'],
-        ['..........KBBBK......KBBBK.KGK..',
-         '..........KBBBK......KKKKK..K...',
-         '..........KBBBK.................',
-         '.........KBBBBK.................',
-         '..........KKKK..................'])
-
-
-VIEWS = {
-    'D': [(10, 12, stomp(whole(FRONT))), (10, 12, [r[::-1] for r in stomp(whole(FRONT))])],
-    'U': [(10, 12, stomp(whole(BACK))), (10, 12, [r[::-1] for r in stomp(whole(BACK))])],
-    'L': [(4, 12, SIDE + list(LEGS[0])), (4, 12, SIDE + list(LEGS[1]))],
-}
-VIEWS['R'] = [(40 - x0 - len(rows[0]), top, [r[::-1] for r in rows]) for x0, top, rows in VIEWS['L']]
-FRAMES = {v: [ff.grid([(top + y, x0, r) for y, r in enumerate(rows)], PAL) for x0, top, rows in fs]
-          for v, fs in VIEWS.items()}
+L, Dn, Up = logged('anim_l.log'), logged('anim_d.log'), logged('anim_u.log')
+LEFT = [frame(L[0], True), frame(L[2], True)]
+RIGHT = [{(minis.W - 1 - x, y): c for (x, y), c in g.items()} for g in LEFT]
+FRAMES = {'D': [frame(Dn[0]), frame(Dn[3])], 'U': [frame(Up[0]), frame(Up[4])], 'L': LEFT, 'R': RIGHT}
 
 if __name__ == '__main__':
-    minis.make(13, 'beast_of_the_charred_forests', FRAMES, PAL, cap=16)
+    minis.make(13, 'beast_of_the_charred_forests', FRAMES, PAL, cap=HEIGHT)
     minis.chase_gif(13, CHASE, FRAMES, PAL)
+    for v, gs in FRAMES.items():
+        print(v, [(max(x for x, y in g) - min(x for x, y in g) + 1, max(y for x, y in g) - min(y for x, y in g) + 1) for g in gs])

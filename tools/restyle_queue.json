@@ -1,0 +1,501 @@
+{
+  "1": {
+    "grow": 2,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Wolpertinger: a fierce hare with deer antlers, fangs, and spread brown bird wings with red tips, sitting upright. Flat black-outline pixel art.",
+    "prompt": "A Wolpertinger, the Skvader's harder cousin: a fierce hare sitting upright facing the viewer, with branching deer antlers on its head, bared white fangs, and two spread bird wings with red feather tips. Tan and brown fur, pale belly. Keep its colours and its fangs and red wing tips.",
+    "idle": {
+      "action": "Sitting in place, it breathes and lifts its red-tipped wings, baring its fangs, then settles. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          3
+        ],
+        "R": [
+          0,
+          2,
+          4
+        ]
+      }
+    }
+  },
+  "2": {
+    "grow": 2,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Treesqueak: a brown tree squirrel sitting upright, round ears, tan muzzle and belly, small pink nose, a curled tail behind it. Flat black-outline pixel art.",
+    "prompt": "A Treesqueak: an upright tan and brown squirrel creature sitting on its haunches facing the viewer, round ears, tan muzzle and belly, small pink nose, a curled tail behind it. Real squirrel proportions. Keep its colours.",
+    "idle": {
+      "action": "Sitting upright in place, it stretches up tall and squeaks with its mouth open, then settles back and crouches low. Same facing, same size, feet and tail planted. Black one-pixel outlines, flat fills. No sound lines.",
+      "map": {
+        "*": [
+          0,
+          1,
+          3
+        ],
+        "D": [
+          0,
+          2,
+          4
+        ],
+        "U": [
+          0,
+          1,
+          2
+        ]
+      }
+    }
+  },
+  "3": {
+    "grow": 2,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Qique: a crested rooster, white head, red crest, orange beak, navy body, orange wing tips, standing. Flat black-outline pixel art.",
+    "prompt": "A Qique: a crested rooster standing facing the viewer with wings held out, white head, red crest and wattle, orange beak, navy blue body, orange wing tips and orange legs. Real bird proportions and weight. Keep these colours.",
+    "idle": {
+      "action": "Standing in place, it breathes and bobs its crested head, wings shifting slightly. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          3
+        ],
+        "D": [
+          0,
+          1,
+          2
+        ],
+        "UR": [
+          0,
+          1,
+          2
+        ],
+        "U": [
+          0,
+          5,
+          6
+        ]
+      }
+    },
+    "flap": {
+      "action": "Beating its wings strongly up and down in place, wings fully up then fully down. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          3,
+          2,
+          1,
+          4
+        ]
+      }
+    }
+  },
+  "4": {
+    "grow": 2,
+    "views": [
+      "D",
+      "R",
+      "U"
+    ],
+    "ground": true,
+    "desc": "Lili: a round pink many-legged scuttling creature with a big magenta mouth and big ears. Flat black-outline pixel art.",
+    "prompt": "A Lili: a round pink many-legged scuttling creature facing the viewer, with a big magenta mouth, small dark eyes and pointed pink ears on top. A clear strong round shape with several short legs below. Keep its pink and magenta colours.",
+    "idle": {
+      "action": "Running in place on its many short legs, legs scuttling quickly in alternating steps, body bobbing slightly. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          3
+        ],
+        "D": [
+          0,
+          1,
+          4
+        ],
+        "U": [
+          0,
+          2,
+          4
+        ]
+      }
+    }
+  },
+  "5": {
+    "grow": 2,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Crowing Crested Cobra: a coiled cream snake with a red crest, rearing upright to crow. Flat black-outline pixel art.",
+    "prompt": "A Crowing Crested Cobra: a cream-coloured snake with its tail coiled flat on the ground in long loops, its neck rearing straight up, a small head with a red rooster crest on top. Keep its cream body with tan banding and its red crest.",
+    "idle": {
+      "action": "Coiled in place, it sways its reared neck and lifts its crested head to crow, mouth opening, then settles. Same facing, same size, coils planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          3
+        ],
+        "UR": [
+          0,
+          1,
+          3
+        ],
+        "U": [
+          0,
+          5,
+          6
+        ]
+      }
+    },
+    "flap": {
+      "action": "Slithering in place, its body rippling in a wave from head to tail, crest bobbing. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    }
+  },
+  "50": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Teakettler: a small round creature, a ball of plum fur on a long peach ringed neck, a tiny tapir-snouted head, pale blue steam at its nose, a curly tail. Flat black-outline pixel art.",
+    "prompt": "A Teakettler: a small brown dog-like creature standing on four short legs facing the viewer, with big upright ears with pink insides and a short snout. Natural animal proportions and weight. Keep its brown fur and pink ears.",
+    "idle": {
+      "action": "Standing in place, it stretches its long ringed neck up high and opens its snout wide to whistle, then settles. Bold, big poses. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          8,
+          1
+        ],
+        "D": [
+          0,
+          8,
+          2
+        ],
+        "U": [
+          0,
+          8,
+          2
+        ]
+      }
+    },
+    "flap": {
+      "action": "Waddling backwards in place on its short legs, the round body rocking side to side, the neck swaying. Bold, big poses. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "D": [
+          1,
+          2,
+          1,
+          0
+        ]
+      }
+    },
+    "size": "44x44",
+    "describe": "A small, round, quirky creature, gentle and comical. A big ball-shaped body of plum purple fur with a few lavender streaks and a paler shaggy underside. A long thick hairless neck rises from the front of the body in a gentle S curve, peach-tan skin with dark brown rings like an elephant's trunk, warmer orange-peach toward the tip. A tiny head at the tip with a dark tapering tapir snout, pointed black nose, a tiny pale ear. A small pale sky-blue puff of mist at the nose. Short pale pinkish-tan mole legs with flat wide paws and long slender toes, broad hind feet. A short tightly curled hairless pale peach tail. Simple silhouette: big round ball, long curving neck, tiny head.",
+    "seeds": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "assigned": {
+      "D": "south-west",
+      "DR": "south-east",
+      "R": "source",
+      "UR": "east",
+      "U": "north-east"
+    }
+  },
+  "53": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "desc": "Come-at-a-Body: a stout woodchuck sitting up, brown fur, cream belly and muzzle, small round ears, a short red-brown tail. Flat black-outline pixel art.",
+    "prompt": "A Come-at-a-Body: a stout brown woodchuck sitting up facing the viewer, with a tan belly, small round ears and a short bushy tail. Natural animal proportions and weight. Keep its warm brown and tan colours.",
+    "idle": {
+      "action": "Sitting in place, it rears back with its fur bristling, bares its fangs and spits with its mouth wide open, then settles. Bold, big poses. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          1
+        ],
+        "D": [
+          0,
+          2,
+          4
+        ]
+      }
+    },
+    "flap": {
+      "action": "A fast gallop cycle in place: legs stretched far apart, then gathered together under the body, then stretched again, the body staying low and the tail streaming. Big leg movement. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          2,
+          4,
+          1
+        ]
+      }
+    },
+    "size": "40x40",
+    "describe": "A stout woodchuck sitting up, seen exactly from the front. Golden-brown fur, tan muzzle and tan belly, small round dark ears, small dark eyes, black nose, short arms held at the belly, a short bushy brown tail at its right.",
+    "assigned": {
+      "D": "south-east",
+      "DR": "east",
+      "R": "east",
+      "UR": "north-east",
+      "U": "north"
+    }
+  },
+  "54": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "R",
+      "U"
+    ],
+    "desc": "Billdad: a hunched upright creature with a hooked parrot beak, a long wrinkled neck, a pear-shaped body, big flat feet and a beaver's paddle tail. Flat black-outline pixel art.",
+    "prompt": "A Billdad: a peach-coloured beaver-like animal crouched facing the viewer, with a small head, long folded hind legs and a big flat round brown tail lying on the ground at its right side. Keep its peach body, paler belly and brown tail.",
+    "idle": {
+      "action": "Sitting in place, it crouches down low, then springs up with its broad flat paddle tail flung high beside it, then settles. Bold, big poses. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          6,
+          7
+        ]
+      }
+    },
+    "flap": {
+      "action": "Seen from behind, it hops up off the ground, lifts its broad flat paddle tail high, slaps the tail down hard, then stands. Same size. Bold, big poses. Black one-pixel outlines, flat fills.",
+      "views": [
+        "D"
+      ],
+      "from_view": "U",
+      "map": {
+        "*": [
+          1,
+          2,
+          3,
+          4
+        ]
+      }
+    },
+    "alt": {
+      "action": "It leaps high with its broad flat paddle tail raised, hangs in the air, then lands and slams the tail flat on the ground. Bold, big poses. Same facing, same size. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "size": "44x44",
+    "describe": "A hunched upright creature sitting like a kangaroo or a meerkat, awkward and a little pitiful, like a plucked parrot crossed with a beaver. A small head on a long thick stooped neck with a few dark crease lines. A large deep hooked parrot beak in warm tan-orange. A tiny dark eye set high. One pointed pale grey-tan ear flap angled back, a small spike under the chin. Bare salmon pink skin, olive green patches on the back and shoulders, narrow sloping shoulders swelling into a big round pear-shaped belly and haunch in dusty rose. Tiny weak forelimbs held against the chest with thin clawed fingers. Thick folded hind legs, large long flat webbed feet in dusty mauve stretched out in front, dark claws. A broad flat rust-brown paddle tail like a beaver's resting on the ground.",
+    "seeds": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "assigned": {
+      "D": "south-west",
+      "R": "source",
+      "U": "north-east"
+    }
+  },
+  "55": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "DR"
+    ],
+    "desc": "Wapaloosie: a long squirrel-furred inchworm arched into a tall hoop, copper-orange above and white below, a small squirrel head low at the front, tall dark tufted ears, yellow-green tufts on its back, grey bird feet, a thin dark whip tail. Flat black-outline pixel art.",
+    "prompt": "A Wapaloosie: a rust-red long-bodied inchworm-squirrel arched in a hump, seen from the front, with a cream underside, small yellow fungus along its back and grey feet. Keep its rust red, cream and yellow.",
+    "idle": {
+      "action": "Humping along in place like an inchworm, its back arching up into a full high hump, then flattening. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          0,
+          1,
+          2
+        ]
+      }
+    },
+    "alt": {
+      "action": "Reared straight up on its back legs, cream belly showing, it sways and stretches taller, then sinks a little. Same facing, same size, feet planted. Black one-pixel outlines, flat fills.",
+      "map": {
+        "*": [
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "size": "48x44",
+    "describe": "Side view, facing right. A long thin tube-shaped inchworm creature bent into one tall upside-down U, a horseshoe standing on its two ends: the whole body is the arch, with even thickness all along, and a large empty gap under it between the front legs and the back legs. It has no bushy tail. The body is copper-orange on the outer curve and white on the inner curve. At the low right end, a small head with a white face, short pointed muzzle, pink nose and two tall thin dark brown ears. Short legs at the bottom of each end of the arch, with grey bird feet and dark claws. Two small lime-green tufts on the outer curve. A very thin dark brown bare whip tail, straight and low along the ground behind the left end.",
+    "direction": "east",
+    "seeds": [
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "assigned": {
+      "D": "west",
+      "DR": "source"
+    }
+  },
+  "66": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "size": "48x44",
+    "direction": "east",
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "desc": "Ayotochtli: a stocky tan armadillo with long rabbit ears and a banded green and gold shell on its back. Flat black-outline pixel art.",
+    "prompt": "",
+    "describe": "A stocky armadillo with the long upright ears of a rabbit, standing on four sturdy legs, seen from the side, facing right. Bare peach-tan skin on its head, ears, legs and short tail, a small rounded snout and a tiny dark eye. A banded armoured shell saddles its back, in overlapping dark green and golden yellow plates.",
+    "idle": {
+      "action": "Standing in place, it hunches down and pulls its head into its shell, plates lifting, then rises again. Same facing, same size. Bold, big poses. Black one-pixel outlines, flat fills."
+    },
+    "flap": {
+      "action": "Curled into a tight armoured ball, rolling in place, the plates turning. Same facing, same size. Bold, big poses. Black one-pixel outlines, flat fills."
+    },
+    "assigned": {
+      "D": "east",
+      "DR": "flip-south-east",
+      "R": "north",
+      "UR": "north-west",
+      "U": "west"
+    }
+  },
+  "68": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "DR",
+      "R",
+      "UR",
+      "U"
+    ],
+    "size": "52x44",
+    "direction": "east",
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "desc": "Shuyu: a plump red-feathered chicken with several small heads on thin necks and three tails. Flat black-outline pixel art.",
+    "prompt": "",
+    "describe": "A plump round red-feathered chicken standing on two thin yellow legs, seen from the side, facing right. Several small chicken heads on thin necks rise close together from its shoulders, each with a bright red comb and a short yellow beak. Three separate fans of dark maroon tail feathers behind it. A folded red wing on its side. Warm brick red body with a darker maroon shade.",
+    "idle": {
+      "action": "Standing in place, its small heads dart out one after another to peck the air, necks stretching, then pull back. Same facing, same size. Bold, big poses. Black one-pixel outlines, flat fills."
+    },
+    "flap": {
+      "action": "Beating its wings strongly, wings spread wide up then down, feet planted. Same facing, same size. Bold, big poses. Black one-pixel outlines, flat fills."
+    },
+    "assigned": {
+      "D": "south-west",
+      "DR": "south-east",
+      "R": "source",
+      "UR": "east",
+      "U": "north-east"
+    }
+  },
+  "8": {
+    "grow": 1.5,
+    "views": [
+      "D",
+      "R",
+      "U"
+    ],
+    "size": "52x56",
+    "direction": "east",
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "desc": "Snawfus: a slender white stag with tall antlers ending in pink blossoms, and a curl of blue haze from its breath. Flat black-outline pixel art.",
+    "prompt": "",
+    "describe": "A slender pure white stag standing on four long thin legs, seen from the side, facing right, with natural deer proportions and a long raised neck. Pale grey-blue shade along its belly and flank. Tall thin brown antlers that end in clusters of bright pink blossoms. A small curl of pale blue haze rising from its breath. A tiny dark eye and a dark nose.",
+    "idle": {
+      "action": "Standing in place, it breathes out a curl of blue haze, raising its head and antlers, blossoms swaying, then lowers them. Same facing, same size. Bold, big poses. Black one-pixel outlines, flat fills."
+    },
+    "assigned": {
+      "D": "east",
+      "R": "north",
+      "U": "north-west"
+    }
+  }
+}

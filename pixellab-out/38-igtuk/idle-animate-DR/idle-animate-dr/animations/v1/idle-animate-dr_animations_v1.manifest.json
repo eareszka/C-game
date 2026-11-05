@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "idle-animate-dr_animations_v1",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1512 characters>",
+      "format": "png"
+    },
+    "action": "Standing in place: it breathes, then opens its huge jaw wide and snaps it shut with a boom, its shaggy beard swinging. Feet planted, same facing, same size. Black one-pixel outlines, flat fills.",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "1e5fd95f-28bc-4341-83c7-6a0219ea83cd",
+    "generation_id": "406d5311-9d22-4ae2-9924-a5a8fadc1256"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "38-igtuk-idle-dr-00.png",
+    "38-igtuk-idle-dr-01.png",
+    "38-igtuk-idle-dr-02.png",
+    "38-igtuk-idle-dr-03.png",
+    "38-igtuk-idle-dr-04.png"
+  ]
+}

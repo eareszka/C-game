@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run": "s_rotations_v1",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1948 characters>",
+      "format": "png"
+    },
+    "description": "Siehnam: a deer with a white skull face, vast pale bone antlers with blood dripping from the tips, a dark maroon neck ruff, tan coat, dark hooves. Flat colours, black outline.",
+    "no_background": true,
+    "seed": 731
+  },
+  "links": {},
+  "seed": 731,
+  "ids": {
+    "background_job_id": "08580f84-fd9a-404e-be8d-edae8326ca77",
+    "generation_id": "a34e798d-ea95-476b-9ac1-93c03a7047a0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

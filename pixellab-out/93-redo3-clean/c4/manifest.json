@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "c4",
+  "generated": "2026-11-03T05:08:46Z",
+  "spent": {
+    "calls": 1,
+    "generations": 1.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-image-pixen",
+      "run": "c4_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "c4.png"
+      ],
+      "ids": {
+        "background_job_id": "5b056695-13e7-42f2-86c4-d67bdb13beef",
+        "generation_id": "77f02177-cc92-40e4-ab38-b745c86da9ec"
+      }
+    }
+  ]
+}

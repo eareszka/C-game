@@ -1,0 +1,369 @@
+{
+ "_": "One entry per enemy: what it looks like, in a sentence or two. Optional: draw (what to draw, default its first idle pose facing the player) and note (anything only this enemy needs). Size comes from the tier, and colours default to 5. Optional: colours (up to 8, only when the design needs it). Optional: reference (a picture of a redesign, used as reference.png in place of the current sprite).",
+ "6": {
+  "look": "Wakmangganchi Aragondi: a huge dark-brown beast with many tusked boar-like heads round its body, blue veins down its back and a crown of tall green spines.",
+  "note": "Draw all its heads, including the two lowest."
+ },
+ "7": {
+  "look": "Alber: a red dragon with yellow horns, wings spread wide and a glowing yellow-orange chest."
+ },
+ "8": {
+  "look": "Snawfus: a white deer on long thin legs, with flowering antlers tipped in pink blossoms and a pale blue haze.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "9": {
+  "look": "Questing Beast: a snake's head on a long neck, a spotted leopard's body and a hart's long thin legs.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "10": {
+  "look": "Grand'Goule: a blue gargoyle on the wing, with a tan chest, gold accents and red claws."
+ },
+ "11": {
+  "look": "Paoxiao: a grey goat with a man's face and hands, and an eye under its arm.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "12": {
+  "look": "Ebigane: a rat-bodied predator with charcoal fur, a crest of peach fins along its back and a ringed tail.",
+  "note": "Its tail tip must not be only black.",
+  "fixes": [
+   "Turn the head so it looks downward, and make both horns clearly prominent and easy to see at game size. Keep the body, crest, tail and colours as they are."
+  ]
+ },
+ "13": {
+  "look": "Beast of the Charred Forests: an eyeless coal beast looking down at you, with a glowing orange gullet."
+ },
+ "14": {
+  "look": "Lodsilungur: a pale hairy trout with its mouth hanging open, pitch-black teeth and a red tongue.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "15": {
+  "look": "Ofuguggi: a jet-black trout with a red stripe, its fins on backwards.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "16": {
+  "look": "Kamaitachi: a white sickle-weasel riding a blue and white whirlwind, sitting in the funnel with its ears up.",
+  "note": "Its ears must not be only black."
+ },
+ "17": {
+  "look": "Qiqirn, a huge hairless tan dog with hair only at its mouth, feet, ear tips and tail tip."
+ },
+ "18": {
+  "look": "Vatnaormur: a symmetrical slug-faced serpent looking straight down, a pale pink face with two eye stalks over a dark spreading body.",
+  "note": "No water under it."
+ },
+ "19": {
+  "look": "Skeljaskrimsli: a shelled monster with a hide of grey stone plates and a head that is all mouth, with green-lit teeth."
+ },
+ "20": {
+  "look": "Sermilik: a huge ice-clad polar bear with a great head and small ears, its fur crusted in pale blue ice."
+ },
+ "21": {
+  "look": "Asp: a green serpent with a yellow belly, coiled in rings, with one ear stopped by its tail.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "22": {
+  "look": "Cactus Cat: a thorny green bobcat covered in spines."
+ },
+ "23": {
+  "look": "Olgoi-Khorkhoi: a huge red ringed worm arching up, with a four-lobed maw and two barbed side blades at its head.",
+  "note": "Its body runs off the right edge of the frame, so it ends flat there."
+ },
+ "24": {
+  "look": "Zoureg: a red-hot knife of a snake, in red and orange coils with a white-hot blade tip.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "25": {
+  "look": "Myrmecoleon, the ant-lion: a lion's maned head and forelegs on an ant's body, with long red insect legs and a round banded red abdomen behind."
+ },
+ "27": {
+  "look": "Grootslang: a great grey snake with an elephant's head, pink ears and tusks, coiled, with its rattle up behind."
+ },
+ "28": {
+  "look": "Opimachus: a little tan cat-griffin with a red crest and a striped curled tail."
+ },
+ "29": {
+  "look": "Karnabo: a robed quarry bogey in a dark grey robe, with a green elephant-like trunk for a face and green reaching arms."
+ },
+ "30": {
+  "look": "Dajna: a titanic sandy thunder camel with a stone-brick pyramid on its back and a shaggy dark fringe under its belly."
+ },
+ "31": {
+  "look": "Man-Eating Boulder: a moss-draped boulder that is mostly mouth, with huge teeth and a dark red gullet."
+ },
+ "32": {
+  "look": "Angont: a venomous golden-brown serpent coiled in stacked rings with its head raised, and small green skulls floating beside it."
+ },
+ "33": {
+  "look": "Tse'nagahi, the Traveling Rock: a faceted mass of banded sandstone carved with petroglyphs."
+ },
+ "34": {
+  "look": "Anaye: an armoured bone-masked titan with a feather crest and a huge purple shard axe, in dark armour over a purple robe.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "35": {
+  "look": "Lomie: a tall blue moose with broad brown antlers and a great pale peach bladder under its neck."
+ },
+ "36": {
+  "look": "Cu Sith: a green fairy hound sitting up facing the player, with long drooping ears, a mossy green coat, a pale mint chest and legs, and a long tail coiled over its back at the right.",
+  "draw": "its first idle pose, in the same pose and arrangement as reference.png.",
+  "note": "reference.png, shown on grey, is the current sprite at a larger size: keep its look, concept and colours. Do not scale it down: redraw it so it holds up at this smaller size, with only the parts it needs. Colours, on the same materials as in reference.png: coat, head, ears and tail 2c6c44 with shadow 163623. Chest and legs a8f0bc with shadow 4fa667. Toenails 848694. Eyes f0e880, a solid mark of 1 to 2 px each. Black for the nose, the outline and inner lines.",
+  "colours": 8,
+  "reference": "art/enemies/nes/_refs/36_cu_sith.png",
+  "fixes": [
+   "The user: \"same looks/concept moha moha much larger, cu much smaller\".",
+   "The head must read at this size: both eyes, the nose and the long ears stay clear, and the head stays big for the body.",
+   "Build it from these parts, each one closed shape: head, each ear, coat across the neck and shoulders, chest, each foreleg, each hind leg, tail. Toes are extra and only as many as fit. List them in the comment in draw.py.",
+   "Keep the tail coiled over the back. The last drawing's long loop looked like a paperclip: tighten it into a short spiral if it fits, and keep it traceable from the body to its end.",
+   "Inner black must be 9 to 14% of drawn pixels, the range the rule asks for. Every inner line closes off a part or ends at another line. No line stops in open surface. Compare with 34 Anaye on style.png, whose parts are chunky and clear.",
+   "The user on other drawings: \"overall a majority look ai generated or that they copied the same feature/pattern throughout the design\". Nothing is copied from place to place, and the proportions make sense.",
+   "Keep the silhouette's edges clean: smooth runs, not jagged ones. No part is drawn only in black."
+  ]
+ },
+ "37": {
+  "look": "Celestial Stag: a spectral purple stag with tall branching antlers that burn in rainbow colours, and a wispy lilac tail."
+ },
+ "38": {
+  "look": "Igtuk: a long light-blue beast on four long thin legs with curled feet, a huge upturned jaw, a dark beard and a fur ball on a stalk at its snout."
+ },
+ "39": {
+  "look": "Ajaju: a green chameleon up on four long kneeless stilt legs, with forked red tongues hanging."
+ },
+ "40": {
+  "look": "Slide-Rock Bolter: a rock-hided, moss-backed whale stranded on land, with a huge fanged red mouth."
+ },
+ "41": {
+  "look": "Sasnalkahi: a great brown bear humped at the shoulder, facing you."
+ },
+ "42": {
+  "look": "Nykur: a fine dapple-grey horse with a wet dark-green mane and backward hooves.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "43": {
+  "look": "Sazae-Oni: a spiky khaki turban sea-snail shell with a red demon face and tusks.",
+  "note": "The top of its shell must not be only black."
+ },
+ "44": {
+  "look": "Itqiirpak: a huge pink hand with a fanged mouth in its palm and small dark red mouths at its fingertips.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "45": {
+  "look": "Kusa Kap: a dark red sea eagle in flight, with long wings spread wide and a grey dugong in its golden talons."
+ },
+ "46": {
+  "look": "Lusca: a tall grey shark head with its jaws open, on crimson octopus arms."
+ },
+ "47": {
+  "look": "Moha-Moha: a huge, long, low creature side on, facing right. A large smooth domed shell with a pale rim along its lower edge sits in the middle. A long neck rises in a curve at the right to a head at the top, facing up with its jaws open, pointed teeth and spots on the head. Two stubby legs with clawed toes stand under the shell, one at the front and one at the back. A long tapering tail runs off to the left, with a small fin on top and a forked fin at its tip.",
+  "draw": "its first idle pose, side on facing right, in the same pose and arrangement as reference.png.",
+  "note": "reference.png, on grey, has two pictures. Above is the user's painting: take its design and pose, not how it is drawn and not its white. Below is the current sprite at a smaller size: keep its look and colours, and do not scale it up: redraw it using the extra room. Colours: shell 595965 with shadow 474751. Neck, head and legs 4fa667 with shadow 2c6c44. Tail and shell rim 9797aa, with 595965 as the tail's shadow. Both fins 8d6b4f with shadow 463422. Head spots 8d6b4f. Teeth and claws e8e0c0. The eye is a solid mark of 1 to 2 px in black. Black for the outline and inner lines.",
+  "colours": 8,
+  "reference": "art/enemies/nes/_refs/47_moha_moha_110.png",
+  "fixes": [
+   "The user: \"same looks/concept moha moha much larger, cu much smaller\". Keep the long tail: being larger is how they chose to fix the thin look.",
+   "Build it from these large parts, each one closed shape: upper jaw with head, lower jaw, neck, shell dome, shell rim, front leg, back leg, tail, top fin, tail fin. The extras are the teeth, each toe as its own closed part with its claw, the head spots and the tail marks. List them in the comment in draw.py. The shell stays plain, as in the painting.",
+   "These were weak on the last drawing, so use the extra room for them. A clear head, up to about 18 px wide, with open jaws, a few placed teeth that differ, and a few spots. A tail that holds its width and tapers cleanly. A forked tail fin with two clean points, not a blob. A top fin that grows from the tail, not one stuck on it.",
+   "Do not tile the tail's scales or the legs' mottling with repeated marks. Use a few marks that differ in shape and size, about five on the tail and three on each leg, in the part's shadow tone and not in black.",
+   "Each leg is traceable from under the shell to its toes, and the tail and both fins are separate from the back leg.",
+   "Inner black must be 9 to 14% of drawn pixels, the range the rule asks for. Every inner line closes off a part or ends at another line. No line stops in open surface. Compare with 34 Anaye on style.png, whose parts are chunky and clear.",
+   "The user on other drawings: \"overall a majority look ai generated or that they copied the same feature/pattern throughout the design\". Nothing is copied from place to place, and the proportions make sense.",
+   "Keep the silhouette's edges clean: smooth runs, not jagged ones. No part is drawn only in black."
+  ]
+ },
+ "48": {
+  "look": "Bjarndyrakongur: a massive four-legged polar bear king with white fur, orange ear tufts and a striped horn with a star at its tip on its brow, standing on all fours with great bulk.",
+  "fixes": [
+   "On all fours, not upright, even though the reference stands. Keep the white fur, orange ear tufts and star horn."
+  ]
+ },
+ "49": {
+  "look": "Physeter: a huge grey whale facing you, with a huge open red mouth full of cream teeth, small horns, two pale water spouts curling up from its head and its tail rising behind."
+ },
+ "51": {
+  "look": "Aspidochelone: a huge sea turtle carrying a palm-tree island with sand and a small campfire on its back.",
+  "note": "No water under it.",
+  "fixes": [
+   "Redraw the big flipper low on the left of the screen as a proper turtle flipper clearly joined to the shell, in the same brown as the shell. Leave the small fin near the sand, the island and everything else exactly as they are."
+  ]
+ },
+ "52": {
+  "look": "Sannaja: a creature so vast that only its underside and legs show: a jagged grey stone belly above massive cracked pillar legs bound in red, with clawed feet.",
+  "note": "It runs off the top and right edges of the frame, so it ends flat there."
+ },
+ "56": {
+  "look": "Moskitto, a giant mosquito crossed with a bumblebee: yellow and black bee stripes, red eyes, a long needle nose, long pale wings spread wide, thin legs."
+ },
+ "57": {
+  "look": "Dingbat, an owl-thing: a short feathered body, short pale antlers and great brown wings spread wide."
+ },
+ "58": {
+  "look": "Agropelter: an ape's face on a sinewy little tan body, with long whip-thin arms spread wide.",
+  "fixes": [
+   "Make its arms thicker."
+  ]
+ },
+ "59": {
+  "look": "Tripodero, a stilt-walker of the chaparral: a pipefish snout on a small body, up on long thin telescoping legs."
+ },
+ "60": {
+  "look": "Rumptifusel: a flat, flexible thing in a striped mink-brown pelt, lying like an abandoned fur coat, with a purple patterned underside showing."
+ },
+ "61": {
+  "look": "Roperite: a brown runner whose snout is drawn out into a long rope for lassoing, with a rattle on its tail."
+ },
+ "62": {
+  "look": "Hugag: a moose-sized shaggy beast with a great overhanging lip, on long stiff jointless stilt legs."
+ },
+ "63": {
+  "look": "Hidebehind: a faceless shaggy dark-brown fur cone with a fan of ivory hooked claws at each side."
+ },
+ "64": {
+  "look": "Dungavenhooter, a squat olive-brown crocodilian with no mouth, amber eyes and a grey spiked club on the end of its long curled tail, held up over its back.",
+  "note": "It has no mouth."
+ },
+ "65": {
+  "look": "Mice That Eat Iron: three grey mice with pink ears sharing a dark iron beam, gnawing it out of step."
+ },
+ "67": {
+  "look": "Lagopus: a great snow ptarmigan with a round white body and wide wings."
+ },
+ "69": {
+  "look": "Bes Chem, a Malaysian bird spirit: a brown feathered bird with a great round fanged mouth gaping in its chest, its wings held out."
+ },
+ "70": {
+  "look": "Trollgadda, a Swedish troll pike: a very long green pike with big scales like roof tiles and a bright green willow shrub growing from its head and neck.",
+  "fixes": [
+   "Make the tree look like it's coming out of its mouth."
+  ]
+ },
+ "71": {
+  "look": "Namungumi: a low whale-like beast with four webbed limbs and prominent tusks, its whole body covered in a dark purple grid pattern, red along its lower edge."
+ },
+ "72": {
+  "look": "Mahwot: a long green lizard-like river monster, like a small Godzilla, with pale spines down its back.",
+  "note": "No water under it."
+ },
+ "73": {
+  "look": "Liderc, Hungary's fire spirit: a featherless black hen wreathed in orange flame, throwing sparks."
+ },
+ "74": {
+  "look": "Bes Rap, a pig spirit crouched like a gargoyle: a pink-red body, a pig's snout and pointed ears."
+ },
+ "75": {
+  "look": "Makalala, a giant dark-grey ground bird on long thin legs, with a long neck, a yellow beak and a great pale bony knob on its head."
+ },
+ "76": {
+  "look": "Loch Oich Monster: a string of rolling brown humps with a dog's head on a long neck."
+ },
+ "77": {
+  "look": "Hoga: half ox and half fish, a brown bull's head with long pale horns on a blue fish's body."
+ },
+ "78": {
+  "look": "Zankallala: a tiny boastful tan trickster riding a jerboa and leaning on a snake for a walking stick, with scorpion spurs and a swarm of bees for a hat.",
+  "note": "This sprite is one of the target sprites on the style board. Keep its look closely, drawn larger, with the extra detail that size allows."
+ },
+ "79": {
+  "look": "Ugjuknarpak: a giant grey tusked seal reared up like a bear, with a long pink rat's tail."
+ },
+ "80": {
+  "look": "Bes Kotak: a blocky floating wooden chest spirit with glowing amber eyes, a mouth slot and stubby hands."
+ },
+ "81": {
+  "look": "Ieltxu, a Basque night bird of fire, near black, with a fiery glow.",
+  "note": "It's near black on purpose, so keep it dark, with accents that show on black."
+ },
+ "82": {
+  "look": "Nadubi: a barbed spirit on all fours, its dark-red body bristling with barbs, on long thin legs."
+ },
+ "84": {
+  "look": "Kigutilik: a violet stilt-legged beast with a walrus head and a cup on its head that gushes water.",
+  "note": "The top of its cup must not be only black."
+ },
+ "85": {
+  "look": "Nanabolele: a green Sotho river dragon of the flooded caves.",
+  "note": "No water under it."
+ },
+ "86": {
+  "look": "Leucrocotta: a lion's tawny body on a stag's long legs, a dark mane, a lion's tufted tail and a badger's striped head."
+ },
+ "87": {
+  "look": "Corocotta, a hyena-wolf: steel-grey wolf's head with pointed ears, jaws open and red as if speaking, a dark bristling mane round its neck and down its sloping back, long front legs."
+ },
+ "88": {
+  "look": "Amixsak: a brown walrus hide risen as a vengeful monster, with long pale tusks.",
+  "note": "No water under it."
+ },
+ "89": {
+  "look": "Cuero: a living stretched pale cowhide with a clawed rim and a fanged face at its centre."
+ },
+ "90": {
+  "look": "Chipekwe: a huge, heavy blue rhinoceros facing the player head-on, standing on four legs. It has a wedge-shaped rhino face narrowing to a wide snout, pointed ears angled up and out, one horn rising straight up from the snout between the eyes, a short curved tusk on each side of the snout, and a hump above the head. Two massive front legs stand wide apart on big clawed feet, and two separate hind legs stand behind them under the belly.",
+  "draw": "its first idle pose, in the same pose, proportions and size as reference.png.",
+  "note": "reference.png, shown on grey, is the pose, proportions and size to keep. It is not the look to keep: it is a flat slab, and the user wants this same creature drawn to look like the other NES-style sprites in the game, the picks on style.png. As you draw, compare with style.png, above all 34 Anaye, the armoured figure with the feather crest and purple axe, and judge whether this sprite would sit on that board without standing out. Colours: hide 3e91cc with shadow 375a94 and no other blue, inner ears included. Horn, tusks and claws are one material: cebe82 with shadow b2966a, and no other tan or cream. Eyes f0bc3c. Black for the outline and inner lines.",
+  "colours": 8,
+  "reference": "art/enemies/nes/_refs/90_chipekwe_pose.png",
+  "fixes": [
+   "The user: \"Redo this sprite. I want it to be the pose we just made but it needs to look like the other sprites in the game we have made that are nes style\".",
+   "Build the body from these parts, each its own closed shape: the head, the hump, each ear, each shoulder, each foreleg, each foot, each toe and claw, the belly, each hind leg, each hind foot, the horn and each tusk. List them in the comment in draw.py and check each one closes.",
+   "The last drawing failed here: its lines were scratches on the shoulders and hide that stopped in open surface. Every inner line closes off a part or ends at another line. No line ends in open hide.",
+   "The hind legs were short stubs. Make them longer and easy to read, each traceable from under the belly down to its own foot, with a gap between them. They and the belly are in the hide's tones with black lines, not solid black, so they show on the black arena.",
+   "The horn stays as wide as in reference.png, at most 13 px at its base, so the face is not mostly horn. The last drawing made it too wide.",
+   "Eyes are solid marks of 1 to 2 px each in the bright eye colour, with no ring, iris or glint.",
+   "No hide plates, scales or second material, and no identical repeated marks: the user's first complaint was \"90's repeating pattern looks ai generated and copy pasted\". The parts differ from each other, apart from the natural left and right of a front-facing animal.",
+   "Keep what has worked: it reads as a rhino at once, the horn rises clear of the face, and it looks huge and heavy. Do not change the pose or the creature."
+  ]
+ },
+ "91": {
+  "look": "Kurrea: a coiling dark purple crystal serpent with bright rainbow crystal plates along its body.",
+  "note": "Its body must read on black, so the plates don't look like they float.",
+  "colours": 8
+ },
+ "92": {
+  "look": "Siehnam: a skull-faced deer with a brown body, a dark red chest and huge pale branching antlers dripping red."
+ },
+ "93": {
+  "look": "Chipique: a pale lilac snake rearing up at the left, with a long white belly and a blood drip from its mouth, its body curled in a loop inside a tan wooden boat. Its thin tail leaves the boat at the right and ends in a fork. A dark hooded rider with two red eyes and no skin showing sits in the boat, right of the loop, with an upright paddle.",
+  "draw": "its first idle pose, in the same arrangement as reference.png.",
+  "note": "reference.png is the new design and replaces the old sprite, shown twice on grey: on the left the design, on the right the same design with the rider to use. Follow its shapes, arrangement and colours as closely as the palette allows, but not its soft edges: draw it crisply as RULE.md says. No water under it.",
+  "colours": 8,
+  "reference": "art/enemies/nes/_refs/93_chipique.png",
+  "fixes": [
+   "The user on this design: \"This is the best design so far. It just needs to be correct size and for the person in the boat to be sinister\".",
+   "The rider's robe must stay visible on the black arena: dark, but clearly lighter than black.",
+   "The user on earlier drawings: \"93's snake like underbelly and proportions are off and dont make sense\", and \"overall a majority look ai generated or that they copied the same feature/pattern throughout the design\". No repeated tiles or pattern on the belly or anywhere else."
+  ]
+ },
+ "94": {
+  "look": "Trochus: a round spiked wheel of a sea creature, a dark blue wheel inside a crown of golden spines.",
+  "note": "No water under it."
+ },
+ "96": {
+  "look": "Bregdi: a sea monster side on, facing left, its body arching in the middle, with nothing under it. A long flat beak-like snout with the jaws wide open, a red mouth and a few pale teeth, and one small eye. Grey hide with a jagged ridge along the back, a tan belly, and a tail rising at the upper right that ends in a curled hook. Two huge brown webbed flippers hang down, a smaller one under the head and a bigger one at the back, each with a scalloped trailing edge and long curved pale claws. It has no other legs.",
+  "draw": "its first idle pose, in the same pose and arrangement as reference.png, facing left.",
+  "note": "reference.png sets the design and pose. It is a soft painting on a pale background: take its shapes, not how it is drawn and not its colours. Colours: hide, ridge and tail a4aaba with shadow 848694. Belly b2966a. Both flippers 8d6b4f with shadow 583518, the same on both. Mouth b70000 with ec8476. Teeth and claws e8e0c0. The eye is a solid mark of 1 to 2 px in black. Black for the outline and inner lines.",
+  "colours": 8,
+  "reference": "art/enemies/nes/_refs/96_bregdi.png",
+  "fixes": [
+   "The user on the last drawing: \"Have the colors be like the old. Make it look less broken up\". This is the main fix.",
+   "Build it from these large parts and no others, each one closed shape: head with upper jaw, lower jaw, mouth, neck and body as one shape, belly, back ridge, tail, front flipper, back flipper. The claws are extra. List them in the comment in draw.py. No small plate pieces, no lines across the neck, body or flippers, and no gill slits. Inside a flipper, at most two lines, each running from the flipper's edge to its edge.",
+   "Inner black must be 9 to 14% of drawn pixels, the range the rule asks for: about 220 to 340 px on this sprite. The last drawing was 15.9% and looked like broken tile. Compare with 34 Anaye on style.png, whose parts are chunky and clear.",
+   "Give the head room, as the largest clear thing at the left: a long snout that reads as a snout, one eye, and a clean open mouth in two reds with a few placed teeth, not a repeated row of identical ones.",
+   "The user on the old drawing: \"96's legs and back fin seemed to have merged into 1\". The two flippers, the tail and the back ridge stay separate, each traceable from the body to its tip, with clear space between them.",
+   "Keep the silhouette's edges clean, above all where each flipper meets its claws: smooth runs, not jagged ones. The claws differ from each other in length and curve. No part is drawn only in black."
+  ]
+ },
+ "97": {
+  "look": "Ro: a roaring bat-winged beast with charcoal hide and red eyes, mouth and wing veins.",
+  "note": "It's the one black enemy. Its hide stays dark, and reads through lighter charcoal and red accents."
+ },
+ "98": {
+  "look": "Boiuna, a giant dark-green river serpent: a long neck rearing up from wide flat coils stacked on the ground, a pale tan stripe down its belly, a small fanged head with yellow eyes looking down.",
+  "note": "No water under it."
+ },
+ "99": {
+  "look": "Fad Felen: a crouched grey beast with long blonde hair and a skull face, with drool hanging.",
+  "note": "Skull sockets are fine."
+ },
+ "100": {
+  "look": "Flesh Planet: a round planet of red and pink flesh covered in small faces, with limbs and tendrils reaching out from its edge."
+ }
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T1449-input-facing-us-hem-planted-it-breathes-in-the-l",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1512 characters>",
+      "format": "png"
+    },
+    "action": "<elided 294 characters>",
+    "frame_count": 8,
+    "no_background": true,
+    "seed": 1341
+  },
+  "links": {},
+  "seed": 1341,
+  "ids": {
+    "background_job_id": "02d6113d-e1f8-496f-bca6-2c851c2b3cbc",
+    "generation_id": "57d7ef8c-f32d-42f8-8b89-0c102d13d459"
+  },
+  "cost": {
+    "generations": 2.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png",
+    "idle-05.png",
+    "idle-06.png",
+    "idle-07.png",
+    "idle-08.png"
+  ]
+}

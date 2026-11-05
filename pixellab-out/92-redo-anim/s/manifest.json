@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "subject": "s",
+  "generated": "2026-11-02T18:01:35Z",
+  "spent": {
+    "calls": 6,
+    "generations": 6.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "s_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "idledr-00.png",
+        "idledr-01.png",
+        "idledr-02.png",
+        "idledr-03.png",
+        "idledr-04.png",
+        "idledr-05.png",
+        "idledr-06.png"
+      ],
+      "ids": {
+        "background_job_id": "c07f7517-9d67-4433-9535-56f6173d50d7",
+        "generation_id": "bae9c890-1380-4190-b20c-c2387cafa386"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "s_animations_v2",
+      "directory": "animations/v2",
+      "files": [
+        "idled-00.png",
+        "idled-01.png",
+        "idled-02.png",
+        "idled-03.png",
+        "idled-04.png",
+        "idled-05.png",
+        "idled-06.png"
+      ],
+      "ids": {
+        "background_job_id": "a4babd2a-4e25-4467-ab31-70e1548f0156",
+        "generation_id": "b2951939-e9be-4810-b040-739743e7025e"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "s_animations_v3",
+      "directory": "animations/v3",
+      "files": [
+        "idleur-00.png",
+        "idleur-01.png",
+        "idleur-02.png",
+        "idleur-03.png",
+        "idleur-04.png",
+        "idleur-05.png",
+        "idleur-06.png"
+      ],
+      "ids": {
+        "background_job_id": "97abbfcd-0a31-4b43-9f56-6fd863eedf66",
+        "generation_id": "527e48bd-7844-4fe2-915e-adc3ba53d501"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "s_animations_v4",
+      "directory": "animations/v4",
+      "files": [
+        "idler-00.png",
+        "idler-01.png",
+        "idler-02.png",
+        "idler-03.png",
+        "idler-04.png",
+        "idler-05.png",
+        "idler-06.png"
+      ],
+      "ids": {
+        "background_job_id": "c10bb573-db7c-497c-9adb-b393014e7327",
+        "generation_id": "53dbac9e-4945-480e-99e6-56085153024a"
+      }
+    },
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "s_animations_v5",
+      "directory": "animations/v5",
+      "files": [
+        "idleu-00.png",
+        "idleu-01.png",
+        "idleu-02.png",
+        "idleu-03.png",
+        "idleu-04.png",
+        "idleu-05.png",
+        "idleu-06.png"
+      ],
+      "ids": {
+        "background_job_id": "d7838a76-8bf1-4b26-9f4f-5f01b2d48a60",
+        "generation_id": "2c21cb63-2151-45f4-a030-fb683d2a8673"
+      }
+    },
+    {
+      "kind": "rotations",
+      "route": "generate-8-rotations-v3",
+      "run": "s_rotations_v1",
+      "directory": "rotations/v1",
+      "files": [
+        "rot-south-00.png",
+        "rot-south-east-01.png",
+        "rot-east-02.png",
+        "rot-north-east-03.png",
+        "rot-north-04.png",
+        "rot-north-west-05.png",
+        "rot-west-06.png",
+        "rot-south-west-07.png"
+      ],
+      "ids": {
+        "background_job_id": "08580f84-fd9a-404e-be8d-edae8326ca77",
+        "generation_id": "a34e798d-ea95-476b-9ac1-93c03a7047a0"
+      }
+    }
+  ]
+}

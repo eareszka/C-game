@@ -1,0 +1,3 @@
+Result: No failures.
+Size: 44x42, 7 colours plus black.
+Unmet: Partly met: the flank eye is a solid 2 px white mark inside a black almond socket, because a bare 2 px mark would not read as the signature eye, so it only fits the eye rule if that socket counts as an allowed character feature.

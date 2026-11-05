@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-11-02T14:18:53Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "45-kusa-kap-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "7e01c289-9694-4caa-b4b0-30ccebdced2f",
+        "generation_id": "60440cc5-e200-4989-b35c-106dcc430137"
+      }
+    }
+  ]
+}

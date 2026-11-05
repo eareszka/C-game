@@ -1,0 +1,22 @@
+{
+  "run": "idle-animate-ur-try3_animations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\68-shuyu-idle-ur-try3-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\68-shuyu-idle-ur-try3-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\68-shuyu-idle-ur-try3-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\68-shuyu-idle-ur-try3-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\68-shuyu-idle-ur-try3-04.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\68-shuyu\\idle-animate-UR-try3\\idle-animate-ur-try3\\animations\\v1\\idle-animate-ur-try3_animations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "2691d64b-a192-4a61-8a94-b9ebbac3b265",
+    "generation_id": "a7eac8dd-0a3f-4b43-9bd7-1d54422e6877"
+  }
+}

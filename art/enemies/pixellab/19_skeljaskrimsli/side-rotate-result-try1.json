@@ -1,0 +1,25 @@
+{
+  "run": "side-rotate_rotations_v1",
+  "directory": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1",
+  "files": [
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-south-00.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-south-east-01.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-east-02.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-north-east-03.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-north-04.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-north-west-05.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-west-06.png",
+    "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\19-side-views-south-west-07.png"
+  ],
+  "manifest": "C:\\Users\\13178\\OneDrive - UWM\\Desktop\\projects\\C-game\\pixellab-out\\19-skeljaskrimsli\\side-rotate\\side-rotate\\rotations\\v1\\side-rotate_rotations_v1.manifest.json",
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "ids": {
+    "background_job_id": "bc238fe2-02e9-46fa-8c0b-f20202cff1f8",
+    "generation_id": "913edf14-9bc4-45c9-bfd5-169eb4cdb6c9"
+  }
+}

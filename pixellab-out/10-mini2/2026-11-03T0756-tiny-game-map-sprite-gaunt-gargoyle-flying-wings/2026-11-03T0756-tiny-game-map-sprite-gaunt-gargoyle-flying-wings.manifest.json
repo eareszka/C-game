@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-03T0756-tiny-game-map-sprite-gaunt-gargoyle-flying-wings",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny game map sprite, gaunt gargoyle flying, wings half raised dark gray, slate blue body, tan beak and chest, spindly legs dangling with claws, front view, black outline, flat colours, simple silhouette, very few pixels",
+    "image_size": {
+      "width": 40,
+      "height": 28
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "color_image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAAAQAAAABCAYAAAD5PA/NAAAAGUlEQVR4nGNkYGD4bx41heHvrVUMdUk6DAAunwWzXET13wAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "seed": 1143
+  },
+  "links": {},
+  "seed": 1143,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tiny-game-map-sprite-gaunt-gargoyle-flying-wings.png"
+  ]
+}

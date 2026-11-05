@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "bears_sprites_v15",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2000 characters>",
+      "format": "png"
+    },
+    "description": "<elided 319 characters>",
+    "no_background": true,
+    "seed": 2001
+  },
+  "links": {},
+  "seed": 2001,
+  "ids": {
+    "background_job_id": "fe255db2-d88b-496c-b645-e8c0fd072a26",
+    "generation_id": "8b158564-1784-4e12-b592-b8bd105b6e3f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p20-2001.png"
+  ]
+}

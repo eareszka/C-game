@@ -1,0 +1,16 @@
+{
+  "id": 40,
+  "name": "40-slide-rock-bolter",
+  "dir": "art/enemies/pixellab/40_slide_rock_bolter",
+  "description": "Slide-Rock Bolter: a legless giant whale of the mountains made of rock, covered in moss, a huge gaping toothed mouth, tiny eyes, a long thick rocky tail. Flat black-outline pixel art.",
+  "prompts": {"idle": "prompt.txt"},
+  "sheets": {"idle": {
+    "png": "assets/enemies/redraws/40_slide_rock_bolter.png",
+    "frames": 3, "rows": false, "ms": 250,
+    "views": ["D"],
+    "make": "animate", "count": 4,
+    "action": "Resting in place, jaws slowly opening and closing. No legs. Same facing, same size.",
+    "map": {"*": [0, 0, 0]},
+    "ground": true
+  }}
+}

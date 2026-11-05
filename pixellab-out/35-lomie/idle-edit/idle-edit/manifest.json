@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "subject": "idle-edit",
+  "generated": "2026-10-29T13:27:31Z",
+  "spent": {
+    "calls": 1,
+    "generations": 10.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "sprites",
+      "route": "edit-images-v2",
+      "run": "idle-edit_sprites_v1",
+      "directory": "sprites/v1",
+      "files": [
+        "35-lomie-idle-frame0.png"
+      ],
+      "ids": {
+        "background_job_id": "d4ded540-ebe3-460a-87f9-e3da35fc37a9",
+        "generation_id": "591e3ead-bf2c-492b-b120-7b99d941fe60"
+      }
+    }
+  ]
+}

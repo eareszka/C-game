@@ -226,6 +226,7 @@ int main(int argc, char** argv) {
     float trace_from = 0, trace_to = -1;
     bool trace = shots && getenv("TRACE") && sscanf(getenv("TRACE"), "%f,%f", &trace_from, &trace_to) == 2;
     auto shot = [&](int n) {
+        bs._hit_t = 99.0f;   // a clean picture: the fight here never runs update(), which would clear the hit flash
         bs.draw(ren, nullptr);
         SDL_SetRenderDrawColor(ren, 255, 0, 0, 255);
         int px = (int)bs._bp.x, py = (int)bs._bp.y;

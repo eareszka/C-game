@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "subject": "lift",
+  "generated": "2026-11-04T07:38:38Z",
+  "spent": {
+    "calls": 1,
+    "generations": 3.0,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "animations",
+      "route": "animate-with-text-v3",
+      "run": "lift_animations_v1",
+      "directory": "animations/v1",
+      "files": [
+        "lift-00.png",
+        "lift-01.png",
+        "lift-02.png",
+        "lift-03.png",
+        "lift-04.png",
+        "lift-05.png",
+        "lift-06.png",
+        "lift-07.png",
+        "lift-08.png"
+      ],
+      "ids": {
+        "background_job_id": "0b148cc0-4112-4eb5-bae7-eebed1d873a4",
+        "generation_id": "df6ca433-e551-4f72-945f-2a003164d45d"
+      }
+    }
+  ]
+}

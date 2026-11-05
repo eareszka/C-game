@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "r_cleaned_v1",
+  "provider": "pixellab",
+  "route": "resize",
+  "arguments": {
+    "description": "Ro, a dark maned winged beast seen from the front with its head lowered, bat wings raised, red wings and tail tip, keep its design exactly, nothing cropped",
+    "reference_image": {
+      "type": "base64",
+      "base64": "<elided 2908 characters>",
+      "format": "png"
+    },
+    "reference_image_size": {
+      "width": 96,
+      "height": 96
+    },
+    "target_size": {
+      "width": 112,
+      "height": 112
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "source-112.png"
+  ]
+}

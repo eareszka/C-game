@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "idle-edit_sprites_v1",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 580 characters>",
+          "format": "png"
+        },
+        "width": 32,
+        "height": 32
+      }
+    ],
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "description": "<elided 1098 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 63668 characters>",
+        "format": "png"
+      },
+      "width": 512,
+      "height": 512
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e278afb5-505e-48af-90f6-8b0d9e7afb67",
+    "generation_id": "44206d33-e65e-4b85-afd1-50d8330d0503"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "11-paoxiao-idle-frame0.png"
+  ]
+}

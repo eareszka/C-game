@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "run": "grow_sprites_v2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1768 characters>",
+      "format": "png"
+    },
+    "description": "<elided 441 characters>",
+    "width": 76,
+    "height": 72,
+    "no_background": true,
+    "seed": 9331
+  },
+  "links": {},
+  "seed": 9331,
+  "ids": {
+    "background_job_id": "a3858684-e092-4d30-aac4-38192d052358",
+    "generation_id": "c3e63208-e0de-4934-af92-7056b5271239"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "grow-93.png"
+  ]
+}
