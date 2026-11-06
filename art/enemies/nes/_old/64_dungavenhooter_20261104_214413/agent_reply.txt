@@ -1,3 +1,0 @@
-Result: Now look at review.png: large on black, large on grey, then at game size beside the player. (782, 242)
-Size: 47x35, 8 colours plus black
-Unmet: nothing

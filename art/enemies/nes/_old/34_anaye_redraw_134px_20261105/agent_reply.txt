@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 134x98, 8 colours plus black.
-Unmet: nothing in the rule; against "keep its look closely", the armour has only two grey tones to stay within 8 colours, and the eyes are 2x2 blocks, not the reference's slanted wedges, to meet the eye rule.

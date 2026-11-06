@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 25x22, 5 colours plus black.
-Unmet: nothing

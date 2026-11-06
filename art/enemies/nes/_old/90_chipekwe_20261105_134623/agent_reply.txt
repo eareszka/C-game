@@ -1,3 +1,0 @@
-- `Result:` No failures.
-- `Size:` 79x88, 6 colours plus black.
-- `Unmet:` The checker's LOOK about black-only parts remains (135 px at 26,58) because the brief asks for a black belly, so on the arena that belly can't be seen.

@@ -23,3 +23,17 @@ src/sheettrace/
 # Packaged builds (dist.bat)
 dist/
 settings.txt
+
+# Temp files and agent run logs
+tmp/
+**/agent_log.jsonl
+
+# Enemy art references and boards that show other artists' drawings
+**/user_reference.*
+**/ref_painting*
+**/ref_small.*
+art/enemies/nes/47_moha_moha/reference.png
+art/enemies/nes/96_bregdi/reference.png
+art/enemies/nes/_refs/47_*
+art/enemies/nes/_refs/96_*
+art/enemies/pixellab/redo/**/*board*

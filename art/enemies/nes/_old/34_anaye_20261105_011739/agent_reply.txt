@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 201x145, 8 colours plus black.
-Unmet: The eyes are solid black slanted slits, 2 px thick but about 8 px long, not 1 to 2 px marks. I kept them as mask sockets to match the reference.

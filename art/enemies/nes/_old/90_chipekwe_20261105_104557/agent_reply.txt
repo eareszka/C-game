@@ -1,3 +1,0 @@
-- `Result:` No failures.
-- `Size:` 88x85, 5 colours plus black.
-- `Unmet:` The checker's LOOK is still open: 0.22 of detailed 5x5 blocks repeat against a limit of 0.10, and reworking edges and claws over six passes only got it from 0.31 to 0.21-0.25; I couldn't isolate the cause, and I see no copied pattern in the review, as the hide is plain. The hind legs show only as short stubs below the body, with one visible claw each, because the front legs and body cover the rest.

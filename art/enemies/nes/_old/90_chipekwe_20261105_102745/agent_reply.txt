@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 76x73, 6 colours plus black.
-Unmet: The 1x2 px eye is hard to pick out at game size on black, since the rule caps it at 2 px and it sits among the head's fold lines.

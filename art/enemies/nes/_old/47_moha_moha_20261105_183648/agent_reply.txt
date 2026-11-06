@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 70x42, 8 colours plus black.
-Unmet: nothing, but the checker doesn't print the inner black figure, so the 9 to 14% is only my hand estimate of about 10%. Feet and toes aren't separate closed parts as `RULE.md` asks, because the brief's parts list leaves them out.

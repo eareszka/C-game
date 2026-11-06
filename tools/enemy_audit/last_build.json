@@ -10,7 +10,7 @@
 "SEVERE.png": "ca98f3d54d7e4b20148d6a4f4a96528ef309fc50",
 "UPPER.png": "efc48d6a435e1a986171344d481fd3ae473fa6b5"
 },
-"built": "2026-11-05 23:56",
+"built": "2026-11-06 01:08",
 "done": [
 6,
 7,
@@ -74,7 +74,7 @@
 "10": "e164bd41d5aca40bf3503beb2645690e5892bffb",
 "100": "456993518039769bda477aa54c3291c5f762fd8d",
 "11": "8483c10d681a3c98bdfd6cc44b1d065737add7a0",
-"12": "0f855f4b10dab1334dd79b54686ddaac75a8c415",
+"12": "ddc3d5f278a91968a9739baa3c835e9e5df4f2c4",
 "13": "79f193f630009b94147706d0deff933a56d0815c",
 "14": "15d6dc4b4c776725f40f75b85f87194597a55fe5",
 "15": "cc310b0b08f27d7b1d4a86d3c66acf7829c4c402",
@@ -90,7 +90,7 @@
 "25": "c19dd8ffd246e58280c1f59ee2eee05048f62ff5",
 "27": "5d9cc82753531800baaef2264719de1d32e50e1b",
 "28": "d63a0151aa607a9ba3680333aca7dc21254edc6c",
-"29": "e4a2ccd2c679b472b2fea6536bb15952888183fc",
+"29": "9e77c50cfa0b3b72c45ebfaaca7e694649ac2ee9",
 "30": "333e4990d2de78182ca0b0394e3c5eb1de8b36c6",
 "31": "eab20f6d71fbec2109809077228ca03175fa022e",
 "32": "95b5602c10ba58110bb08c0042c61e0ef4cc0cbe",
@@ -100,7 +100,7 @@
 "37": "0f06d9d8c30b504795fd80f4efcb4e4e3a572111",
 "38": "5d70a6fd1a6aa4b6fa74d1fbc29a35865e61e8d8",
 "39": "9009b13a39d17f07e604560e94f78b89e996f225",
-"40": "f9f2023b2d7fedc6f0065f49c455ebbd4dcd1657",
+"40": "140b53daf315a6a669be714772ef3eb90516a7dd",
 "41": "d3f1bcf318b9697dc0e2b31ee30edb28c5a70411",
 "42": "4cd7323a8bcb12b0fc9397477128ce2edec23934",
 "43": "5d966886523b0924a1edd0a4c204c3a0109277c1",
@@ -147,7 +147,7 @@
 "88": "2d7b6ceeea9893c171c8557d07b841dab3c622c9",
 "89": "ac165fa6006049918c16183d2e17d235dd18891d",
 "9": "8f30295658f7bb2fc04cb06a12c31d545b162676",
-"90": "74419b60a0e35490d510999584b4d045deced65b",
+"90": "509a913f00153df8ef411a4410a679262e4ccae6",
 "91": "9d759fbdc847af6b3a6f081c443ab3c0920b82aa",
 "92": "a7871135f8966a1785e0555fbc8aab5241589973",
 "93": "b98eeec0d2c6159fa2ae310d5d36ebea517deebd",
@@ -166,54 +166,49 @@
 "assets/enemies/01_wolpertinger.png": "0aa100b1d23208c59f395704da901cd06d50d55a"
 },
 "10": {
-"assets/enemies/redraws/10_grand_goule.png": "7ba834bbcdeb3b8ded8b8776a4f9d9152d6e0137"
+"assets/enemies/redraws/10_grand_goule.png": "8e07dd75afdba974d0ba5d4b081136822dde77b9"
 },
 "100": {
 "assets/enemies/100_flesh_planet.png": "bf9cfb6399eddf72eaaf2c68c67f089333ac7faf"
 },
 "11": {
-"assets/enemies/11_paoxiao.png": "adc1af689dd80d930f9a27f1e76e83f289311a72",
-"assets/enemies/11_paoxiao_closed.png": "c1a3e71fbf5072abfb76ba949b23676e6cad44ad",
-"assets/enemies/11_paoxiao_leap.png": "8822c2f7fbcb7f7caae8288ef55133120eeecd31"
+"assets/enemies/11_paoxiao.png": "d5c55f6ade3bf330c9def674c289c1b6d09af115"
 },
 "12": {
-"assets/enemies/redraws/12_ebigane.png": "42d250f836032bae1644b0e93556997e9ba50d34",
-"assets/enemies/redraws/12_ebigane_fly.png": "f7ad1e625a28c37947df4e13a068ccb837ae935e"
+"assets/enemies/redraws/12_ebigane.png": "6802e4e376116c108f41d98eb002617f2530a20a"
 },
 "13": {
-"assets/enemies/redraws/13_beast_of_the_charred_forests.png": "2c7f18fcdcd5bd65fa82f121df3d53ce42bc19d7"
+"assets/enemies/redraws/13_beast_of_the_charred_forests.png": "3f7eb0fd533f9d9becda18bd3734b68bcd81456b"
 },
 "14": {
-"assets/enemies/14_lodsilungur.png": "5dd711dd335d8ddae296183ae5f686fda16ae867"
+"assets/enemies/14_lodsilungur.png": "87bcf3b139eb8ad2677f49fa0c7e9f8a079fbb13"
 },
 "15": {
-"assets/enemies/15_ofuguggi.png": "ea6912998862b92bec5aefee0306e5e00a72bde7",
-"assets/enemies/15_ofuguggi_swim.png": "6e706cf65bd9a04b79b8dd63cff57d88d07cae08"
+"assets/enemies/15_ofuguggi.png": "41fbc0a445a760c3f068671f766695c99b1b655a"
 },
 "16": {
-"assets/enemies/redraws/16_kamaitachi.png": "a7a4581dd41f01e660c5377039338c09797cafa0"
+"assets/enemies/redraws/16_kamaitachi.png": "31d6e2206696e1bb95b656bed3bbb859eaebf155"
 },
 "17": {
-"assets/enemies/redraws/17_qiqirn.png": "157d93190293f2dd870cce389c4c42abf3514654",
-"assets/enemies/redraws/17_qiqirn_run.png": "71ff9c99f4cabb090f3657b62b2120f0d28b9e46"
+"assets/enemies/redraws/17_qiqirn.png": "906bbc9b85b5f652e0b17399661f9efee8a13ece"
 },
 "18": {
-"assets/enemies/redraws/18_vatnaormur.png": "40194687634bfeb8d3d4261316fc60aab671f9c7"
+"assets/enemies/redraws/18_vatnaormur.png": "d2f5400b6722a63ca9e3996b11855877301e741b"
 },
 "19": {
-"assets/enemies/redraws/19_skeljaskrimsli.png": "f584b09a8ec6cb539e634943bc0ce7b8d0f40e60"
+"assets/enemies/redraws/19_skeljaskrimsli.png": "cf871b693ac4f8fdbc007087892b7230aef0f8e5"
 },
 "2": {
 "assets/enemies/02_treesqueak.png": "db043c8e2ff902f871d820bac7c8ee0ede18ae32"
 },
 "20": {
-"assets/enemies/redraws/20_sermilik.png": "340b8eb970748690cb70277613eafcabe8af5f68"
+"assets/enemies/redraws/20_sermilik.png": "0d985f97910671ad78e75e58dab6e745d2efa553"
 },
 "21": {
-"assets/enemies/21_asp.png": "f9021385267a0154f06275357a75cd46afeb2586"
+"assets/enemies/21_asp.png": "3ddaef0c1741c194ceca56c0a2d075311d980297"
 },
 "22": {
-"assets/enemies/22_cactus_cat.png": "a823fc14be8fafa5756c104d6119f5f108091a8f"
+"assets/enemies/22_cactus_cat.png": "0cc538dfbb46bf723d70864b44aa87f0e56cdaf5"
 },
 "23": {
 "assets/enemies/23_olgoi_khorkhoi.png": "2a01b078a3e0ae0eed32bb1c2dd59e8d1b3b3ad5",
@@ -226,19 +221,19 @@
 "assets/enemies/24_zoureg_windup.png": "3f8f3882716e9d1e3f471ffbc88659d3653ba362"
 },
 "25": {
-"assets/enemies/25_myrmecoleon.png": "40c004cee1a17a60d631b31066fc049791b6d70b"
+"assets/enemies/25_myrmecoleon.png": "72d281f726f9c85c93111b8121b8e2531687a581"
 },
 "26": {
 "assets/enemies/redraws/26_akhekh.png": "b16fcc8496aa2584a408277262be2a1998c7e626"
 },
 "27": {
-"assets/enemies/27_grootslang.png": "dd997984deeac1f55300a40c8475eace515d6ed6"
+"assets/enemies/27_grootslang.png": "6bd19b51fa0864bddd0b53fdce2e043f9adfb0e6"
 },
 "28": {
-"assets/enemies/28_opimachus.png": "8da65174a615d5448172777844604d4ef9bb08db"
+"assets/enemies/28_opimachus.png": "24c7a9f3d888d59090ccaf962627282d939cbfb5"
 },
 "29": {
-"assets/enemies/redraws/29_karnabo.png": "626631418579df9bbff7abde132588f1e81d59fa"
+"assets/enemies/redraws/29_karnabo.png": "526823e0752418d856e8aa788cfb6fc357c6f596"
 },
 "3": {
 "assets/enemies/03_qique.png": "7faef34b5bedf1c94b70f4ddb69625723491a592",
@@ -253,7 +248,7 @@
 "assets/enemies/redraws/31_man_eating_boulder.png": "1b6dcdad3c9257c1f9fb9c8a00798dcfaf3820b0"
 },
 "32": {
-"assets/enemies/redraws/32_angont.png": "c7aa388c06ad83ab5002f6c2c6de84f0860d8350"
+"assets/enemies/redraws/32_angont.png": "f18f9bd82edf59adbe801d6cc6a86cf1991211a1"
 },
 "33": {
 "assets/enemies/33_tsenagahi.png": "e32029d322dbcb0a5ee6d944e288b8c25fb61ffe"
@@ -262,49 +257,49 @@
 "assets/enemies/redraws/34_anaye.png": "5e0ef44f06000eeea443ce2b8ee7a48065a9f8c2"
 },
 "35": {
-"assets/enemies/redraws/35_lomie.png": "5af3590700aa7055d25ba4c98a9435975acb6a35"
+"assets/enemies/redraws/35_lomie.png": "bd66edd7c429afe589f6add2ea1f27ac5f373867"
 },
 "36": {
-"assets/enemies/redraws/36_cu_sith.png": "fd065ebda91823b12996e3392b05435535bfa275"
+"assets/enemies/redraws/36_cu_sith.png": "c90cc92a701dfcae2cff3be3828ff20d427704c7"
 },
 "37": {
-"assets/enemies/redraws/37_celestial_stag.png": "b49ba2e4add7450c61849f60ad82bd115232d8a7"
+"assets/enemies/redraws/37_celestial_stag.png": "8e27659bb0597c72c8c64b241b4bd84a2b3ca658"
 },
 "38": {
-"assets/enemies/redraws/38_igtuk.png": "185100c23ffcdcc521134057a1fa0a6be21caf5c"
+"assets/enemies/redraws/38_igtuk.png": "7afb6057e670e58cea8f25c309a06a1bdeb894c7"
 },
 "39": {
-"assets/enemies/redraws/39_ajaju.png": "ddc79cfdcf42d048a94c9d915a81e45054326bbd"
+"assets/enemies/redraws/39_ajaju.png": "2ad14b8ddcf62081ebf98c6a4b67a1c2f19f3a2f"
 },
 "4": {
 "assets/enemies/04_lili.png": "3e80a108cf25814841acd7fcdabb349d7e72a480"
 },
 "40": {
-"assets/enemies/redraws/40_slide_rock_bolter.png": "b5d96121e6f029cf6e937b1603d9c707e8d5096c"
+"assets/enemies/redraws/40_slide_rock_bolter.png": "cad4318ce86804f963c80e97350abb7cdfa810bf"
 },
 "41": {
 "assets/enemies/redraws/41_sasnalkahi.png": "13708699ed4ee47615fc6a9c49e6da325790b822"
 },
 "42": {
-"assets/enemies/redraws/42_nykur.png": "7c18451118d70233b89fe450300613b9314e2c1b"
+"assets/enemies/redraws/42_nykur.png": "bee522359dafd3fa136757518dc8f4972e9e65dd"
 },
 "43": {
-"assets/enemies/redraws/43_sazae_oni.png": "827d0eb364e7b601c613fb8d20cc65fe582f6235"
+"assets/enemies/redraws/43_sazae_oni.png": "2982ae0b7c13db09435089be25bd687cfe916ba3"
 },
 "44": {
 "assets/enemies/redraws/44_itqiirpak.png": "043f5824defc54fecb56ad7e5b375341309318b7"
 },
 "45": {
-"assets/enemies/redraws/45_kusa_kap.png": "c0a0af208fada633d728ebf0a708e01a82af1de2"
+"assets/enemies/redraws/45_kusa_kap.png": "30eedcb32532ca34e1facb7728e887a1625888b1"
 },
 "46": {
-"assets/enemies/redraws/46_lusca.png": "e711fda88a3c414b71fb30778132cfacdd6e2c22"
+"assets/enemies/redraws/46_lusca.png": "39e94b21640ad753d8d2d31bd0098f7cb2eb21e4"
 },
 "47": {
-"assets/enemies/47_moha_moha.png": "7f94251623eff4076f34973c697aaa9ea29a9465"
+"assets/enemies/47_moha_moha.png": "9789ea49df8be8d2ca89a06f1b56448bea5ae5bf"
 },
 "48": {
-"assets/enemies/48_bjarndyrakongur.png": "b6c3264775ea3daba9fa1f0a5ed2094befe1b859"
+"assets/enemies/48_bjarndyrakongur.png": "df438e4cb29b94eabc120ddce4175381398b4f2a"
 },
 "49": {
 "assets/enemies/redraws/49_physeter.png": "5579cb6eec1c291500df486e901087948af2aa41"
@@ -318,7 +313,7 @@
 "assets/enemies/redraws/50_teakettler_walk.png": "3fa89328edf0d36f5f9e53abf3307bd08ac5535d"
 },
 "51": {
-"assets/enemies/redraws/51_aspidochelone.png": "4ae1207484dadd55082dca6e15e75a5fd37febac"
+"assets/enemies/redraws/51_aspidochelone.png": "642f033c614ef1f26b0c8ff4a2e3cd4c8ac6263f"
 },
 "52": {
 "assets/enemies/redraws/52_sannaja.png": "d880beafe2d98de8c2c3ceaef0dcd927bfdf522f",
@@ -339,109 +334,97 @@
 "assets/enemies/55_wapaloosie_up.png": "f53beec246e0cd3e11914fc6fdb1dac18b6e2aad"
 },
 "56": {
-"assets/enemies/56_moskitto.png": "2e6da9e47ac58315433d3df30c8a551b4426f38a",
-"assets/enemies/56_moskitto_grab.png": "6cfc6ab99c56329dfecbb644f55c3a7a4db48fe3"
+"assets/enemies/56_moskitto.png": "e58b0713a42b249eb34964c127f7cc52fc8b8930"
 },
 "57": {
-"assets/enemies/57_dingbat.png": "36951591c8e0bd12a5ee7dbfb5b271f8646f8eef",
-"assets/enemies/57_dingbat_catch.png": "4e602480b498cae1ee679ed2449d5ed3fa9e4ca1",
-"assets/enemies/57_dingbat_stare.png": "21789ebdc04127fde612e1ad84f9f184df2d2c41"
+"assets/enemies/57_dingbat.png": "f58cb8de930ce2442dfe1d9f5c56c2ba23fe0088"
 },
 "58": {
-"assets/enemies/58_agropelter.png": "d5f7800a4dd06da97759c5c6652433333bbf6d7b"
+"assets/enemies/58_agropelter.png": "07665d76cf65352c12471b4a9c8309e805b97fb1"
 },
 "59": {
-"assets/enemies/redraws/59_tripodero.png": "2b79e863189158b8bd0c66ad01734568d1ce113b",
-"assets/enemies/redraws/59_tripodero_walk.png": "720f9b096cac406b8f017d7c2434d7d57ee7c740"
+"assets/enemies/redraws/59_tripodero.png": "6cc66ce32919a83b132fe446d76b4fff8039550a"
 },
 "6": {
 "assets/enemies/redraws/06_wakmangganchi_aragondi.png": "98748cb9236c8e298f3b6c59e30364e3df9b1b63"
 },
 "60": {
-"assets/enemies/60_rumptifusel.png": "f02006a7a493842af9d8eb1b0cb503a2bf2248c7"
+"assets/enemies/60_rumptifusel.png": "066233384f665ac6a457ac323dacabc6a2151ba1"
 },
 "61": {
-"assets/enemies/redraws/61_roperite.png": "e4fc7276abaa89be0152e73be1942fa25e83154d"
+"assets/enemies/redraws/61_roperite.png": "262f54dbac69eafd691ddbdadf9459755bfaa3d6"
 },
 "62": {
-"assets/enemies/62_hugag.png": "e4fba139b4ad42eabfbed0674c16927096401857",
-"assets/enemies/62_hugag_stomp.png": "d485ac7e94db83df5c4f5f8b02c489ebc0520a7b"
+"assets/enemies/62_hugag.png": "d9f0c23dbd8ad9c392fb2948c168d7b027cc43bd"
 },
 "63": {
-"assets/enemies/redraws/63_hidebehind.png": "7a41bd2f18f4e7104fb23b879cf1a31fd2082b9b"
+"assets/enemies/redraws/63_hidebehind.png": "2c341ad5c2a62e4e5562a277dc11011cb8f38474"
 },
 "64": {
-"assets/enemies/redraws/64_dungavenhooter.png": "4bb8241b5639a05f61e269ca8b5f7335a1356d1f"
+"assets/enemies/redraws/64_dungavenhooter.png": "93cab8a18c9233588c1136c01bc56fb8ae83c92b"
 },
 "65": {
-"assets/enemies/redraws/65_mice_that_eat_iron.png": "f2281ee381cb7609fa10cc997119d17f6c66de41"
+"assets/enemies/redraws/65_mice_that_eat_iron.png": "3f31c5c57214f514212aeac567e5f984144fb44f"
 },
 "66": {
 "assets/enemies/redraws/66_ayotochtli.png": "f242c7c1837ca2afcd479d86727fe51aa7d289db",
 "assets/enemies/redraws/66_ayotochtli_roll.png": "92077ca54435ea6d7aedea07f52406555298e5b6"
 },
 "67": {
-"assets/enemies/redraws/67_lagopus.png": "3260e035c9c0c4e16a60f78681b77a5b8fe80912",
-"assets/enemies/redraws/67_lagopus_fly.png": "de3e9e8ae5376c04d6b1bfd5c2b5e556cedf1907"
+"assets/enemies/redraws/67_lagopus.png": "f081298c8eb70fd37330c28904fc6f3a282589bc"
 },
 "68": {
 "assets/enemies/redraws/68_shuyu.png": "d0b66f54fcaa5d4e9ea829bb5943e086736b7e03",
 "assets/enemies/redraws/68_shuyu_flap.png": "393a9f23a939ad569954b7497eb9aa3c66aac325"
 },
 "69": {
-"assets/enemies/69_bes_chem.png": "c60224bff604de965e16de461441d63c5455777f"
+"assets/enemies/69_bes_chem.png": "d35104414e8bb35afaf85f8ed6dfe2e7cfc05226"
 },
 "7": {
-"assets/enemies/07_alber.png": "e6ad711b19d9efc48d39dcf65c772c8aca3720f4"
+"assets/enemies/07_alber.png": "4252776a6f0f054247d81a70ad5fcb009aee0fb7"
 },
 "70": {
-"assets/enemies/70_trollgadda.png": "c990b53edeeada357d40c4d313b01475e4646777"
+"assets/enemies/70_trollgadda.png": "fd4cb4659200b66c188b464b5b056eb86f0c9e42"
 },
 "71": {
-"assets/enemies/redraws/71_namungumi.png": "eb023ccdd03379350498d29d73e062f0e64dafb5",
-"assets/enemies/redraws/71_namungumi_flash.png": "8f4db9de4aaff6f38fc6aa05120b81d68d6d0baa"
+"assets/enemies/redraws/71_namungumi.png": "faaedea84ad5a2269a0f1033bf57e2702c70970e"
 },
 "72": {
-"assets/enemies/72_mahwot.png": "4ee69c07c01ba138155cdb08183f755a1941aa1f",
-"assets/enemies/72_mahwot_roar.png": "accf93facbfa3ca4cfc9112e0b81bd6022075108"
+"assets/enemies/72_mahwot.png": "05ef8c6aadfe8b5b6fb6b0abf1d12742ab293ec7"
 },
 "73": {
-"assets/enemies/redraws/73_liderc.png": "93ea252e4114e5f01832633b07f4ae0a37637201"
+"assets/enemies/redraws/73_liderc.png": "91d81c4c7dcb97bc38f3845c691185a4ab2a5506"
 },
 "74": {
-"assets/enemies/74_bes_rap.png": "72e78f9c6c41cf7f6ecc0eba3d48e4ec789145d8"
+"assets/enemies/74_bes_rap.png": "c176d4e8d36316d491dd0390d191a272454a6106"
 },
 "75": {
-"assets/enemies/redraws/75_makalala.png": "8cdb388a7c835b2ec7489b20e07664962a16a475",
-"assets/enemies/redraws/75_makalala_fly.png": "d95cc98f7f150ac559b264c893283ca93480efd7"
+"assets/enemies/redraws/75_makalala.png": "c370c155f9c86916ca42cf905d6e217cb217f085"
 },
 "76": {
-"assets/enemies/redraws/76_loch_oich_monster.png": "64895db5aa064679ef1a4ccb1a2e3ee5edcbf3b3"
+"assets/enemies/redraws/76_loch_oich_monster.png": "4e8bf25941f171a8c28171f5073a0b09fe8cfd4f"
 },
 "77": {
-"assets/enemies/redraws/77_hoga.png": "9f44383800d83dfbbe850d714dcf2d40a19a38f0"
+"assets/enemies/redraws/77_hoga.png": "2fde170e57f8ad2a8b09913900749fc6aa831a7e"
 },
 "78": {
 "assets/enemies/78_zankallala.png": "35cf25aee6dffb9fa0012d07726f05d6e761c177",
 "assets/enemies/78_zankallala_run.png": "7aa339ee4d0e7df0deaa18ce174066b0a89aea2e"
 },
 "79": {
-"assets/enemies/redraws/79_ugjuknarpak.png": "95aa5f128c3e9234ce023322d778c3846b65994b"
+"assets/enemies/redraws/79_ugjuknarpak.png": "7826bdff20dba5e894e4a4fbe76cb5dfbaed0981"
 },
 "8": {
-"assets/enemies/08_snawfus.png": "dcba0cecc75c49ebda1f522ab96e80a2f0bf42b6"
+"assets/enemies/08_snawfus.png": "1658e24697d9034aa7fec8773f0fbd183f106346"
 },
 "80": {
-"assets/enemies/redraws/80_bes_kotak.png": "ef0c189d03b774d270a49d55fec74b9addaedc3e"
+"assets/enemies/redraws/80_bes_kotak.png": "eae6062954e5b1a6393ce37031716e2fabccbaa1"
 },
 "81": {
-"assets/enemies/81_ieltxu.png": "cf0a153fd0cac4cce786f6a0b5d38a99880566f4",
-"assets/enemies/81_ieltxu_fire.png": "0e2ee476f5512c39980e510454b855810767506f"
+"assets/enemies/81_ieltxu.png": "558b44f966dccff2b955a382638340fef45a1dac"
 },
 "82": {
-"assets/enemies/82_nadubi.png": "69e74127a7ff5761dc3dc956315fff1aad53d6b1",
-"assets/enemies/82_nadubi_crawl.png": "a92ae16e40018698df13ec43a665e5a33a3c0b40",
-"assets/enemies/82_nadubi_scratch.png": "3436b64bc8b3538c6334391df31bc15af1c43f77"
+"assets/enemies/82_nadubi.png": "3ca07cf9a77fbc23e63f60903764c4c922883294"
 },
 "83": {
 "assets/enemies/redraws/83_beast_of_barrisdale.png": "0f8e583857b6b761767f4bd59b4f172b48ad9184",
@@ -449,51 +432,49 @@
 "assets/enemies/redraws/83_beast_of_barrisdale_fly.png": "251b52d4122632beae03a3cfba85b705008df975"
 },
 "84": {
-"assets/enemies/redraws/84_kigutilik.png": "bbbb5ea0cdd482d7d164af71def71e238124f68c"
+"assets/enemies/redraws/84_kigutilik.png": "8961511f33bc9b3adb953007ccfa300dd8115bc4"
 },
 "85": {
-"assets/enemies/redraws/85_nanabolele.png": "4ecfee14febbb95b2c8e34210d2ddfe672e2225e"
+"assets/enemies/redraws/85_nanabolele.png": "8323d545551e79a437a74696ae244b7ab9fd707b"
 },
 "86": {
-"assets/enemies/86_leucrocotta.png": "56295768d152d36e68ca9d61158892317b69580a",
-"assets/enemies/86_leucrocotta_run.png": "649936b029f7a5efff3fbc7267ffc077934e4858"
+"assets/enemies/86_leucrocotta.png": "932098b90d4cb375a58b6191ff806a880830b2ed"
 },
 "87": {
-"assets/enemies/redraws/87_corocotta.png": "ca690765d5bc86bf00a5756dcd33b60f53ce70f6"
+"assets/enemies/redraws/87_corocotta.png": "6eace2dc915a6ca23e900872fa15c1545897f1c6"
 },
 "88": {
-"assets/enemies/redraws/88_amixsak.png": "2c1c0879b6295eace65af679679b541a70d72776"
+"assets/enemies/redraws/88_amixsak.png": "a8498da2a44616775c1afa73577a174bd2c5154d"
 },
 "89": {
-"assets/enemies/redraws/89_cuero.png": "f1568f572030cfa45f92c16c6ffd2deb69d9b159"
+"assets/enemies/redraws/89_cuero.png": "2c53d4ca03791dbfc1df47c3e4c464c6b59c4324"
 },
 "9": {
-"assets/enemies/09_questing_beast.png": "faeffa1ab6a2621efacc14edde65b5768771bd31",
-"assets/enemies/09_questing_beast_walk.png": "8627c75d70d49653817c9a999b0bd390eb80c0d0"
+"assets/enemies/09_questing_beast.png": "72cb50f72f4b414237f4c3a82cd6ede6816b864d"
 },
 "90": {
-"assets/enemies/redraws/90_chipekwe.png": "30869cac529ad8b25b0ff18fdf8f09af2420d961"
+"assets/enemies/redraws/90_chipekwe.png": "d33eb7257809e27ab27145bc5dfa498059167d8b"
 },
 "91": {
-"assets/enemies/redraws/91_kurrea.png": "c3b431afcb7dafbfbd7e64723b242c1ef16c4c3d"
+"assets/enemies/redraws/91_kurrea.png": "25cdeed9a206535c11552ecae48d25e4b6adbc54"
 },
 "92": {
-"assets/enemies/redraws/92_siehnam.png": "f6dedafc0874e1a638e4655b6d45866a5d9e1b1f"
+"assets/enemies/redraws/92_siehnam.png": "8b3bc673f73395f08ac67cc04b388e8cd5bfd689"
 },
 "93": {
-"assets/enemies/redraws/93_chipique.png": "df0c2b8b6ae4ab7899b8ec4fdbe67d255aae0bcd"
+"assets/enemies/redraws/93_chipique.png": "37f43b6a87f15746e01e1f4c73c503a37e5fba6a"
 },
 "94": {
-"assets/enemies/redraws/94_trochus.png": "7f623ea1944cffcf2ef1bc87966f7c0a2456274d"
+"assets/enemies/redraws/94_trochus.png": "5fde35acf9bc0cad9990f5f906d8cec3eadf34ed"
 },
 "95": {
-"assets/enemies/redraws/95_wendigo.png": "7eb7ff50763211b44d734bf374fe0f345d1947e9"
+"assets/enemies/redraws/95_wendigo.png": "b1b7a62a04def31a6996c33ed7276350d137b62d"
 },
 "96": {
-"assets/enemies/redraws/96_bregdi.png": "4d991537e68d27a2a2f209e8f3db574a256149f2"
+"assets/enemies/redraws/96_bregdi.png": "1e58377103b7836a1aab9b7cade5d67a9a080074"
 },
 "97": {
-"assets/enemies/redraws/97_ro.png": "ae9d6119ee1f3128d21253b091971917cbd4e069"
+"assets/enemies/redraws/97_ro.png": "565ccf9889dc3e046b7b0ca56016a6d56f6ecca2"
 },
 "98": {
 "assets/enemies/98_boiuna.png": "d87c92c37a554acf3cd4b5da5c98c77dc4b1ecfc"

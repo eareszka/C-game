@@ -51,6 +51,8 @@ def b64(im):
 
 def join_and(items):
     items = [str(i) for i in items]
+    if not items:
+        return 'none'
     return items[0] if len(items) == 1 else ', '.join(items[:-1]) + ' and ' + items[-1]
 
 
@@ -151,7 +153,7 @@ assert not any(R[i]['off'] or R[i]['partial'] for i in R if R[i]['rating'] != 'o
 assert all(R[i]['colours'] <= es.NES_COLOURS for i in R if R[i]['rating'] != 'old')
 print('old sprites over 8 colours', [i for i in ids['old'] if R[i]['colours'] > 8], 'off the palette', [i for i in ids['old'] if R[i]['off']])
 fact = dict(
-    VERDICT=('<strong>Closer, but not done.</strong> %d of the 101 are settled. Starter through Medium read as one game, and Upper is nearly there. Hard and up still don\'t: %d sprites there are close or don\'t match. %d old sprites are waiting on a size decision, including 8 of the %d bosses. Nothing is in the game yet.' % (
+    VERDICT=('<strong>Closer, but not done.</strong> %d of the 101 are settled. Starter through Medium read as one game, and Upper is nearly there. Hard and up still don\'t: %d sprites there are close or don\'t match. %d old sprites are waiting on a size decision, including 8 of the %d bosses. All of them are now in the game, as stills.' % (
         n['standard'], sum(1 for i in R if tiers[i] in ('HARD', 'SEVERE', 'ELITE') and R[i]['rating'] in ('close', 'no')), sum(1 for i in ids['old'] if i not in (31, 78)), len(bosses))),
     STYLE_ROWS=style_rows, STYLE_KEYS=style_keys, CK_CLEAN=ck_clean, CK_LOOK=101 - ck_clean - len(ck_fail), CK_FAIL=len(ck_fail), CK_SIZE=len(ck_fail) - sum(1 for i in ck_colour if not any(t.startswith('longer side') for a, t in R[i]['check'] if a == 'FAIL')), CK_COLOUR=join_and(ck_colour), N_OLD=n['old'], OLD_IDS=','.join(map(str, sorted(ids['old'], key=lambda i: R[i]['longer']))), REST=len(drawn) - sum(1 for i in drawn if R[i]['rating'] == 'standard'), N_STD=n['standard'], N_MATCH=n['match'], N_CLOSE=n['close'], N_NO=n['no'],
     DRAWN_N=len(drawn), PICKS_N=len(PICKS),

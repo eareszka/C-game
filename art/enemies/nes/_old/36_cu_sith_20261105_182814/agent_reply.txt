@@ -1,3 +1,0 @@
-Result: No failures.
-Size: 65x76, 6 colours plus black.
-Unmet: The checker's LOOK for 4 shades of one colour remains, because the brief's coat and chest/leg greens require them. The hind thighs use the coat green as in reference.png, though the brief says legs are mint, and only the shins and feet are mint shadow. The checker printed no inner-black figure, so 9 to 14% is inferred from no failures, not measured.
