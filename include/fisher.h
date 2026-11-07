@@ -17,6 +17,7 @@ void fisher_tick(const Tilemap* map,float dt);
 FisherView fisher_view();
 const char* fisher_line();
 bool fisher_here(const StoryWhere& where,StoryNpcPos* out);
+bool fisher_in_bed(const StoryNpcPos& pos,float* front_y);
 bool fisher_draw(const StoryNpcPos& pos,SDL_Renderer* renderer,const Camera* camera);
 bool fisher_art_init(SDL_Renderer* renderer);
 void fisher_art_free();

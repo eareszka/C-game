@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1433-shelves-a-wall-of-built-in-wooden-bookshelves-fi",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 588 characters>",
+          "format": "png"
+        },
+        "width": 96,
+        "height": 48
+      }
+    ],
+    "image_size": {
+      "width": 96,
+      "height": 48
+    },
+    "description": "A wall of built-in wooden bookshelves, five rows: solid brown wooden shelf boards, dark shadow behind the books, colourful book spines of varied heights, a few leaning, a few gaps. Even lighting, no glare, fully opaque.",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 1100 characters>",
+        "format": "png"
+      },
+      "width": 32,
+      "height": 32
+    }
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "fed9d46a-9346-4fde-a50c-89d11289d282",
+    "generation_id": "2a4eb58a-007b-4bad-b4bb-2b53f28c6961"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "shop-shelves2.png"
+  ]
+}

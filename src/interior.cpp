@@ -3,7 +3,11 @@
 #include "interiors.h"
 #include "collision.h"
 #include "tilemap.h"   // TOWN0_SHEET_COLS
+#include "core.h"      // world_ms, the ambient beat
 #include <string.h>
+#include <stdio.h>
+#include <math.h>
+#include <SDL2/SDL_image.h>
 #include <initializer_list>
 
 // A room per building on the starting island, each drawn whole
@@ -30,17 +34,141 @@ static const PrebuiltInterior prebuilt_interiors[] = {
 
 static void interior_find_entry(InteriorMap* im);
 
+// The rooms redrawn with PixelLab (art/interiors_nes, tools/interior_nes.py):
+// each its own art -- the room, and beside it the furniture's layer, 320x240
+// each, drawn at twice -- and per art pixel each layer's drop to the floor row
+// it stands on (255: nothing drawn) and whether it is ground the feet can't
+// take. Read once, the first time the room is asked for; a room without
+// them is drawn from the sheet as before.
+#define NES_W (IMAP_W * IMAP_TILE / 2)
+#define NES_H (IMAP_H * IMAP_TILE / 2)
+#define MAX_NES_ROOMS 64
+struct NesRoom {
+    bool tried, ok;
+    uint8_t drop[2][NES_H][NES_W];
+    uint8_t foot[NES_H][NES_W];          // bit 0 the room's ground, bit 1 the furniture's
+    char coll[IMAP_H][IMAP_W + 1];
+    SDL_Texture* tex;
+    // something on the wall that moves (room_N_anim.txt: layer x y w h frames,
+    // room_N_anim.png the frames side by side), on the world's ambient beat
+    int anim_layer, anim_x, anim_y, anim_w, anim_h, anim_n;
+    bool anim_tried;
+    SDL_Texture* anim_tex;
+    // stairs to another floor (room_N_stairs.txt, a line each: the room they
+    // reach, the feet's box that takes them x0 y0 x1 y1, and where the feet
+    // arrive there, ax ay -- all in screen pixels)
+    int n_stairs;
+    struct { int to; float x0, y0, x1, y1, ax, ay; } stairs[4];
+};
+static NesRoom* nes_rooms[MAX_NES_ROOMS];
+
+static const NesRoom* nes_room(int id)
+{
+    if (id < 0 || id >= MAX_NES_ROOMS) return nullptr;
+    if (!nes_rooms[id]) nes_rooms[id] = (NesRoom*)SDL_calloc(1, sizeof(NesRoom));
+    NesRoom* r = nes_rooms[id];
+    if (!r || r->tried) return r && r->ok ? r : nullptr;
+    r->tried = true;
+    char path[96];
+    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d.txt", id);
+    FILE* f = fopen(path, "r");
+    if (!f) return nullptr;
+    for (int y = 0; y < IMAP_H; y++) {
+        char line[64] = "";
+        if (!fgets(line, sizeof line, f)) line[0] = 0;
+        bool ended = false;                              // past the line's end: outside
+        for (int x = 0; x < IMAP_W; x++) {
+            char c = ended ? 0 : line[x];
+            if (!c || c == '\n') ended = true;
+            r->coll[y][x] = (c == '#' || c == '.' || c == 'E') ? c : ' ';
+        }
+        r->coll[y][IMAP_W] = 0;
+    }
+    fclose(f);
+    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_depth.png", id);
+    SDL_Surface* raw = IMG_Load(path);
+    if (!raw) return nullptr;
+    SDL_Surface* s = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_RGBA32, 0);
+    SDL_FreeSurface(raw);
+    if (!s) return nullptr;
+    if (s->w != NES_W || s->h != NES_H) { SDL_FreeSurface(s); return nullptr; }
+    SDL_LockSurface(s);
+    for (int y = 0; y < NES_H; y++) {
+        const uint8_t* row = (const uint8_t*)s->pixels + y * s->pitch;
+        for (int x = 0; x < NES_W; x++) {
+            r->drop[0][y][x] = row[x * 4 + 0];
+            r->drop[1][y][x] = row[x * 4 + 1];
+            r->foot[y][x]    = row[x * 4 + 2];
+        }
+    }
+    SDL_UnlockSurface(s);
+    SDL_FreeSurface(s);
+    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_stairs.txt", id);
+    if (FILE* sf = fopen(path, "r")) {
+        while (r->n_stairs < 4 &&
+               fscanf(sf, "%d %f %f %f %f %f %f", &r->stairs[r->n_stairs].to, &r->stairs[r->n_stairs].x0,
+                      &r->stairs[r->n_stairs].y0, &r->stairs[r->n_stairs].x1, &r->stairs[r->n_stairs].y1,
+                      &r->stairs[r->n_stairs].ax, &r->stairs[r->n_stairs].ay) == 7)
+            r->n_stairs++;
+        fclose(sf);
+    }
+    r->ok = true;
+    return r;
+}
+
+static SDL_Texture* nes_room_tex(int id, SDL_Renderer* ren)
+{
+    NesRoom* r = (NesRoom*)nes_room(id);
+    if (!r) return nullptr;
+    if (!r->tex) {
+        char path[96];
+        SDL_snprintf(path, sizeof path, "assets/interiors/room_%d.png", id);
+        r->tex = IMG_LoadTexture(ren, path);
+    }
+    if (!r->anim_tried) {
+        r->anim_tried = true;
+        char path[96];
+        SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_anim.txt", id);
+        if (FILE* f = fopen(path, "r")) {
+            if (fscanf(f, "%d %d %d %d %d %d", &r->anim_layer, &r->anim_x, &r->anim_y,
+                       &r->anim_w, &r->anim_h, &r->anim_n) == 6 && r->anim_n > 0) {
+                SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_anim.png", id);
+                r->anim_tex = IMG_LoadTexture(ren, path);
+            }
+            fclose(f);
+        }
+    }
+    return r->tex;
+}
+
+// The room's moving piece in this beat's frame, over its layer: AMBIENT_FRAMES
+// of AMBIENT_FRAME_MS, the same beat as everything ambient in the world.
+static void nes_room_anim(const NesRoom* r, SDL_Renderer* ren, int layer)
+{
+    if (!r || !r->anim_tex || r->anim_layer != layer) return;
+    const int AP = IMAP_W * IMAP_TILE / NES_W;
+    int f = (int)(world_ms() / AMBIENT_FRAME_MS % (Uint32)AMBIENT_FRAMES) % r->anim_n;
+    SDL_Rect src = { f * r->anim_w, 0, r->anim_w, r->anim_h };
+    SDL_Rect dst = { r->anim_x * AP, r->anim_y * AP, r->anim_w * AP, r->anim_h * AP };
+    SDL_RenderCopy(ren, r->anim_tex, &src, &dst);
+}
+
 void interior_load(InteriorMap* im, int interior_id)
 {
-    if (interior_id < 0 || interior_id >= NUM_INTERIORS) interior_id = 0;
+    // a room past the sheet's (an upstairs) is its own art or nothing
+    if (interior_id < 0 || interior_id >= MAX_NES_ROOMS ||
+        (interior_id >= NUM_INTERIORS && !nes_room(interior_id))) interior_id = 0;
     im->id = interior_id;
 
-    const PrebuiltInterior& pb = prebuilt_interiors[interior_id];
+    static const PrebuiltInterior none = {};
+    const PrebuiltInterior& pb = interior_id < NUM_INTERIORS ? prebuilt_interiors[interior_id] : none;
     im->prebuilt = (pb.tiles != nullptr);
+    const NesRoom* nr = nes_room(interior_id);
+    im->nes = nr != nullptr;
 
     const char* const* layout = pb.coll;
     for (int y = 0; y < IMAP_H; y++) {
-        const char* row = layout[y];
+        const char* row = nr ? nr->coll[y] : layout ? layout[y] : "";
         int row_len = (int)strlen(row);
         for (int x = 0; x < IMAP_W; x++) {
             char c = (x < row_len) ? row[x] : ' ';
@@ -104,6 +232,11 @@ static bool interior_solid(const void* ctx, float px, float py)
     if (tx >= IMAP_W || ty >= IMAP_H) return true;
     uint8_t t = im->tiles[ty][tx];
     if (t == INT_VOID) return true;
+    if (im->nes) {                                       // the room's own art says to the pixel
+        const NesRoom* nr = nes_room(im->id);
+        int ax = (int)(px * NES_W / (IMAP_W * IMAP_TILE)), ay = (int)(py * NES_H / (IMAP_H * IMAP_TILE));
+        return !nr || ax >= NES_W || ay >= NES_H || nr->foot[ay][ax] != 0;
+    }
     // A drawn room says to the pixel where the floor is, its furniture what
     // stands on it.
     if (tilemap_art_depth(interior_cell(im, tx, ty))) {
@@ -186,9 +319,46 @@ bool interior_at_exit(const InteriorMap* im, float feet_x, float feet_y)
     return out >= 0 && out <= DOOR_REACH && wall >= DOOR_X0 && wall <= DOOR_X1;
 }
 
+int interior_stairs(const InteriorMap* im, float feet_x, float feet_y, float* arrive_x, float* arrive_y)
+{
+    const NesRoom* nr = im->nes ? nes_room(im->id) : nullptr;
+    for (int i = 0; nr && i < nr->n_stairs; i++) {
+        const auto& s = nr->stairs[i];
+        if (feet_x >= s.x0 && feet_x <= s.x1 && feet_y >= s.y0 && feet_y <= s.y1) {
+            *arrive_x = s.ax; *arrive_y = s.ay;
+            return s.to;
+        }
+    }
+    return -1;
+}
+
 void interior_draw_over_player(const InteriorMap* im, SDL_Renderer* ren,
                                float x, float y, float w, float h, float feet_y)
 {
+    if (im->nes) {
+        const NesRoom* nr = nes_room(im->id);
+        SDL_Texture* tex = nes_room_tex(im->id, ren);
+        if (!nr || !tex) return;
+        const float AP = (float)(IMAP_W * IMAP_TILE) / NES_W;     // screen pixels an art pixel
+        int ay0 = SDL_max(0, (int)floorf(y / AP)), ay1 = SDL_min(NES_H, (int)ceilf((y + h) / AP));
+        int ax0 = SDL_max(0, (int)floorf(x / AP)), ax1 = SDL_min(NES_W, (int)ceilf((x + w) / AP));
+        for (int layer = 0; layer < 2; layer++)                   // the room, then its furniture
+            for (int ay = ay0; ay < ay1; ay++) {
+                auto front = [&](int ax) {
+                    int dr = nr->drop[layer][ay][ax];
+                    return dr != 255 && (ay + dr + 0.5f) * AP > feet_y;
+                };
+                for (int ax = ax0; ax < ax1; ) {
+                    if (!front(ax)) { ax++; continue; }
+                    int run = ax;
+                    while (ax < ax1 && front(ax)) ax++;
+                    SDL_Rect src = { layer * NES_W + run, ay, ax - run, 1 };
+                    SDL_Rect dst = { (int)(run * AP), (int)(ay * AP), (int)((ax - run) * AP), (int)AP };
+                    SDL_RenderCopy(ren, tex, &src, &dst);
+                }
+            }
+        return;
+    }
     for (int ty = (int)(y / IMAP_TILE); ty <= (int)((y + h - 1) / IMAP_TILE); ty++)
         for (int tx = (int)(x / IMAP_TILE); tx <= (int)((x + w - 1) / IMAP_TILE); tx++) {
             if (tx < 0 || ty < 0 || tx >= IMAP_W || ty >= IMAP_H) continue;
@@ -203,6 +373,17 @@ void interior_draw_over_player(const InteriorMap* im, SDL_Renderer* ren,
 
 void interior_draw(const InteriorMap* im, SDL_Renderer* ren, SDL_Texture* atlas_tex)
 {
+    if (im->nes) {
+        if (SDL_Texture* tex = nes_room_tex(im->id, ren)) {
+            SDL_Rect dst = { 0, 0, IMAP_W * IMAP_TILE, IMAP_H * IMAP_TILE };
+            for (int layer = 0; layer < 2; layer++) {
+                SDL_Rect src = { layer * NES_W, 0, NES_W, NES_H };
+                SDL_RenderCopy(ren, tex, &src, &dst);
+                nes_room_anim(nes_room(im->id), ren, layer);
+            }
+            return;
+        }
+    }
     for (int y = 0; y < IMAP_H; y++) {
         for (int x = 0; x < IMAP_W; x++) {
             SDL_Rect r = { x * IMAP_TILE, y * IMAP_TILE,

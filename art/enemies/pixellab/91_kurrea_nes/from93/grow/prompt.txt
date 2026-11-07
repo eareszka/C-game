@@ -1,0 +1,1 @@
+Keep this snake exactly as it is: same colours, outline, coil, crystals and head. Only make the neck taller so the raised head reaches near the top of the canvas, about 10 pixels higher than now. The white belly stripe stays one plain white with no segment lines or ticks. Nothing else changes.

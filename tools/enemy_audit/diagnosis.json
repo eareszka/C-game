@@ -287,10 +287,11 @@
 "style": "soft"
 },
 "45": {
-"rating": "close",
-"why": "The same feather stroke fills both mirrored wings, which reads as AI-made at this tier.",
-"hash": "46bb34e470a3ce40fdb17cec98ff8d14684b4242",
-"style": "line"
+"rating": "standard",
+"why": "You chose this front-facing PixelLab redo.",
+"hash": "73eb7029e085537cf928e8573e13d585985c9c17",
+"style": "ref",
+"source": "pixellab"
 },
 "46": {
 "rating": "standard",
@@ -568,10 +569,11 @@
 "style": "ref"
 },
 "91": {
-"rating": "close",
-"why": "Crystal crumbs on a hard-to-trace coil, with repeated plates. You edited it.",
-"hash": "170cb876d92cc68e56901a08f0739d02dacbc782",
-"style": "line"
+"rating": "standard",
+"why": "You chose this snake family version, built from 32 Angont.",
+"hash": "66cbf21b66c782f1ad26de2441f80de5afd3e7ea",
+"style": "family",
+"source": "pixellab"
 },
 "92": {
 "rating": "close",
@@ -581,9 +583,10 @@
 },
 "93": {
 "rating": "standard",
-"why": "You approved it on 2026-11-05.",
-"hash": "d1a8c80569a310881dc0eb5aac03d26ba6304a22",
-"style": "plain"
+"why": "You chose this snake family version, built from 32 Angont.",
+"hash": "53994e94a25a366368ff1c2e3b9bfeee75abebd2",
+"style": "family",
+"source": "pixellab"
 },
 "94": {
 "rating": "standard",

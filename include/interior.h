@@ -26,6 +26,7 @@ struct InteriorMap {
     int     atlas[IMAP_H][IMAP_W];  // tileset.png index per cell, -1 = none (prebuilt only)
     int     furn[IMAP_H][IMAP_W];   // the furniture's layer over it: the same, -1 = none
     bool    prebuilt;               // true: draw from the atlas; false: flat placeholder colours
+    bool    nes;                    // true: its own art, assets/interiors/room_<id>.png (tools/interior_nes.py)
     float enter_x, enter_y;   // where the feet stand coming in: the middle of
                               // the way out's floor (its 'E' cells, walkable part)
     int id;
@@ -43,6 +44,9 @@ bool interior_feet_fit(const InteriorMap* im, float x, float y);
 // Whether feet centred at (feet_x, feet_y) are in the way out's hitbox: the
 // floor before the door, along the wall it is in.
 bool interior_at_exit(const InteriorMap* im, float feet_x, float feet_y);
+// Stairs to another floor of the house: the room they reach when feet centred
+// at (feet_x, feet_y) are on them, with where the feet arrive there; -1 if none.
+int interior_stairs(const InteriorMap* im, float feet_x, float feet_y, float* arrive_x, float* arrive_y);
 void interior_player_init(InteriorPlayer* ip, Player* player, const InteriorMap* im);
 void interior_player_update(InteriorPlayer* ip, Player* player, const Input* in,
                             float dt, const InteriorMap* im);

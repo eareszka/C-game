@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1358-tiny-potted-houseplant-green-leaves-terracotta-p",
+  "provider": "pixellab",
+  "route": "create-image-pixen",
+  "arguments": {
+    "description": "tiny potted houseplant, green leaves, terracotta pot, front view, NES 8-bit RPG house interior like Mother 1, very simple, flat colours, 3 colours plus black outline",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s-plant.png"
+  ]
+}

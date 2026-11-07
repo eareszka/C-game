@@ -23,6 +23,9 @@ void resident_advance_hour(const Tilemap* map);
 // Entire feet box must fit the visible trail; optionally allow narrow door approaches.
 bool resident_on_trail(const Tilemap* map, float x, float y, bool allow_door_approach = false);
 bool resident_here(const StoryWhere& where, StoryNpcPos* out);
+// Whether the person at pos is asleep in a bed, and if so the screen row of
+// its front edge: what they are drawn in front of or behind by.
+bool resident_in_bed(const StoryNpcPos& pos, float* front_y);
 bool resident_draw(const StoryNpcPos& pos, SDL_Renderer* renderer, const Camera* camera);
 const char* resident_line();
 bool resident_art_init(SDL_Renderer* renderer);

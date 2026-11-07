@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1417-house0-b-dresser-same-wooden-chest-of-three-draw",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 768 characters>",
+      "format": "png"
+    },
+    "description": "<elided 297 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d05287de-eb07-4c90-b180-347cbd442d77",
+    "generation_id": "cbb724c9-7ab8-4c2b-b360-bdea93207d30"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-c-dresser.png"
+  ]
+}

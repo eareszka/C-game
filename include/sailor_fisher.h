@@ -17,6 +17,7 @@ void sailor_fisher_tick(const Tilemap* map,float dt);
 SailorFisherView sailor_fisher_view();
 const char* sailor_fisher_line();
 bool sailor_fisher_here(const StoryWhere& where,StoryNpcPos* out);
+bool sailor_fisher_in_bed(const StoryNpcPos& pos,float* front_y);
 bool sailor_fisher_draw(const StoryNpcPos& pos,SDL_Renderer* renderer,const Camera* camera);
 bool sailor_fisher_art_init(SDL_Renderer* renderer);
 void sailor_fisher_art_free();

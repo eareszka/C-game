@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0536-u-well3-nes-8-bit-mother-game-style-an-open-stai-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 300 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: an open stairwell hole in a wooden floor, brown wooden steps going down and away into black darkness, thin brown wooden rails along the left and right edges, angled top view, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0bc8cc6f-945f-4372-991a-55ffbef19414",
+    "generation_id": "c15fecb8-4083-4d8d-b360-57257527dc4e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-well2.png"
+  ]
+}

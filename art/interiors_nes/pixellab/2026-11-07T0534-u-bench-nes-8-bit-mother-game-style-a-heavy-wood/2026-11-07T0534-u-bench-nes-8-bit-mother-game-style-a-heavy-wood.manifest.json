@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0534-u-bench-nes-8-bit-mother-game-style-a-heavy-wood",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 332 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: a heavy wooden carpenter's workbench seen from the front at an angle, a hand saw, a hammer and a few wood shavings on its top, plain plank front, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "cfc3300a-e845-4748-a3a5-42c96c187ea3",
+    "generation_id": "7395a726-05c5-40ca-a364-bc9aeaa16335"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-bench.png"
+  ]
+}

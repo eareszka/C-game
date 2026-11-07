@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1347-floor-repaint-as-classic-nes-rpg-pixel-art-betwe",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 472 characters>",
+      "format": "png"
+    },
+    "description": "Repaint as classic NES RPG pixel art between Mother 1 and EarthBound, flat colours, thin black outlines, few colours, no gradients: wooden floorboards running diagonally, seamless."
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dd0acc0f-5d88-454b-ae34-c14269c10fcd",
+    "generation_id": "370b09ed-69f3-499c-8f65-c22af51041be"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-b-floor.png"
+  ]
+}

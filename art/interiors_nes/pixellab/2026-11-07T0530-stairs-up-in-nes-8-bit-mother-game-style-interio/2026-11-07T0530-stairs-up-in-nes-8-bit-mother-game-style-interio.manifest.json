@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0530-stairs-up-in-nes-8-bit-mother-game-style-interio",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 412 characters>",
+      "format": "png"
+    },
+    "description": "<elided 269 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "600feb2c-057c-4421-bae0-c664534ec00f",
+    "generation_id": "c732cf7b-166d-4536-821a-58aa7def598f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h6-stairs.png"
+  ]
+}

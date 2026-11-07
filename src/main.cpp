@@ -293,9 +293,11 @@ int main(int argc, char *argv[])
     bool debug = false;
     const char* seed_arg = nullptr;
     int preview_battle = -1;   // --battle ID: test mode, straight into that enemy's fight (reviewing a pattern)
+    bool preview_intro = false; // --intro: ...as the intro's forced loss (3 bars, no bombs)
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0) debug = true;
         else if (strcmp(argv[i], "--battle") == 0 && i + 1 < argc) { debug = true; preview_battle = atoi(argv[++i]); }
+        else if (strcmp(argv[i], "--intro") == 0) preview_intro = true;
         else                                 seed_arg = argv[i];
     }
     BattleScene::debug_keys = debug;
@@ -392,7 +394,7 @@ int main(int argc, char *argv[])
         player.stats.max_iq      = 8;   player.stats.iq      = 8;
         // Keep items whose functionality is being tested ready in debug runs.
         if (debug) {
-            player.stats.hp = 1; // Start injured for healing-item tests.
+            if (preview_battle < 0) player.stats.hp = 1; // Start injured for healing-item tests (not when reviewing a fight).
             const Item test_items[] = { ITEM_ESCAPE_CHARM, ITEM_BAND_AID, ITEM_MEDKIT, ITEM_ANTIDOTE, ITEM_BICYCLE, ITEM_DIVING_FINS };
             for (Item it : test_items) {
                 item_slot(&player, it) = (it==ITEM_BAND_AID||it==ITEM_MEDKIT||it==ITEM_ANTIDOTE)?5:1;
@@ -442,7 +444,7 @@ int main(int argc, char *argv[])
     TestEnemy    test_enemies[]     = {
         { 30, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 30 Dajna
     };
-    const int    TEST_N             = debug ? (int)(sizeof(test_enemies) / sizeof(test_enemies[0])) : 0;   // none in play
+    const int    TEST_N             = 0;   // taken out of the room (user, 2026-11-06); the table kept for when one is wanted again
     bool         debug_chest_opened = false;
     const int    DEBUG_CHEST_X = 12 * IMAP_TILE, DEBUG_CHEST_Y = 10 * IMAP_TILE;
     bool         test_armed         = true;
@@ -1878,6 +1880,7 @@ int main(int argc, char *argv[])
         if (preview_battle >= 0 && preview_battle < ENEMY_COUNT && state != STATE_TITLE && state != STATE_BATTLE) {
             delete battle_scene;
             battle_scene = new BattleScene(&player, preview_battle);
+            if (preview_intro) battle_scene->set_intro();
             state_after_battle = state;
             state = STATE_BATTLE;
             audio_play(SFX_BATTLE_START);
@@ -3269,7 +3272,9 @@ int main(int argc, char *argv[])
                 auto draw_npcs = [&](bool in_front) {
                     SDL_SetTextureColorMod(player_sprite, 255, 190, 110);
                     for (int i = 0; i < nn; i++) {
-                        if ((npcs[i].y > iplayer.y) != in_front) continue;
+                        // one asleep in a bed is as deep as the bed's front edge, not where they got in
+                        float bed_y, key = resident_in_bed(npcs[i], &bed_y) ? bed_y - HB_Y2 : npcs[i].y;
+                        if ((key > iplayer.y) != in_front) continue;
                         if (!story_npc_draw(npcs[i], plat.renderer, &icam))
                             player_draw(&player, npcs[i].x, npcs[i].y, &icam, plat.renderer, player_sprite,
                                         story_npc_facing(npcs[i]));
@@ -3315,6 +3320,19 @@ int main(int argc, char *argv[])
                         if (entered_door >= 0) overworld_stand_before_door_idx(&ow, &player, map, entered_door);
                         else overworld_stand_before_door(&ow, &player, map, imap.id);
                         state = STATE_OVERWORLD;
+                    }
+                }
+                // Stairs: up or down to the house's other floor, by the fade the
+                // overworld's stairs take; the feet arrive clear of the stairs there.
+                else {
+                    float sx = iplayer.x + (HB_X1 + HB_X2) * 0.5f, sy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f, ax, ay;
+                    int to = interior_stairs(&imap, sx, sy, &ax, &ay);
+                    if (to >= 0 && room_taken(true)) {
+                        interior_load(&imap, to);
+                        iplayer.x = ax - (HB_X1 + HB_X2) * 0.5f;
+                        iplayer.y = ay - (HB_Y1 + HB_Y2) * 0.5f;
+                        iplayer.at_exit = 0;
+                        player.facing = FACE_DOWN;
                     }
                 }
 
@@ -3446,6 +3464,15 @@ int main(int argc, char *argv[])
             }
             draw_bar(plat.renderer, 28, 17, 110, 5, stamina, 1.0f, 255, 220, 0);
             if (poisoned) draw_text(plat.renderer, "POISON", 144, 20, 1, 183, 74, 220);
+            // In battle, the bombs to hand (X): red for a moment when X found none.
+            if (state == STATE_BATTLE && battle_scene) {
+                char bb[16];
+                SDL_snprintf(bb, sizeof(bb), "BOMB %d", battle_scene->hud_bombs());
+                float nb = battle_scene->hud_no_bomb_t();
+                bool deny = nb < 0.6f && (int)(nb * 10.0f) % 2 == 0;
+                if (deny) draw_text(plat.renderer, bb, 196, 20, 1, 248, 56, 0);
+                else      draw_text(plat.renderer, bb, 196, 20, 1, 252, 252, 252);
+            }
             char buf[24];
             // Level and EXP, just right of the HP box (it grows a bar a level).
             // In battle the score climbs live with this fight's hits and

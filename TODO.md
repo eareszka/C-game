@@ -7,7 +7,7 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 |---|---|
 | World, 9 dungeon types, battle engine, crafting (23 recipes) | Done |
 | Title screen, save/load (v17, migrates back to v2), play vs `--debug` | Done |
-| Story arc ARC1→TURN→DESCENT→OPEN→AMNESIA, leads, 10 notes | Done in code, but there is no ending |
+| Story arc ARC1→TURN→DESCENT→OPEN→AMNESIA, leads, 10 notes | Done in code; the lost-dog intro and ending are decided ([docs/story.md](docs/story.md)) but not built |
 | NPCs | 9 with routines; table NPCs; one shop (3 books) |
 | Boss sites + beaten flags | Done for 6/23/30/52/44/98. 49 is reached by boat, 34 guards the cave mouth, **100 can't be reached** |
 | Enemy patterns | 67 of 101 bespoke. 14 placeholders (65, 89–100), 20 old prototypes |
@@ -19,7 +19,7 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 ---
 
 ## Decisions only you can make (these block P3 and P4)
-1. **The ending.** The PDF says "7 flags → walk home as the world dissolves → Flesh Planet → true world → credits". The code says "beat Anaye (34) → go down the starter cave → swarm (100) → AMNESIA". Pick one, or merge them (e.g. the cave descent *is* the walk home).
+1. ~~**The ending.**~~ **Decided 2026-11-07, see [docs/story.md](docs/story.md):** beat the hive (100), the boy writes a note to bring his dog back, and the world resets. What follows is the old question, kept for history: The PDF says "7 flags → walk home as the world dissolves → Flesh Planet → true world → credits". The code says "beat Anaye (34) → go down the starter cave → swarm (100) → AMNESIA". Pick one, or merge them (e.g. the cave descent *is* the walk home).
 2. **The castles.** What are the 3 placed castles (ocean, mountain, lava) and the unplaced 4th for? The game's title depends on the answer. The PDF assumed the castles hold the tier-2 bosses, but the code puts those bosses at overworld sites.
 3. **The boss roster.** The code uses {6,23,49,30 | 52,44,98 | 34 | 100}, and the PDF used a different list. I will treat the code as the source of truth unless you say otherwise.
 4. **The true world.** Is it a reskin of the existing world or new content? This is the biggest unknown in the schedule.
@@ -51,7 +51,10 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 - [x] Audio: a built-in mixer (`src/audio.cpp`, synthesized clips, WAV overrides in `assets/sound/`; SDL_mixer isn't needed), MASTER/SOUND volumes in OPTIONS kept in `settings.txt`, effects for shots, hits, grazes, pickups, menus, speech, harvesting, chests, level-ups and stairs. Music is still P2
 - [ ] Add a speaker name to the dialogue box (`core.cpp:140`)
 - [ ] Give routine NPCs lines that change with the story stage (today they only have the "what to do / where am I" lines)
-- [ ] An opening beat: a short intro for a new game (today you just wake up in the spawn house)
+- [ ] **The intro** ([docs/story.md](docs/story.md)): foggy night, the dog barks at a fallen note by the water, the note ("A young boy's dog goes missing..."), the black silhouette of 44 comes out of the shadow, forced-loss fight (3 HP, no bombs), wake at home with the dog and its things gone
+- [ ] Dog companion: sprite, following behaviour, its belongings in the spawn house (removed after the intro)
+- [ ] 44 silhouette art for the intro fight (same size as the real fight, sheet filled black) and an intro mode for the battle
+- [ ] "Where's my dog?" talk option: on the island "never knew you had a dog", after leaving the island "why would you ever want one, they're so dangerous"; family lines too
 - [ ] Stage name cards between queued battle stages (`main.cpp:1959`)
 - [ ] Shop: stock more than 3 books (the plan says all 23, with regional stock decided later)
 - [ ] Boss 06: final art, check the pattern and HP; fix **boss 23's HP (165)**
@@ -81,7 +84,9 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 - [ ] Rewrite the 20 old prototype patterns (13, 25, 29, 31, 32, 34–38, 40, 41, 44–49, 51, 52)
 - [ ] Bosses 52, 44, 98 (Boiuna is a placeholder), 34 Anaye: patterns, HP, leads
 - [ ] Town 2 authored and named (towns 1 and 2 have no names)
-- [ ] Hook up the remaining item effects: Campfire warp, Bomb, Smoke Bomb, Compass, Spyglass/Binoculars zoom, attacks that poison
+- [ ] **Battle bomb** (brief `playtest/briefs/44_itqiirpak_bomb_opener.md`, pattern session): X uses an `ITEM_BOMB` and clears every bullet; X no longer cycles weapons
+- [ ] **44's unavoidable opener**, repeated until a bomb is used (the intro loss and the rematch); make sure the boy can get a bomb before 44 is sent
+- [ ] Hook up the remaining item effects: Campfire warp, Smoke Bomb, Compass, Spyglass/Binoculars zoom, attacks that poison
 - [ ] Music for the farlands and the tier-2 bosses
 - [ ] Ship **Beta 0.5**
 
@@ -89,7 +94,7 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 - [ ] Make the swarm (100) reachable: place it in the cave during the OPEN stage (it is unreachable today)
 - [ ] Support more than 2 phases: turn `ENRAGED` (`enemies.cpp:116`) into a list of thresholds
 - [ ] Flesh Planet: sprite pass, a multi-phase pattern, drops
-- [ ] The finale sequence (the walk home / dissolving, per decision 1)
+- [ ] The finale ([docs/story.md](docs/story.md)): after the hive (100) falls, the boy writes a note to bring his dog back and the world resets. Still open: what the reset restores, whether he remembers, the last shot, New Game+
 - [ ] The true world (per decision 4)
 - [ ] AMNESIA epilogue, credits screen, "both worlds reachable afterwards"
 - [ ] Ship to closed testers only (no spoilers)

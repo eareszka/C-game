@@ -1,14 +1,20 @@
 # Enemy sprite style
 
-The one rule for every enemy battle sprite (the user, 2026-11-04). It is measured
-from the 26 sprites the user picked as what the game's enemies should look like.
-They are on the style board.
+The one rule for every enemy battle sprite (the user, 2026-11-04, tightened
+2026-11-05). The 26 sprites the user picked, on the style board, show the look.
+Where a pick differs from a limit written here, the written limit wins.
+
+The user names one pick as inspiration for other sprites: 34 Anaye, the armoured
+figure on the board with the feather crest and purple axe. Take from how it is
+drawn, not what it is.
 
 ## The style
 
 NES style at every size. Sprites are crisp, chunky and readable, with flat
 colours and a black outline, and every pixel looks placed on purpose. A big enemy
-is drawn the same way as a small one, with more pixels and the same crispness.
+is built the same way as a small one, at the same 1 px pixels as the player: from
+distinct parts, each its own closed shape. A bigger sprite has more parts, not
+bigger plain areas.
 
 ## Size
 
@@ -39,16 +45,25 @@ drawing, because the hit circle comes from the frame's size.
   cute, and bigger ones can take on real proportions.
 - **Clean runs and clear steps.** Avoid long smooth curves that look like vector
   art.
-- **Keep big sprites crisp.** Give them line work, plates, ridges, teeth and other
-  pixel-level detail. Large plain smooth areas break the style.
+- **Every part is its own part.** Limbs, fins and tails are separate, and each can
+  be traced from the body to its tip. Parts never merge into one shape.
+- **Build from closed parts.** Head, shoulders, each leg, each foot and each toe
+  are separate shapes that differ in size and outline, so no large area of the body
+  is one plain slab.
+- **Proportions make sense** for that creature. It looks like it could stand and
+  move.
+- **No motif is repeated identically.** Scales, plates and bricks differ in size,
+  spacing and shape, and some are left out. A few well-placed marks beat a pattern
+  covering the body. Mirroring a whole body is fine.
 
 ## Colour and shade
 
-- Only colours from the game's palette, at most 8 plus black. Most sprites use 4
-  to 8.
+- Only colours from the game's palette, 4 to 5 plus black. Up to 8 only when your
+  brief says the design needs it.
 - Flat hard fills. No gradients, soft edges or see-through pixels. No dithering,
   hatching or speckle.
-- At most three tones per material, with clear steps between them.
+- Two flat tones per material: a base and one shadow. No highlights and no gradual
+  shading.
 - Light comes from the upper left, and shade follows the body.
 - Tiny details are welcome when each one is a real feature, such as a tooth, a
   claw, a horn tip or a stripe.
@@ -56,8 +71,10 @@ drawing, because the hit circle comes from the frame's size.
 ## Line
 
 - A black outline, 1 px wide, round the silhouette. Never doubled.
-- Black lines inside separate the parts. About 8 to 15% of the drawn pixels are
-  black inside the outline.
+- Black lines inside separate the parts. A line is there because two parts meet or
+  a real fold starts, not to fill a surface. It closes off a part or ends at another
+  line, and never stops in open surface like a scratch.
+- At every size, about 9 to 14% of the drawn pixels are black inside the outline.
 
 ## The black arena
 

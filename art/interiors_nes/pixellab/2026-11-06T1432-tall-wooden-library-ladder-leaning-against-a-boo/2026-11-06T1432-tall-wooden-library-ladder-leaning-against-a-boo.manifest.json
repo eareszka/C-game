@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1432-tall-wooden-library-ladder-leaning-against-a-boo",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tall wooden library ladder leaning against a bookshelf, front view, classic NES RPG pixel art between Mother 1 and EarthBound, clear shading with light from the upper left, black outlines, few colours, tiny",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "shop-ladder.png"
+  ]
+}

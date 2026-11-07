@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "subject": "f",
+  "generated": "2026-11-06T06:34:40Z",
+  "spent": {
+    "calls": 1,
+    "generations": 0.1,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "cleaned",
+      "route": "correct-pixelart",
+      "run": "f_cleaned_v1",
+      "directory": "cleaned/v1",
+      "files": [
+        "source-corrected.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

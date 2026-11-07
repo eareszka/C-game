@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0630-down-in-nes-8-bit-mother-1-style-the-bottom-of-a",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 300 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother 1 style: the bottom of a tall dark grey stairway opening in a wall, with a few small black and white steps going DOWN into darkness, matching simple flat NES colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dc767dc1-66d6-4507-924d-9b04c7394535",
+    "generation_id": "8cd14b39-0355-427c-a4e6-b3ceba67e23c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-down-fix.png"
+  ]
+}

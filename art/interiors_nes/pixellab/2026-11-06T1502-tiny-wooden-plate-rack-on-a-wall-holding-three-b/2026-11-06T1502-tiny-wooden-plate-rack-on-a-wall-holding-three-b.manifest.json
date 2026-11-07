@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1502-tiny-wooden-plate-rack-on-a-wall-holding-three-b",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "tiny wooden plate rack on a wall holding three blue and white plates, front view, classic NES RPG pixel art between Mother 1 and EarthBound, clear shading with light from the upper left, black outlines, few colours",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h4-plates.png"
+  ]
+}

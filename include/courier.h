@@ -19,6 +19,7 @@ int courier_facing();
 void courier_resume();
 bool courier_art_init(SDL_Renderer*);
 void courier_art_free();
+bool courier_in_bed(const StoryNpcPos&,float* front_y);
 bool courier_draw(const StoryNpcPos&,SDL_Renderer*,const Camera*);
 // Stable north-to-south order, with home last. Includes every Town 0 entrance.
 int courier_doors(const Tilemap*,int* out,int capacity);

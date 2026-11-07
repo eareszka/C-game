@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "subject": "f",
+  "generated": "2026-11-06T06:34:07Z",
+  "spent": {
+    "calls": 2,
+    "generations": 0.2,
+    "usd": 0.0
+  },
+  "characters": [],
+  "loose": [
+    {
+      "kind": "cleaned",
+      "route": "correct-pixelart",
+      "run": "f_cleaned_v1",
+      "directory": "cleaned/v1",
+      "files": [
+        "source-corrected.png"
+      ],
+      "ids": {}
+    },
+    {
+      "kind": "cleaned",
+      "route": "correct-pixelart",
+      "run": "f_cleaned_v2",
+      "directory": "cleaned/v2",
+      "files": [
+        "source-corrected.png"
+      ],
+      "ids": {}
+    }
+  ]
+}

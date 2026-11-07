@@ -14,6 +14,10 @@
 // wide (x0 + 2 unflipped), its top 8 rows deep running back up and to the
 // right -- to the left when flipped -- and 5 up; design pixels are 2 room
 // pixels from (32, 49).
+// The screen row of a bed's front edge (fy, its floor row in the room's
+// frame, interior_room.py): one asleep in it is in front of feet above that
+// row and behind feet below it, as the bed is.
+inline float npc_bed_front_y(int fy){return 2.0f*(fy+49);}
 inline void npc_bed_centre(int x0,int fy,bool flip,float* x,float* y) {
     const float body=x0+(flip?0:2),across=11,back=flip?-4.5f:4.5f;
     *x=2*(body+across+back+32);

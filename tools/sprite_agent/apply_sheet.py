@@ -33,7 +33,7 @@ def changed_ids(sheets):
             continue
         new = trimmed(Image.open(found[0]).convert('RGBA'))
         now = es.first_frame(s['path'], s['frames'], s['rows'])[0].convert('RGBA')
-        if new.size != now.size or ImageChops.difference(new, now).getbbox():
+        if new.size != now.size or new.tobytes() != now.tobytes():   # getbbox on an RGBA difference only sees alpha, so compare the bytes
             out.append((i, new))
     return out
 

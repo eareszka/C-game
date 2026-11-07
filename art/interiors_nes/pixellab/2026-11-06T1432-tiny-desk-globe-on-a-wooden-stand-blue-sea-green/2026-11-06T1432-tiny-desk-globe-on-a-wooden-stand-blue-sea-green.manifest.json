@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1432-tiny-desk-globe-on-a-wooden-stand-blue-sea-green",
+  "provider": "pixellab",
+  "route": "create-image-pixen",
+  "arguments": {
+    "description": "tiny desk globe on a wooden stand, blue sea green land, classic NES RPG pixel art between Mother 1 and EarthBound, clear shading with light from the upper left, black outlines, few colours",
+    "image_size": {
+      "width": 16,
+      "height": 16
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "shop-globe.png"
+  ]
+}

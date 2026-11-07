@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1431-shelves-repaint-as-classic-nes-rpg-pixel-art-bet",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 588 characters>",
+      "format": "png"
+    },
+    "description": "<elided 320 characters>"
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2cdccefb-4118-4fb3-8dd6-bae107f964fa",
+    "generation_id": "5a5ce4c5-276b-4229-b5a7-94233e183c27"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "shop-shelves.png"
+  ]
+}

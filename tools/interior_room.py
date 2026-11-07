@@ -37,6 +37,7 @@ BX0, BX1, BACK = 72, 183, 63     # the back wall's corners and the floor's back 
 FRONT = 127                      # the floor's near row
 COURSE, BRICK = 4, 10            # a brick course's height, a brick's length
 BOARD, BOARD_LEN = 8, 36         # a board's width across the screen, how far apart its ends fall
+FURNITURE_TONES = 3              # the furniture's colours a tile, black included (tools/interior_nes.py: 4)
 EXIT = [(4, 9), (5, 9)]          # the floor before the door in the left wall (interiors.h 'E')
 
 
@@ -364,7 +365,7 @@ def finish(r, name, pal):
     stand(g, lambda x, y: fy.get((x, y), y), {(x, y) for y in range(H) for x in range(W) if (x, y) not in walk})
     ffy = {(OX + x, OY + y): v + OY for (x, y), v in r.ffy.items()}
     stand(gf, lambda x, y: ffy.get((x, y), y), {(OX + x, OY + y) for x, y in r.foot})
-    for grid, most, what in ((g, 4, 'room'), (gf, 3, 'furniture')):
+    for grid, most, what in ((g, 4, 'room'), (gf, FURNITURE_TONES, 'furniture')):
         rows = grid.rows()
         over = [(cx, cy) for cy in range(0, H, 16) for cx in range(0, W, 16)
                 if len({rows[y][x] for y in range(cy, cy + 16) for x in range(cx, cx + 16)} - {'.'}) > most]

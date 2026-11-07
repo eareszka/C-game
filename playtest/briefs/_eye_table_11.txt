@@ -1,0 +1,10 @@
+11_paoxiao.png
+  down  f0=None  f1=(38.0, 27.5)  f2=(37.5, 26.5)  f3=(38.0, 26.5)  f4=None
+  right f0=None  f1=(27.5, 28.0)  f2=(27.5, 27.0)  f3=(27.5, 27.0)  f4=(27.5, 28.0)
+  up    f0=None  f1=None  f2=None  f3=None  f4=None
+  left  f0=None  f1=(27.5, 28.0)  f2=(27.5, 27.0)  f3=(27.5, 27.0)  f4=(27.5, 28.0)
+11_paoxiao_leap.png
+  down  f4=(38.5, 25.5)  f5=(37.0, 26.5)
+  right f4=(28.5, 27.0)  f5=(26.5, 28.0)
+  up    f4=None  f5=None
+  left  f4=(26.5, 27.0)  f5=(28.5, 28.0)

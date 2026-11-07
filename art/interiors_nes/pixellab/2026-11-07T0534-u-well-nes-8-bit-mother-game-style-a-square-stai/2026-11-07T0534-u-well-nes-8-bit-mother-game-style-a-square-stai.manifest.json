@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0534-u-well-nes-8-bit-mother-game-style-a-square-stai",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 268 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: a square stairwell opening in a wooden floor seen from above at an angle, wooden rim, wooden steps going down into darkness, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5234b9aa-40eb-4844-bad0-ba3baca64b40",
+    "generation_id": "8f7dd8aa-0118-4cd5-b4cc-5ae379475d24"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-well.png"
+  ]
+}

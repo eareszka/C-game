@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1451-p3-repaint-as-classic-nes-rpg-pixel-art-between",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 368 characters>",
+      "format": "png"
+    },
+    "description": "<elided 272 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "40d454c2-7713-4b76-9487-805f229c5ea6",
+    "generation_id": "34a21c34-ec38-45c1-b286-2e63acb5b82e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h3-bed-sailor.png"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1344-backwall-repaint-as-classic-nes-rpg-pixel-art-be",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 648 characters>",
+      "format": "png"
+    },
+    "description": "Repaint as classic NES RPG pixel art between Mother 1 and EarthBound, flat colours, thin black outlines, few colours, no gradients: a red brick interior wall with a small wooden-framed window. Keep the window where it is."
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "474ee3e4-1673-421d-b0c8-2ec4d95c8a10",
+    "generation_id": "80e73e86-70a7-43ee-a311-2d53b4e10c11"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-b-backwall.png"
+  ]
+}

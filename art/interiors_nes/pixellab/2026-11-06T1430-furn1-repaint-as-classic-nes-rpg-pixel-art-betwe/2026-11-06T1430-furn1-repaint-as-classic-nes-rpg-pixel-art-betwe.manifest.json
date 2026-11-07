@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1430-furn1-repaint-as-classic-nes-rpg-pixel-art-betwe",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 388 characters>",
+      "format": "png"
+    },
+    "description": "<elided 302 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "db45fc3b-f6fe-4683-b605-3ceedea90aa4",
+    "generation_id": "942353f5-bce8-4692-9e3d-2c446c42ba5a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "shop-case-red.png"
+  ]
+}

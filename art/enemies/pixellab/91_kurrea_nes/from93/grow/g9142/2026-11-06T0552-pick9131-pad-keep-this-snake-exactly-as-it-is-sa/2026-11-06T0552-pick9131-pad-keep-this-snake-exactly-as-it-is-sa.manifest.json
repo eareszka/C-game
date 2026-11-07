@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T0552-pick9131-pad-keep-this-snake-exactly-as-it-is-sa",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4260 characters>",
+      "format": "png"
+    },
+    "description": "<elided 294 characters>",
+    "no_background": true,
+    "seed": 9142
+  },
+  "links": {},
+  "seed": 9142,
+  "ids": {
+    "background_job_id": "81221cd1-d0bb-44cc-83ea-382bbc4f2cbc",
+    "generation_id": "71d46f4b-b0b3-498d-ac5a-f477c07a23ce"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "kurrea-grow-9142.png"
+  ]
+}

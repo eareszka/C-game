@@ -129,6 +129,7 @@ int courier_facing(){return c.facing;}
 void courier_resume(){if(talking)c.facing=resume_facing;talking=false;}
 bool courier_art_init(SDL_Renderer* r){courier_art_free();art=IMG_LoadTexture(r,"assets/npcs/courier.png");sleep_art=IMG_LoadTexture(r,"assets/npcs/courier_sleep_simple.png");if(art)SDL_SetTextureScaleMode(art,SDL_ScaleModeNearest);if(sleep_art)SDL_SetTextureScaleMode(sleep_art,SDL_ScaleModeNearest);return art&&sleep_art;}
 void courier_art_free(){if(art)SDL_DestroyTexture(art);if(sleep_art)SDL_DestroyTexture(sleep_art);art=sleep_art=nullptr;}
+bool courier_in_bed(const StoryNpcPos& p,float* y){if(p.idx!=COURIER_ID||c.phase!=CR_SLEEP)return false;*y=npc_bed_front_y(71);return true;}   // the sofa in room 6
 bool courier_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* cam) {
     if(p.idx!=COURIER_ID)return false;
     if(!art||!sleep_art)return true;

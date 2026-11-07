@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T0544-base93-keep-this-snake-s-style-same-wedge-head-t",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1764 characters>",
+      "format": "png"
+    },
+    "description": "<elided 457 characters>",
+    "no_background": true,
+    "seed": 9133
+  },
+  "links": {},
+  "seed": 9133,
+  "ids": {
+    "background_job_id": "fd8d1ee6-5c2b-4c08-9c11-1113d3acc9a6",
+    "generation_id": "40aa0f32-aa4d-4b50-9430-88aca27096dc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "kurrea-9133.png"
+  ]
+}

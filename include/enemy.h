@@ -99,6 +99,19 @@ struct BulletSpawn {
     // lavender core, the HUD's POISON colour. What it sheds is poison too.
     // A minority threat: one or two poison sources a pattern, never a screen.
     bool  poison         = false;
+    // A grasp: with `delay`, it forms a ring round the PLAYER -- it heads for
+    // (grasp_ox, grasp_oy) from wherever the player is now, the ring drawn
+    // in from half again as wide as the wait runs out, following them -- and
+    // is harmless while it does; then the whole ring shuts on where the
+    // player is, every shot arriving together in grasp_t s (Itqiirpak's
+    // opening, which can't be dodged -- only bombed).
+    bool  grasp          = false;
+    float grasp_ox       = 0.0f, grasp_oy = 0.0f, grasp_t = 0.0f;
+    // Its own colour, 0xRRGGBB, instead of the enemy's (enemy_bullet_color):
+    // -1 = the enemy's. For an enemy whose shots come in more than one
+    // colour (Rumptifusel: dark pore sheets, light spores). What it sheds
+    // takes its colour.
+    int   color          = -1;
     // Leaves from (ox, oy) instead of from the enemy: rain from the top.
     bool  from           = false;
     float ox = 0.0f, oy  = 0.0f;
@@ -128,6 +141,9 @@ public:
     // A Facing to draw it in -- the way it is running -- or -1 to face the
     // player as usual.
     virtual int   move_facing() const { return -1; }
+    // Drawn in four views (down, right, up; left mirrored) under the
+    // animation rule: it turns to the nearest by quarters, not eighths.
+    virtual bool  four_views() const { return false; }
     // Mirror the selected cell horizontally about its centre.
     virtual bool  mirror_sprite() const { return false; }
     // True to idle on the alternate idle sheet (EnemySheet::alt) instead --
@@ -180,6 +196,17 @@ public:
     // side kept underneath).
     struct Part { float x, y; int sx, sy, w, h; float scale = 1.0f; float hurt_r = 0.0f; float angle = 0.0f; float len = 0.0f; bool flip = false; };
     virtual int parts(Part /*out*/[], int /*max*/) const { return 0; }
+    // SPAWNERS -- shmup-style turrets of its own, apart from its body (an
+    // eyeball hovering at its side). Each is drawn from the enemy's spawner
+    // sheet (EnemySheet::spawner: one row of square frames, each as wide as
+    // the sheet is tall, drawn 2x about (x, y)) showing `frame`. The
+    // player's shots pass straight through them -- they can't be targeted;
+    // touching one within hurt_r costs a bar. They fire through the enemy's
+    // own fire()/breathe() (shots with from = true at their spot), so each
+    // enemy designs its turrets' patterns. Drawn over the enemy and under the
+    // shots; none once the enemy is dead. Fills `out`, returns how many.
+    struct Spawner { float x, y; int frame = 0; float hurt_r = 0.0f; };
+    virtual int spawners(Spawner /*out*/[], int /*max*/) const { return 0; }
     // Marks it leaves on the ground (footprints) -- drawn under everything,
     // seen however far away, harmless; `kind` picks the frame of the
     // enemy's marks sheet (EnemySheet::marks), `dir` 0-3 turns it in 90-degree
@@ -209,9 +236,12 @@ public:
     // where. (Show it in the sprite -- a catching pose -- not a ring: the user.)
     virtual float catch_radius() const { return 0.0f; }
     virtual void  catch_shot(float /*x*/, float /*y*/) {}
-    // Damage for touching its body (whole HP bars, like a bullet's); 0 for
-    // an enemy that is harmless to touch.
-    virtual float contact_damage() const { return 0.0f; }
+    // Damage for touching its body (whole HP bars, like a bullet's). EVERY
+    // enemy's body hurts, in every phase (the user, 2026-11-06: "make sure
+    // the enemy is a hitbox that damages the player ... for ALL"): the
+    // battle tests the sprite as drawn. Override with 0 only while the body
+    // genuinely isn't there to touch (sunk under the water, say).
+    virtual float contact_damage() const { return 5.0f; }
     // Solid: the player can't walk onto it -- its sprite's own outline (the
     // idle sheet's opaque pixels) and its resting parts stop them, like a
     // wall. No damage: something that big is simply in the way.
@@ -220,6 +250,12 @@ public:
     // contact_damage), on any opaque pixel of the frame on screen, not just a
     // round hitbox -- for a creature too big and long for one.
     virtual bool  sprite_hitbox() const { return false; }
+    // Exempt from the battle's movement rule (BattleScene::_apply_move_rule:
+    // capped sideways speed across the player's line, and slow beats): for
+    // a fight where the motion itself is the attack.
+    virtual bool  free_movement() const { return false; }
+    // The player set off a bomb (X): every enemy shot was just cleared.
+    virtual void  on_bomb() {}
     // Where shots sharing an aim slot (BulletSpawn::path_aim_slot) head when
     // their orbits end: by default the player, wherever they are then.
     virtual void  aim_slot(int /*slot*/, float px, float py, float* tx, float* ty) { *tx = px; *ty = py; }

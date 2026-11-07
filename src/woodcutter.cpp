@@ -250,6 +250,7 @@ bool woodcutter_art_init(SDL_Renderer* r) {
     return art!=nullptr&&chop_art!=nullptr&&sleep_art!=nullptr;
 }
 void woodcutter_art_free(){if(art)SDL_DestroyTexture(art);if(chop_art)SDL_DestroyTexture(chop_art);if(sleep_art)SDL_DestroyTexture(sleep_art);art=chop_art=sleep_art=nullptr;}
+bool woodcutter_in_bed(const StoryNpcPos& p,float* y){if(p.idx!=WOODCUTTER_ID||w.phase!=WC_SLEEP)return false;*y=npc_bed_front_y(71);return true;}   // room 6's bed
 bool woodcutter_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* cam) {
     if(p.idx!=WOODCUTTER_ID)return false;
     if(!art||!chop_art)return true;

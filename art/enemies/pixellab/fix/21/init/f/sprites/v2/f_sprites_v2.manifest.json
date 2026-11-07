@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "f_sprites_v2",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "<elided 307 characters>",
+    "image_size": {
+      "width": 48,
+      "height": 44
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "no_background": true,
+    "init_image": {
+      "type": "base64",
+      "base64": "<elided 1324 characters>",
+      "format": "png"
+    },
+    "seed": 217
+  },
+  "links": {},
+  "seed": 217,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "i212.png"
+  ]
+}

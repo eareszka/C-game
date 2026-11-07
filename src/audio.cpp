@@ -200,6 +200,13 @@ static Recipe recipe(Sfx s) {
                      L(TRI, 350, 350, 0.2f, 0.12f, 1.0f, 5000) };
         r.post = P(0, 1.0f, 80, 0.25f, 0.3f);
         break;
+    case SFX_BOMB:     // a deep boom, a rush of noise, and a bright sweep up as the screen clears
+        r.layers = { L(SINE,   110, 32, 0, 0.55f, 1.0f),
+                     L(SQUARE,  90, 30, 0, 0.30f, 0.45f, 900),
+                     env(L(NOISE, 0, 0, 0, 0.60f, 0.9f, 2400), 0.004f, 0.35f, 0.15f, 0.2f),
+                     env(L(TRI, 700, 2400, 0.05f, 0.35f, 0.35f, 7000), 0.01f, 0.25f, 0.2f, 0.08f) };
+        r.post = P(4200, 1.8f, 140, 0.35f, 0.35f);
+        break;
     default:
         break;
     }
@@ -233,12 +240,14 @@ static const Mix MIX[SFX_COUNT] = {
     /* CHEST        */ { 0.70f,  0, 0.00f },
     /* LEVEL_UP     */ { 0.80f,  0, 0.00f },
     /* STAIRS       */ { 0.80f,  0, 0.00f },
+    /* BOMB         */ { 0.90f,  0, 0.00f },
 };
 
 static const char* NAMES[SFX_COUNT] = {
     "shot", "enemy_hit", "graze", "hurt", "enrage", "swap", "victory", "pickup", "defeat", "battle_start",
     "cursor", "confirm", "back", "deny", "done", "text_blip",
     "swing", "node_hit", "node_break", "chest", "level_up", "stairs",
+    "bomb",
 };
 
 const char* sfx_name(Sfx s) { return s >= 0 && s < SFX_COUNT ? NAMES[s] : "?"; }

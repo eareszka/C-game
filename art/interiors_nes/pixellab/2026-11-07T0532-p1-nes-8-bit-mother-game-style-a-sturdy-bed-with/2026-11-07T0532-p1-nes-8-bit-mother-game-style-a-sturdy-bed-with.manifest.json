@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0532-p1-nes-8-bit-mother-game-style-a-sturdy-bed-with",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 368 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: a sturdy bed with a frame made of round logs, a red and dark red plaid wool blanket, white pillow at the right end, side view, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b3b48136-639a-4f9f-82e1-84c10e375a88",
+    "generation_id": "b22e5b6f-1fe7-45f6-a544-a829460a6a58"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h6-bed.png"
+  ]
+}

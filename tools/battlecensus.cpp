@@ -197,6 +197,9 @@ int main(int argc, char** argv) {
     bool body_last = false;
     int swallowed = 0, flew_on = 0;
     bool boxcheck = getenv("BOXCHECK") != nullptr;
+    bool offscreen = getenv("OFFSCREEN") != nullptr;
+    float off_max[4] = { 0, 0, 0, 0 };   // px past the left, right, top (HUD), bottom edge, at most
+    int off_frames = 0, off_seen = 0;
     int min_open = 72, boxed_frames = 0, max_static = 0; float min_open_t = 0.0f;
     static float out_t[MAX_ENEMY_BULLETS]; float out_max = 0.0f;   // seconds a shot has sat outside the arena
     float last_door = -1.0f; std::vector<float> door_moves;   // wall doors, and how far each moved
@@ -311,6 +314,13 @@ int main(int argc, char** argv) {
                 prev_ox[k] = tl[k].x0; prev_oy[k] = tl[k].y0;
             }
         }
+        // Spawners (shmup turrets): touching one costs a bar -- a disc to keep clear of.
+        {
+            Enemy::Spawner sp[16];
+            int ns = en->spawners(sp, 16);
+            for (int k = 0; k < ns; k++)
+                if (sp[k].hurt_r > 0.0f) g_lines.push_back({ sp[k].x, sp[k].y, 1.0f, 0.0f, sp[k].hurt_r + 6.0f, 0.001f });
+        }
         // A drawn-back pose (anim_frame 1) is a lunge aimed where the player
         // stands as it starts: env POSE_TELL=1 makes the bot read it like a
         // player would, as the body's path to the wall along that line.
@@ -415,6 +425,41 @@ int main(int argc, char** argv) {
         // shots: the enemy bleeds evenly instead.
         g_ms = seed + (Uint32)(t * 1000.0f);
         en->take_damage(drain * DT);
+        bs._fight_t += DT;                             // update()'s fight clock (the body's grace)
+        if (frame % 2 == 0) bs.draw(ren, nullptr);     // the frame on screen: the body's sprite-shaped touch
+        // env OFFSCREEN=1: how far the drawn sprite's opaque pixels hang past
+        // each arena edge (the top is the HUD's edge, ARENA_TOP). Frames with
+        // its centre off the arena (a deliberate exit or entry) or it unseen
+        // don't count.
+        if (offscreen && frame % 2 == 0 && bs._drawn_sheet >= 0 && !bs._enemy_hidden()) {
+            bs._on_sprite(-9999.0f, -9999.0f, 0.0f);   // loads the drawn sheet's mask
+            int k = bs._drawn_sheet;
+            const SDL_Rect& sr = bs._drawn_src; const SDL_Rect& d = bs._drawn_dst;
+            if (bs._mask[k] && sr.w > 0 && sr.h > 0) {
+                int x0 = 1 << 30, y0 = 1 << 30, x1 = -1, y1 = -1;
+                for (int yy = 0; yy < sr.h; yy++) for (int xx = 0; xx < sr.w; xx++) {
+                    int mx = sr.x + xx, my = sr.y + yy;
+                    if (mx >= bs._mask_w[k] || my >= bs._mask_h[k] || !bs._mask[k][my * bs._mask_w[k] + mx]) continue;
+                    int lx = bs._drawn_mirror ? sr.w - 1 - xx : xx;
+                    if (lx < x0) x0 = lx; if (lx > x1) x1 = lx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
+                }
+                if (x1 >= 0) {
+                    float left = d.x + x0 * (float)d.w / sr.w, right = d.x + (x1 + 1) * (float)d.w / sr.w;
+                    float top = d.y + y0 * (float)d.h / sr.h, bottom = d.y + (y1 + 1) * (float)d.h / sr.h;
+                    float ol = fmaxf(0.0f, -left), orr = fmaxf(0.0f, right - ARENA_W);
+                    float ot = fmaxf(0.0f, ARENA_TOP - top), ob = fmaxf(0.0f, bottom - ARENA_H);
+                    off_max[0] = fmaxf(off_max[0], ol); off_max[1] = fmaxf(off_max[1], orr);
+                    off_max[2] = fmaxf(off_max[2], ot); off_max[3] = fmaxf(off_max[3], ob);
+                    off_seen++;
+                    if (fmaxf(fmaxf(ol, orr), fmaxf(ot, ob)) > 2.0f) {
+                        off_frames++;
+                        if (getenv("OFFTRACE") && off_frames <= 6)   // env OFFTRACE=1: where and how, the first few
+                            printf("  off t=%.2f enemy (%.0f,%.0f) sheet %d src %d,%d %dx%d dst %d,%d %dx%d L%.0f R%.0f T%.0f B%.0f\n",
+                                   t, en->x, en->y, k, sr.x, sr.y, sr.w, sr.h, d.x, d.y, d.w, d.h, ol, orr, ot, ob);
+                    }
+                }
+            }
+        }
         bs._update_enemy(DT);
         // A wall row (30+ shots born together along the top): where is its door?
         {
@@ -623,6 +668,8 @@ int main(int argc, char** argv) {
                door_moves.front(), door_moves[door_moves.size() / 2], door_moves[door_moves.size() * 9 / 10], door_moves.back());
     }
     if (out_max > 0.0f) printf("  longest stay outside the arena: %.2f s\n", out_max);
+    if (offscreen) printf("  OFFSCREEN left %.0f right %.0f top %.0f bottom %.0f px, frames over 2px %d/%d\n",
+                          off_max[0], off_max[1], off_max[2], off_max[3], off_frames, off_seen);
     if (boxcheck) printf("  boxcheck: fewest open directions %d/72 at t=%.2f, frames fully boxed %d, most stationary shots near %d\n",
                          min_open, min_open_t, boxed_frames, max_static);
     if (catches) printf("  damage while catching %.0f, otherwise %.0f\n", perched_dmg, open_dmg);

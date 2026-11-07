@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1356-tiny-framed-landscape-picture-hanging-on-a-wall",
+  "provider": "pixellab",
+  "route": "create-image-pixen",
+  "arguments": {
+    "description": "tiny framed landscape picture hanging on a wall, green hill blue sky, wooden frame, front view, NES 8-bit RPG house interior like Mother 1, tiny, very simple, flat colours, 3 colours plus black outline",
+    "image_size": {
+      "width": 16,
+      "height": 16
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "s-picture.png"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1440-tiny-mounted-trophy-fish-on-a-wooden-plaque-hang",
+  "provider": "pixellab",
+  "route": "create-image-pixen",
+  "arguments": {
+    "description": "tiny mounted trophy fish on a wooden plaque hanging on a wall, side view of the fish, classic NES RPG pixel art between Mother 1 and EarthBound, clear shading with light from the upper left, black outlines, few colours",
+    "image_size": {
+      "width": 24,
+      "height": 24
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h2-fish.png"
+  ]
+}

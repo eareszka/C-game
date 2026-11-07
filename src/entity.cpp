@@ -56,6 +56,12 @@ int facing_toward(float dx, float dy)
     return facing_from(ax > T * ay ? dx : 0.0f, ay > T * ax ? dy : 0.0f);
 }
 
+int facing_toward4(float dx, float dy)
+{
+    if (fabsf(dx) > fabsf(dy)) return dx < 0.0f ? FACE_LEFT : FACE_RIGHT;
+    return dy < 0.0f ? FACE_UP : FACE_DOWN;
+}
+
 int player_frame(const Player* player)
 {
     int f = player->facing;

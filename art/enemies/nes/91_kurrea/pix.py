@@ -11,8 +11,7 @@
     rect(im, 10, 10, 40, 20, 'f0b890')              # x, y, width, height, colour
     poly(im, [(0, 0), (30, 0), (15, 40)], 'b6433d') # filled polygon
     oval(im, 20, 20, 60, 30, 'f0b890')              # x, y, width, height, colour
-    stamp(im, grid(['aa', 'ab'], PAL), 50, 60)      # paste a tile or part; empty pixels stay as they are
-    tile(im, grid(['ab', 'ba'], PAL), 10, 10, 40, 20, within='f0b890')  # repeat a tile over an area, only on that colour
+    stamp(im, grid(['aa', 'ab'], PAL), 50, 60)      # paste a part; empty pixels stay as they are
 
     im = outline(im)                                # adds the 1 px black outline round the silhouette, growing the frame by 2
     save(im)                                        # writes sprite.png, trimmed to what is drawn. Call it last.
@@ -94,16 +93,6 @@ def oval(im, x, y, w, h, colour):
 
 def stamp(im, part, x, y):
     im.alpha_composite(part, (x, y))
-
-
-def tile(im, part, x, y, w, h, within=None):
-    want = rgba(within) if within else None
-    src, dst = part.load(), im.load()
-    for yy in range(y, min(y + h, im.height)):
-        for xx in range(x, min(x + w, im.width)):
-            c = src[(xx - x) % part.width, (yy - y) % part.height]
-            if c[3] and (want is None or dst[xx, yy] == want):
-                dst[xx, yy] = c
 
 
 def outline(im):

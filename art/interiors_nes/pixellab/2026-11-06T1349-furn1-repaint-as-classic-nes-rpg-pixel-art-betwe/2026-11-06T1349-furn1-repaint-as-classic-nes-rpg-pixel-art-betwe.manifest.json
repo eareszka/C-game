@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1349-furn1-repaint-as-classic-nes-rpg-pixel-art-betwe",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 380 characters>",
+      "format": "png"
+    },
+    "description": "Repaint as classic NES RPG pixel art between Mother 1 and EarthBound, flat colours, thin black outlines, few colours, no gradients: a single bed with a blue patterned blanket and white pillow, same shape and size.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ddaea78b-2435-4387-ab9d-8427f197be18",
+    "generation_id": "36912148-ef61-45aa-b9d9-132a949a749a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-b-bed.png"
+  ]
+}

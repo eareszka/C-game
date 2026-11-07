@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1449-p0-repaint-as-classic-nes-rpg-pixel-art-between",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 304 characters>",
+      "format": "png"
+    },
+    "description": "<elided 317 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6260e934-901a-4098-aa71-a8d0b886420d",
+    "generation_id": "7e03729f-720d-4f1d-8ed4-a20446bb42c2"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h3-stove.png"
+  ]
+}

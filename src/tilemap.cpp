@@ -10015,7 +10015,7 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     // Priority order for block sampling: higher = wins over lower tiles in block.
     // TREE and ROCK have priority 0 so they render as grass (not drawn separately).
     static const int tile_priority[] = {
-        0, 0, 0, 2, 1, 0, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, // 0-22: GRASS..POND
+        0, 3, 0, 2, 1, 0, 2, 2, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, // 0-22: GRASS..POND (PATH a track)
         0,                                                                         // 23: GOLD_ORE → hidden
         1, 1, 1, 1, 1,                                                            // 24-28: snow cliffs
         1, 1, 1, 1, 1,                                                            // 29-33: wasteland cliffs
@@ -10041,7 +10041,7 @@ void tilemap_draw_debug_grid(const Tilemap* map, const Camera* cam, SDL_Renderer
     };
     static const SDL_Color tile_colors[] = {
         { 30,  90,  30, 255}, // GRASS  (dark green = dense forest)
-        { 30,  90,  30, 255}, // PATH   → grass
+        {150, 110,  70, 255}, // PATH   → a track, as ROAD (castle, graveyard and pyramid grounds)
         { 20,  70,  20, 255}, // TREE   → darker green
         { 30,  90, 200, 255}, // WATER
         {100,  95,  88, 255}, // CLIFF   elev 1
@@ -10144,6 +10144,10 @@ static SDL_Color minimap_block_color(const Tilemap* map, int x, int y, int size)
             // than not at anything lower.
             if (map->route[by][bx])
                 id = (map->route[by][bx] == ROUTE_ROAD) ? TILE_ROAD : TILE_WASTE_TRAIL;
+            // A town's or a village's street is a town-sheet cell, past the
+            // colour table, so it sampled as grass: it is road on the map.
+            else if (is_street_cell(id))
+                id = TILE_ROAD;
             if (id >= 0 && id < NUM_MM_COLORS && tile_priority[id] > best_pri) {
                 best_pri = tile_priority[id];
                 best_id  = id;

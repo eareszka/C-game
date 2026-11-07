@@ -76,7 +76,7 @@ DEP = $(OBJ:.o=.d)
 
 TARGET = game$(EXE)
 
-.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe sfxdump biomecensus propcheck wildcensus chasecheck tumblecheck cliff_leak_check
+.PHONY: all run clean tile_editor dngshot dngcensus spawncensus battlecensus oreprof dngportals shot coastprobe sheetcensus cliffprobe sfxdump biomecensus propcheck wildcensus chasecheck tumblecheck cliff_leak_check movecensus
 
 all: $(TARGET)
 
@@ -143,6 +143,14 @@ battlecensus: battlecensus$(EXE)
 
 battlecensus$(EXE): tools/battlecensus.cpp $(HEADLESS_OBJ)
 	$(HEADLESS_CXX) tools/battlecensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
+
+# Movement census: every enemy's aimed-shot hit rate with the battle's
+# movement rule off and on, worst first (tools/movecensus.cpp). Repo root.
+movecensus: movecensus$(EXE)
+	./movecensus$(EXE)
+
+movecensus$(EXE): tools/movecensus.cpp $(HEADLESS_OBJ)
+	$(HEADLESS_CXX) tools/movecensus.cpp $(HEADLESS_OBJ) -o $@ $(HEADLESS_LIBS) -lm -lpthread
 
 # Cave difficulty census: which material band each cave system lands in, and
 # the quantile cut points that give the shares in include/dungeon_kinds.h.

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1439-bed-repaint-as-classic-nes-rpg-pixel-art-between",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 368 characters>",
+      "format": "png"
+    },
+    "description": "<elided 265 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "13fd5910-c942-450b-82e2-5f22db9b9a24",
+    "generation_id": "4505eac4-cbd8-4e2b-a586-f3cf4bd139e8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h2-bed.png"
+  ]
+}

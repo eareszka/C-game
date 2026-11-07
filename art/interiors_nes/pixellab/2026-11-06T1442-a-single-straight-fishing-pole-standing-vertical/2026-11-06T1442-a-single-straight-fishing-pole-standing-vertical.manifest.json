@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1442-a-single-straight-fishing-pole-standing-vertical",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "a single straight fishing pole standing vertically, long thin brown bamboo pole with a small silver reel near the bottom handle and a thin line with a red bobber hanging from the tip, plain, no plants, NES 8-bit pixel art, black outline",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h2-rod2.png"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1343-room-0-crop-repaint-this-room-interior-as-classi",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3020 characters>",
+      "format": "png"
+    },
+    "description": "<elided 369 characters>"
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0097bc7c-a6aa-4d33-8d01-63153fd46ba8",
+    "generation_id": "7cb3180d-1d87-4fb7-9b1f-c111510d198e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-a.png"
+  ]
+}

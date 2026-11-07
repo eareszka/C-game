@@ -3,7 +3,8 @@
 "side": 77,
 "tolerance": 4,
 "colours": 8,
-"rule": "6a2af9a8c999",
-"prompt": "652adb0921d0",
-"made": "2026-11-05 09:43"
+"rule_version": 3,
+"rule": "9d11ad1e8bb7",
+"prompt": "38aa5b7053c2",
+"made": "2026-11-06 13:53"
 }

@@ -39,6 +39,7 @@ enum Sfx {
     SFX_CHEST,         // a chest opened
     SFX_LEVEL_UP,      // a level gained
     SFX_STAIRS,        // a door, stair or entrance taken
+    SFX_BOMB,          // X set off a bomb in battle: every enemy shot cleared
     SFX_COUNT
 };
 

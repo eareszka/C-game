@@ -329,6 +329,10 @@ int facing_from(float dx, float dy);
 // directions, so a target slightly off an axis is still faced straight on.
 int facing_toward(float dx, float dy);
 
+// The same, but only the four straight ways (down, right, up, left): the
+// nearest by even quarters, for an enemy drawn in four views.
+int facing_toward4(float dx, float dy);
+
 // The frame of assets/player_small.png to draw for the player's facing and
 // walk step. The maps and battles both draw from that sheet.
 int player_frame(const Player* player);

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1353-seamless-tileable-texture-of-red-brick-wall-smal",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "seamless tileable texture of red brick wall, small bricks, cream mortar lines, NES RPG house interior, between Mother 1 and EarthBound, flat colours, few colours",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "shading": "flat shading",
+    "detail": "low detail"
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tex-brick.png"
+  ]
+}

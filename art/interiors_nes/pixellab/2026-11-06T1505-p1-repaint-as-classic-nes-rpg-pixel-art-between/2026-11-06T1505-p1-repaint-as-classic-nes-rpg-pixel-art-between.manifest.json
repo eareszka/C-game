@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1505-p1-repaint-as-classic-nes-rpg-pixel-art-between",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 388 characters>",
+      "format": "png"
+    },
+    "description": "<elided 308 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "cc705743-8316-4e17-a1d5-afd1287a1c7c",
+    "generation_id": "8bd2887e-003e-4988-843d-61674ce20f4b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h5-case.png"
+  ]
+}

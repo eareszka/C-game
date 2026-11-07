@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1450-p2-repaint-as-classic-nes-rpg-pixel-art-between",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 368 characters>",
+      "format": "png"
+    },
+    "description": "<elided 263 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "40ffa8dd-be42-4be2-bc96-644456901d5e",
+    "generation_id": "b56cbfec-3aa4-4ebf-b65d-df35ee51178d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h3-bed-girl.png"
+  ]
+}

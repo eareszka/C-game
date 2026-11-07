@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1506-small-brick-fireplace-set-into-a-wall-with-a-woo",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "small brick fireplace set into a wall with a wooden mantel shelf and a crackling orange fire, front view, classic NES RPG pixel art between Mother 1 and EarthBound, clear shading with light from the upper left, black outlines, few colours",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h5-fire.png"
+  ]
+}

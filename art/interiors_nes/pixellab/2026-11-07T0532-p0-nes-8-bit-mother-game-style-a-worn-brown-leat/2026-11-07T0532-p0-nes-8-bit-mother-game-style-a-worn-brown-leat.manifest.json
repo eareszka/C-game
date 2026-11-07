@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0532-p0-nes-8-bit-mother-game-style-a-worn-brown-leat",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 388 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: a worn brown leather sofa with two seat cushions, a folded mustard yellow blanket and a small pillow on it, side view, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f8fe8514-646f-4dff-b499-3a3407bd730d",
+    "generation_id": "5a1baaea-b017-40d3-b601-cfa19950b25f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h6-sofa.png"
+  ]
+}

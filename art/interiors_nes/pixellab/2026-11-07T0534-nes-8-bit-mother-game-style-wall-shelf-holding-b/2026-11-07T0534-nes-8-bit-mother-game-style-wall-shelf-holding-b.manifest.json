@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0534-nes-8-bit-mother-game-style-wall-shelf-holding-b",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "NES 8-bit Mother game style wall shelf holding brown paper parcels tied with string and a few letters, front view",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "detail": "low detail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-parcels.png"
+  ]
+}

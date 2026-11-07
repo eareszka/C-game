@@ -18,6 +18,7 @@ bool woodcutter_valid(const WoodcutterSave& state);
 bool woodcutter_restore(const WoodcutterSave& state);
 void woodcutter_tick(const Tilemap* map,float dt);
 bool woodcutter_here(const StoryWhere& where,StoryNpcPos* out);
+bool woodcutter_in_bed(const StoryNpcPos& pos,float* front_y);
 bool woodcutter_draw(const StoryNpcPos& pos,SDL_Renderer* renderer,const Camera* camera);
 const char* woodcutter_line();
 void woodcutter_face(int facing);

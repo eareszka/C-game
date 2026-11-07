@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0637-base-the-hen-tucks-its-legs-up-and-shoots-forwar",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1112 characters>",
+      "format": "png"
+    },
+    "action": "the hen tucks its legs up and shoots forward like a comet, its flames stream straight up and back behind it in a long fiery trail",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5fdf459f-d120-435c-bf9c-2638f0be9851",
+    "generation_id": "1a9ac58f-0752-432d-8ec3-56f0b90e0913"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "streak-00.png",
+    "streak-01.png",
+    "streak-02.png",
+    "streak-03.png",
+    "streak-04.png"
+  ]
+}

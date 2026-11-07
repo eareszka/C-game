@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0534-u-trunk-nes-8-bit-mother-game-style-an-old-woode",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 316 characters>",
+      "format": "png"
+    },
+    "description": "NES 8-bit Mother game style: an old wooden storage trunk with iron bands and a brass lock, closed lid, seen from the front at an angle, simple flat colors, black outline",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3aeadff6-d340-4eca-b2a6-15c18d28b87d",
+    "generation_id": "1ac37605-9e33-4abb-8a6c-ac907c4bffe5"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "h7-trunk.png"
+  ]
+}

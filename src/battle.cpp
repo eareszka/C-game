@@ -5,6 +5,7 @@
 #include "dungeon.h"   // material_color
 #include "crafting.h"  // Item, item_slot, part_item
 #include "audio.h"
+#include "playtest.h"   // playtest_gear: a debug fight's knife, the F4 run's by tier
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <math.h>
@@ -199,28 +200,30 @@ struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; bool rows =
                     int log_rows     = 1;            // 3: rows flat / right end up / right end down, stepped 0 1 0 2 to rock
                     const char* marks = nullptr;     // ground marks (footprints): a row of frames, Enemy::marks picks one
                     int step_ms = 0;                 // ms a frame of a longer (not 3-frame) idle; 0 = STEP_MS
-                    const char* parts = nullptr; };  // pieces drawn over it on their own (Enemy::parts): cells cut by the enemy
+                    const char* parts = nullptr;     // pieces drawn over it on their own (Enemy::parts): cells cut by the enemy
+                    const char* spawner = nullptr; };  // its spawners (Enemy::spawners): one row of square frames
 static const int FLAP_FRAMES = 4;   // wings up, mid, down, mid
 static const EnemySheet ENEMY_SHEETS[] = {
-    { "assets/enemies/00_skvader.png",                {0, 1, 0, 2} },
-    { "assets/enemies/01_wolpertinger.png",           {0, 1, 0, 2} },
-    { "assets/enemies/02_treesqueak.png",             {0, 1, 0, 2} },
-    { "assets/enemies/03_qique.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/03_qique_flap.png" },
-    { "assets/enemies/04_lili.png",                   {0, 1, 2, 1} },  // medium, 4 dirs (D R U, L mirrored): pink many-legged scuttler; the 3 frames are its run, Lili::anim_frame steps them
-    { "assets/enemies/05_crowing_crested_cobra.png",  {0, 1, 0, 2}, 3, false, "assets/enemies/05_crowing_crested_cobra_slither.png" },
+    { "assets/enemies/00_skvader.png",                {}, 4, false, "assets/enemies/00_skvader_hop.png", "assets/enemies/00_skvader_attack.png" },  // 20x21, four views (art/enemies/anim/00_skvader/build.py): sit idle rest, stretch, wing flick, squash at 260 ms; alt = the attack pose, one step a fan; flap = the hop: crouch, launch, air, land
+    { "assets/enemies/01_wolpertinger.png",           {}, 4, false, "assets/enemies/01_wolpertinger_hop.png", "assets/enemies/01_wolpertinger_attack.png" },  // 20x23, four views (art/enemies/anim/01_wolpertinger/build.py), Skvader's set: sit idle at 260 ms; alt = the attack pose, one step a volley; flap = the hop: crouch, launch, air, land
+    { "assets/enemies/02_treesqueak.png",             {}, 4, false, nullptr, "assets/enemies/02_treesqueak_attack.png" },  // 20x23, four views (art/enemies/anim/02_treesqueak/build.py): idle rest, stretch, ears perked, squash at 260 ms; alt = the squeak, one step a volley
+    { "assets/enemies/03_qique.png",                  {}, 4, false, "assets/enemies/03_qique_flap.png", "assets/enemies/03_qique_peck.png" },  // 20x20, four views (art/enemies/anim/03_qique/build.py): perched rest, stretch, wing shake, squash at 260 ms; alt = the peck, held through a burst; flap = the flight: take-off, air, land (3 frames)
+    { "assets/enemies/04_lili.png",                   {}, 4 },  // 28x22, 4 dirs (D R U, L mirrored; art/enemies/anim/04_lili/build.py): pink many-legged scuttler; frames 0-2 its run (Lili::anim_frame steps 0 1 2 1 at 260 ms), 3 the pinch: braced, ears in
+    { "assets/enemies/05_crowing_crested_cobra.png",  {}, 4, false, "assets/enemies/05_crowing_crested_cobra_slither.png", "assets/enemies/05_crowing_crested_cobra_hiss.png" },  // 26x24, four views (art/enemies/anim/05_crowing_crested_cobra/build.py): coiled rest, rear, tail curl, low at 260 ms; alt = the hiss, one step a volley; flap = phase 2: the uncoiling hiss, then the 4-pose slither wave (5 frames)
     { "assets/enemies/redraws/06_wakmangganchi_aragondi.png", {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 0, "assets/enemies/redraws/06_wakmangganchi_aragondi_bite.png" },   // giant, the Dajna's size (302x166), one view: seven roaring heads, mouths snapping, drool, rivers running, bamboo swaying; one row per direction; its two lowest heads are parts (the bite sheet), not on this one
     { "assets/enemies/07_alber.png",                  {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 72x64), 4 dirs (front, side, back; left mirrored): its one animation, flying -- a 6-frame wingbeat, 0.72 s
-    { "assets/enemies/08_snawfus.png",                {0, 1, 0, 2} },
-    { "assets/enemies/09_questing_beast.png",         {0, 1, 0, 2}, 3, false, nullptr },
+    { "assets/enemies/08_snawfus.png",                {}, 4, false, "assets/enemies/08_snawfus_gallop.png", "assets/enemies/08_snawfus_volley.png" },  // 44x44, four views, PixelLab (art/enemies/anim/08_snawfus/build.py): idle breathing 4 x 260 ms; flap = the gallop, 4 big poses (130 ms fast, 260 slow; the user asked for it quicker); alt = reared, the volley
+    { "assets/enemies/09_questing_beast.png",         {}, 4, false, "assets/enemies/09_questing_beast_gallop.png", "assets/enemies/09_questing_beast_throw.png" },  // 44x44, four views, PixelLab (art/enemies/anim/09_questing_beast/build.py): idle neck sway 4 x 260 ms; flap = 8 a direction, all its walk: 0-3 played at 130 ms for the dash, 4-7 at 260 ms for the slow walk; alt = the braced shake, a spot volley
     { "assets/enemies/redraws/10_grand_goule.png",            {0, 1, 0, 2} },   // big (frame 98x65), one view in all 8 dirs: gaunt blue bat-winged gargoyle, long beak; 1 head drawn back, 2 beak gaping: the frame its ring leaves on
-    { "assets/enemies/11_paoxiao.png",                {0, 1, 0, 2}, 3, false,
-      nullptr, nullptr },
+    { "assets/enemies/11_paoxiao.png",                {}, 5, false,
+      "assets/enemies/11_paoxiao_leap.png", "assets/enemies/11_paoxiao_shut.png",
+      nullptr, 1, 1, nullptr, 0, nullptr, "assets/enemies/11_paoxiao_spawner.png" },  // 56x52, four views, PixelLab (art/enemies/anim/11_paoxiao/build.py): idle 5 x 260 ms, the CRY on frame 2, the flank eye rolling and swelling; alt = phase 2: the front view, its flank eye gone (always faces forward); flap = 0-3 the sprint, 4-5 the eye snapping open (the warning), 130 ms a pose
     { "assets/enemies/redraws/12_ebigane.png",                {0, 1, 0, 2}, 3, false, nullptr },   // big (frame 104x68), left view, right-hand directions mirrored: rat-bodied predator, peach fins, ringed tail; 1 fins flared (the pentagram), 2 jaws wide (the screech); fly = running through the air
     { "assets/enemies/redraws/13_beast_of_the_charred_forests.png", {0, 1, 0, 1} },   // big (frame 98x68), one view in all 8 dirs: eyeless coal beast looking down at you, orange gullet; idle 0 and 1, pose 2 reared with an ember ring, held as a shot leaves its mouth
-    { "assets/enemies/14_lodsilungur.png",            {0, 1, 0, 2} },
-    { "assets/enemies/15_ofuguggi.png",               {0, 1, 0, 2}, 3, false, nullptr },  // swim = backwards, tail first
+    { "assets/enemies/14_lodsilungur.png",            {}, 5, false, "assets/enemies/14_lodsilungur_dash.png", "assets/enemies/14_lodsilungur_flick.png" },  // 48x48, four views, PixelLab (art/enemies/anim/14_lodsilungur/build.py): swim 5 x 260 ms, the INHALE on frame 1; alt = the beard flick; flap = 0-3 the dash (130 ms), 4 the slam squash at the wall
+    { "assets/enemies/15_ofuguggi.png",               {}, 5, false, "assets/enemies/15_ofuguggi_swim.png" },  // 48x48, four views, PixelLab (art/enemies/anim/15_ofuguggi/build.py): TAIL FIRST -- each column faces away from that way; swim sheet always on: 0-3 the swim (260 ms, 160 in phase 2), 4 fins flared (the fans), 5 belly swollen (the swell); idle = the clock for the fans (frame 1)
     { "assets/enemies/redraws/16_kamaitachi.png",             {0, 1, 0, 2} },  // medium (45x47), 8 dirs: its old drawing half as big again
-    { "assets/enemies/redraws/17_qiqirn.png",         {0, 1, 0, 2}, 3, false, nullptr },  // reviewed first pose; breathing fallback also used while running
+    { "assets/enemies/redraws/17_qiqirn.png",         {}, 5, false, "assets/enemies/redraws/17_qiqirn_run.png" },  // 52x52, four views, PixelLab (art/enemies/anim/17_qiqirn/build.py): the fit, 5 x 260 ms, the convulsion on frame 1 (the ring); flap = the frightened gallop, 130 ms a pose
     { "assets/enemies/redraws/18_vatnaormur.png",     {}, 5 },         // big (frame 98x65), front only, symmetrical: slug-faced lake serpent, no water; frame 1 spits the gold ring, 3-4 its body heaves as a ripple leaves (Vatnaormur::anim_frame)
     { "assets/enemies/redraws/19_skeljaskrimsli.png",         {}, 5 },
     { "assets/enemies/redraws/20_sermilik.png",               {}, 5 },
@@ -253,31 +256,31 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/47_moha_moha.png",              {}, 24, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 100 },  // approved side view: 24 frames at 100 ms, always facing right
     { "assets/enemies/48_bjarndyrakongur.png",        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on 5-9; 12 frames in a 1.94 s loop; one row per direction
     { "assets/enemies/redraws/49_physeter.png",       {}, 8, true },   // mutant sperm whale first pose, breathing; one row per direction
-    { "assets/enemies/redraws/50_teakettler.png",             {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/50_teakettler_walk.png" },  // frame 1: the whistle; walk = backwards
+    { "assets/enemies/redraws/50_teakettler.png",             {}, 5, false, "assets/enemies/redraws/50_teakettler_walk.png", "assets/enemies/redraws/50_teakettler_steam.png" },  // 32x29, four views (art/enemies/anim/50_teakettler/build.py): rest, WHISTLE (frame 1), puff trailing, rest, squash at 260 ms (1.3 s, the old loop); alt = the steam snort, one step a volley; walk = backwards, 4 poses at 260 ms
     { "assets/enemies/redraws/51_aspidochelone.png",   {}, 8, true },  // island turtle first pose, no water beneath; breathing fallback
     { "assets/enemies/redraws/52_sannaja.png", {}, 8, true, "assets/enemies/redraws/52_sannaja_turn.png", "assets/enemies/redraws/52_sannaja_body.png", nullptr, 1, 1, nullptr, 0, "assets/enemies/redraws/52_sannaja_eyes.png" },  // biggest enemy (352x224 frames): legs only (rock pillars bound by flesh); flap: the turn -- it backs right and lowers its head (forward), lifts it (backward); alt: head down, mouthless, void eyes; parts: the glints turned on the player, then each eye's shut lid
-    { "assets/enemies/redraws/53_come_at_a_body.png",         {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/53_come_at_a_body_dash.png" },  // frame 1: it spits; dash = rush and flight
-    { "assets/enemies/54_billdad.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/54_billdad_slap.png", "assets/enemies/54_billdad_jump.png" },  // medium, front only; frame 1: the spring; alt = the leap and the slam it lands on; flap = phase 2, its back to us: in the air, tail raised, tail down, standing
-    { "assets/enemies/55_wapaloosie.png",             {0, 1, 0, 2}, 3, false, nullptr,
-      "assets/enemies/55_wapaloosie_up.png", "assets/enemies/55_wapaloosie_log.png", 8, 3 },                         // medium, front + 3/4 front only: rust inchworm-squirrel; frame 1: the full hump; alt: reared up on its back legs
-    { "assets/enemies/56_moskitto.png",               {}, 5, false, nullptr },  // big, front view only (every direction is it): always aloft, frame 4 the needle thrust; grab = legs snapping open and shut
-    { "assets/enemies/57_dingbat.png",                {}, 5, false, nullptr, nullptr },  // big, 6 dirs; alt = catching pose (perched); flap = the stare's wingbeat
-    { "assets/enemies/58_agropelter.png",             {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, front only, one row a direction: squatting, both long arms in a sine wave; 8 frames in the old 1.3 s loop; an arm fullest out on frames 2 and 6, the scream on 4
-    { "assets/enemies/redraws/59_tripodero.png",              {0, 1, 0, 2}, 3, false, nullptr },  // frame 1: fires a clay slug; walk = big steps left then right
-    { "assets/enemies/60_rumptifusel.png",            {}, 12, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, one 3/4 view, always facing left as drawn (the same in every direction of the sheet, never mirrored): a fur pelt, hood swaying; frame 2 reared highest, purple belly bared; frames 3-8 the roll comes down over the belly, eyes shut on 7-8; 12 frames in a 1.94 s loop (it was 1.3 s)
+    { "assets/enemies/redraws/53_come_at_a_body.png",         {}, 5, false, "assets/enemies/redraws/53_come_at_a_body_dash.png", "assets/enemies/redraws/53_come_at_a_body_spit.png" },  // 42x29, four views (art/enemies/anim/53_come_at_a_body/build.py): rest, stretch, rest, squash, rest at 260 ms (1.3 s, the old loop; it spits as frame 1 comes); alt = the spit, then the spit fading, by idle frame; dash = rush (260 ms a pose) and flight (390 ms)
+    { "assets/enemies/54_billdad.png",                {0, 1, 0, 2}, 3, false, "assets/enemies/54_billdad_slap.png", "assets/enemies/54_billdad_jump.png" },  // medium, front only; frame 1: the spring; alt = the leap and the slam it lands on; flap = phase 2, its back to us: in the air, tail raised, tail down, standing, the flick (art/enemies/anim/54_billdad/build.py)
+    { "assets/enemies/55_wapaloosie.png",             {}, 5, false, "assets/enemies/55_wapaloosie_flap.png",
+      "assets/enemies/55_wapaloosie_up.png", "assets/enemies/55_wapaloosie_log.png", 8, 3 },                         // 26x26, front + side only (art/enemies/anim/55_wapaloosie/build.py): rest, HUMP (frame 1), rest, low, rest at 260 ms (1.3 s, the old loop); alt: reared up, same layout, chest up on 1; flap (Wapaloosie::flap_phase): standing up (hump high, crouched rear) and the spore burst
+    { "assets/enemies/56_moskitto.png",               {}, 5, false, "assets/enemies/56_moskitto_grab.png" },  // 31x37, front view only, a flyer (art/enemies/anim/56_moskitto/build.py): wings up (the stings), mid, down, mid, up with the needle thrust (frame 4), 260 ms each; grab = the wingbeat with legs snapping open and shut
+    { "assets/enemies/57_dingbat.png",                {}, 5, false, "assets/enemies/57_dingbat_stare.png", "assets/enemies/57_dingbat_catch.png" },  // 48x40, front only (a flyer), PixelLab (art/enemies/anim/57_dingbat/build.py): gliding wingbeat 5 x 260 ms, downstroke on frame 2; alt = perched, catching (cupped wings); flap = 0-1 the stare (cupped, flare), 2 guard in, 3 guard out
+    { "assets/enemies/58_agropelter.png",             {}, 5 },   // 60x44, front only (it never moves), PixelLab (art/enemies/anim/58_agropelter/build.py): rest, RIGHT lash (1), arms wide, LEFT lash (3), SCREAM (4) -- 260 ms, the old 1.3 s loop
+    { "assets/enemies/redraws/59_tripodero.png",              {}, 5, false, "assets/enemies/redraws/59_tripodero_dance.png" },  // 44x56, four views, PixelLab (art/enemies/anim/59_tripodero/build.py): 5 x 260 ms -- 1 legs tall, the SLUG; 3 the pouch SPIT; flap = the dance, 4 poses at 260 ms
+    { "assets/enemies/60_rumptifusel.png",            {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 390 },   // 56x44, one 3/4 view facing left in every direction (never mirrored), PixelLab (art/enemies/anim/60_rumptifusel/build.py): flat, rising, REARED belly bared (frame 2, the sheets), still up, coming down -- 5 x 390 ms, its old ~1.94 s loop
     { "assets/enemies/redraws/61_roperite.png",       {}, 5 },         // approved running cycle, 8 dirs (left views mirrored); existing frame-2 lasso hook and timing
     { "assets/enemies/62_hugag.png",                  {}, 5, false, nullptr },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
     { "assets/enemies/redraws/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
     { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
-    { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 150 },   // small (frame 38x22), front only: three mice sharing an iron beam, gnawing it out of step (the user)
-    { "assets/enemies/redraws/66_ayotochtli.png",     {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/66_ayotochtli_roll.png" },  // approved eight-direction stand/hunch and curled-ball roll; existing timings and frame-1 attack
+    { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, "assets/enemies/redraws/65_mice_that_eat_iron_walk.png" },   // 28x23, front only: three mice sharing an iron beam (the user), gnawing it out of step -- rest, then each dips in turn, 260 ms (art/enemies/anim/65_mice_that_eat_iron/build.py); alt = the same gnaw with their feet stepping, while it drifts (MiceThatEatIron::alt_pose)
+    { "assets/enemies/redraws/66_ayotochtli.png",     {}, 5, false, "assets/enemies/redraws/66_ayotochtli_roll.png" },  // 48x35, four views (art/enemies/anim/66_ayotochtli/build.py): rest, HUNCH (frame 1, the ring), rest, low, rest at 260 ms (1.3 s, the old loop); roll sheet: 0 hunch, 1 ball (guard in/out), 2-5 the roll, a plain spinning ball (the user) -- 65 ms a pose fast, 130 slow (the user asked for it faster, twice)
     { "assets/enemies/redraws/67_lagopus.png",                {0, 1, 0, 2}, 3, false, nullptr },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
-    { "assets/enemies/redraws/68_shuyu.png",                  {0, 1, 0, 2}, 3, false, "assets/enemies/redraws/68_shuyu_flap.png" },  // frames 1, 2: heads plucking the air; flap (phase 2) = wings beating
-    { "assets/enemies/69_bes_chem.png",               {0, 1, 0, 2} },  // big (59x45 frame), one view: 3/4 right, mirrored for the left; a still breathed into 3 frames
-    { "assets/enemies/70_trollgadda.png",             {}, 5 },         // big, side view only (mirrored when the player is on its left): green pike, a tree wedged in its jaws; tail flicking, crown swaying; frame 2 jaws strained widest
-    { "assets/enemies/redraws/71_namungumi.png",              {}, 12, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // big, front view only: veined black cloak over a red skirt, one eye, fang comb; frames 1-6 a long breath (crest highest on 2), 7-11 its steps; alt: the same frames with the eye pure white (the warning before a beam); 12 frames in a 1.94 s loop (it was 1.3 s)
-    { "assets/enemies/72_mahwot.png",                 {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 105 },  // big (frame 98x65), left and right only (one side view, mirrored): swimming mini-Godzilla, 6 frames -- a wave down its body, its limbs paddling; alt: stopped and reared, its head turned to face us, eyes and plates lit, mouth open (atomic breath), breathing
-    { "assets/enemies/redraws/73_liderc.png",                 {}, 5, false, nullptr, nullptr, nullptr, 1, 1, "assets/enemies/73_liderc_prints.png" },  // big, 8 dirs: creepy ghost hen of fire; frame 2 flare-up; fades in only as the player nears; prints: human + goose foot
+    { "assets/enemies/redraws/68_shuyu.png",                  {}, 5, false, "assets/enemies/redraws/68_shuyu_flap.png" },  // 50x41, four views (art/enemies/anim/68_shuyu/build.py): rest, jab (1), rest, jab (3), rest at 260 ms (1.3 s, the old loop); flap (phase 2) = PixelLab wingbeat up, mid, down, mid -- 260 ms a pose landed, 130 in the air (Shuyu::update)
+    { "assets/enemies/69_bes_chem.png",               {}, 5, false, "assets/enemies/69_bes_chem_fly.png", "assets/enemies/69_bes_chem_perch.png" },  // 45x39, front view only (art/enemies/anim/69_bes_chem/build.py, PixelLab): chest mouth shut, WIDE (frame 1, the burst), opening, rest, clenched, wings beating over it (phase 1) -- 260 ms, 1.3 s; alt = the same mouth cycle, wings still (perched, phase 2); flap = flying: wings down, out, up, out, legs tucked
+    { "assets/enemies/70_trollgadda.png",             {}, 5, false, "assets/enemies/70_trollgadda_shake.png" },   // big, side view only (mirrored when the player is on its left): green pike, a tree wedged in its jaws; tail flicking, crown swaying; frame 2 jaws strained widest; flap = the shake sheet, always on (Trollgadda::flap_phase): 12 a view, 0-3 swaying, 4-7 shaken hard, 8-11 thrashing
+    { "assets/enemies/redraws/71_namungumi.png",              {}, 8, false, "assets/enemies/redraws/71_namungumi_beam.png" },   // 52x40, front view only, PixelLab (art/enemies/anim/71_namungumi/build.py): breath 0-4 (crest highest on 2), steps 5-7, 260 ms; flap = the beam, 8 angles x (charge: the line dashed across its body, fire: solid + recoil)
+    { "assets/enemies/72_mahwot.png",                 {}, 4, false, "assets/enemies/72_mahwot_close.png", "assets/enemies/72_mahwot_roar.png", nullptr, 1, 1, nullptr, 105 },  // 60x40, side view only (left mirrored), PixelLab (art/enemies/anim/72_mahwot/build.py): the swim, 4 x 105 ms (its old pace, the user); alt = the roar, one held pose, jaws wide -- the beam leaves its mouth; flap = the mouth CLOSING after the breath, slowly, across its cooldown (Mahwot::flap_phase)
+    { "assets/enemies/73_liderc_anim.png",                    {}, 4, false, "assets/enemies/73_liderc_streak.png", nullptr, nullptr, 1, 1, "assets/enemies/73_liderc_prints.png" },  // 48x48, front only (floating phaser): idle 4 x 260 ms flames leaping, frame 2 the flare-up (spit); flap = the streak pose, legs tucked; fades in only as the player nears; prints: human + goose foot
     { "assets/enemies/74_bes_rap.png",                {}, 5 },         // big, front view only, always as drawn (the same in every direction, never mirrored): skinny pink pig ghoul squatting, head turned right; 1 winds up, 2 head lunged and jaw dropped (the spit), 3 jaw closing with spit off the chin, 4 breathes out
     { "assets/enemies/redraws/75_makalala.png",               {}, 5, false, nullptr },  // big (frame 98x65): giant slate ground bird, ivory club on its head. Idle from the front only, 5 frames, frame 2 the scream (beak gaping, wings flung out); flap = flying, from the side only (left mirrored), the club glowing on (49, 15) in every frame
     { "assets/enemies/redraws/76_loch_oich_monster.png", {}, 5 },       // reviewed first pose; breathing fallback
@@ -381,7 +384,23 @@ BattleScene::BattleScene(Player* player, int enemy_id, bool chained, float from_
     _bp.y      = ARENA_H - 80.0f;
     _bp.hp     = (float)player->stats.hp;
     _bp.max_hp = (float)player->stats.max_hp;
+    // Any fight in debug (the user): the knife of the enemy's tier, the same
+    // ore, oil and level as the F4 difficulty run (playtest_gear), in place of
+    // the save's arsenal. Only the weapon: HP and the rest are the save's.
+    if (debug_keys) {
+        TrialGear g = playtest_gear(enemy_id);
+        _fixed_gear = true;
+        _trial_weapon = Weapon{};
+        _trial_weapon.type     = WEAPON_KNIFE;
+        _trial_weapon.material = g.ore;
+        _trial_weapon.oil      = g.oil;
+        _trial_level  = g.level;
+        _weapon_type  = WEAPON_KNIFE;
+    }
     _equip(_weapon_type);
+    // Bombs: the save's -- or, in a debug fight, a few of its own, so the
+    // bomb can be tried (the save's are left alone).
+    _bombs = _fixed_gear ? 3 : item_count(player, ITEM_BOMB);
 
     seed_enemy_rng((unsigned int)SDL_GetTicks());
     _enemy    = enemy_create(enemy_id);
@@ -393,6 +412,7 @@ BattleScene::BattleScene(Player* player, int enemy_id, bool chained, float from_
 // tier's gear in place of whatever the save holds.
 void BattleScene::set_trial(float drain_secs, const TrialGear& gear) {
     _trial      = true;
+    _fixed_gear = true;
     _trial_secs = drain_secs > 1.0f ? drain_secs : TRIAL_DRAIN_SECS;
     _ts         = TrialStats{};
     _ts.gear    = gear;
@@ -403,6 +423,15 @@ void BattleScene::set_trial(float drain_secs, const TrialGear& gear) {
     _trial_weapon.oil      = gear.oil;
     _trial_level = gear.level;
     _equip(WEAPON_KNIFE);
+    _bombs = 3;
+}
+
+// The intro's version of a fight (the story session's forced loss, --intro to
+// test it): 3 bars of health and no bombs -- so Itqiirpak's grasp, a bar a
+// hit, ends it on the third.
+void BattleScene::set_intro() {
+    _bp.hp = _bp.max_hp = 3.0f * HP_PER_BAR;
+    _bombs = 0;
 }
 
 // Firing as weapon w: its shape's profile, sped up by its oil, hitting as
@@ -414,12 +443,12 @@ void BattleScene::_equip(WeaponType w) {
     _bp.weapon = weapon_profile(_weapon_type);
     // What the weapon is made of and what has been bought for it: ore sets
     // the damage, oil the cooldown, echo the shots a volley.
-    const Weapon& held = _trial ? _trial_weapon : _player_ref->arsenal[w];
+    const Weapon& held = _fixed_gear ? _trial_weapon : _player_ref->arsenal[w];
     float base_rate = _bp.weapon.fire_rate;
     _bp.weapon.fire_rate  = faster_fire_rate(base_rate, held.oil);
     _bp.weapon.damage     = faster_damage(base_rate, _bp.weapon.damage, held.oil)
                           * material_power(held.material)
-                          * level_damage_mult(_trial ? _trial_level : _player_ref->level);
+                          * level_damage_mult(_fixed_gear ? _trial_level : _player_ref->level);
     _bp.weapon.count     += held.echo;
 
     // The hitbox is the sprite: the opaque bounds of this weapon's cell, about
@@ -459,13 +488,13 @@ void BattleScene::_equip(WeaponType w) {
 // The TAB menu paused the fight and may have equipped or re-forged a weapon:
 // fire as whatever is equipped now, with a swap's cooldown floor.
 void BattleScene::sync_weapon() {
-    if (_trial) return;   // a trial keeps its knife
+    if (_fixed_gear) return;   // a trial (or debug fight) keeps its knife
     _equip(_player_ref->equipped);
     _bp.fire_timer = fmaxf(_bp.fire_timer, 0.25f);
 }
 
 void BattleScene::_cycle(int dir) {
-    if (_trial) return;   // a trial keeps its knife
+    if (_fixed_gear) return;   // a trial (or debug fight) keeps its knife
     WeaponType w = owned_neighbour(_player_ref, dir);
     _swap_t = 0.0f;                                  // the box shows even with only one weapon
     if (w == _player_ref->equipped) return;
@@ -484,6 +513,7 @@ BattleScene::~BattleScene() {
     if (_log)   SDL_DestroyTexture(_log);
     if (_marks) SDL_DestroyTexture(_marks);
     if (_parts) SDL_DestroyTexture(_parts);
+    if (_spawner_tex) SDL_DestroyTexture(_spawner_tex);
     if (_alt_white) SDL_DestroyTexture(_alt_white);
     if (_sheet_white) SDL_DestroyTexture(_sheet_white);
     if (_flap_white)  SDL_DestroyTexture(_flap_white);
@@ -623,10 +653,28 @@ void BattleScene::update(const Input* in, float dt) {
         if (_ts.p2_at < 0.0f && _enemy->hp < _enemy->max_hp * _enemy->phase2_at()) _ts.p2_at = _ts.secs;
     }
 
-    // Swap weapons on the fly: Q back, E or X on.
+    // Swap weapons on the fly: Q back, E on.
     if (input_pressed(in, SDL_SCANCODE_Q)) _cycle(-1);
-    if (input_pressed(in, SDL_SCANCODE_E) || input_pressed(in, SDL_SCANCODE_X)) _cycle(1);
+    if (input_pressed(in, SDL_SCANCODE_E)) _cycle(1);
     _swap_t += dt;
+
+    // X: a bomb -- every enemy shot on screen gone, nothing more (no damage,
+    // no invincibility). One ITEM_BOMB from the save (a debug or trial fight
+    // spends its own); with none, X does nothing but a refusal.
+    _bomb_t += dt; _no_bomb_t += dt;
+    if (input_pressed(in, SDL_SCANCODE_X)) {
+        if (_bombs > 0) {
+            _bombs--;
+            if (!_fixed_gear) { int& c = item_slot(_player_ref, ITEM_BOMB); if (c > 0) c--; }
+            for (int i = 0; i < MAX_ENEMY_BULLETS; i++) _enemy_bullets[i].active = false;
+            _enemy->on_bomb();
+            _bomb_t = 0.0f; _bomb_x = _bp.x; _bomb_y = _bp.y;
+            audio_play(SFX_BOMB);
+        } else {
+            _no_bomb_t = 0.0f;
+            audio_play(SFX_DENY);
+        }
+    }
 
     // Debug: drop the enemy to its next stage -- just under its next phase
     // line (Enemy::phase_lines, which differ per enemy); past the last, to 1 HP.
@@ -645,6 +693,7 @@ void BattleScene::update(const Input* in, float dt) {
     if (debug_keys && input_pressed(in, SDL_SCANCODE_T))
         _enemy->take_damage(_enemy->hp);
 
+    _fight_t += dt;
     _update_movement(in, dt);
     _update_player_fire(in, dt);
     _update_enemy(dt);
@@ -808,6 +857,68 @@ void BattleScene::_update_movement(const Input* in, float dt) {
     player_animate(_player_ref, dt, ANIM_SPEED);
 }
 
+bool BattleScene::_enemy_hidden() const {
+    return _enemy->opacity(_bp.x, _bp.y) < 0.25f
+        || _enemy->x < 0.0f || _enemy->x > ARENA_W || _enemy->y < ARENA_TOP || _enemy->y > ARENA_H;
+}
+
+// The movement rule. Shots aim at where the enemy is and fly at BULLET_SPEED,
+// so what makes them miss is the enemy moving *across* the player's line
+// while they fly. Standing where its travel runs toward or away from you,
+// you hit; broadside, you hit less, and less the further off you stand.
+// The rule keeps that but takes the edge off a long sweep: the shown enemy
+// follows where its own code puts it, the part along the player-to-enemy
+// line free, the part across it paid from a budget -- burst px, refilled at
+// lat_cap px/s. A dash or hop (up to burst) goes at full speed and then it
+// stands still to be shot; a sweep that keeps going is held to lat_cap.
+// Optionally (window_len > 0), every window_every s it all slows to
+// window_scale for window_len s: a beat to line up in.
+// Only position: its fire timing is its own. A mover that steps from its own
+// x, y simply moves slower; one placed from a phase (x = cx + cos t * r) lags
+// its target and catches up, never jumping. Jumps (teleports), a hidden
+// enemy and free_movement() pass straight through.
+MoveRule g_move_rule;
+
+void BattleScene::_apply_move_rule(float dt) {
+    const MoveRule& R = g_move_rule;
+    float ix = _enemy->x, iy = _enemy->y;   // where its own code put it
+    float step = hypotf(ix - _mv_ix, iy - _mv_iy);
+    bool jump = !_mv_init || step > R.teleport;
+    if (!_mv_init) _mv_budget = R.burst;
+    _mv_ix = ix; _mv_iy = iy;
+    _mv_init = true;
+    if (!R.on || _enemy->free_movement() || jump || _enemy_hidden() || dt <= 0.0f) {
+        _mv_x = ix; _mv_y = iy;
+        return;
+    }
+    _mv_t += dt;
+    float scale = R.window_len > 0.0f && fmodf(_mv_t, R.window_every) > R.window_every - R.window_len
+                ? R.window_scale : 1.0f;
+    _mv_budget = fminf(R.burst, _mv_budget + R.lat_cap * dt);
+    // What it wants to cover (this frame's step plus any lag), split along
+    // and across the line from the player.
+    float dx = ix - _mv_x, dy = iy - _mv_y;
+    float rx = _mv_x - _bp.x, ry = _mv_y - _bp.y, r = hypotf(rx, ry);
+    float ux = r > 1.0f ? rx / r : 0.0f, uy = r > 1.0f ? ry / r : 1.0f;
+    float along  = dx * ux + dy * uy;
+    float across = -dx * uy + dy * ux;
+    // Never faster than its own pace (or the cap, to close a lag once it stops).
+    float own = fmaxf(step / dt, R.lat_cap) * scale * dt;
+    float lat = fminf(own, fmaxf(_mv_budget, R.lat_cap * scale * dt));
+    // One scale for the whole step, so it still heads straight for where its
+    // own code put it -- just slower. (Capping the two parts apart bent the
+    // step away from the player and carried an enemy past its own bounds:
+    // Qiqirn off its border, under the HUD.)
+    float k = 1.0f;
+    if (fabsf(along)  > own) k = fminf(k, own / fabsf(along));
+    if (fabsf(across) > lat) k = fminf(k, lat / fabsf(across));
+    along *= k; across *= k;
+    _mv_budget = fmaxf(0.0f, _mv_budget - fabsf(across));
+    _mv_x += along * ux - across * uy;
+    _mv_y += along * uy + across * ux;
+    _enemy->x = _mv_x; _enemy->y = _mv_y;
+}
+
 void BattleScene::_update_player_fire(const Input* in, float dt) {
     _bp.fire_timer -= dt;
     // An enemy that can't be seen doesn't hold the player's facing: let it
@@ -816,8 +927,7 @@ void BattleScene::_update_player_fire(const Input* in, float dt) {
     // It can't be seen -- a ghost drawn at zero opacity (the same quarter
     // steps the draw uses), or gone off the arena (the user) -- so nothing
     // tracks it.
-    bool hidden = _enemy->opacity(_bp.x, _bp.y) < 0.25f
-               || _enemy->x < 0.0f || _enemy->x > ARENA_W || _enemy->y < ARENA_TOP || _enemy->y > ARENA_H;
+    bool hidden = _enemy_hidden();
     if (hidden) _player_ref->facing_locked = 0;
     bool pressed = input_down(in, SDL_SCANCODE_SPACE) ||
                    input_down(in, SDL_SCANCODE_Z);
@@ -898,7 +1008,7 @@ bool BattleScene::_blocked(float px, float py) const {
     if (_solid) {
         int fw = es.rows ? _solid_w / es.frames : _solid_w / (8 * es.frames), fh = es.rows ? _solid_h / 8 : _solid_h;
         int mf = _enemy->move_facing();
-        int dir = sheet_dir(mf >= 0 ? mf : facing_toward(px - _enemy->x, py - _enemy->y));
+        int dir = sheet_dir(mf >= 0 ? mf : (_enemy->four_views() ? facing_toward4 : facing_toward)(px - _enemy->x, py - _enemy->y));
         int fx0 = es.rows ? 0 : dir * es.frames * fw, fy0 = es.rows ? dir * fh : 0;   // that view's first frame
         for (int i = 0; i < 5; i++) {
             // Screen -> the frame's art px: it is drawn 2x, centred on the enemy.
@@ -942,6 +1052,7 @@ void BattleScene::_update_enemy(float dt) {
         _enemy->see_bars(seen, ns);
     }
     _enemy->update(dt, _bp.x, _bp.y);
+    _apply_move_rule(dt);
     // A pull: the player drawn toward it (they walk against it), kept in the arena.
     if (float pull = _enemy->pull()) {
         float dx = _enemy->x - _bp.x, dy = _enemy->y - _bp.y, d = sqrtf(dx * dx + dy * dy);
@@ -1006,7 +1117,7 @@ void BattleScene::_move_bullets(float dt) {
     struct OrbSpawn { float x, y; };
     OrbSpawn orb_pending[32];
     int n_orb = 0;
-    struct Shed { float x, y, heading, spread, speed, damage; int n; float spin; bool poison; };
+    struct Shed { float x, y, heading, spread, speed, damage; int n; float spin; bool poison; int color; };
     Shed shed_pending[32];
     int n_shed = 0;
 
@@ -1038,6 +1149,23 @@ void BattleScene::_move_bullets(float dt) {
                 bl.active = false;
                 continue;
             }
+        }
+
+        // A grasp: forming round the player, following them, the ring drawn
+        // in as the wait runs out; then shut on where they are, every shot
+        // of it arriving together (its speed its distance over the shut time).
+        if (bl.grasp && bl.delay > 0.0f) {
+            bl.delay -= dt;
+            if (bl.delay > 0.0f) {
+                float wide = 1.0f + 0.5f * (bl.gform > 0.0f ? bl.delay / bl.gform : 0.0f);
+                float tx = _bp.x + bl.gox * wide, ty = _bp.y + bl.goy * wide;
+                float k = 1.0f - expf(-9.0f * dt);
+                bl.x += (tx - bl.x) * k; bl.y += (ty - bl.y) * k;
+                continue;
+            }
+            bl.vx = (_bp.x - bl.x) / bl.gshut;
+            bl.vy = (_bp.y - bl.y) / bl.gshut;
+            bl.life = bl.age + bl.gshut + 0.15f;           // gone just past the middle
         }
 
         // A mine waits where it was dropped, then launches at the player --
@@ -1152,7 +1280,7 @@ void BattleScene::_move_bullets(float dt) {
             bool still = bl.vx == 0.0f && bl.vy == 0.0f;     // a sitting egg sheds from its middle
             if (n_shed < 32)
                 shed_pending[n_shed++] = { bl.x, still ? bl.y : bl.y + bl.radius, atan2f(bl.vy, bl.vx),
-                                           bl.shed_spread, bl.shed_speed, bl.damage, bl.shed_n, bl.shed_spin, bl.poison };
+                                           bl.shed_spread, bl.shed_speed, bl.damage, bl.shed_n, bl.shed_spin, bl.poison, bl.color };
             if (bl.shed_left == 0 && bl.shed_dies) { bl.active = false; continue; }
         }
         bl.ang += bl.spin * dt;   // a log turns -- or rocks, turning back at its tilt
@@ -1213,6 +1341,7 @@ void BattleScene::_move_bullets(float dt) {
             BulletSpawn chip = { cosf(a) * s.speed, sinf(a) * s.speed, 2.5f, s.damage };
             chip.orbit_w = s.spin;
             chip.poison = s.poison;               // a poison shot's chips poison too
+            chip.color  = s.color;                // ...and are its colour
             _spawn_bullet_at(s.x, s.y, chip);
         }
     }
@@ -1301,7 +1430,7 @@ void BattleScene::_check_collisions() {
     const float GRAZE_MARGIN = 10.0f;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
-        if (!bl.active || bl.grazed || bullet_fading(bl) > 0.0f) continue;
+        if (!bl.active || bl.grazed || bullet_fading(bl) > 0.0f || (bl.grasp && bl.delay > 0.0f)) continue;
         if (bullet_touches(bl, px, py, PLAYER_R + GRAZE_MARGIN) &&
             !bullet_touches(bl, px, py, PLAYER_R)) {
             bl.grazed = true;
@@ -1335,7 +1464,7 @@ void BattleScene::_check_collisions() {
     };
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
-        if (!bl.active || bullet_fading(bl) > 0.0f) continue;
+        if (!bl.active || bullet_fading(bl) > 0.0f || (bl.grasp && bl.delay > 0.0f)) continue;   // a grasp forming is harmless
         if (bullet_touches(bl, px, py, PLAYER_R)) {
             hurt(bl.damage, 'b');
             if (bl.poison) {                       // ...and it poisons
@@ -1365,11 +1494,31 @@ void BattleScene::_check_collisions() {
         for (int k = 0; k < np; k++)
             if (pt[k].hurt_r > 0.0f && circles_overlap(pt[k].x, pt[k].y, pt[k].hurt_r, px, py, PLAYER_R)) { hurt(HP_PER_BAR, 'p'); break; }
     }
-    // Its body, for an enemy that hurts to touch: the same circle shots hit.
+    // Its spawners: touching one (within hurt_r) costs a bar. Shots never
+    // test them -- they can't be targeted.
+    if (_bp.iframes <= 0.0f && _enemy->is_alive()) {
+        Enemy::Spawner sp[16];
+        int ns = _enemy->spawners(sp, 16);
+        for (int k = 0; k < ns; k++)
+            if (sp[k].hurt_r > 0.0f && circles_overlap(sp[k].x, sp[k].y, sp[k].hurt_r, px, py, PLAYER_R)) { hurt(HP_PER_BAR, 'p'); break; }
+    }
+    // Its body: every enemy's hurts to touch (the user: "make sure this is
+    // the case for ALL"). The test is the sprite as drawn -- the frame on
+    // screen, from whichever sheet (idle, flap, alt), in whichever view and
+    // mirrored or not: _on_sprite reads exactly what the draw drew -- or,
+    // before its sheet has been drawn, the circle shots hit. Not in the
+    // fight's first CONTACT_GRACE s (the player may start right by it), nor
+    // while it can't be seen (a ghost faded out, gone off the arena). A
+    // solid enemy stops the player 6 px off its outline (_blocked), so it
+    // is touched SOLID_TOUCH px out:
+    // pressing against it is touching it.
+    const float CONTACT_GRACE = 1.0f, SOLID_TOUCH = 7.0f;
     float touch = _enemy->contact_damage();
-    if (touch > 0.0f && _bp.iframes <= 0.0f && (_enemy->sprite_hitbox() ? _on_sprite(px, py, PLAYER_R)
-                                                : circles_overlap(_enemy->x, _enemy->y, _hit_r, px, py, PLAYER_R)))
-        hurt(touch, 'c');
+    if (touch > 0.0f && _bp.iframes <= 0.0f && _fight_t >= CONTACT_GRACE && !_enemy_hidden()) {
+        bool on = _drawn_sheet >= 0 ? _on_sprite(px, py, _enemy->solid() ? SOLID_TOUCH : PLAYER_R)
+                                    : circles_overlap(_enemy->x, _enemy->y, _hit_r, px, py, PLAYER_R);
+        if (on) hurt(touch, 'c');
+    }
 }
 
 void BattleScene::_spawn_player_bullet(float angle) {
@@ -1384,7 +1533,7 @@ void BattleScene::_spawn_player_bullet(float angle) {
         bl.damage = wp.damage;
         bl.age = 0.0f;
         bl.weapon   = (int)_weapon_type;
-        bl.material = (int)(_trial ? _trial_weapon.material : _player_ref->arsenal[_weapon_type].material);
+        bl.material = (int)(_fixed_gear ? _trial_weapon.material : _player_ref->arsenal[_weapon_type].material);
         bl.pierces  = wp.pierces;
         bl.active = true;
         _ts.shots++;
@@ -1455,6 +1604,9 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
         bl.fade_out       = bs.fade_out;
         bl.behind         = bs.behind;
         bl.poison         = bs.poison;
+        bl.color          = bs.color;
+        bl.grasp          = bs.grasp;
+        bl.gox = bs.grasp_ox; bl.goy = bs.grasp_oy; bl.gform = bs.delay; bl.gshut = fmaxf(bs.grasp_t, 0.05f);
         bl.grazed         = false;
         {
             float sp = sqrtf(bs.vx * bs.vx + bs.vy * bs.vy);
@@ -1509,6 +1661,10 @@ float BattleScene::hud_stamina() const {
 // win it blinks out.
 void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
     if ((_phase == BATTLE_PHASE_VICTORY || _phase == BATTLE_PHASE_TRIAL_END) && (_t > 0.4f || (int)(_t * 20.0f) % 2)) return;
+    // Blocking (catching shots, or its guard up -- armor < 1), it flickers like
+    // the player's i-frames, at exactly their rate: shown on even tenths of a
+    // second, hidden on odd (the user).
+    if (_phase == BATTLE_PHASE_FIGHTING && (_enemy->catch_radius() > 0.0f || _enemy->armor() < 1.0f) && (int)(_t * 10.0f) % 2) return;
     float k = _chain_in();
     int ex = (int)_enemy->x;
     int ey = (int)(-60.0f + (_enemy->y + 60.0f) * k);
@@ -1537,6 +1693,10 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
                 _parts = IMG_LoadTexture(ren, pp);
                 if (!_parts) SDL_Log("enemy parts sheet %s: %s", pp, IMG_GetError());
             }
+            if (const char* sp = ENEMY_SHEETS[_enemy_id].spawner) {
+                _spawner_tex = IMG_LoadTexture(ren, sp);   // missing (not drawn yet): a plain disc stands in
+                if (!_spawner_tex) SDL_Log("enemy spawner sheet %s: %s", sp, IMG_GetError());
+            }
         }
         if (_sheet) {
             // Hitbox scales with the creature: 40% of the drawn frame's
@@ -1556,7 +1716,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         int fw = es.rows ? sw / es.frames : sw / (8 * es.frames), fh = es.rows ? sh / 8 : sh;
         int frame = _enemy->anim_frame() >= 0 ? _enemy->anim_frame() : idle_frame_now(es, (Uint32)_anim_ms);
         int mf  = _enemy->move_facing();   // running somewhere: face that way, not the player
-        int dir = sheet_dir(mf >= 0 ? mf : facing_toward(_bp.x - _enemy->x, _bp.y - _enemy->y));
+        int dir = sheet_dir(mf >= 0 ? mf : (_enemy->four_views() ? facing_toward4 : facing_toward)(_bp.x - _enemy->x, _bp.y - _enemy->y));
         SDL_Rect src = es.rows ? SDL_Rect{ frame * fw, dir * fh, fw, fh }
                                : SDL_Rect{ (dir * es.frames + frame) * fw, 0, fw, fh };
         // Moving, the flap sheet: a wingbeat across a flight, a slither wave.
@@ -1648,6 +1808,30 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
     }
 }
 
+// Its spawners (Enemy::spawners): each its frame of the spawner sheet --
+// square cells, the sheet's height wide -- drawn 2x about its spot; a plain
+// disc of its hurt radius while the sheet isn't there. None once it's dead.
+void BattleScene::_draw_spawners(SDL_Renderer* ren) const {
+    if (!_enemy->is_alive()) return;
+    Enemy::Spawner sp[16];
+    int ns = _enemy->spawners(sp, 16);
+    if (ns <= 0) return;
+    int tw = 0, th = 0;
+    if (_spawner_tex) SDL_QueryTexture(_spawner_tex, NULL, NULL, &tw, &th);
+    for (int i = 0; i < ns; i++) {
+        const Enemy::Spawner& s = sp[i];
+        if (_spawner_tex && th > 0) {
+            int cells = tw / th, f = s.frame < 0 ? 0 : s.frame >= cells ? cells - 1 : s.frame;
+            SDL_Rect src = { f * th, 0, th, th };
+            SDL_Rect dst = { (int)lroundf(s.x) - th, (int)lroundf(s.y) - th, th * 2, th * 2 };
+            SDL_RenderCopy(ren, _spawner_tex, &src, &dst);
+        } else {
+            int r = (int)fmaxf(s.hurt_r, 6.0f);
+            _fill_rect(ren, (int)s.x - r, (int)s.y - r, r * 2, r * 2, 220, 220, 230, 255);
+        }
+    }
+}
+
 // The enemy's shots -- those drawn behind it (weather at its back), or the
 // rest, over it.
 void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
@@ -1656,6 +1840,11 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
     // A log without a sprite, on the 2px grid: in the enemy's bullet colour
     // like any of its shots, with the white core along its middle.
     // A capsule is convex, so each 2px row is one run.
+    // A shot's own colour (BulletSpawn::color), or the enemy's.
+    auto shot_rgb = [&](const Bullet& bl) -> SDL_Color {
+        if (bl.color < 0) return c;
+        return { (Uint8)((bl.color >> 16) & 255), (Uint8)((bl.color >> 8) & 255), (Uint8)(bl.color & 255), 255 };
+    };
     auto capsule = [&](const Bullet& bl) {
         float reach = bl.half_len + bl.radius + 2.0f;
         int y0 = ((int)(bl.y - reach)) & ~1, y1 = (int)(bl.y + reach);
@@ -1672,7 +1861,7 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
                 }
                 if (xa > xb) continue;
                 if (pass) _fill_rect(ren, xa, yy, xb - xa + 2, 2, 252, 252, 252, 255);
-                else      _fill_rect(ren, xa, yy, xb - xa + 2, 2, c.r, c.g, c.b, 255);
+                else      _fill_rect(ren, xa, yy, xb - xa + 2, 2, shot_rgb(bl).r, shot_rgb(bl).g, shot_rgb(bl).b, 255);
             }
         }
     };
@@ -1684,6 +1873,7 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
             Bullet bl = {};
             bl.x = hd[i].x; bl.y = hd[i].y; bl.ang = hd[i].ang;
             bl.half_len = hd[i].half_len; bl.radius = hd[i].radius;
+            bl.color = -1;                                  // the enemy's colour
             capsule(bl);
         }
     }
@@ -1719,7 +1909,8 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
         bool white = (bl.homing && flash) || (bl.flash_in && (bl.age < FLASH_IN || going) && (int)(bl.age * 20.0f) % 2 == 0);
         // Fading out: dimmer a hard step at a time, core and all.
         float fk = 1.0f - 0.25f * (float)((int)(bullet_fading(bl) * 2.999f) + (bullet_fading(bl) > 0.0f ? 1 : 0));
-        Uint8 r = (Uint8)((white ? 252 : c.r) * fk), g = (Uint8)((white ? 252 : c.g) * fk), b = (Uint8)((white ? 252 : c.b) * fk);
+        SDL_Color sc = shot_rgb(bl);
+        Uint8 r = (Uint8)((white ? 252 : sc.r) * fk), g = (Uint8)((white ? 252 : sc.g) * fk), b = (Uint8)((white ? 252 : sc.b) * fk);
         Uint8 core = (Uint8)(252 * fk);
         _fill_rect(ren, cx - h + 2, cy - h, 2*h - 4, 2*h, r, g, b, 255);
         _fill_rect(ren, cx - h, cy - h + 2, 2*h, 2*h - 4, r, g, b, 255);
@@ -1728,8 +1919,13 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
             _fill_rect(ren, cx - h + 2, cy - h + 2, 2*h - 4, 2*h - 4, 0, 0, 0, 255);   // hollow
         else if (bl.spawner)
             _fill_rect(ren, cx - k, cy - k, 2*k, 2*k, 240, 188, 60, 255);
-        else if (bl.delay <= 0.0f && bl.poison)   // poison: a lavender core, the HUD's POISON colour
-            _fill_rect(ren, cx - k/2 - 1, cy - k/2 - 1, k + 2, k + 2, (Uint8)(182 * fk), (Uint8)(156 * fk), (Uint8)(238 * fk), 255);
+        else if (bl.delay <= 0.0f && bl.poison) {   // poison: a lavender core, the HUD's POISON colour --
+            // or, on a shot that is itself that lavender (the core would
+            // vanish into it), a dark purple one: still not a white core.
+            bool lav = abs(sc.r - 182) + abs(sc.g - 156) + abs(sc.b - 238) < 60;
+            Uint8 pr = lav ? 102 : 182, pg = lav ? 75 : 156, pb = lav ? 149 : 238;
+            _fill_rect(ren, cx - k/2 - 1, cy - k/2 - 1, k + 2, k + 2, (Uint8)(pr * fk), (Uint8)(pg * fk), (Uint8)(pb * fk), 255);
+        }
         else if (bl.delay <= 0.0f)   // a waiting mine has no white core: it lights when it launches
             _fill_rect(ren, cx - k/2 - 1, cy - k/2 - 1, k + 2, k + 2, core, core, core, 255);
     }
@@ -1746,6 +1942,7 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
 
     _draw_shots(ren, true);     // weather at its back
     _draw_enemy(ren);
+    _draw_spawners(ren);        // its turrets: over it, under the shots
 
     // Player bullets: the weapon's own shape in its ore's metal -- row is the
     // material, column the weapon, each cell drawn pointing right and turned
@@ -1948,6 +2145,22 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     // outline so it stands off the sprite and any bullet. Always shown in a
     // fight, drawn over everything, and blinking for its first second so the
     // player sees that this dot is what gets hit.
+    // A bomb: the arena flashes white for a frame or two, then a white
+    // square shock ring, 4 px thick on the art grid, flies out from where it
+    // went off past every wall -- hard steps, no fade.
+    if (_bomb_t < 0.4f) {
+        if (_bomb_t < 0.05f) _fill_rect(ren, 0, ARENA_TOP, ARENA_W, ARENA_H - ARENA_TOP, 252, 252, 252, 255);
+        else {
+            int r = 2 * (int)((_bomb_t - 0.05f) / 0.35f * 200.0f) + 8;
+            int cx = (int)_bomb_x & ~1, cy = (int)_bomb_y & ~1;
+            Uint8 v = _bomb_t < 0.2f ? 252 : 188;
+            _fill_rect(ren, cx - r, cy - r, 2 * r, 4, v, v, v, 255);
+            _fill_rect(ren, cx - r, cy + r - 4, 2 * r, 4, v, v, v, 255);
+            _fill_rect(ren, cx - r, cy - r, 4, 2 * r, v, v, v, 255);
+            _fill_rect(ren, cx + r - 4, cy - r, 4, 2 * r, v, v, v, 255);
+        }
+    }
+
     bool intro_blink = _t < 1.0f && (int)(_t * 8.0f) % 2;
     if (_phase == BATTLE_PHASE_FIGHTING && !intro_blink) {
         int cx = (int)_bp.x, cy = (int)_bp.y;

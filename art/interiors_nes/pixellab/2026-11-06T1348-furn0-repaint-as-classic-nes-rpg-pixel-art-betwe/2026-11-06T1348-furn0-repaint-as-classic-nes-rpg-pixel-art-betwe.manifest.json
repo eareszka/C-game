@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1348-furn0-repaint-as-classic-nes-rpg-pixel-art-betwe",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 304 characters>",
+      "format": "png"
+    },
+    "description": "Repaint as classic NES RPG pixel art between Mother 1 and EarthBound, flat colours, thin black outlines, few colours, no gradients: a small wooden chest of drawers with brass knobs, same shape and size.",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "57031387-f3c1-4bf4-8d7c-f7f3a0255bba",
+    "generation_id": "ca8c50fa-7d9b-457e-9d3d-17c7a81f0648"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-b-dresser.png"
+  ]
+}

@@ -154,6 +154,7 @@ bool fisher_art_init(SDL_Renderer* r) {
     return art&&fishing&&sleep_art;
 }
 void fisher_art_free(){if(art)SDL_DestroyTexture(art);if(fishing)SDL_DestroyTexture(fishing);if(sleep_art)SDL_DestroyTexture(sleep_art);art=fishing=sleep_art=nullptr;}
+bool fisher_in_bed(const StoryNpcPos& p,float* y){if(p.idx!=FISHER_ID||view.phase!=FI_SLEEP)return false;*y=npc_bed_front_y(71);return true;}
 bool fisher_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
     if(p.idx!=FISHER_ID)return false;if(!art||!fishing)return true;
     SDL_Rect src={view.frame*14,npc_sheet_row(view.facing)*20,14,20};

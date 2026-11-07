@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0635-base-the-flames-on-its-back-flicker-and-leap-up",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1112 characters>",
+      "format": "png"
+    },
+    "action": "the flames on its back flicker and leap up and down wildly, sparks jump, the black hen body bobs up and down floating, ghostly",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5e732c96-0ed0-4a86-ac8c-55e40e9f1e5d",
+    "generation_id": "f83f4454-dae1-407c-b48d-4a96e3d75e56"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flicker-00.png",
+    "flicker-01.png",
+    "flicker-02.png",
+    "flicker-03.png",
+    "flicker-04.png"
+  ]
+}

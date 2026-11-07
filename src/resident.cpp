@@ -339,6 +339,11 @@ bool resident_art_init(SDL_Renderer* r) {
     return art != nullptr && sleep_art != nullptr && clerk_art != nullptr && courier_art_init(r) && gardener_art_init(r) && grandmother_art_init(r) && woodcutter_art_init(r) && mother_art_init(r) && fisher_art_init(r) && sailor_fisher_art_init(r);
 }
 void resident_art_free(){if(art)SDL_DestroyTexture(art);art=nullptr;if(sleep_art)SDL_DestroyTexture(sleep_art);sleep_art=nullptr;if(clerk_art)SDL_DestroyTexture(clerk_art);clerk_art=nullptr;courier_art_free();gardener_art_free();grandmother_art_free();woodcutter_art_free();mother_art_free();fisher_art_free();sailor_fisher_art_free();}
+bool resident_in_bed(const StoryNpcPos& p,float* y) {
+    if(sailor_fisher_in_bed(p,y)||fisher_in_bed(p,y)||courier_in_bed(p,y)||woodcutter_in_bed(p,y))return true;
+    if(p.idx!=RESIDENT_STORY_ID||state.phase!=RES_SLEEP)return false;
+    *y=npc_bed_front_y(76);return true;                  // room 3's back bed
+}
 bool resident_draw(const StoryNpcPos& p,SDL_Renderer* r,const Camera* c) {
     if(sailor_fisher_draw(p,r,c))return true;
     if(fisher_draw(p,r,c))return true;

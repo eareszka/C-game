@@ -1,181 +1,127 @@
 from pix import *
-import math
+# Kurrea, idle pose 1.
+# Parts and where they attach:
+# - coil: one round ring lying on the ground, white belly band along its bottom,
+#   black fold line where the belly band meets the side,
+#   hole in the middle showing the white inner wall of the far side
+# - neck: rises out of the coil's front-right end, curves up and left, black line
+#   on its left where it passes in front of the coil (coil top down to the hole)
+# - belly stripe: plain white down the neck front, flowing into the coil's belly band
+# - head: wedge facing right on top of the neck, jaw closed off by the mouth line
+# - eye: 2 px yellow mark on the head
+# - crystals (grow out of the coil's back, bases sit on the coil top, left side):
+#   mint (tall, back), pink back (low, strong left lean), pink front (big),
+#   sky blue (lean right), gold (small, leans right, in front)
 
-DARK = '3b2a58'
-MAIN = '664b95'
-BELLY = 'b69cee'
-YEL = 'fae488'
-MINT = 'a8f0bc'
-SALM = 'ec8476'
-BLUE = '84a7e9'
-HI = 'dcf0ff'
+V = '664b95'
+VS = '3b2a58'
+W = 'fcfcfc'
+PAL = {'p': 'fc74b4', 'm': 'a8f0bc', 'b': '84a7e9', 'g': 'f0bc3c'}
 
-SHADE = {YEL: SALM, MINT: BLUE, SALM: MAIN, BLUE: MAIN, BELLY: MAIN}
+im = canvas(80, 82)
 
+# coil
+oval(im, 2, 47, 67, 31, W)
+oval(im, 2, 46, 67, 30, '000000')
+oval(im, 2, 46, 67, 29, VS)
+oval(im, 2, 45, 65, 27, V)
+# hole with the white inner wall at its top
+oval(im, 18, 55, 35, 11, W)
+ImageDraw.Draw(im).ellipse((18, 57, 52, 66), fill=CLEAR)
 
-def path(pts, step=0.25):
-    """straight runs between the points: an angular crystal body, not a smooth curve"""
-    res, s = [], 0.0
-    pts = [(p[0] + OX, p[1], p[2]) for p in pts]
-    for a, b in zip(pts, pts[1:]):
-        ln = math.dist(a[:2], b[:2])
-        n = max(2, int(ln / step))
-        tx, ty = (b[0] - a[0]) / ln, (b[1] - a[1]) / ln
-        for k in range(n):
-            f = k / n
-            res.append((a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f,
-                        -ty, tx, tx, ty, s + ln * f))
-        s += ln
-    return res
+# crystals, back to front
+mint = [
+    "....KK.....",
+    "...KmmK....",
+    "..KmmKmK...",
+    ".KmmmKmmK..",
+] + ["KmmmmKmmmK."] * 9 + [".KmmmmKmmmK"] * 17 + [".KKKKKKKKKK"]
+stamp(im, grid(mint, PAL), 17, 17)
 
-
-def draw_band(S, belly, W, H, scute=4):
-    lay = canvas(W, H)
-    px = lay.load()
-    for y in range(H):
-        for x in range(W):
-            best, bv = None, 9e9
-            for q in S:
-                d = math.hypot(x - q[0], y - q[1]) / max(q[2], 0.6)
-                if d < bv:
-                    bv, best = d, q
-            if bv > 1:
-                continue
-            cx, cy, r, nx, ny, tx, ty, s = best
-            ox, oy = x - cx, y - cy
-            t = (ox * nx + oy * ny) / r
-            lit = (-ox - oy) / (r * 1.41)
-            saw = ((s + 2 * t) % 7) / 7
-            if belly and belly[0] <= t <= belly[1] and r > 2.5:
-                c = MAIN if lit < -0.45 else BELLY
-                px[x, y] = BLACK if ((s + 2) % scute) < 1.0 else rgba(c)
-            else:
-                px[x, y] = rgba(DARK if lit + 0.6 * saw < 0.15 else MAIN)
-    return lay
-
-
-def ring(under, mask_img):
-    W, H = under.size
-    a = mask_img.load()
-    u = under.load()
-    for y in range(H):
-        for x in range(W):
-            if a[x, y][3] or not u[x, y][3]:
-                continue
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                xx, yy = x + dx, y + dy
-                if 0 <= xx < W and 0 <= yy < H and a[xx, yy][3]:
-                    u[x, y] = BLACK
-                    break
-
-
-def shard(lay, b, n, t, L, w, col):
-    bx, by = b
-    side = 1 if (-t[0] - t[1]) > 0 else -1
-    lx, ly = t[0] * side, t[1] * side
-    tip = (bx + n[0] * L, by + n[1] * L)
-    p = canvas(*lay.size)
-    sh = 0.5 * L
-    a = (bx + lx * w, by + ly * w)
-    c = (bx - lx * w, by - ly * w)
-    a2 = (a[0] + n[0] * sh, a[1] + n[1] * sh)
-    c2 = (c[0] + n[0] * sh, c[1] + n[1] * sh)
-    poly(p, [a, a2, tip, c2, c], col)
-    poly(p, [(bx - lx, by - ly), tip, c2, c], SHADE[col])
-    rect(p, round(a2[0] - n[0] - lx), round(a2[1] - n[1] - ly), 1, 1, HI)
-    ring(lay, p)
-    lay.alpha_composite(p)
-
-
-def at(S, f):
-    return S[int(f * (len(S) - 1))]
-
-
-def plates(S, side, specs, W, H):
-    lay = canvas(W, H)
-    for f, L, w, col in specs:
-        cx, cy, r, nx, ny, tx, ty, s = at(S, f)
-        n = (nx * side, ny * side)
-        b = (cx + n[0] * (r - 1.5), cy + n[1] * (r - 1.5))
-        shard(lay, b, n, (tx, ty), L + 1.5, w, col)
-    return lay
-
-
-def chip(im, S, f, off, col):
-    """a small crystal set into the hide, with a black line round it"""
-    cx, cy, r, nx, ny, *_ = at(S, f)
-    x, y = round(cx + nx * off * r), round(cy + ny * off * r)
-    p = canvas(*im.size)
-    poly(p, [(x, y - 2), (x + 2, y), (x, y + 2), (x - 2, y)], col)
-    poly(p, [(x, y), (x + 2, y), (x, y + 2)], SHADE[col])
-    ring(im, p)
-    im.alpha_composite(p)
-
-
-def add(im, plate_lay, body_lay):
-    both = canvas(*im.size)
-    both.alpha_composite(plate_lay)
-    both.alpha_composite(body_lay)
-    ring(im, both)
-    im.alpha_composite(both)
-
-
-OX = 7  # room on the left so the plates aren't clipped
-W, H = 82, 82
-im = canvas(W, H)
-
-# back coil: tail tip lower right, under the body, up the left, over the hump
-A = path([(58, 71, 1), (50, 74, 2), (40, 74, 3), (29, 73, 5), (18, 69, 6), (10, 59, 6),
-          (8, 45, 6), (11, 33, 6), (20, 25, 6), (30, 25, 6.5), (35, 29, 7)])
-Ap = plates(A, -1, [
-    (0.25, 4, 3, BELLY), (0.34, 6, 3, BELLY), (0.42, 6, 3, YEL), (0.50, 7, 3, MINT), (0.58, 7, 3, YEL),
-    (0.66, 7, 3, BLUE), (0.74, 8, 3, SALM), (0.82, 8, 3, MINT), (0.90, 7, 3, YEL),
-], W, H)
-add(im, Ap, draw_band(A, (0.25, 1.01), W, H))
-chip(im, A, 0.46, -0.45, SALM)
-chip(im, A, 0.62, -0.45, MINT)
-chip(im, A, 0.78, -0.45, YEL)
-
-# front coil: down the middle, round the bottom, up the right to the neck
-B = path([(35, 29, 7), (30, 40, 6), (30, 52, 6.5), (37, 62, 7), (48, 60, 6.5), (55, 47, 5.5),
-          (55, 35, 5), (51, 27, 4), (46, 22, 3.5)])
-Bp = plates(B, 1, [
-    (0.08, 4, 3, YEL), (0.18, 5, 3, BLUE), (0.28, 5, 3, MINT),
-    (0.58, 5, 3, SALM), (0.66, 6, 3, YEL), (0.74, 6, 3, MINT), (0.82, 6, 3, BLUE), (0.90, 5, 3, YEL),
-], W, H)
-# blue and yellow crystals standing into the hole of the coil
-Bp.alpha_composite(plates(B, -1, [(0.02, 5, 4, BLUE), (0.11, 6, 3, YEL)], W, H))
-add(im, Bp, draw_band(B, (-1.01, -0.15), W, H))
-chip(im, B, 0.45, 0.5, YEL)
-chip(im, B, 0.62, 0.45, MINT)
-chip(im, B, 0.78, 0.4, SALM)
-
-HEAD = [
-    '.....mmmmmmm.....',
-    '...mmmbbmmmmmss..',
-    '..mmbbmmmmmmmsss.',
-    '.mmbmmmmmmmmmmsss',
-    'mmmmmmmmmmmmmmsss',
-    'mmmyymmmmmmyysssd',
-    'mmmmyymmmyymmssdd',
-    '.mmmmmmmmmmmsssd.',
-    '..mmbbbbbbbbbsd..',
-    '...bbKbbbbKbbm...',
-    '...KKKKKKKKKKK...',
-    '....bKbbbbbKm....',
-    '.....mbbbbbm.....',
+pink_back = [
+    "...KK..........",
+    "..KppK.........",
+    ".KppKpK........",
+    "KpppKppK.......",
+    "KpppKppK.......",
+    ".KpppKppK......",
+    ".KpppKppK......",
+    "..KpppKppK.....",
+    "..KpppKppK.....",
+    "...KpppKppK....",
+    "...KpppKppK....",
+    "....KpppKppK...",
+    "....KpppKppK...",
+    ".....KpppKppK..",
+    ".....KpppKppK..",
+    "......KpppKppK.",
+    "......KpppKppK.",
+    ".......KpppKppK",
+    ".......KKKKKKKK",
 ]
-PAL = {'m': MAIN, 'b': BELLY, 's': DARK, 'd': DARK, 'y': YEL}
-head = grid(HEAD, PAL)
-hx, hy = 37 + OX, 12
+stamp(im, grid(pink_back, PAL), 0, 33)
 
-cr = canvas(W, H)
-shard(cr, (hx + 3, hy + 3), (-0.6, -0.8), (0.8, -0.6), 7, 2, YEL)
-shard(cr, (hx + 14, hy + 3), (0.6, -0.8), (0.8, 0.6), 7, 2, SALM)
-shard(cr, (hx + 8, hy + 2), (0, -1), (1, 0), 9, 3, MINT)
-head_l = canvas(W, H)
-stamp(head_l, head, hx, hy)
-add(im, cr, head_l)
+pink_front = [
+    "....KK..........",
+    "...KppK.........",
+    "..KppKpK........",
+    ".KpppKppK.......",
+] + ["KppppKpppK......"] * 4 + [".KppppKpppK....."] * 3 + ["..KppppKpppK...."] * 3 \
+  + ["...KppppKpppK..."] * 3 + ["....KppppKpppK.."] * 3 + [".....KppppKpppK."] * 3 \
+  + [".....KKKKKKKKKK."]
+stamp(im, grid(pink_front, PAL), 8, 26)
 
+blue = [
+    ".......KK...",
+    "......KbbK..",
+    ".....KbbKbK.",
+] + ["....KbbbKbbK"] * 4 + ["...KbbbKbbK."] * 4 + ["..KbbbKbbK.."] * 4 \
+  + [".KbbbKbbK..."] * 4 + [".KKKKKKKK..."]
+stamp(im, grid(blue, PAL), 26, 29)
+
+gold = [
+    "......KK...",
+    ".....KggK..",
+    "....KgggKgK",
+    "....KgggKgK",
+    "...KgggKgK.",
+    "...KgggKgK.",
+    "..KgggKgK..",
+    "..KgggKgK..",
+    ".KgggKgK...",
+    ".KgggKgK...",
+    "KgggKgK....",
+    "KKKKKKK....",
+]
+stamp(im, grid(gold, PAL), 33, 40)
+
+# neck
+poly(im, [(44, 10), (42, 22), (42, 30), (45, 38), (50, 45), (53, 52), (54, 60), (55, 66),
+          (66, 66), (69, 60), (68, 52), (64, 44), (58, 37), (55, 30), (56, 22), (57, 13)], V)
+poly(im, [(57, 13), (56, 22), (55, 30), (58, 37), (64, 44), (68, 52), (69, 60), (66, 66),
+          (64, 66), (66, 60), (65, 52), (61, 45), (56, 38), (53, 30), (54, 22), (55, 13)], VS)
+poly(im, [(47, 14), (46, 22), (47, 30), (50, 37), (54, 44), (57, 52), (58, 60), (57, 69),
+          (62, 69), (63, 60), (62, 52), (59, 44), (55, 37), (52, 30), (51, 22), (53, 13)], W)
+# line where the neck passes in front of the coil
+rect(im, 50, 46, 1, 2, '000000')
+rect(im, 51, 48, 1, 2, '000000')
+rect(im, 52, 50, 1, 3, '000000')
+rect(im, 53, 53, 1, 9, '000000')
+
+# head
+poly(im, [(45, 3), (48, 1), (62, 1), (67, 3), (72, 7), (72, 9), (68, 11), (58, 13),
+          (52, 14), (45, 12), (43, 8)], V)
+rect(im, 59, 12, 5, 1, VS)
+rect(im, 62, 11, 7, 1, VS)
+rect(im, 68, 10, 3, 1, VS)
+# mouth line, closing off the jaw
+rect(im, 58, 11, 4, 1, '000000')
+rect(im, 62, 10, 6, 1, '000000')
+rect(im, 68, 9, 5, 1, '000000')
+rect(im, 58, 12, 1, 2, '000000')
+# eye
+rect(im, 60, 5, 2, 1, 'f0bc3c')
+
+im = strip_outline(im)
 im = outline(im)
 save(im)

@@ -34,6 +34,20 @@ static const float FASTER_DPS_AT_MAX = 8.0f;    // damage per second at the top,
 float faster_fire_rate(float base_rate, int level);
 float faster_damage(float base_rate, float base_damage, int level);
 
+// The enemy movement rule (BattleScene::_apply_move_rule): its settings, one
+// set for every fight. tools/movecensus.cpp turns it off to measure the
+// before, and tries other values.
+struct MoveRule {
+    bool  on           = true;
+    float lat_cap      = 60.0f;    // px/s sideways across the player's line, sustained
+    float burst        = 0.0f;     // px of sideways travel at full speed before the cap bites (a hop); 0 won the census
+    float window_every = 4.0f;     // s between slow beats
+    float window_len   = 0.0f;     // s each beat lasts (0: no beats)
+    float window_scale = 0.35f;    // speed through a beat
+    float teleport     = 40.0f;    // px in one frame: a jump, passed through
+};
+extern MoveRule g_move_rule;
+
 // Display name, e.g. "KATANA". Shared by the battle HUD and the debug menu so
 // there is one list to update when a weapon is added.
 const char* weapon_name(WeaponType type);
@@ -122,6 +136,9 @@ struct Bullet {
     bool  fade_out;       // with a life: fades over its last moments, harmless
     bool  behind;         // drawn behind the enemy
     bool  poison;         // a hit poisons the player too (BulletSpawn::poison)
+    int   color;          // its own colour, 0xRRGGBB, or -1: the enemy's (BulletSpawn::color)
+    bool  grasp;          // a grasp (BulletSpawn::grasp): forming round the player, then shutting
+    float gox, goy, gform, gshut;           // ...its spot off the player, its whole wait, its shut time
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
     int   weapon;         // WeaponType
@@ -268,6 +285,12 @@ public:
     // on the win, so afterwards this is 0.
     int   hud_exp()      const { return _phase == BATTLE_PHASE_VICTORY ? 0 : _hits + _grazes; }
     float hud_hit_t()    const { return _hit_t; }     // seconds since the player was last hit
+    // Bombs (X): how many are left this fight, and seconds since X was
+    // pressed with none (the count flashes red).
+    int   hud_bombs()     const { return _bombs; }
+    float hud_no_bomb_t() const { return _no_bomb_t; }
+    // The intro's version of a fight (--intro): 3 bars of health, no bombs.
+    void  set_intro();
     int   hud_hit_bars() const { return _hit_bars; }  // how many bars that hit took
     const Enemy* hud_enemy() const { return _phase == BATTLE_PHASE_VICTORY || _phase == BATTLE_PHASE_TRIAL_END ? nullptr : _enemy; }
     float player_y() const { return _bp.y; }
@@ -302,6 +325,10 @@ private:
     bool         _done     = false;
     float        _hit_t    = 99.0f;  // seconds since the player was last hit
     float        _swap_t   = 99.0f;  // seconds since the weapon was swapped
+    int          _bombs     = 0;      // bombs to hand: the save's ITEM_BOMB, or a debug/trial fight's own
+    float        _bomb_t    = 99.0f;  // seconds since a bomb went off (its flash)
+    float        _no_bomb_t = 99.0f;  // seconds since X was pressed with none
+    float        _bomb_x = 0.0f, _bomb_y = 0.0f;   // where it went off
     float        _anim_ms    = 0.0f;   // the enemy's idle-animation clock, run at Enemy::anim_speed
     int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
@@ -310,6 +337,7 @@ private:
     float        _trial_secs = TRIAL_DRAIN_SECS;
     bool         _trial_poisoned = false;   // a trial's poison: its own HP drains, never the save's
     float        _trial_poison_t = 0.0f;
+    bool         _fixed_gear = false;  // fights with _trial_weapon, not the arsenal: a trial, or any debug fight (the tier's knife)
     Weapon       _trial_weapon = {};   // the knife a trial fights with, in place of the arsenal's
     int          _trial_level  = 1;
     TrialStats   _ts;
@@ -342,6 +370,8 @@ private:
     mutable SDL_Texture* _alt         = nullptr;   // alternate idle sheet, if the enemy has one
     mutable SDL_Texture* _log         = nullptr;   // its log bullet sprite, if it throws logs
     mutable SDL_Texture* _parts       = nullptr;   // its own pieces drawn over it (Enemy::parts), if it has any
+    mutable SDL_Texture* _spawner_tex = nullptr;   // its spawners' sheet (Enemy::spawners), if it has any
+    void _draw_spawners(SDL_Renderer* ren) const;
     mutable SDL_Texture* _marks       = nullptr;   // its ground-mark sprites (footprints), if it leaves any
     // The same sheets as solid white silhouettes, for the hit flash.
     mutable SDL_Texture* _sheet_white = nullptr;
@@ -394,6 +424,14 @@ private:
     mutable int      _mask_w[3] = {}, _mask_h[3] = {};
     mutable bool     _mask_tried[3] = {};
     bool   _on_sprite(float x, float y, float r) const;   // is (x, y), or a point r round it, on the drawn sprite?
+    // The movement rule: where the enemy is shown (_mv_x, _mv_y) follows
+    // where its own code puts it (_mv_ix, _mv_iy), sideways no faster than
+    // g_move_rule's budget allows (_mv_budget), slowed through any beats (_mv_t).
+    float  _fight_t = 0.0f;   // s of fighting so far: the body doesn't hurt for the first CONTACT_GRACE
+    float  _mv_x = 0.0f, _mv_y = 0.0f, _mv_ix = 0.0f, _mv_iy = 0.0f, _mv_t = 0.0f, _mv_budget = 0.0f;
+    bool   _mv_init = false;
+    void   _apply_move_rule(float dt);
+    bool   _enemy_hidden() const;   // a ghost faded out, or off the arena: nothing tracks it
     float  _shot_scale(const Bullet& bl) const;   // size against the sprite, as drawn
     float  _shot_edge_gap(const Bullet& bl) const; // centre to the edge it is heading for
     void _win();

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-07T0635-base-the-hen-throws-its-head-forward-and-opens-i",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1112 characters>",
+      "format": "png"
+    },
+    "action": "the hen throws its head forward and opens its beak wide spitting fire, flames on its back flare up big and tall",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0d603441-ae1f-4efc-9356-e0ab0d6b10ab",
+    "generation_id": "b1bb0eed-1439-4a2a-bfc4-fca72af72bd8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flare-00.png",
+    "flare-01.png",
+    "flare-02.png",
+    "flare-03.png",
+    "flare-04.png"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "run": "2026-11-06T1345-sidewall-repaint-as-classic-nes-rpg-pixel-art-be",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAACgAAABACAYAAABoWTVaAAAAh0lEQVR4nM3OMRXAMBCAUMKrf02R0rEuUgk3hj8zsIBD2DMF37u5SeIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuIkTuK8PTD5AZicBAlNUBvdAAAAAElFTkSuQmCC",
+      "format": "png"
+    },
+    "description": "Repaint as classic NES RPG pixel art between Mother 1 and EarthBound, flat colours, thin black outlines, few colours, no gradients: cream plaster side wall of a room seen at an angle, with a plank door; keep the shapes."
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4d983a92-41c2-4792-bc05-2a059aa1369e",
+    "generation_id": "6d9638c1-88fb-47e7-9367-e35df0c2a3cd"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "house0-b-sidewall.png"
+  ]
+}
