@@ -86,9 +86,19 @@ int         story_npc_sprite(const StoryNpcPos& p);
 // What a shopkeeper sells and says when asked to TALK; the books in stock.
 struct Shop { const char* chat; const Item* stock; int n; };
 const Shop* story_npc_shop(const StoryNpcPos& p);   // nullptr: not a shopkeeper
-struct StoryNpcConversation { const char* prompt; const char* choices[3]; };
+// A talk menu: up to 4 choices (nullptr past the last); the last one leaves.
+struct StoryNpcConversation { const char* prompt; const char* choices[4]; };
 const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p);
-const char* story_npc_answer(const StoryNpcPos& p, const StoryWhere& where, int choice);
+// The answer to the choice picked (one of its choices' texts).
+const char* story_npc_answer(const StoryNpcPos& p, const StoryWhere& where, const char* choice);
+// "Where's my dog?" (docs/story.md): everyone has it once the dog is gone
+// (the intro over), unless they're too busy -- asleep, heading to bed, on
+// their way somewhere and saying so. The debug speaker never.
+extern const char* const STORY_DOG_ASK;
+bool story_npc_can_ask(const StoryNpcPos& p);
+// Their answer: on the island they never knew he had a dog; past it, dogs
+// are monsters (17 Qiqirn, 36 Cu Sith) -- why would he want one?
+const char* story_npc_dog_answer(const StoryNpcPos& p);
 void story_npc_resume(const StoryNpcPos& p);
 bool story_npc_can_talk(const StoryNpcPos& p);
 // Location-aware topic shared by NPCs, including interiors identified by entrance.

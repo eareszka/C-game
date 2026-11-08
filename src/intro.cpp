@@ -213,7 +213,7 @@ void intro_draw_night(SDL_Renderer* ren, int w, int h, bool indoors) {
 // out of the air and lands beside it. Only then can it be read.
 namespace {
 
-const char* NOTE_TEXT = "A young boy's dog goes missing and he's forced to find him.";
+const char* NOTE_TEXT = "Tonight the last pet is taken. Tomorrow something new takes its place.";
 
 // Where the dog stops and barks, the user's spot (2026-11-08, moved the same
 // day): sprite origin (48125, 45564) by the debug readout, in a world whose town 0 is at

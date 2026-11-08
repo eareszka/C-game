@@ -678,13 +678,25 @@ int main(int argc, char *argv[])
     topic_menu=[&](const char* prompt) {
         const auto* conversation=story_npc_conversation(topic_npc);
         if(!conversation)return;
-        ask(prompt,{conversation->choices[0],conversation->choices[1],conversation->choices[2]},[&](int choice) {
-            if(choice==2) {
+        say(prompt);
+        for(const char* c:conversation->choices) if(c&&dlg_choice_n<4) dlg_choices[dlg_choice_n++]=c;
+        dlg_choice=0;
+        int last=dlg_choice_n-1;   // No: leaves (and X)
+        dlg_pick=[&,last](int choice) {
+            if(choice==last) {
                 topic_active=false;story_npc_resume(topic_npc);return;
             }
-            say(story_npc_answer(topic_npc,topic_where,choice));
+            const char* picked=dlg_choices[choice];
+            say(story_npc_answer(topic_npc,topic_where,picked));
             dlg_after=[&](){topic_menu("Need anything?");};
-        });
+        };
+    };
+    // Someone with only a line to say: the line, and "Where's my dog?" under
+    // it when they'll hear it (story_npc_can_ask) -- else the line alone.
+    auto say_or_ask_dog=[&](const StoryNpcPos& npc,const char* t) {
+        if(t&&story_npc_can_ask(npc))
+            ask(t,{STORY_DOG_ASK,"No"},[&,npc](int pick){ if(pick==0) say(story_npc_dog_answer(npc)); });
+        else say(t);
     };
     // The debug speaker's list of every line (story_dialogue): -1 closed,
     // else the cursor. Each shows in the speech box; the list is back when
@@ -2298,7 +2310,7 @@ int main(int argc, char *argv[])
                                 if(const auto* conversation=story_npc_conversation(ow_npcs[i])) {
                                     topic_active=true;topic_npc=ow_npcs[i];topic_where=ow_where;
                                     topic_menu(conversation->prompt);
-                                } else say(story_npc_line(ow_npcs[i], ow_where));
+                                } else say_or_ask_dog(ow_npcs[i], story_npc_line(ow_npcs[i], ow_where));
                                 input_consume(&in, SDL_SCANCODE_Z);
                                 input_consume(&in, SDL_SCANCODE_RETURN);
                                 input_consume(&in, SDL_SCANCODE_SPACE);
@@ -3474,12 +3486,20 @@ int main(int argc, char *argv[])
                             topic_active=true;topic_npc=npcs[i];topic_where=where;
                             topic_menu(conversation->prompt);
                         }
-                        else if (const Shop* shop = story_npc_shop(npcs[i]))   // a shopkeeper: what will it be
-                            ask(t, { "SHOP", "TALK", "LEAVE" }, [&, shop](int pick) {
-                                if (pick == 0) game_menu_open_shop(&menu, shop->stock, shop->n);
-                                if (pick == 1) say(shop->chat);
-                            });
-                        else if (t) say(t);
+                        else if (const Shop* shop = story_npc_shop(npcs[i])) {  // a shopkeeper: what will it be
+                            StoryNpcPos keeper = npcs[i];
+                            if (story_npc_can_ask(keeper))      // the dog gone: asking after it in place of his chat (the user)
+                                ask(t, { "SHOP", "WHERE'S MY DOG?", "LEAVE" }, [&, shop, keeper](int pick) {
+                                    if (pick == 0) game_menu_open_shop(&menu, shop->stock, shop->n);
+                                    if (pick == 1) say(story_npc_dog_answer(keeper));
+                                });
+                            else
+                                ask(t, { "SHOP", "TALK", "LEAVE" }, [&, shop](int pick) {
+                                    if (pick == 0) game_menu_open_shop(&menu, shop->stock, shop->n);
+                                    if (pick == 1) say(shop->chat);
+                                });
+                        }
+                        else if (t) say_or_ask_dog(npcs[i], t);
                         else { dlg_list = 0; dlg_where = where; }   // the debug speaker
                         input_consume(&in, SDL_SCANCODE_Z);
                         input_consume(&in, SDL_SCANCODE_RETURN);

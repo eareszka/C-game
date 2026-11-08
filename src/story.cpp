@@ -9,6 +9,7 @@
 #include "grandmother.h"
 #include "woodcutter.h"
 #include "mother.h"
+#include "intro.h"      // intro_active: the dog not yet taken
 #include "tilemap.h"
 #include "towns.h"      // TOWN_W/H: is a door in a town's footprint
 #include "interior.h"   // IMAP_TILE
@@ -440,38 +441,86 @@ int story_npc_sprite(const StoryNpcPos& p) {
 const Shop* story_npc_shop(const StoryNpcPos& p) {
     return p.idx >= 0 && p.idx < NPC_COUNT ? NPCS[p.idx].shop : nullptr;
 }
-static const StoryNpcConversation CLERK_CONVERSATION = {
-    "Just restocking shelfs, need anything?",
-    {"Why do I need books?", "Where am I?", "No"}
-};
-static const StoryNpcConversation GRANDMA_CONVERSATION = {
-    "Good day deer, what do you need?",{"What's there to do in town?","Where am I?","No"}
-};
+const char* const STORY_DOG_ASK = "Where's my dog?";
+static const char* const WHERE_AM_I = "Where am I?";
+
+// Too busy for "Where's my dog?": asleep, off to bed, or on the way somewhere
+// and saying so ("Sorry i'm busy", "please leave me", "Get out of my house").
+static bool npc_busy(const StoryNpcPos& p) {
+    if (p.idx == RESIDENT_STORY_ID)  return resident_save().phase != RES_WORK;
+    if (p.idx == WOODCUTTER_ID) { int ph = woodcutter_save().phase; return ph == WC_SLEEP || ph == WC_TO_BED || ph == WC_COUCH_TO_BED; }
+    if (p.idx == FISHER_ID)        return fisher_view().phase == FI_SLEEP;
+    if (p.idx == SAILOR_FISHER_ID) return sailor_fisher_view().phase == SF_SLEEP;
+    if (p.idx == COURIER_ID)       return courier_save().phase == CR_SLEEP;
+    return false;
+}
+
+bool story_npc_can_ask(const StoryNpcPos& p) {
+    if (intro_active()) return false;                                   // the dog's still here
+    if (p.idx >= 0 && p.idx < NPC_COUNT && NPCS[p.idx].place == SP_DEBUG) return false;
+    return !npc_busy(p);
+}
+
+const char* story_npc_dog_answer(const StoryNpcPos& p) {
+    switch (p.idx) {    // the island's people: he never had a dog
+    case BOOKSHOP_CLERK_ID: return "A dog? You've been coming in here since you were small. Never once with a dog.";
+    case GRANDMOTHER_ID:    return "A dog, dear? You've never had a dog. Are you feeling alright?";
+    case SAILOR_FISHER_ID:  return "Your dog? Since when do you have a dog? Never seen you with one.";
+    case COURIER_ID:        return "I know every house on this island and who lives in it. No dog at yours. Never was.";
+    case GARDENER_ID:       return "A dog would have dug up my plants. I'd remember a dog. You never had one.";
+    case FISHER_ID:         return "A dog? You never had a dog. Now hush.";
+    case WOODCUTTER_ID:     return "You? A dog? Never. Go bother someone else, kid.";
+    case MOTHER_ID:         return "A dog? I've known you since you were born. You've never had a dog.";
+    case RESIDENT_STORY_ID: return "a dog? you never had a dog. are you ok?";
+    }
+    if (p.idx < 0 || p.idx >= NPC_COUNT) return "A dog? You never had a dog.";
+    const StoryNpc& n = NPCS[p.idx];
+    if (n.shop)              return "A dog? In all my years I've never seen you with a dog, boy.";
+    if (n.skin == 1)         return "A dog? I watch everyone come through town. Never saw you with a dog.";
+    if (n.skin == 2)         return "I notice everything around here. I've never noticed a dog with you.";
+    // Past the island: dogs are the monsters out there.
+    if (n.lead == 49)        return "Dogs? They come down off the rocks at night. Why would anyone want one?";
+    if (n.place == SP_VILLAGE) return "Why would you ever want a dog? They're so dangerous. Keep away from them.";
+    return "A dog? Why would you ever want one? They're so dangerous.";
+}
+
+// A talk menu: their topic, "Where's my dog?" when they'll hear it, "Where am I?", No.
+static const StoryNpcConversation* with_dog(StoryNpcConversation* c, const StoryNpcPos& p, const char* prompt, const char* topic) {
+    int n = 0;
+    *c = { prompt, { nullptr, nullptr, nullptr, nullptr } };
+    c->choices[n++] = topic;
+    if (story_npc_can_ask(p)) c->choices[n++] = STORY_DOG_ASK;
+    c->choices[n++] = WHERE_AM_I;
+    c->choices[n++] = "No";
+    return c;
+}
 const StoryNpcConversation* story_npc_conversation(const StoryNpcPos& p) {
+    static StoryNpcConversation c;
     if(p.idx==SAILOR_FISHER_ID) {
         if(sailor_fisher_view().phase==SF_SLEEP||!sailor_fisher_line())return nullptr;
-        static StoryNpcConversation sailor;
-        sailor={sailor_fisher_line(),{"What's there to do in town?","Where am I?","No"}};
-        return &sailor;
+        return with_dog(&c,p,sailor_fisher_line(),"What's there to do in town?");
     }
     if(p.idx==COURIER_ID){
         if(courier_save().phase==CR_SLEEP)return nullptr;
-        static StoryNpcConversation courier;courier={courier_line(),{"Delivering letters?","Where am I?","No"}};return &courier;
+        return with_dog(&c,p,courier_line(),"Delivering letters?");
     }
-    if(p.idx==GARDENER_ID){static StoryNpcConversation c;c={gardener_line(),{"Why water them?","Where am I?","No"}};return &c;}
-    if(p.idx==GRANDMOTHER_ID)return &GRANDMA_CONVERSATION;
-    return p.idx==BOOKSHOP_CLERK_ID ? &CLERK_CONVERSATION : nullptr;
+    if(p.idx==GARDENER_ID)return with_dog(&c,p,gardener_line(),"Why water them?");
+    if(p.idx==GRANDMOTHER_ID)return with_dog(&c,p,"Good day deer, what do you need?","What's there to do in town?");
+    if(p.idx==BOOKSHOP_CLERK_ID)return with_dog(&c,p,"Just restocking shelfs, need anything?","Why do I need books?");
+    return nullptr;
 }
-const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,int choice) {
-    if(!story_npc_conversation(p))return nullptr;
-    if(choice==0) {
+const char* story_npc_answer(const StoryNpcPos& p,const StoryWhere& w,const char* choice) {
+    const StoryNpcConversation* c=story_npc_conversation(p);
+    if(!c||!choice)return nullptr;
+    if(choice==STORY_DOG_ASK)return story_npc_dog_answer(p);
+    if(choice==WHERE_AM_I)return story_where_am_i(p,w);
+    if(choice==c->choices[0]) {
         if(p.idx==COURIER_ID)return "Every front door gets a visit. Then it is back to my couch.";
         if(p.idx==GARDENER_ID)return "Someone has to look after this street. A little green makes the walk nicer.";
         if(p.idx==SAILOR_FISHER_ID)return "I usually spend a little time fishing by the river, then head home for a rest. But if you're looking for a little adventure, there's a small cave south of town and a graveyard to the northwest.";
         if(p.idx==GRANDMOTHER_ID)return "I usually pick out a good book from the library and go back home and read. But for a young one like yourself, there's a small cave south of town and a graveyard to the northwest, if you're looking for a little adventure.";
         return "Without these books you wouldn't be able to build anything or go anywhere. What's the point of these books is like asking what's the purpose of life.";
     }
-    if(choice==1)return story_where_am_i(p,w);
     return nullptr;
 }
 void story_npc_resume(const StoryNpcPos& p) {
