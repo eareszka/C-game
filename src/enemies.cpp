@@ -7443,11 +7443,10 @@ public:
 //            drifts off in a random direction, so the line dissolves behind
 //            it into scatter (the user's design). Rolling into the player
 //            costs a bar.
-//            Curled up its shell takes the hits: shots do HALF damage while
-//            it rolls, so hit it when it stands.
+//            Shots do full damage rolling or standing (the user).
 //            Each roll is, at random, that fast one or a SLOW one (the
 //            user): a lazy roll at about a third of the pace that leaves no
-//            plates and bursts nothing -- easy to hit, still half damage,
+//            plates and bursts nothing -- easy to hit, full damage,
 //            still costs a bar to touch.
 // Phase 2 (half HP): it stands less and rolls longer and faster, and every
 //   wall it glances off bursts a ring of plates.
@@ -7473,7 +7472,6 @@ public:
     bool        free_movement()  const override { return true; }   // its own slow rolls are the openings
     int         breath_frame()   const override { return 1; }      // hunched into its shell
     float       fire_interval()  const override { return 0.05f; }  // the wake and the bursts
-    float       armor()          const override { return rolling ? 0.5f : 1.0f; }
     bool        four_views()     const override { return true; }
     float stand_t() const { return ENRAGED ? 0.8f : 1.5f; }
     // The roll sheet: 0 hunch, 1 ball, 2-5 the roll. Guard in -- hunch, ball --

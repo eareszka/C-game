@@ -388,7 +388,7 @@ int main(int argc, char *argv[])
     auto fresh_player = [&]() {
         player = Player{};
         player.level             = 1;
-        player.stats.max_hp      = 60;  player.stats.hp      = 60;
+        player.stats.max_hp      = 3 * HP_PER_BAR;  player.stats.hp = 3 * HP_PER_BAR;   // 3 bars (the user); levels add more
         player.stats.max_spd     = 10;  player.stats.spd     = 10;
         player.stats.max_attack  = 18;  player.stats.attack  = 18;
         player.stats.max_mag     = 12;  player.stats.mag     = 12;
@@ -1835,6 +1835,10 @@ int main(int argc, char *argv[])
             // SAVE. The overworld spot is right wherever the player is: it
             // does not move while they are in a house or a dungeon, so a save
             // made inside loads outside that door, or at that dungeon's mouth.
+            if (menu.save_request && intro_active()) {   // the night isn't saved: it plays through once
+                menu.save_request = false;
+                game_menu_say(&menu, "NOT NOW");
+            }
             if (menu.save_request) {
                 menu.save_request = false;
                 // Behind an island is a state, and a save keeps only the place:
@@ -3728,8 +3732,14 @@ int main(int argc, char *argv[])
                 fresh_player();
                 resident_reset();
                 memset(explored, 0, sizeof(explored));
+                *story_flags() = StoryFlags{};     // nothing done yet: the opening chest unopened, no boss beaten
                 place_at_start();
+                // A new game opens on the foggy night (docs/story.md): asleep at
+                // home, on foot (no bicycle, as --intro).
+                intro_begin();
                 wake_at_home();
+                item_equip_bike(&player, false);
+                item_slot(&player, ITEM_BICYCLE) = 0;
                 items_primed = false;
                 input_consume(&in, SDL_SCANCODE_RETURN);
                 input_consume(&in, SDL_SCANCODE_Z);

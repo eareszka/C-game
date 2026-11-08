@@ -1666,10 +1666,11 @@ float BattleScene::hud_stamina() const {
 // win it blinks out.
 void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
     if ((_phase == BATTLE_PHASE_VICTORY || _phase == BATTLE_PHASE_TRIAL_END) && (_t > 0.4f || (int)(_t * 20.0f) % 2)) return;
-    // Blocking (catching shots, or its guard up -- armor < 1), it flickers like
-    // the player's i-frames, at exactly their rate: shown on even tenths of a
-    // second, hidden on odd (the user).
-    if (_phase == BATTLE_PHASE_FIGHTING && (_enemy->catch_radius() > 0.0f || _enemy->armor() < 1.0f) && (int)(_t * 10.0f) % 2) return;
+    // Untouchable (catching shots, or armor 0 -- no damage at all), it flickers
+    // like the player's i-frames, at exactly their rate: shown on even tenths of
+    // a second, hidden on odd (the user). Only part-armoured (66's roll, half
+    // damage) it doesn't: the flicker means nothing gets through.
+    if (_phase == BATTLE_PHASE_FIGHTING && (_enemy->catch_radius() > 0.0f || _enemy->armor() <= 0.0f) && (int)(_t * 10.0f) % 2) return;
     float k = _chain_in();
     int ex = (int)_enemy->x;
     int ey = (int)(-60.0f + (_enemy->y + 60.0f) * k);

@@ -116,7 +116,8 @@ static int g_stage = INTRO_NONE;
 bool intro_active() { return g_stage != INTRO_NONE; }
 bool intro_night()  { return g_stage != INTRO_NONE && g_stage <= INTRO_TAKEN; }
 int  intro_stage()  { return g_stage; }
-void intro_begin()  { g_stage = INTRO_ASLEEP; }
+static void intro_reset();   // every clock and the dog back to the night's start (end of file)
+void intro_begin()  { intro_reset(); g_stage = INTRO_ASLEEP; }
 void intro_end()    { g_stage = INTRO_NONE; }
 
 // DAWN, the morning after (the user): his first step out of the house, he
@@ -864,4 +865,12 @@ void intro_dog_draw(SDL_Renderer* ren, const Camera* cam) {
         static const unsigned BANG[6] = { 1, 1, 1, 1, 0, 1 };
         draw_glyph(ren, cam, fx - 1, fy - w - 16 - lift, BANG, 1, 6, 255);
     }
+}
+
+// A new game can start the night again in the same run: everything back.
+static void intro_reset() {
+    g_dawn_t = -1; g_light_t = -1; g_page_t = 0; g_sleep_t = 0; g_wake_pending = false;
+    g_boy = B_SLEEP; g_boy_t = 0; g_hand_t = 0; g_fight_pending = false;
+    g_taken_t = 0; g_morning_t = 0; g_morning_pending = false;
+    g_dog_s = Dog{};
 }
