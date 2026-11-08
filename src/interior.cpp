@@ -67,6 +67,9 @@ static NesRoom* nes_rooms[MAX_NES_ROOMS];
 // drawers and the plant (art/interiors_nes/house0_intro_design.py). The same
 // room, id 0, in its own files; without them, the everyday room.
 static NesRoom* nes_room0_intro;
+// And the morning after: the everyday room with the curtains still shut,
+// until he's been out and the day has come (house0_intro_design.py too).
+static NesRoom* nes_room0_morning;
 
 static const NesRoom* nes_room_load(NesRoom** slot, const char* base)
 {
@@ -125,8 +128,10 @@ static const NesRoom* nes_room_load(NesRoom** slot, const char* base)
 static const NesRoom* nes_room(int id)
 {
     if (id < 0 || id >= MAX_NES_ROOMS) return nullptr;
-    if (id == 0 && intro_active())
+    if (id == 0 && intro_night())
         if (const NesRoom* r = nes_room_load(&nes_room0_intro, "assets/interiors/room_0_intro")) return r;
+    if (id == 0 && intro_active() && !intro_night())
+        if (const NesRoom* r = nes_room_load(&nes_room0_morning, "assets/interiors/room_0_morning")) return r;
     char base[64];
     SDL_snprintf(base, sizeof base, "assets/interiors/room_%d", id);
     return nes_room_load(&nes_rooms[id], base);

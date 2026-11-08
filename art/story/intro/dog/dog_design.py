@@ -96,9 +96,26 @@ VIEWS = {   # stand, walk (4 steps, WALK_MS each), idle B (swaps with stand, IDL
     'north': (NORTH, [squash(BACK_A), NORTH, squash(BACK_B), NORTH],   swap(NORTH, 7, ["ABBBCCBBBA"])),
     'east':  (EAST,  SIDE_WALK,                                         swap(EAST, 6, ["ABBBBBBBCAD.", "ABBBBBBBCAD."])),
 }
-VIEWS['west'] = tuple([west(v) for v in x] if isinstance(x, list) else west(x) for x in VIEWS['east'])
+# East mirrored: the walk is a list of poses, stand and idle are one pose
+# each (a list of rows), so tell them apart by what the list holds.
+VIEWS['west'] = tuple([west(v) for v in x] if isinstance(x[0], list) else west(x) for x in VIEWS['east'])
 ORDER = ['south', 'north', 'east', 'west']
 CELL = 12          # sheet cell, each pose bottom-aligned so the feet stay put
+
+# Asleep in its bed, the intro's opening: lying face on, head down between
+# its paws, eyes shut (two short lines), ears still up. Breathing out, the
+# head sinks a pixel. Sheet columns 6-7, the same in every row.
+SLEEP_A = [
+    "..A......A..",
+    ".ABA....ABA.",
+    ".ACBAAAABCA.",
+    "AABBBBBBBBAA",
+    "ABAABBBBAABA",
+    "ABBBCCCCBBBA",
+    "ABBCCAACCBBA",
+    ".AAAAAAAAAA.",
+]
+SLEEP_B = ["............"] + SLEEP_A[:3] + SLEEP_A[4:]
 
 def cell(rows):
     im, c = img(rows), Image.new('RGBA', (CELL, CELL))
@@ -117,12 +134,13 @@ def tint(im):      # the intro's night, for a second look
 if __name__ == '__main__':
     here = os.path.dirname(os.path.abspath(__file__))
     # The sheet: a row per view (south, north, east, west), a column per pose.
-    # Columns: stand, walk 1-4, idle B.
-    sheet = Image.new('RGBA', (CELL * 6, CELL * 4))
+    # Columns: stand, walk 1-4, idle B, asleep A, asleep B.
+    sheet = Image.new('RGBA', (CELL * 8, CELL * 4))
     for j, v in enumerate(ORDER):
         stand, walk, idle = VIEWS[v]
-        for i, rows in enumerate([stand] + walk + [idle]): sheet.alpha_composite(cell(rows), (CELL * i, CELL * j))
+        for i, rows in enumerate([stand] + walk + [idle, SLEEP_A, SLEEP_B]): sheet.alpha_composite(cell(rows), (CELL * i, CELL * j))
     sheet.save(os.path.join(here, 'dog_sheet.png'))
+    sheet.save(os.path.join(here, '../../../../assets/story/dog.png'))   # what the game loads
     # Preview: walk then idle, each view, day above night, the boy for scale.
     boy = Image.open(os.path.join(here, '../../../../assets/player_small.png')).convert('RGBA').crop((0, 0, 16, 20))
     frames, durs = [], []

@@ -94,10 +94,16 @@ namespace {
     // up (a recipe the player may hold 999 of). out: craft indices by group,
     // each group in the catalog's (unlock) order.
     // A shop lists the recipes whose books it sells; MAKE, what the player
-    // can make (the knife always, the rest once their book is held).
+    // can make: each recipe once its book is held -- the knife too (the
+    // user: no book, no knife in MAKE).
     bool visible(const GameMenu* m,const Player* p,const Craft& c){
         if(m->shop)return std::find(m->stock,m->stock+m->stock_n,c.needs)!=m->stock+m->stock_n;
-        return (c.is_weapon && c.weapon==WEAPON_KNIFE) || item_count(p,c.needs)>0;
+        return item_count(p,c.needs)>0;
+    }
+    // Anything at all in MAKE: with no book held it's empty (NOTHING YET).
+    bool any_visible(const GameMenu* m,const Player* p){
+        for(int i=0;i<craft_count();i++)if(visible(m,p,craft_at(i)))return true;
+        return false;
     }
     // The recipe that makes an item, if any.
     const Craft* made_by(Item it){
@@ -327,7 +333,7 @@ static void menu_step(GameMenu* m,Player* p,const Input* in,float dt){
         return;
     }
     Entry entries[ITEM_COUNT+WEAPON_COUNT];
-    int count=m->cmd==MAKE?craft_count():inventory(p,entries);
+    int count=m->cmd==MAKE?(any_visible(m,p)?craft_count():0):inventory(p,entries);
     if(!count){
         if(back)m->focus=FOCUS_COMMANDS;
         return;
@@ -423,7 +429,7 @@ void game_menu_draw(GameMenu* m,const Player* p,SDL_Renderer* r){
     text(r,"X: BACK",PRE_X+10,PRE_Y+PRE_H-28,2,grey);
     draw_nes_panel(r,LST_X,LST_Y,LST_W,LST_H);
     Entry entries[ITEM_COUNT+WEAPON_COUNT];
-    int n=(m->shop||m->cmd==MAKE)?craft_count():m->cmd==ITEMS?inventory(p,entries):0;
+    int n=m->shop?craft_count():m->cmd==MAKE?(any_visible(m,p)?craft_count():0):m->cmd==ITEMS?inventory(p,entries):0;
     if(m->cmd==SAVE&&!m->shop){
         wrapped(r,m->save_block?m->save_block:"Z: SAVE THE GAME",LST_X+15,LST_Y+20,LST_W-30,3);
         if(m->note_t>0&&m->note)fitted(r,m->note,LST_X+14,LST_Y+LST_H-28,LST_W-28,2,yellow);

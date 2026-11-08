@@ -5225,22 +5225,60 @@ public:
     }
 };
 
+// Its hand's outline: the front view's (frame 0 of 44_itqiirpak.png), 103
+// points evened out round it by arc length, in screen px at 2.5 an art px
+// about the palm's mouth (art 66, 60). Traced by the pattern session's
+// hand_outline.py (cv2 contour of the alpha). Upright, fingers up, thumb out
+// to the left.
+static const float ITQ_HAND[103][2] = {
+    {10,-118},{4,-112},{-0,-105},{-2,-97},{-3,-88},{-5,-80},{-3,-72},{-4,-64},{-5,-55},{-9,-50},
+    {-10,-58},{-13,-66},{-15,-74},{-16,-82},{-20,-90},{-22,-98},{-25,-106},{-32,-110},{-41,-110},{-48,-106},
+    {-52,-98},{-54,-90},{-55,-82},{-52,-74},{-49,-66},{-42,-63},{-35,-59},{-35,-50},{-35,-41},{-35,-32},
+    {-37,-24},{-40,-16},{-43,-9},{-49,-3},{-57,-0},{-64,-5},{-69,-10},{-76,-15},{-85,-14},{-91,-8},
+    {-95,-1},{-94,7},{-88,13},{-81,17},{-73,20},{-68,26},{-60,30},{-53,33},{-46,38},{-39,44},
+    {-32,47},{-24,50},{-17,54},{-11,60},{-7,67},{0,70},{9,70},{18,70},{27,70},{34,67},
+    {40,61},{45,54},{45,45},{49,38},{52,31},{55,23},{55,14},{55,5},{55,-4},{55,-13},
+    {58,-21},{62,-28},{69,-30},{76,-26},{83,-23},{87,-30},{90,-38},{92,-46},{88,-53},{82,-59},
+    {74,-60},{66,-58},{69,-66},{70,-74},{68,-83},{64,-90},{56,-92},{48,-91},{42,-85},{37,-79},
+    {32,-72},{29,-64},{26,-56},{22,-49},{20,-55},{20,-64},{22,-72},{24,-81},{25,-89},{27,-97},
+    {29,-105},{26,-112},{19,-118},
+};
+
 // The Itqiirpak, the hand with mouths. It OPENS with its GRASP (the story
-// session's brief, 2026-11-07: the intro's forced loss, and the bomb that
-// tells that fight from the real one): its mouths gape and spit 48 shots
-// that gather round the player -- following them, harmless while they
-// gather, the ring drawing in like fingers closing -- and then the whole
-// ring shuts on them at once. No gap to slip through: it can't be dodged.
-// It grasps again and again, a bar a hit (3 hits from the intro's 3 bars),
-// until the player sets off a bomb (X); then its fight proper begins.
+// session's briefs, 2026-11-07/08: the intro's forced loss, and the bomb that
+// tells that fight from the real one) -- the outline of its own hand in
+// shots, which can't be dodged:
+//   Born   -- the outline grows out of the middle of the hand, from a
+//             point, to its full size: the hand itself as drawn (260x176),
+//             laid over it. Only then does it chase (the user: "starts right
+//             in the middle then once it fully grows then it chases").
+//   Follow -- it comes for the player, slowly, faster and faster (past a
+//             sprint), till he's in the middle of it, its palm's mouth on
+//             him. A closed outline, its shots overlapping: its edge can't
+//             pass him by -- he's hit on the way in.
+//   Grab   -- round him it grows out (harmless, unlit), holds a beat, and slowly shrinks down
+//             onto him, following him: a hit. Again and again -- the third
+//             hit of the intro's 3 bars kills.
+// A bar a hit. A bomb (X) clears it at any point, and its fight proper begins.
+// The user: "the bullets that form the outline start at the enemy's actual
+// position, shrink and then grow to the outline, then slowly follow the
+// player, increasing speed ... the outline shrinks its outline down to the
+// player 2 more times, killing it".
 class Itqiirpak : public Enemy {
-    static constexpr int   GRASP_N = 48;          // the ring: 11 px apart at GRASP_R, gaps narrower than the player
-    static constexpr float GRASP_R = 84.0f;       // how far round the player it closes from
-    static constexpr float FORM_T  = 1.0f;        // gathering (harmless, following)
-    static constexpr float SHUT_T  = 0.45f;       // shutting
-    static constexpr float GRASP_EVERY = 2.4f;    // one grasp to the next (past the 1.5 s the player blinks after a hit)
+    static constexpr int   GRASP_N = 103;
+    static constexpr float SIZE    = 0.8f;        // the table's 2.5 an art px to the sprite's 2
+    static constexpr float WAIT_T  = 0.8f;        // the fight's start to its birth
+    static constexpr float BORN_T  = 1.0f;        // growing from the hand's middle to the whole hand
+    static constexpr float FOLLOW_V0 = 40.0f, FOLLOW_A = 110.0f, FOLLOW_MAX = 380.0f;   // px/s, px/s^2: past the 250 sprint
+    static constexpr float GROW_T  = 0.7f, HOLD_T = 0.5f, SHRINK_T = 2.2f;              // a grab
+    static constexpr float WIDE    = 1.3f;        // how far round him it grows
+    enum GraspStage { G_WAIT, G_BORN, G_FOLLOW, G_GROW, G_HOLD, G_SHRINK };
     bool  opening = true;                         // grasping, until a bomb
-    float grasp_t = GRASP_EVERY - 0.8f;           // the first comes 0.8 s in
+    GraspStage gs = G_WAIT;
+    float gt = 0.0f;                              // seconds into the stage
+    float gcx = 0.0f, gcy = 0.0f;                 // the outline's palm mouth, on screen
+    float gscale = 1.0f, gfrom = 1.0f, gspeed = 0.0f;
+    bool  spawned = false;
     int   phase = 0;
     float gape  = 0.0f;   // seconds left with its mouths wide, a shot leaving
     int   tip   = 0;      // the fingertip the next aimed shot leaves
@@ -5272,15 +5310,68 @@ class Itqiirpak : public Enemy {
         *ox = x + (T[v][t][0] - 65.0f) * 2.0f;
         *oy = y + (T[v][t][1] - 44.0f) * 2.0f;
     }
+    void stage(GraspStage g) { gs = g; gt = 0.0f; gfrom = gscale; }
 public:
     Itqiirpak() : Enemy(320, 160, 445, {1.25f,1.5f,2.0f,0.75f,0.75f,1.5f,1.0f}) {}
     const char* name()          const override { return "ITQIIRPAK"; }
     float       fire_interval() const override { return opening ? 0.05f : ENRAGED ? 1.0f : 1.5f; }
     // Its mouths wide, tongues out, as a shot leaves; its idle otherwise.
     int anim_frame() const override { return gape > 0.0f ? 2 : -1; }
-    void update(float dt, float, float) override {
+    void update(float dt, float px, float py) override {
         if (gape > 0.0f) gape -= dt;
-        if (opening) grasp_t += dt;
+        if (!opening) return;
+        gt += dt;
+        switch (gs) {
+        case G_WAIT:
+            if (gt >= WAIT_T) {
+                stage(G_BORN);
+                gape = BORN_T;
+                gcx = x; gcy = y; gscale = 0.0f;      // a point, the hand's middle
+            }
+            break;
+        case G_BORN: {
+            // Grown, its palm's mouth is on the sprite's (art 66, 60 on the
+            // 130x88 frame, drawn 2x about its middle): the outline lies
+            // exactly over the hand as drawn.
+            gscale = fminf(gt / BORN_T, 1.0f);
+            gcx = x + (66.0f - 65.0f) * 2.0f * gscale; gcy = y + (60.0f - 44.0f) * 2.0f * gscale;
+            if (gt >= BORN_T) { gscale = 1.0f; stage(G_FOLLOW); gspeed = FOLLOW_V0; }
+            break;
+        }
+        case G_FOLLOW: {
+            gspeed = fminf(gspeed + FOLLOW_A * dt, FOLLOW_MAX);
+            float dx = px - gcx, dy = py - gcy, d = hypotf(dx, dy), step = gspeed * dt;
+            if (d <= step || d < 4.0f) { gcx = px; gcy = py; stage(G_GROW); }
+            else { gcx += dx / d * step; gcy += dy / d * step; }
+            break;
+        }
+        default: {
+            // A grab: round him, moving exactly as he does -- he is always
+            // in its middle, however he runs (the user).
+            gcx = px; gcy = py;
+            if (gs == G_GROW) {
+                gscale = gfrom + (WIDE - gfrom) * fminf(gt / GROW_T, 1.0f);
+                if (gt >= GROW_T) stage(G_HOLD);
+            } else if (gs == G_HOLD) {
+                if (gt >= HOLD_T) stage(G_SHRINK);
+            } else {
+                gscale = WIDE * fmaxf(1.0f - gt / SHRINK_T, 0.0f);
+                if (gt >= SHRINK_T) stage(G_GROW);       // shut on him: out again, and again
+            }
+        }
+        }
+    }
+    // Harmless while it grows back out round him (its edge sweeping off him,
+    // not onto him): only its coming for him and its shrinking hit.
+    bool puppet_hurts() const override { return gs != G_GROW; }
+    // Its body doesn't hurt while it grasps (the user): only the outline
+    // does. Once it's bombed, touching it hurts as any enemy's does.
+    float contact_damage() const override { return opening ? 0.0f : Enemy::contact_damage(); }
+    bool puppet_at(int slot, float* ox, float* oy) const override {
+        if (!opening || gs == G_WAIT || slot < 0 || slot >= GRASP_N) return false;
+        *ox = gcx + ITQ_HAND[slot][0] * SIZE * gscale;
+        *oy = gcy + ITQ_HAND[slot][1] * SIZE * gscale;
+        return true;
     }
     // A bomb breaks its grasp for good: the fight proper, its first volley a
     // moment after.
@@ -5291,7 +5382,17 @@ public:
     }
     // Rings from the palm; the aimed shots each from a fingertip in turn.
     int fire(float px, float py, BulletSpawn out[], int max) override {
-        if (opening) return grasp(px, py, out, max);
+        if (opening) {                                  // the grasp's outline, once, at its birth
+            if (gs == G_WAIT || spawned || max < GRASP_N) return 0;
+            spawned = true;
+            for (int i = 0; i < GRASP_N; i++) {
+                BulletSpawn b = mk(0.0f, 0.0f, 4.0f, (float)HP_PER_BAR);   // a bar a hit, exactly
+                b.from = true; puppet_at(i, &b.ox, &b.oy);
+                b.puppet = i;
+                out[i] = b;
+            }
+            return GRASP_N;
+        }
         gape = 0.25f;
         const int v = view(facing_toward(px - x, py - y));
         const int rings = ENRAGED ? 10 : (phase % 2 == 0 ? 10 : 0);
@@ -5305,37 +5406,6 @@ public:
         return n;
     }
 private:
-    // The grasp: from all five mouths (the palm's and the four fingertips'),
-    // each shot from the mouth nearest the spot it is going to round the
-    // player -- held wide, all five mouths gaping, while it gathers.
-    int grasp(float px, float py, BulletSpawn out[], int max) {
-        if (grasp_t < GRASP_EVERY || max < GRASP_N) return 0;
-        grasp_t = 0.0f;
-        gape = FORM_T;
-        const int v = view(facing_toward(px - x, py - y));
-        float mx[5], my[5];
-        palm(v, &mx[0], &my[0]);
-        for (int t = 0; t < 4; t++) fingertip(v, t, &mx[t + 1], &my[t + 1]);
-        float turn = ernd() * TAU;
-        for (int i = 0; i < GRASP_N; i++) {
-            float a = turn + i * (TAU / GRASP_N);
-            float gx = cosf(a) * GRASP_R, gy = sinf(a) * GRASP_R;
-            // The nearest mouth to where it is headed (drawn in from 1.5x),
-            // but none right on the player: every shot is made (SAFE_SPAWN).
-            int best = 0; float bd = 1e9f;
-            for (int m = 0; m < 5; m++) {
-                if (hypotf(mx[m] - px, my[m] - py) < 40.0f) continue;
-                float d = hypotf(mx[m] - (px + gx * 1.5f), my[m] - (py + gy * 1.5f));
-                if (d < bd) { bd = d; best = m; }
-            }
-            BulletSpawn b = mk(a, 0.0f, 4.0f, (float)HP_PER_BAR);   // a bar a hit, exactly
-            b.from = true; b.ox = mx[best]; b.oy = my[best];
-            b.delay = FORM_T;
-            b.grasp = true; b.grasp_ox = gx; b.grasp_oy = gy; b.grasp_t = SHUT_T;
-            out[i] = b;
-        }
-        return GRASP_N;
-    }
     int shots(float px, float py, BulletSpawn out[]) {
         float a = aim_at(x,y,px,py);
         if (ENRAGED) {

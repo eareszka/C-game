@@ -40,6 +40,7 @@ enum Sfx {
     SFX_LEVEL_UP,      // a level gained
     SFX_STAIRS,        // a door, stair or entrance taken
     SFX_BOMB,          // X set off a bomb in battle: every enemy shot cleared
+    SFX_BARK,          // the dog, the intro's night (src/intro.cpp)
     SFX_COUNT
 };
 

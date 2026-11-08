@@ -28,7 +28,33 @@ def piece(r, draw, im, tones=None, choices=None):
         sprite_rich(r, im, box[0], box[1], box[3], rows=rows, choices=choices)
 
 
-def design():
+CURTAIN_TONES = {'K': '000000', 'm': PAL['m'], 'a': 'a4aaba'}
+
+
+def closed_curtains():
+    """PixelLab's curtains drawn shut: the two panels meet over the glass
+    (its pixels 9-14, rows 8-19), a fold either side and a dark seam where
+    they meet. The intro's night and the morning until the day comes
+    (house0_intro_design.py)."""
+    im = art('s_curtains').copy()
+    cream, fold = (251, 245, 233, 255), (207, 194, 193, 255)
+    for y in range(8, 20):
+        for x in range(9, 15):
+            im.putpixel((x, y), (0, 0, 0, 255) if x == 11 else fold if x in (10, 13) else cream)
+    return im
+
+
+def curtains(r, closed=False):
+    """At both windows, on the back wall behind everyone; open, the glass shows through."""
+    for wx in (80, 160):
+        if closed:
+            sprite(r, closed_curtains(), wx, 14, CURTAIN_TONES, BACK)
+        else:
+            sprite(r, art('s_curtains'), wx, 14, CURTAIN_TONES, BACK,
+                   cut=lambda x, y: 8 <= x <= 15 and y >= 8)
+
+
+def design(closed=False):
     r = new_room()
     # the back wall's brick: the room's own (interior_room.shell), as the user wants it
     rug(r, 98, 114, 46, 14)
@@ -36,10 +62,7 @@ def design():
           {'K': '000000', 'R': PAL['R'], 'm': PAL['m']})
     piece(r, lambda: dresser(r, 112), art('house0_C_dresser'),          # PixelLab's own: honey top, brown front, dark side, lit edges, brass
           choices=['f0bc3c', '815423', '3c2412', 'fce4a0', 'c9a433'])
-    # on the back wall, behind everyone
-    for wx in (80, 160):
-        sprite(r, art('s_curtains'), wx, 14, {'K': '000000', 'm': PAL['m'], 'a': 'a4aaba'}, BACK,
-               cut=lambda x, y: 8 <= x <= 15 and y >= 8)
+    curtains(r, closed)
     sprite(r, art('s_picture'), 116, 22, {'K': '000000', 'U': '84a7e9', 'h': '4fa667'}, BACK)
     sprite(r, art('s_clock'), 132, 16, {'K': '000000', 'F': WOOD['F'], 'm': PAL['m']}, BACK)
     # the plant in the back left corner, on the floor: its pot is in the way.

@@ -10,14 +10,17 @@ this, not tools/interior_nes.py, so the morning's room_0 is left alone:
 
     python art/interiors_nes/house0_intro_design.py
 
-It writes assets/interiors/room_0_intro.png, _depth.png and .txt.
+It writes assets/interiors/room_0_intro.png, _depth.png and .txt, and
+room_0_morning.*: the everyday room with the curtains still shut, for the
+morning after until the day has come (the user, 2026-11-08).
 """
 import os, shutil, sys, tempfile
 DESIGNS = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(DESIGNS, '..', '..', 'tools'))
 sys.path.insert(0, DESIGNS)
 from interior_nes import *
-from house0_design import PAL, WOOD, piece
+from house0_design import PAL, WOOD, piece, curtains
+import house0_design
 from PIL import Image
 
 FOOD = {'K': '000000', 'R': PAL['R'], 'U': '84a7e9', 'F': WOOD['F']}       # blue bowl, lit rim, kibble
@@ -71,9 +74,7 @@ def design():
           {'K': '000000', 'R': PAL['R'], 'm': PAL['m']})
     piece(r, lambda: dresser(r, 112), art('house0_C_dresser'),          # in both rooms
           choices=['f0bc3c', '815423', '3c2412', 'fce4a0', 'c9a433'])
-    for wx in (80, 160):
-        sprite(r, art('s_curtains'), wx, 14, {'K': '000000', 'm': PAL['m'], 'a': 'a4aaba'}, BACK,
-               cut=lambda x, y: 8 <= x <= 15 and y >= 8)
+    curtains(r, closed=True)        # night: drawn shut
     sprite(r, art('s_picture'), 116, 22, {'K': '000000', 'U': '84a7e9', 'h': '4fa667'}, BACK)
     sprite(r, art('s_clock'), 132, 16, {'K': '000000', 'F': WOOD['F'], 'm': PAL['m']}, BACK)
     # The dog's bed in the back left corner, where the plant stands by day.
@@ -86,8 +87,9 @@ def design():
 
 if __name__ == '__main__':
     out = os.path.join(DESIGNS, '..', '..', 'assets', 'interiors')
-    with tempfile.TemporaryDirectory() as tmp:
-        export(0, design(), out=tmp)
-        for ext in ('.png', '_depth.png', '.txt'):
-            shutil.copy(os.path.join(tmp, 'room_0' + ext), os.path.join(out, 'room_0_intro' + ext))
-    print('room 0 intro written')
+    for name, room in (('room_0_intro', design()), ('room_0_morning', house0_design.design(closed=True))):
+        with tempfile.TemporaryDirectory() as tmp:
+            export(0, room, out=tmp)
+            for ext in ('.png', '_depth.png', '.txt'):
+                shutil.copy(os.path.join(tmp, 'room_0' + ext), os.path.join(out, name + ext))
+    print('room 0 intro and morning written')

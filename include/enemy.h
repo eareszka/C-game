@@ -99,14 +99,11 @@ struct BulletSpawn {
     // lavender core, the HUD's POISON colour. What it sheds is poison too.
     // A minority threat: one or two poison sources a pattern, never a screen.
     bool  poison         = false;
-    // A grasp: with `delay`, it forms a ring round the PLAYER -- it heads for
-    // (grasp_ox, grasp_oy) from wherever the player is now, the ring drawn
-    // in from half again as wide as the wait runs out, following them -- and
-    // is harmless while it does; then the whole ring shuts on where the
-    // player is, every shot arriving together in grasp_t s (Itqiirpak's
-    // opening, which can't be dodged -- only bombed).
-    bool  grasp          = false;
-    float grasp_ox       = 0.0f, grasp_oy = 0.0f, grasp_t = 0.0f;
+    // A puppet (>= 0): a shot the enemy itself places every frame -- slot
+    // `puppet` of a shape it steers (Enemy::puppet_at) -- not flying on its
+    // own. It isn't spent on a hit (the shape stays whole), and goes when
+    // puppet_at says so. Itqiirpak's grasp, the outline of its hand.
+    int   puppet         = -1;
     // Its own colour, 0xRRGGBB, instead of the enemy's (enemy_bullet_color):
     // -1 = the enemy's. For an enemy whose shots come in more than one
     // colour (Rumptifusel: dark pore sheets, light spores). What it sheds
@@ -256,6 +253,10 @@ public:
     virtual bool  free_movement() const { return false; }
     // The player set off a bomb (X): every enemy shot was just cleared.
     virtual void  on_bomb() {}
+    // Where puppet shot `slot` is now (BulletSpawn::puppet); false: it's gone.
+    virtual bool  puppet_at(int, float*, float*) const { return false; }
+    // Its puppet shots hurt just now (false: harmless, drawn without a core).
+    virtual bool  puppet_hurts() const { return true; }
     // Where shots sharing an aim slot (BulletSpawn::path_aim_slot) head when
     // their orbits end: by default the player, wherever they are then.
     virtual void  aim_slot(int /*slot*/, float px, float py, float* tx, float* ty) { *tx = px; *ty = py; }

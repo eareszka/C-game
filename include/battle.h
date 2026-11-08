@@ -137,8 +137,7 @@ struct Bullet {
     bool  behind;         // drawn behind the enemy
     bool  poison;         // a hit poisons the player too (BulletSpawn::poison)
     int   color;          // its own colour, 0xRRGGBB, or -1: the enemy's (BulletSpawn::color)
-    bool  grasp;          // a grasp (BulletSpawn::grasp): forming round the player, then shutting
-    float gox, goy, gform, gshut;           // ...its spot off the player, its whole wait, its shut time
+    int   puppet;         // >= 0: placed by the enemy every frame (BulletSpawn::puppet), its slot
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
     // look and strike after the player swaps.
     int   weapon;         // WeaponType
@@ -288,6 +287,8 @@ public:
     // Bombs (X): how many are left this fight, and seconds since X was
     // pressed with none (the count flashes red).
     int   hud_bombs()     const { return _bombs; }
+    // The enemy's name over its health bar: in the intro it's not known yet -- "???".
+    const char* hud_enemy_name() const { return _intro ? "???" : _enemy->name(); }
     float hud_no_bomb_t() const { return _no_bomb_t; }
     // The intro's version of a fight (--intro): 3 bars of health, no bombs.
     void  set_intro();
@@ -337,6 +338,8 @@ private:
     float        _trial_secs = TRIAL_DRAIN_SECS;
     bool         _trial_poisoned = false;   // a trial's poison: its own HP drains, never the save's
     float        _trial_poison_t = 0.0f;
+    bool         _intro      = false;  // set_intro: health locked to INTRO_BARS whatever the save holds
+    bool         _silhouette = false;  // set_intro: the enemy drawn near-black, the intro's hand
     bool         _fixed_gear = false;  // fights with _trial_weapon, not the arsenal: a trial, or any debug fight (the tier's knife)
     Weapon       _trial_weapon = {};   // the knife a trial fights with, in place of the arsenal's
     int          _trial_level  = 1;

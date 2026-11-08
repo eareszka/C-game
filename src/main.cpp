@@ -695,6 +695,10 @@ int main(int argc, char *argv[])
     // -- a white page with a fold, until they have a picture -- and TAKE NOTE
     // beside one, unless another prompt has the box. Call before the player
     // is drawn, with the feet's middle.
+    // A TAKE NOTE prompt is drawn late, with the speech box -- over the
+    // world's last layers (the intro's night and fog wall), not under them
+    // (the user: the fog mustn't lie over the menus).
+    const char* late_prompt = nullptr;
     auto notes_tick = [&](const StoryWhere& w, const DungeonMap* dm, const Camera* c, float fcx, float fcy, bool prompt_free, const Input* gin) {
         StoryNotePos ns[8];
         int n = story_notes_here(w, dm, ns, 8);
@@ -715,7 +719,7 @@ int main(int argc, char *argv[])
             float ndx = fcx - ns[i].x, ndy = fcy - ns[i].y;
             if (w.state == STATE_OVERWORLD) { ndx = wrap_dpx(ndx); ndy = wrap_dpy(ndy); }
             if (ndx * ndx + ndy * ndy >= 40.0f * 40.0f) continue;
-            draw_textbox(plat.renderer, "TAKE NOTE", 255, 255, 255);
+            late_prompt = "TAKE NOTE";
             if (input_pressed(gin, SDL_SCANCODE_RETURN) ||
                 input_pressed(gin, SDL_SCANCODE_Z)      ||
                 input_pressed(gin, SDL_SCANCODE_SPACE)) {
@@ -960,7 +964,18 @@ int main(int argc, char *argv[])
     // With --battle 44 it is that fight's forced-loss version instead.
     if (preview_intro && preview_battle < 0) {
         intro_begin(); place_at_start(); wake_at_home();
-        if (getenv("INTRO_OUTSIDE")) state = STATE_OVERWORLD;   // testing: start at the door, not in the room
+        // On foot that night, debug run or not (the user): no bicycle to ride.
+        item_equip_bike(&player, false);
+        item_slot(&player, ITEM_BICYCLE) = 0;
+        if (getenv("INTRO_OUTSIDE")) { state = STATE_OVERWORLD; intro_skip_opening(); }   // testing: start at the door, up, the dog already out
+        float note_x, note_y;   // testing, INTRO_OUTSIDE=note: start three tiles south of the page by the water
+        if (const char* o = getenv("INTRO_OUTSIDE"))
+            if ((!strcmp(o, "note") || !strcmp(o, "hand") || !strcmp(o, "taken")) && intro_page_land(map, &note_x, &note_y)) {
+                if (!strcmp(o, "hand")) intro_test_read();    // INTRO_OUTSIDE=hand: the page read, the hand coming
+                if (!strcmp(o, "taken")) intro_test_taken();  // INTRO_OUTSIDE=taken: the fight over, the dog taken
+                ow.x = note_x - (HB_X1 + HB_X2) * 0.5f;
+                ow.y = note_y + 3 * TILE_SIZE - (HB_Y1 + HB_Y2) * 0.5f;
+            }
     }
 
     float esc_hold_time = 0.f;
@@ -1027,6 +1042,7 @@ int main(int argc, char *argv[])
         delete battle_scene;
         battle_scene = new BattleScene(&player, battle_queue[0]);
         battle_scene->set_more_after(battle_queue_count > 1);
+        if (intro_stage() == INTRO_FIGHT) battle_scene->set_intro();   // the night's forced loss
         state_after_battle = back;
         state = STATE_BATTLE;
     };
@@ -2044,8 +2060,12 @@ int main(int argc, char *argv[])
 
         // Block input as well as actor updates while modal UI is open.
         Input in_blank = {0};
-        const Input* game_in = (actors_paused() || room_t >= 0.0f)
+        const Input* game_in = (actors_paused() || room_t >= 0.0f || intro_holds_player())   // asleep on the night, the morning after: still
                                 ? &in_blank : &in;
+        // The note read and its box gone, the hand rising: he stands looking
+        // north, out to sea (the user) -- not while the note is still up.
+        if (intro_active() && (intro_stage() == INTRO_READ || intro_stage() == INTRO_EMERGE) && !actors_paused())
+            player.facing = FACE_UP;
         // Standing on a door, stair or entrance: called every frame the player
         // is on one. Stepping onto it starts the fade, and this is true once
         // the screen is black -- the caller changes rooms then. The player
@@ -2411,6 +2431,36 @@ int main(int argc, char *argv[])
                 story_sites_draw(plat.renderer, &cam, map);   // the story's bosses, where they were put
                 notes_tick(ow_where, nullptr, &cam, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + (HB_Y1 + HB_Y2) * 0.5f,
                            ow_talk < 0 && !ow_prompt && pre_battle_timer < 0.0f, game_in);
+                // The intro's page by the water, the dog barking at it (src/intro.cpp).
+                intro_draw_note(plat.renderer, &cam, map);
+                {   // the hand risen: the fight
+                    float hx, hy;
+                    if (pre_battle_timer < 0.0f && intro_take_fight(map, &hx, &hy)) {
+                        battle_queue[0]            = 44;   // Itqiirpak, the hand
+                        battle_queue_chaser_idx[0] = -1;
+                        flash_entries[0]           = { hx, hy };
+                        battle_queue_count = flash_count = 1;
+                        battle_queue_idx   = 0;
+                        pre_battle_timer   = 0.0f;
+                        audio_play(SFX_BATTLE_START);
+                    }
+                }
+                {
+                    float nx, ny;
+                    if (intro_note_spot(map, &nx, &ny) && ow_talk < 0 && !ow_prompt && pre_battle_timer < 0.0f && !dlg_text) {
+                        float ndx = wrap_dpx(ow.x + (HB_X1 + HB_X2) * 0.5f - nx), ndy = wrap_dpy(ow.y + (HB_Y1 + HB_Y2) * 0.5f - ny);
+                        if (ndx * ndx + ndy * ndy < 40.0f * 40.0f) {
+                            late_prompt = "TAKE NOTE";
+                            if (input_pressed(game_in, SDL_SCANCODE_RETURN) || input_pressed(game_in, SDL_SCANCODE_Z) ||
+                                input_pressed(game_in, SDL_SCANCODE_SPACE)) {
+                                say(intro_note_take());
+                                input_consume(&in, SDL_SCANCODE_Z);
+                                input_consume(&in, SDL_SCANCODE_RETURN);
+                                input_consume(&in, SDL_SCANCODE_SPACE);
+                            }
+                        }
+                    }
+                }
                 // Town 0's approved residents; village speakers keep their placeholder.
                 // The player walks through everyone: whoever's feet are lower is in front.
                 // The player, the residents and the wilds (each at its image nearest
@@ -2420,7 +2470,8 @@ int main(int argc, char *argv[])
                 struct OwSprite { float feet; int kind, idx; DungeonChaser ch; float x, y, w, h; };   // kind: 0 player, 1 resident, 2 wild, 3 tumbleweed, 4 the intro's dog
                 std::vector<OwSprite> sprites;
                 sprites.push_back({ ow.y + HB_Y2, 0, 0, {}, ow.x, ow.y, (float)player.width, (float)player.height });
-                intro_dog_update(-1, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + HB_Y2, actors_paused() ? 0.0f : dt);
+                intro_dog_update(map, -1, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + HB_Y2, actors_paused() ? 0.0f : dt);
+                if (intro_take_morning()) wake_at_home();   // the black after the dog was taken: home, in bed
                 {
                     float dfx, dfy;
                     if (intro_dog_feet(&dfx, &dfy)) sprites.push_back({ dfy, 4, 0, {}, dfx - 12.0f, dfy - 24.0f, 24.0f, 24.0f });
@@ -2450,7 +2501,8 @@ int main(int argc, char *argv[])
                 });
                 auto draw_sprite = [&](const OwSprite& s) {
                     if (s.kind == 0) {
-                        if (bike_sprite && overworld_riding(&ow, &player, map))
+                        if (intro_draw_fallen(plat.renderer, &cam, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + HB_Y2)) {}   // after the fight: out cold where he stood
+                        else if (bike_sprite && overworld_riding(&ow, &player, map))
                             player_draw_bike(&player, ow.x, ow.y, &cam, plat.renderer, bike_sprite);
                         else player_draw(&player, ow.x, ow.y, &cam, plat.renderer, player_sprite, ow.swing.body_frame);
                         overworld_draw_swing(&ow, &cam, plat.renderer);
@@ -2504,7 +2556,7 @@ int main(int argc, char *argv[])
                 }
 
                 // The foggy night (docs/story.md): the frame darkened, then the fog wall over it.
-                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H);
+                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H, false);
                 intro_draw_fog(plat.renderer, &cam, map);
 
                 // --- Weapon cooldown bar ---
@@ -2775,14 +2827,22 @@ int main(int argc, char *argv[])
                                 state_after_battle = STATE_OVERWORLD;
                                 // Beaten: wake at home, whole again and cured. Nothing
                                 // is lost (user); the dungeon regrows on the next visit.
-                                if (defeat) {
+                                // The night's fight, however it went: he lies out cold by
+                                // the water while the hand takes the dog, then black and
+                                // the next morning, in bed (INTRO_TAKEN, the user).
+                                bool night_over = intro_stage() == INTRO_FIGHT;
+                                if (night_over) intro_taken_begin();
+                                if (defeat || night_over) {
                                     player.stats.hp     = player.stats.max_hp;
                                     player.poisoned     = 0;
                                     player.poison_timer = 0.0f;
                                     oxygen = 1.0f; oxy_hurt_t = 0.0f;
-                                    wake_at_home();
-                                    pickup_note = "YOU WAKE UP AT HOME";
-                                    pickup_note_t = 2.0f;
+                                    if (night_over) player.facing = FACE_DOWN;
+                                    else wake_at_home();
+                                    if (!night_over) {
+                                        pickup_note = "YOU WAKE UP AT HOME";
+                                        pickup_note_t = 2.0f;
+                                    }
                                 }
                             }
                         }
@@ -3268,7 +3328,7 @@ int main(int argc, char *argv[])
                 // Not on the intro's night: the dog's bowl stands there
                 // (house0_intro_design.py).
                 bool chest_opened = (story_flags()->home & STORY_H_CHEST) != 0;
-                if (imap.id == 0 && !intro_active()) {
+                if (imap.id == 0 && !intro_night()) {
                     SDL_Rect src = { (CHEST_COL + (chest_opened ? 1 : 0)) * 16, CHEST_ROW * 16, 16, 16 };
                     SDL_Rect dst = { DEBUG_CHEST_X, DEBUG_CHEST_Y, IMAP_TILE, IMAP_TILE };
                     if (SDL_Texture* sheet = tilemap_get_town_tex())
@@ -3332,21 +3392,35 @@ int main(int argc, char *argv[])
                     draw_chaser(&icam, test_ch[i]);
                 // The intro's dog: behind the boy or in front, by whose feet are lower.
                 float dog_fx, dog_fy;
-                intro_dog_update(imap.id, iplayer.x + (HB_X1 + HB_X2) * 0.5f, iplayer.y + HB_Y2, actors_paused() ? 0.0f : dt);
+                intro_dog_update(map, imap.id, iplayer.x + (HB_X1 + HB_X2) * 0.5f, iplayer.y + HB_Y2, actors_paused() ? 0.0f : dt);
                 bool dog_here = intro_dog_feet(&dog_fx, &dog_fy);
+                float wake_fx, wake_fy;
+                if (intro_take_wake(&wake_fx, &wake_fy)) {   // he wakes: up, beside his bed
+                    iplayer.x = wake_fx - (HB_X1 + HB_X2) * 0.5f;
+                    iplayer.y = wake_fy - HB_Y2;
+                    player.facing = FACE_DOWN;
+                }
                 auto draw_dog = [&]() {
                     intro_dog_draw(plat.renderer, &icam);
                     interior_draw_over_player(&imap, plat.renderer, dog_fx - 12.0f, dog_fy - 24.0f, 24.0f, 24.0f, dog_fy);
                 };
                 if (dog_here && dog_fy <= iplayer.y + HB_Y2) draw_dog();
-                if (bike_sprite && item_bike_worn(&player))
+                float boy_fx, boy_fy, boy_lift;
+                int   boy_frame;
+                if (intro_boy_scripted(&boy_fx, &boy_fy, &boy_lift, &boy_frame)) {   // the night: out of bed
+                    iplayer.x = boy_fx - (HB_X1 + HB_X2) * 0.5f;
+                    iplayer.y = boy_fy - HB_Y2;
+                    player_draw(&player, iplayer.x, iplayer.y - boy_lift, &icam, plat.renderer, player_sprite, boy_frame);
+                }
+                else if (intro_holds_player()) intro_draw_sleeper(plat.renderer, &icam);   // asleep in his bed
+                else if (bike_sprite && item_bike_worn(&player))
                     player_draw_bike(&player, iplayer.x, iplayer.y, &icam, plat.renderer, bike_sprite);
                 else player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
                 draw_npcs(true);
                 interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
                                           (float)player.width, (float)player.height, iplayer.y + HB_Y2);
                 if (dog_here && dog_fy > iplayer.y + HB_Y2) draw_dog();
-                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H);   // the foggy night, indoors too
+                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H, true);   // the foggy night, indoors until he wakes
                 if (dbg_grid) {
                     draw_hitboxes(&icam, iplayer.x, iplayer.y,
                         [&](float x, float y) { return interior_at_exit(&imap, x, y); });   // the whole box, to the wall
@@ -3427,6 +3501,10 @@ int main(int argc, char *argv[])
             pickup_note_t -= dt;
             draw_textbox(plat.renderer, pickup_note, 255, 255, 80,
                          state == STATE_BATTLE && battle_scene && battle_scene->textbox_low());
+        }
+        if (late_prompt) {                         // TAKE NOTE, over the fog
+            if (!dlg_text) draw_textbox(plat.renderer, late_prompt, 255, 255, 255);
+            late_prompt = nullptr;
         }
         SDL_Rect dlg_box = {};
         if (dlg_text)
@@ -3559,7 +3637,7 @@ int main(int argc, char *argv[])
 
             if (state == STATE_BATTLE) {
                 if (foe) {
-                    const char* nm = foe->name();
+                    const char* nm = battle_scene->hud_enemy_name();   // ??? in the intro
                     draw_text(plat.renderer, nm, 600 - text_width(nm, 1), 3, 1, 220, 220, 220);
                     draw_bar(plat.renderer, 420, 14, 180, 8, foe->hp, foe->max_hp, 220, 60, 60);
                 }
@@ -4025,6 +4103,11 @@ int main(int argc, char *argv[])
         // A door or stair: black over everything, down and back up.
         if (room_t >= 0.0f)
             veil(room_t < BATTLE_FADE_T ? room_t / BATTLE_FADE_T : 2.0f - room_t / BATTLE_FADE_T);
+        {   // The intro: black after the dog is taken, "THE NEXT MORNING" on it.
+            const char* card;
+            veil(intro_blackout(&card));
+            if (card) draw_text(plat.renderer, card, (640 - text_width(card, 2)) / 2, 232, 2, 255, 255, 255);
+        }
 
         // The one place the window scale is applied. RenderClear ignores the
         // viewport, so this paints the letterbox bars as well.

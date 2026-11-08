@@ -207,6 +207,12 @@ static Recipe recipe(Sfx s) {
                      env(L(TRI, 700, 2400, 0.05f, 0.35f, 0.35f, 7000), 0.01f, 0.25f, 0.2f, 0.08f) };
         r.post = P(4200, 1.8f, 140, 0.35f, 0.35f);
         break;
+    case SFX_BARK:     // a small dog's "wuf": a rough square dropping in pitch, a puff of breath
+        r.layers = { env(L(SQUARE, 640, 330, 0, 0.11f, 0.9f, 2600), 0.004f, 0.06f, 0.3f, 0.04f),
+                     env(L(SAW,    320, 170, 0, 0.11f, 0.5f, 1800), 0.004f, 0.06f, 0.3f, 0.04f),
+                     env(L(NOISE, 0, 0, 0, 0.06f, 0.45f, 3000), 0.002f, 0.04f, 0.0f, 0.02f) };
+        r.post = P(3000, 1.6f, 70, 0.2f, 0.2f);
+        break;
     default:
         break;
     }
@@ -248,6 +254,7 @@ static const char* NAMES[SFX_COUNT] = {
     "cursor", "confirm", "back", "deny", "done", "text_blip",
     "swing", "node_hit", "node_break", "chest", "level_up", "stairs",
     "bomb",
+    "bark",
 };
 
 const char* sfx_name(Sfx s) { return s >= 0 && s < SFX_COUNT ? NAMES[s] : "?"; }

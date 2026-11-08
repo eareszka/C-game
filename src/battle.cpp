@@ -430,8 +430,10 @@ void BattleScene::set_trial(float drain_secs, const TrialGear& gear) {
 // test it): 3 bars of health and no bombs -- so Itqiirpak's grasp, a bar a
 // hit, ends it on the third.
 void BattleScene::set_intro() {
+    _intro = true;
     _bp.hp = _bp.max_hp = 3.0f * HP_PER_BAR;
     _bombs = 0;
+    _silhouette = true;   // the hand out of the sea, black (docs/story.md)
 }
 
 // Firing as weapon w: its shape's profile, sped up by its oil, hitting as
@@ -643,6 +645,13 @@ void BattleScene::update(const Input* in, float dt) {
         float ticks = floorf(_trial_poison_t);
         _trial_poison_t -= ticks;
         _bp.hp = fmaxf(_bp.hp - ticks, fminf(_bp.hp, (float)HP_PER_BAR));
+    }
+
+    // The intro: 3 bars, locked -- nothing raises them (no heal, no bigger
+    // save) and the box stays 3 bars wide; only its hits take them.
+    if (_intro) {
+        _bp.max_hp = 3.0f * HP_PER_BAR;
+        _bp.hp = fminf(_bp.hp, _bp.max_hp);
     }
 
     // A trial: under the knife the enemy's HP also runs down evenly, so the
@@ -1152,21 +1161,13 @@ void BattleScene::_move_bullets(float dt) {
             }
         }
 
-        // A grasp: forming round the player, following them, the ring drawn
-        // in as the wait runs out; then shut on where they are, every shot
-        // of it arriving together (its speed its distance over the shut time).
-        if (bl.grasp && bl.delay > 0.0f) {
-            bl.delay -= dt;
-            if (bl.delay > 0.0f) {
-                float wide = 1.0f + 0.5f * (bl.gform > 0.0f ? bl.delay / bl.gform : 0.0f);
-                float tx = _bp.x + bl.gox * wide, ty = _bp.y + bl.goy * wide;
-                float k = 1.0f - expf(-9.0f * dt);
-                bl.x += (tx - bl.x) * k; bl.y += (ty - bl.y) * k;
-                continue;
-            }
-            bl.vx = (_bp.x - bl.x) / bl.gshut;
-            bl.vy = (_bp.y - bl.y) / bl.gshut;
-            bl.life = bl.age + bl.gshut + 0.15f;           // gone just past the middle
+        // A puppet: where the enemy puts it, this frame -- or gone.
+        if (bl.puppet >= 0) {
+            float nx, ny;
+            if (!_enemy->puppet_at(bl.puppet, &nx, &ny)) { bl.active = false; continue; }
+            if (dt > 0.0f) { bl.vx = (nx - bl.x) / dt; bl.vy = (ny - bl.y) / dt; }
+            bl.x = nx; bl.y = ny;
+            continue;
         }
 
         // A mine waits where it was dropped, then launches at the player --
@@ -1431,7 +1432,7 @@ void BattleScene::_check_collisions() {
     const float GRAZE_MARGIN = 10.0f;
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
         Bullet& bl = _enemy_bullets[i];
-        if (!bl.active || bl.grazed || bullet_fading(bl) > 0.0f || (bl.grasp && bl.delay > 0.0f)) continue;
+        if (!bl.active || bl.grazed || bullet_fading(bl) > 0.0f) continue;
         if (bullet_touches(bl, px, py, PLAYER_R + GRAZE_MARGIN) &&
             !bullet_touches(bl, px, py, PLAYER_R)) {
             bl.grazed = true;
@@ -1440,9 +1441,11 @@ void BattleScene::_check_collisions() {
         }
     }
     if (_bp.iframes > 0.0f) return;
-    // Whole bars, at least one: every hit is a visible chunk.
-    // A trial can't be lost (the last bar stays) and logs every hit -- one a
-    // frame, however many shots landed in it, with the bars they took.
+    // Whole bars, at least one: every hit is a visible chunk. ONE hit a
+    // frame: however many shots land together, only the first counts (its
+    // bars), and the blink after it covers the rest -- two shots arriving
+    // at once used to take a bar each (44's grasp shutting, the user).
+    // A trial can't be lost (the last bar stays) and logs every hit.
     bool trial_hit = false;
     auto hurt = [&](float damage, char src) {
         _hit_bars = (int)ceilf(damage / HP_PER_BAR);
@@ -1464,15 +1467,17 @@ void BattleScene::_check_collisions() {
         }
     };
     for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+        if (_bp.iframes > 0.0f) break;              // hit already this frame: one hit, not one a shot
         Bullet& bl = _enemy_bullets[i];
-        if (!bl.active || bullet_fading(bl) > 0.0f || (bl.grasp && bl.delay > 0.0f)) continue;   // a grasp forming is harmless
+        if (!bl.active || bullet_fading(bl) > 0.0f) continue;
+        if (bl.puppet >= 0 && !_enemy->puppet_hurts()) continue;   // its shape, harmless just now
         if (bullet_touches(bl, px, py, PLAYER_R)) {
             hurt(bl.damage, 'b');
             if (bl.poison) {                       // ...and it poisons
                 if (_trial) _trial_poisoned = true;
                 else        _player_ref->poisoned = 1;
             }
-            bl.active = false;
+            if (bl.puppet < 0) bl.active = false;     // a puppet stays: its shape keeps whole
         }
     }
     // Its lasers: a beam that hurts (hurt_w > 0) costs a bar to touch -- the
@@ -1606,8 +1611,7 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
         bl.behind         = bs.behind;
         bl.poison         = bs.poison;
         bl.color          = bs.color;
-        bl.grasp          = bs.grasp;
-        bl.gox = bs.grasp_ox; bl.goy = bs.grasp_oy; bl.gform = bs.delay; bl.gshut = fmaxf(bs.grasp_t, 0.05f);
+        bl.puppet         = bs.puppet;
         bl.grazed         = false;
         {
             float sp = sqrtf(bs.vx * bs.vx + bs.vy * bs.vy);
@@ -1776,6 +1780,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         Uint8 alpha = (Uint8)(255 * (float)(int)(fminf(fmaxf(op, 0.0f), 1.0f) * 4.0f + 0.001f) / 4.0f);
         if (_enemy_flash > 0.0f) alpha = 255;   // a hit always flashes it, white and whole, however unseen (the user)
         SDL_SetTextureAlphaMod(tex, alpha);
+        if (_silhouette) SDL_SetTextureColorMod(tex, 8, 6, 12);
         const bool mirror = _enemy->mirror_sprite();
         _drawn_dst = dst; _drawn_mirror = mirror;
         const SDL_RendererFlip sprite_flip = mirror ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
@@ -1927,7 +1932,7 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
             Uint8 pr = lav ? 102 : 182, pg = lav ? 75 : 156, pb = lav ? 149 : 238;
             _fill_rect(ren, cx - k/2 - 1, cy - k/2 - 1, k + 2, k + 2, (Uint8)(pr * fk), (Uint8)(pg * fk), (Uint8)(pb * fk), 255);
         }
-        else if (bl.delay <= 0.0f)   // a waiting mine has no white core: it lights when it launches
+        else if (bl.delay <= 0.0f && (bl.puppet < 0 || _enemy->puppet_hurts()))   // a waiting mine has no white core: it lights when it launches (a harmless puppet neither)
             _fill_rect(ren, cx - k/2 - 1, cy - k/2 - 1, k + 2, k + 2, core, core, core, 255);
     }
 }
