@@ -4,6 +4,7 @@
 #include "collision.h"
 #include "tilemap.h"   // TOWN0_SHEET_COLS
 #include "core.h"      // world_ms, the ambient beat
+#include "intro.h"     // room 0 on the foggy night
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -59,18 +60,23 @@ struct NesRoom {
     // arrive there, ax ay -- all in screen pixels)
     int n_stairs;
     struct { int to; float x0, y0, x1, y1, ax, ay; } stairs[4];
+    char base[64];          // its files' path without the ending: assets/interiors/room_N
 };
 static NesRoom* nes_rooms[MAX_NES_ROOMS];
+// Room 0 on the intro's foggy night: the dog's bowl and bed in place of the
+// drawers and the plant (art/interiors_nes/house0_intro_design.py). The same
+// room, id 0, in its own files; without them, the everyday room.
+static NesRoom* nes_room0_intro;
 
-static const NesRoom* nes_room(int id)
+static const NesRoom* nes_room_load(NesRoom** slot, const char* base)
 {
-    if (id < 0 || id >= MAX_NES_ROOMS) return nullptr;
-    if (!nes_rooms[id]) nes_rooms[id] = (NesRoom*)SDL_calloc(1, sizeof(NesRoom));
-    NesRoom* r = nes_rooms[id];
+    if (!*slot) *slot = (NesRoom*)SDL_calloc(1, sizeof(NesRoom));
+    NesRoom* r = *slot;
     if (!r || r->tried) return r && r->ok ? r : nullptr;
     r->tried = true;
+    SDL_strlcpy(r->base, base, sizeof r->base);
     char path[96];
-    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d.txt", id);
+    SDL_snprintf(path, sizeof path, "%s.txt", base);
     FILE* f = fopen(path, "r");
     if (!f) return nullptr;
     for (int y = 0; y < IMAP_H; y++) {
@@ -85,7 +91,7 @@ static const NesRoom* nes_room(int id)
         r->coll[y][IMAP_W] = 0;
     }
     fclose(f);
-    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_depth.png", id);
+    SDL_snprintf(path, sizeof path, "%s_depth.png", base);
     SDL_Surface* raw = IMG_Load(path);
     if (!raw) return nullptr;
     SDL_Surface* s = SDL_ConvertSurfaceFormat(raw, SDL_PIXELFORMAT_RGBA32, 0);
@@ -103,7 +109,7 @@ static const NesRoom* nes_room(int id)
     }
     SDL_UnlockSurface(s);
     SDL_FreeSurface(s);
-    SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_stairs.txt", id);
+    SDL_snprintf(path, sizeof path, "%s_stairs.txt", base);
     if (FILE* sf = fopen(path, "r")) {
         while (r->n_stairs < 4 &&
                fscanf(sf, "%d %f %f %f %f %f %f", &r->stairs[r->n_stairs].to, &r->stairs[r->n_stairs].x0,
@@ -116,23 +122,33 @@ static const NesRoom* nes_room(int id)
     return r;
 }
 
+static const NesRoom* nes_room(int id)
+{
+    if (id < 0 || id >= MAX_NES_ROOMS) return nullptr;
+    if (id == 0 && intro_active())
+        if (const NesRoom* r = nes_room_load(&nes_room0_intro, "assets/interiors/room_0_intro")) return r;
+    char base[64];
+    SDL_snprintf(base, sizeof base, "assets/interiors/room_%d", id);
+    return nes_room_load(&nes_rooms[id], base);
+}
+
 static SDL_Texture* nes_room_tex(int id, SDL_Renderer* ren)
 {
     NesRoom* r = (NesRoom*)nes_room(id);
     if (!r) return nullptr;
     if (!r->tex) {
         char path[96];
-        SDL_snprintf(path, sizeof path, "assets/interiors/room_%d.png", id);
+        SDL_snprintf(path, sizeof path, "%s.png", r->base);
         r->tex = IMG_LoadTexture(ren, path);
     }
     if (!r->anim_tried) {
         r->anim_tried = true;
         char path[96];
-        SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_anim.txt", id);
+        SDL_snprintf(path, sizeof path, "%s_anim.txt", r->base);
         if (FILE* f = fopen(path, "r")) {
             if (fscanf(f, "%d %d %d %d %d %d", &r->anim_layer, &r->anim_x, &r->anim_y,
                        &r->anim_w, &r->anim_h, &r->anim_n) == 6 && r->anim_n > 0) {
-                SDL_snprintf(path, sizeof path, "assets/interiors/room_%d_anim.png", id);
+                SDL_snprintf(path, sizeof path, "%s_anim.png", r->base);
                 r->anim_tex = IMG_LoadTexture(ren, path);
             }
             fclose(f);

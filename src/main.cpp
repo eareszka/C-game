@@ -28,6 +28,7 @@
 #include "game_menu.h"
 #include "save.h"
 #include "story.h"
+#include "intro.h"
 #include "ready.h"
 #include "playtest.h"   // F4: the difficulty trials
 #include "version.h"
@@ -371,6 +372,7 @@ int main(int argc, char *argv[])
     SDL_Texture* bike_sprite = IMG_LoadTexture(plat.renderer, "assets/player_bike.png");
     if (!bike_sprite) printf("No bike sheet: %s\n", IMG_GetError());
 
+    if (!intro_init(plat.renderer)) printf("No intro area: assets/story/intro_area.png\n");
     if (!story_people_init(plat.renderer)) {
         SDL_DestroyTexture(player_sprite);
         tilemap_free_tile_cache();
@@ -445,8 +447,10 @@ int main(int argc, char *argv[])
         { 30, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 30 Dajna
     };
     const int    TEST_N             = 0;   // taken out of the room (user, 2026-11-06); the table kept for when one is wanted again
-    bool         debug_chest_opened = false;
-    const int    DEBUG_CHEST_X = 12 * IMAP_TILE, DEBUG_CHEST_Y = 10 * IMAP_TILE;
+    // Beside the plant, against the back wall: where the dog's bowl stands on the
+    // intro's night (art/interiors_nes/house0_intro_design.py, art pixels
+    // 94-109 x 54-69 of the room; screen = 2 * (art + the frame's 32, 49)).
+    const int    DEBUG_CHEST_X = 2 * (94 + 32), DEBUG_CHEST_Y = 2 * (54 + 49);
     bool         test_armed         = true;
     bool         site_armed         = true;   // a boss site on the map: once per approach, as the dummies
     bool         boat_armed         = false;  // docking: only once the boy has sailed clear of the tip
@@ -793,7 +797,6 @@ int main(int argc, char *argv[])
     // front of its door (place_at_start).
     auto wake_at_home = [&]() {
         chase_test = false;
-        debug_chest_opened = false;
         entered_door = -1;   // out through the spawn house's own door, not the last one used
         interior_load(&imap, 0);
         interior_player_init(&iplayer, &player, &imap);
@@ -888,10 +891,10 @@ int main(int argc, char *argv[])
     test_home();
 
     std::unordered_map<uint32_t, std::vector<uint8_t>> dungeon_explored_cache;
-    char pickup_buf[128] = "";
+    char pickup_buf[192] = "";
     // A chest struck open: "chest was opened." in the speech box, then a
-    // line for each thing in it, its icon beside it.
-    auto say_chest = [&](const Item* items, const int* counts, int n) {
+    // line for each thing in it, its icon beside it; `after`, a last line of its own.
+    auto say_chest = [&](const Item* items, const int* counts, int n, const char* after = nullptr) {
         audio_play(SFX_CHEST);
         SDL_strlcpy(pickup_buf, "chest was opened.", sizeof(pickup_buf));
         for (int i = 0; i < n; i++) {
@@ -899,6 +902,7 @@ int main(int argc, char *argv[])
             SDL_snprintf(ln, sizeof(ln), "\n%s x%d", item_name(items[i]), counts[i]);
             SDL_strlcat(pickup_buf, ln, sizeof(pickup_buf));
         }
+        if (after) { SDL_strlcat(pickup_buf, "\n", sizeof(pickup_buf)); SDL_strlcat(pickup_buf, after, sizeof(pickup_buf)); }
         say(pickup_buf);
         dlg_icon_n = n;
         for (int i = 0; i < n; i++) dlg_icons[i] = items[i];
@@ -952,6 +956,12 @@ int main(int argc, char *argv[])
     };
     // A debug run starts in it; out either way is in front of the spawn house.
     if (debug) enter_chase_test();
+    // --intro on its own (after the debug start, which it replaces): straight into the foggy night at home (docs/story.md).
+    // With --battle 44 it is that fight's forced-loss version instead.
+    if (preview_intro && preview_battle < 0) {
+        intro_begin(); place_at_start(); wake_at_home();
+        if (getenv("INTRO_OUTSIDE")) state = STATE_OVERWORLD;   // testing: start at the door, not in the room
+    }
 
     float esc_hold_time = 0.f;
 
@@ -2194,7 +2204,7 @@ int main(int argc, char *argv[])
                 pickup_note_t = 1.5f;
                 input_consume(&in, SDL_SCANCODE_T);
             }
-            resident_tick(map, dt);
+            if (!intro_active()) resident_tick(map, dt);   // the foggy night: the day stands still, no one comes
         }
 
         switch (state) {
@@ -2244,7 +2254,11 @@ int main(int argc, char *argv[])
                 if (pre_battle_timer >= 0.0f) {
                     pre_battle_tick(actors_paused() ? 0.0f : dt, STATE_OVERWORLD);   // a boss site touched: the flashes, the wipe, the fight
                 } else {
-                    if (!actors_paused()) overworld_update(&ow, &player, &world_input, dt, &resources, map, &cam, dbg_noclip, &harvest);
+                    if (!actors_paused()) {
+                        float was_x = ow.x, was_y = ow.y;
+                        overworld_update(&ow, &player, &world_input, dt, &resources, map, &cam, dbg_noclip, &harvest);
+                        intro_confine(map, &ow, was_x, was_y);   // the foggy night: kept inside the drawn area
+                    }
                     // The story's people out of doors: standing by one, TALK.
                     ow_nn = story_npcs_here(ow_where, ow_npcs, 32);
                     {
@@ -2403,9 +2417,14 @@ int main(int argc, char *argv[])
                 // the player) in one pass, by where their feet meet the ground, the
                 // nearer over the farther; each followed by the art standing in
                 // front of it, over the box its sprite covers.
-                struct OwSprite { float feet; int kind, idx; DungeonChaser ch; float x, y, w, h; };   // kind: 0 player, 1 resident, 2 wild, 3 tumbleweed
+                struct OwSprite { float feet; int kind, idx; DungeonChaser ch; float x, y, w, h; };   // kind: 0 player, 1 resident, 2 wild, 3 tumbleweed, 4 the intro's dog
                 std::vector<OwSprite> sprites;
                 sprites.push_back({ ow.y + HB_Y2, 0, 0, {}, ow.x, ow.y, (float)player.width, (float)player.height });
+                intro_dog_update(-1, ow.x + (HB_X1 + HB_X2) * 0.5f, ow.y + HB_Y2, actors_paused() ? 0.0f : dt);
+                {
+                    float dfx, dfy;
+                    if (intro_dog_feet(&dfx, &dfy)) sprites.push_back({ dfy, 4, 0, {}, dfx - 12.0f, dfy - 24.0f, 24.0f, 24.0f });
+                }
                 for (int i = 0; i < ow_nn; i++)
                     sprites.push_back({ ow_npcs[i].y + HB_Y2, 1, i, {}, ow_npcs[i].x, ow_npcs[i].y, 28, 40 });
                 {
@@ -2442,6 +2461,7 @@ int main(int argc, char *argv[])
                                         story_npc_facing(ow_npcs[s.idx]));
                         SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
                     } else if (s.kind == 2) draw_chaser(&cam, s.ch);
+                    else if (s.kind == 4) intro_dog_draw(plat.renderer, &cam);
                     else tumble_draw_one(plat.renderer, &cam, tilemap_get_town_tex(), s.idx);
                     tilemap_draw_over_player(map, &cam, plat.renderer, s.x, s.y, s.w, s.h, s.feet);
                     resource_nodes_draw_over_player(&resources, &cam, plat.renderer, s.x, s.y, s.w, s.h, s.feet);
@@ -2482,6 +2502,10 @@ int main(int argc, char *argv[])
                         SDL_RenderFillRect(plat.renderer, &r);
                     }
                 }
+
+                // The foggy night (docs/story.md): the frame darkened, then the fog wall over it.
+                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H);
+                intro_draw_fog(plat.renderer, &cam, map);
 
                 // --- Weapon cooldown bar ---
                 {
@@ -3238,23 +3262,31 @@ int main(int argc, char *argv[])
                 SDL_RenderClear(plat.renderer);
 
                 interior_draw(&imap, plat.renderer, tilemap_get_town_tex());
-                // A debug-only reward chest beside the waking spot.
-                if (debug && imap.id == 0) {
-                    SDL_Rect src = { (CHEST_COL + (debug_chest_opened ? 1 : 0)) * 16, CHEST_ROW * 16, 16, 16 };
+                // The opening chest, beside the plant: the makings of the boy's
+                // first knife (he starts with none; the user, 2026-11-08), and
+                // a nudge to make it. Opened once a game (StoryFlags::home).
+                // Not on the intro's night: the dog's bowl stands there
+                // (house0_intro_design.py).
+                bool chest_opened = (story_flags()->home & STORY_H_CHEST) != 0;
+                if (imap.id == 0 && !intro_active()) {
+                    SDL_Rect src = { (CHEST_COL + (chest_opened ? 1 : 0)) * 16, CHEST_ROW * 16, 16, 16 };
                     SDL_Rect dst = { DEBUG_CHEST_X, DEBUG_CHEST_Y, IMAP_TILE, IMAP_TILE };
                     if (SDL_Texture* sheet = tilemap_get_town_tex())
                         SDL_RenderCopy(plat.renderer, sheet, &src, &dst);
                     float dx = iplayer.x + (HB_X1 + HB_X2) * 0.5f - (DEBUG_CHEST_X + IMAP_TILE * 0.5f);
                     float dy = iplayer.y + (HB_Y1 + HB_Y2) * 0.5f - (DEBUG_CHEST_Y + IMAP_TILE * 0.5f);
-                    if (!debug_chest_opened && !dlg_text && pre_battle_timer < 0.0f && dx * dx + dy * dy < 48.0f * 48.0f) {
+                    if (!chest_opened && !dlg_text && pre_battle_timer < 0.0f && dx * dx + dy * dy < 48.0f * 48.0f) {
                         draw_textbox(plat.renderer, "OPEN", 255, 255, 255);
                         if (input_pressed(game_in, SDL_SCANCODE_Z) || input_pressed(game_in, SDL_SCANCODE_RETURN) ||
                             input_pressed(game_in, SDL_SCANCODE_SPACE)) {
-                            debug_chest_opened = true;
-                            const Item items[] = { ITEM_VINE, ITEM_FEATHER, ITEM_ESSENCE, ITEM_OILBLOOM };
-                            const int counts[] = { 3, 2, 1, 1 };
-                            for (int i = 0; i < CHEST_ICON_MAX; i++) item_slot(&player, items[i]) += counts[i];
-                            say_chest(items, counts, CHEST_ICON_MAX);
+                            story_flags()->home |= STORY_H_CHEST;
+                            // The knife's recipe (craft_catalog.inc): 2 wood, 3 of an ore (stone is
+                            // one), and its book to know how.
+                            const Item items[] = { ITEM_WOOD, ITEM_STONE, ITEM_KNIFE_BOOK };
+                            const int counts[] = { 2, 3, 1 };
+                            const int n = (int)(sizeof items / sizeof items[0]);
+                            for (int i = 0; i < n; i++) { item_slot(&player, items[i]) += counts[i]; item_mark_found(&player, items[i]); }
+                            say_chest(items, counts, n, "Someone left these out for you.");
                             input_consume(&in, SDL_SCANCODE_Z);
                             input_consume(&in, SDL_SCANCODE_RETURN);
                             input_consume(&in, SDL_SCANCODE_SPACE);
@@ -3298,12 +3330,23 @@ int main(int argc, char *argv[])
                 }
                 for (int i = 0; i < TEST_N && pre_battle_timer < 0.0f && imap.id == 0; i++)   // the flashes draw them; the starting house only
                     draw_chaser(&icam, test_ch[i]);
+                // The intro's dog: behind the boy or in front, by whose feet are lower.
+                float dog_fx, dog_fy;
+                intro_dog_update(imap.id, iplayer.x + (HB_X1 + HB_X2) * 0.5f, iplayer.y + HB_Y2, actors_paused() ? 0.0f : dt);
+                bool dog_here = intro_dog_feet(&dog_fx, &dog_fy);
+                auto draw_dog = [&]() {
+                    intro_dog_draw(plat.renderer, &icam);
+                    interior_draw_over_player(&imap, plat.renderer, dog_fx - 12.0f, dog_fy - 24.0f, 24.0f, 24.0f, dog_fy);
+                };
+                if (dog_here && dog_fy <= iplayer.y + HB_Y2) draw_dog();
                 if (bike_sprite && item_bike_worn(&player))
                     player_draw_bike(&player, iplayer.x, iplayer.y, &icam, plat.renderer, bike_sprite);
                 else player_draw(&player, iplayer.x, iplayer.y, &icam, plat.renderer, player_sprite);
                 draw_npcs(true);
                 interior_draw_over_player(&imap, plat.renderer, iplayer.x, iplayer.y,
                                           (float)player.width, (float)player.height, iplayer.y + HB_Y2);
+                if (dog_here && dog_fy > iplayer.y + HB_Y2) draw_dog();
+                intro_draw_night(plat.renderer, LOGICAL_W, LOGICAL_H);   // the foggy night, indoors too
                 if (dbg_grid) {
                     draw_hitboxes(&icam, iplayer.x, iplayer.y,
                         [&](float x, float y) { return interior_at_exit(&imap, x, y); });   // the whole box, to the wall
@@ -4014,6 +4057,7 @@ int main(int argc, char *argv[])
 
     //cleanups textures
     story_people_free();
+    intro_free();
     SDL_DestroyTexture(player_sprite);
     player_sprite = NULL;
     if (bike_sprite) SDL_DestroyTexture(bike_sprite);

@@ -34,12 +34,13 @@ void overworld_init(Overworld* ow, Player* player, float x, float y)
     ow->sailing             = false;
     ow->sail_t              = 0.0f;
 
-    // Every shape has its slot; the player starts owning a stone knife.
+    // Every shape has its slot, and none is owned: the boy makes his first
+    // knife from what the chest at home holds (src/main.cpp, the user
+    // 2026-11-08). Until then the knife is only the slot he'd hold it in.
     for (int w = 0; w < WEAPON_COUNT; w++) {
         player->arsenal[w] = Weapon{ (WeaponType)w, MAT_STONE };
         player->owned[w]   = false;
     }
-    player->owned[WEAPON_KNIFE] = true;
     player->equipped = WEAPON_KNIFE;
 
     // 14x20 art pixels at 2x (assets/player_small.png); the feet box in collision.h sits at

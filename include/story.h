@@ -27,8 +27,9 @@ struct StoryFlags {
     uint8_t  first_village_plus1;
     uint8_t  quest;          // STORY_Q_* bits: the lighthouse keeper's errands
     uint8_t  worm;           // STORY_W_* bits: the sand village's errand, up to the worm (23)
-    uint8_t  pad;
+    uint8_t  home;           // STORY_H_* bits: the spawn house (was padding, so old saves read 0)
 };
+enum { STORY_H_CHEST = 1 };  // the opening chest taken: the knife's makings
 enum { STORY_Q_BOAT_WOOD = 1, STORY_Q_SAIL_TOLD = 2 };   // the wood delivered; the bat named (its tree holds it)
 // The worm's errand, in order: asked for the glands; glands brought (the
 // trail begins); the three clues found; the herder's bell given; the bell

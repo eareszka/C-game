@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "run": "2026-11-08T0621-a-small-dark-brown-french-bulldog-pet-dog-on-all",
+  "provider": "pixellab",
+  "route": "create-image-pixflux",
+  "arguments": {
+    "description": "a small dark brown french bulldog pet dog on all four legs, quadruped animal, no clothes, bat ears, stocky body, short snout, standing facing the viewer",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "direction": "south",
+    "no_background": true,
+    "seed": 7
+  },
+  "links": {},
+  "seed": 7,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "frenchie-c.png"
+  ]
+}

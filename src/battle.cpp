@@ -931,6 +931,7 @@ void BattleScene::_update_player_fire(const Input* in, float dt) {
     if (hidden) _player_ref->facing_locked = 0;
     bool pressed = input_down(in, SDL_SCANCODE_SPACE) ||
                    input_down(in, SDL_SCANCODE_Z);
+    if (!_fixed_gear && !_player_ref->owned[_player_ref->equipped]) pressed = false;   // no weapon made yet
 
     if (pressed && _bp.fire_timer <= 0.0f) {
         // Shots aim themselves at the enemy -- unless it can't be seen:

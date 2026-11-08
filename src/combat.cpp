@@ -61,7 +61,7 @@ void weapon_swing_update(WeaponSwingState* ws, Player* player, const Input* in, 
     float cd_before   = ws->tool_cd;    // a swing this frame sets it: heard below
     int   hits_before = out->count;     // and what it struck is what was added
 
-    if (ws->tool_cd <= 0.0f
+    if (ws->tool_cd <= 0.0f && player->owned[player->equipped]   // nothing in hand: nothing to swing
      && (input_down(in, SDL_SCANCODE_SPACE)
       || input_down(in, SDL_SCANCODE_Z)
       || input_down(in, SDL_SCANCODE_RETURN)))

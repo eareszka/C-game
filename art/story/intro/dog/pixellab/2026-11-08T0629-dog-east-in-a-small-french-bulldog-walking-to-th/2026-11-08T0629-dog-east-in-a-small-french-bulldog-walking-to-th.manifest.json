@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-08T0629-dog-east-in-a-small-french-bulldog-walking-to-th",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfElEQVR4nGNgGDHgPy4JJmI0T8twwGkIE7FOiLGQw2oIIyHboRrhYMmJRyj6mJAV49IM1YTVJYy4DEC3GQSsDJTAdNaMA3C9LIQ0IWtWuP2XwWvvYZxeIAjQNaMbwIjsV3Rw7MI9wjYwQAIOFBbI4YFNDLcB2GKDWM0DAwCoqyuVNpHmlgAAAABJRU5ErkJggg==",
+      "format": "png"
+    },
+    "action": "a small french bulldog walking to the right: front and back legs swing in alternation, the whole body dips one pixel on each stride and rises between, head and ears keep their shape",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "00acfb14-335b-457e-9057-430c1e2c7d8a",
+    "generation_id": "e62b5034-4eea-442e-95bb-e6bd066fdeb3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "dog-walk-east-00.png",
+    "dog-walk-east-01.png",
+    "dog-walk-east-02.png",
+    "dog-walk-east-03.png",
+    "dog-walk-east-04.png"
+  ]
+}

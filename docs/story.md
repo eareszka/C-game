@@ -12,6 +12,15 @@ The writers take the boy's dog. He is the only one who remembers it, and he sets
 4. **The first battle: a forced loss.** The boy has **3 HP** and no bombs. The hand opens with an unavoidable attack and keeps repeating it until a bomb is used. He has none, so the third hit kills him.
 5. **The next morning.** He wakes at home. The dog is gone, and so is everything that belonged to it.
 
+### What the intro needs (2026-11-07)
+- **The area:** only the northern half of the starting island. A **wall of fog** closes off every tree and keeps the player on the path. The user is drawing the outline on `art/story/intro/island_outline.aseprite`. One pixel there is a quarter of a tile, and the top-left is world tile 1400,1400 (town 0 is a fixed stamp, the same in every world).
+- **Night:** one night filter over the whole frame, so every sprite, tile and NPC turns to night at once.
+- **Built (2026-11-07), `src/intro.cpp`:** the night tint (outdoors and in rooms), the dithered fog wall over everything outside `assets/story/intro_area.png`, and the boy kept inside it (he slides along the fog). Try it with `run.bat --intro`. Set `INTRO_OUTSIDE=1` to start at the house door instead of in the room. It isn't saved and NEW GAME doesn't start it yet; that waits until the whole night is built.
+- **The dog (approved 2026-11-08):** a small dark brown French bulldog, 4 views, drawn by hand at game size from a PixelLab design (`art/story/intro/dog/dog_design.py` → `assets/story/dog.png`). The walk bounces like the boy's: the side walk's motion is PixelLab's, cleaned to the confirmed design; front and back squash 1 px a stride. Idle: panting, or a tail wag from behind. In the game it follows the boy along his own footsteps, in the room and outdoors (`intro_dog_*` in `src/intro.cpp`). PixelLab has 0.5 generations left.
+- **The spawn house (room 0), built 2026-11-08:** on the night, the dog's bed stands where the plant is and its bowl beside it, where the opening chest is; the chest of drawers is there both times (`art/interiors_nes/house0_intro_design.py` → `assets/interiors/room_0_intro.*`, loaded as room 0 while the intro runs). The morning after, the plant and the opening chest are back, as if they'd always been there.
+- **The day stands still** for the whole intro: the townspeople's clock (`resident_tick`) doesn't run, so no one walks to the house.
+- **The opening chest (2026-11-08):** the boy now starts with no weapon. The chest by the plant holds the knife's makings, 2 wood, 3 stone and the knife book, with the line "Someone left these out for you." It opens once a game (`StoryFlags::home`, the old padding byte, so saves keep their layout). With no weapon he can't swing or shoot.
+
 ## Looking for the dog
 - **"Where's my dog?"** becomes a talk option with everyone.
 - **On the island (Bloom):** people are shocked and say they never knew he had a dog. The writers erased this dog from their memory.

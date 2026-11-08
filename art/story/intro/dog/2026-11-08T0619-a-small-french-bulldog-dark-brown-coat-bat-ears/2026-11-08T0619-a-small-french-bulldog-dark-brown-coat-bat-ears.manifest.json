@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-08T0619-a-small-french-bulldog-dark-brown-coat-bat-ears",
+  "provider": "pixellab",
+  "route": "create-image-bitforge",
+  "arguments": {
+    "description": "a small french bulldog, dark brown coat, bat ears, stocky, standing, facing the viewer",
+    "image_size": {
+      "width": 32,
+      "height": 32
+    },
+    "outline": "single color black outline",
+    "shading": "flat shading",
+    "detail": "low detail",
+    "view": "low top-down",
+    "direction": "south",
+    "no_background": true,
+    "style_image": {
+      "type": "base64",
+      "base64": "<elided 312 characters>",
+      "format": "png"
+    },
+    "seed": 42
+  },
+  "links": {},
+  "seed": 42,
+  "ids": {},
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "frenchie-42.png"
+  ]
+}
