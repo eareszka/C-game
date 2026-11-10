@@ -8939,27 +8939,63 @@ public:
 // Phase 1 -- crouched at the roots, never moving (the user):
 //   Spit      -- when its head lunges and its jaw drops (idle frame 2) it
 //                blows a frothing cone of 19 foam bubbles at the player,
-//                loose, fast and slow mixed, slowing as they come.
+//                loose, fast and slow mixed, slowing as they come. GLUE
+//                (the user, 2026-11-09): a hit does 1 damage and sticks the
+//                player 1.5 s -- a crawl, no sprint (BulletSpawn::glue).
+//                The first dropping of each wave lands where the player
+//                stands, so the glue sets it up.
 //   Droppings -- every DROP_EVERY s it leaves hot toxic droppings on the
 //                ground around where the player is: each spot is marked by a
 //                cross for HINT_T s first (the user: a hint before they
 //                appear), then a big blob lands there and just SITS a few
 //                seconds -- don't step in them.
-// Phase 2 (half HP) -- the tree fruits: figs drop out of the canopy above
-//   and burst where they land into seeds; the spit cone is 25; more
-//   droppings.
+// Phase 2 (half HP) -- it LUNGES (the user, 2026-11-09): a pause, then a
+//   quick dash to where the player was as it set off (never off screen, its
+//   body hurting all the way); landing, it spits the glue cone (25) and
+//   marks a ring of 8 X's 70 px round the player plus one on them, landing
+//   as droppings. The tree fruits too: figs drop out of the canopy above
+//   and burst into seeds, fewer than before so the ring reads.
 // Made harder after the user's F4 run of 2026-10-31 (never hit, rated 1):
 // a spit cone of 19 (25 in phase 2) arriving quicker, figs more often.
 class BesRap : public Enemy {
     static constexpr float DROP_LIFE = 2.5f, HINT_T = 0.8f, HINT_R = 7.0f;
     float drop_t = 1.0f, fig_t = 0.0f;
-    static constexpr int MAX_SPOTS = 12;
+    static constexpr int MAX_SPOTS = 16;
     struct Spot { float x, y, t; } spots[MAX_SPOTS];     // droppings about to land, t = seconds marked
     int   nspot = 0;
+    // Phase 2's lunge cycle (the user): a pause, then a quick dash to where
+    // the player was when it set off; landing, the glue cone and a ring of
+    // X's round the player (and one on them).
+    static constexpr float LUNGE_SPEED = 560.0f, LUNGE_PAUSE = 1.3f, RING_R = 70.0f;
+    static constexpr int   RING_N = 8;
+    float lunge_wait = 0.6f, ltx = 0.0f, lty = 0.0f;
+    bool  lunging = false, landed = false;
+    // Its sprite (37x43 drawn 2x) kept whole on screen.
+    static float keep_x(float v) { return fminf(fmaxf(v, 40.0f), ARENA_W - 40.0f); }
+    static float keep_y(float v) { return fminf(fmaxf(v, ARENA_TOP + 46.0f), ARENA_H - 46.0f); }
+    // A dropping's X: marked now, landing HINT_T s on.
+    void mark(float sx, float sy) { if (nspot < MAX_SPOTS) spots[nspot++] = { sx, sy, 0.0f }; }
+    // The glue cone, from its mouth (the placeholder 37x43 front-only
+    // still's teeth row, art px (17.5, 13.5), drawn 2x: the same spot
+    // whichever way the player is).
+    int spit(float px, float py, BulletSpawn out[]) const {
+        float mx = x - 1.0f, my = y - 15.0f;
+        float a = aim_at(mx,my,px,py);
+        int m = ENRAGED ? 25 : 19;
+        for (int i = 0; i < m; i++) {
+            BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.5f, 120.0f + ernd() * 130.0f, 2.5f, 1.0f);
+            b.accel = -90.0f; b.min_speed = 105.0f;
+            b.from = true; b.ox = mx; b.oy = my;               // misses leave soon (at 70 they collected in the corners)
+            b.glue = true;                                     // glue spit: 1 damage, a crawl (the user)
+            out[i] = b;
+        }
+        return m;
+    }
 public:
     BesRap() : Enemy(320, 130, 560, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "BES RAP"; }
     int         breath_frame()  const override { return 2; }       // head lunges, jaw drops
+    bool        free_movement() const override { return ENRAGED; }  // phase 2's lunges: the user's dash
     float       fire_interval() const override { return 0.05f; }   // droppings and figs on their own clocks
     int telegraphs(TeleLine out[], int max) const override {
         // Each spot about to be dropped on: a small blinking X, harmless.
@@ -8973,18 +9009,47 @@ public:
         }
         return n;
     }
-    void update(float dt, float, float) override {
+    void update(float dt, float px, float py) override {
         drop_t += dt; fig_t += dt;
         for (int i = 0; i < nspot; i++) spots[i].t += dt;
+        if (!ENRAGED) return;
+        if (!lunging) {
+            if ((lunge_wait -= dt) > 0.0f) return;
+            lunging = true;                                      // off: at where the player is now
+            ltx = keep_x(px); lty = keep_y(py);
+        }
+        float dx = ltx - x, dy = lty - y, d = hypotf(dx, dy), st = LUNGE_SPEED * dt;
+        if (d <= st) { x = ltx; y = lty; lunging = false; landed = true; lunge_wait = LUNGE_PAUSE; }
+        else { x += dx / d * st; y += dy / d * st; }
     }
     int fire(float px, float py, BulletSpawn out[], int) override {
         int n = 0;
-        if (drop_t >= (ENRAGED ? 1.8f : 2.6f)) {
-            // Droppings: around the player -- never on them (60-150 px off) --
+        if (landed) {
+            // Landed: the glue cone at the player, and the X's -- one on
+            // them, a ring round them (in the arena; any off it skipped).
+            landed = false;
+            n += spit(px, py, out + n);
+            mark(fminf(fmaxf(px, 20.0f), ARENA_W - 20.0f), fminf(fmaxf(py, ARENA_TOP + 20.0f), ARENA_H - 20.0f));
+            float a0 = ernd() * TAU;
+            for (int i = 0; i < RING_N; i++) {
+                float a = a0 + i * TAU / RING_N, cx = px + cosf(a) * RING_R, cy = py + sinf(a) * RING_R;
+                if (cx < 20.0f || cx > ARENA_W - 20.0f || cy < ARENA_TOP + 20.0f || cy > ARENA_H - 20.0f) continue;
+                mark(cx, cy);
+            }
+        }
+        if (!ENRAGED && drop_t >= 2.6f) {
+            // Droppings: one on the player, the rest around them (60-150 px off),
             // sitting still, flashing in so they're seen landing, gone after
             // DROP_LIFE s.
             drop_t = 0.0f;
-            int m = ENRAGED ? 12 : 8;                            // the user: WAY more
+            int m = 8;                                           // the user: WAY more
+            // The first of each wave right where the player stands (the
+            // user: plays with the glue), kept in the arena.
+            if (nspot < MAX_SPOTS) {
+                float ox = fminf(fmaxf(px, 20.0f), ARENA_W - 20.0f), oy = fminf(fmaxf(py, ARENA_TOP + 20.0f), ARENA_H - 20.0f);
+                spots[nspot++] = { ox, oy, 0.0f };
+                m--;
+            }
             for (int i = 0; i < m && nspot < MAX_SPOTS; i++) {
                 // A spot that's in the arena as it is -- never clamped back
                 // in toward a player at a wall (the tester caught that
@@ -9008,7 +9073,7 @@ public:
             out[n++] = b;
             spots[i] = spots[--nspot];
         }
-        if (ENRAGED && fig_t >= 0.35f) {
+        if (ENRAGED && fig_t >= 0.6f) {                          // fewer than before the lunges: room to read the ring
             // A fig dropping out of the canopy somewhere above, bursting
             // into 5 seeds after it's fallen a way.
             fig_t = 0.0f;
@@ -9021,26 +9086,10 @@ public:
         return n;
     }
     int breathe(float px, float py, BulletSpawn out[], int) override {
-        // The spit: a frothing cone of foam at the player, out of its open
-        // mouth -- where the spit frame draws it in the facing it shows (art
-        // px in the 98x65 frame, drawn 2x about the frame's middle; the left
-        // facings are the right ones mirrored).
-        int f = facing_toward(px - x, py - y);
-        float fx = f == FACE_RIGHT ? 82 : f == FACE_LEFT ? 16
-                 : f == FACE_DOWN_RIGHT ? 70 : f == FACE_DOWN_LEFT ? 28
-                 : f == FACE_UP_RIGHT ? 72 : f == FACE_UP_LEFT ? 26
-                 : f == FACE_UP ? 66 : 58;                         // D: 58
-        float fy = f == FACE_UP_RIGHT || f == FACE_UP_LEFT ? 19 : 20;
-        float mx = x + (fx - 49.0f) * 2.0f, my = y + (fy - 32.5f) * 2.0f;
-        float a = aim_at(mx,my,px,py);
-        int m = ENRAGED ? 25 : 19;
-        for (int i = 0; i < m; i++) {
-            BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.5f, 120.0f + ernd() * 130.0f, 2.5f, 5.0f);
-            b.accel = -90.0f; b.min_speed = 105.0f;
-            b.from = true; b.ox = mx; b.oy = my;               // misses leave soon (at 70 they collected in the corners)
-            out[i] = b;
-        }
-        return m;
+        // The spit, on its jaw-drop frame -- phase 1 only: in phase 2 it
+        // spits as each lunge lands (fire).
+        if (ENRAGED) return 0;
+        return spit(px, py, out);
     }
 };
 
@@ -9050,123 +9099,166 @@ public:
 // the idle drawn from the front only (the user): planted, it faces us.
 // flap = 75_makalala_fly (wings beating, the club on its head glowing), drawn
 // from the side only: flying, it faces left or right, to the player's side.
-// Phase 1 -- planted on the ground, never moving, all noise: massive
-// patterns, every shot the same speed (the user):
-//   Calls  -- a three-armed spiral turning out of it all the while.
-//   Scream -- when it screams (idle frame 2: neck up, beak gaping, wings
-//             flared) six rings of 24 burst out one after another, lined
-//             up -- 24 thick spokes with lanes between to stand in.
+// Phase 1 -- planted on the ground, never moving: the CLAP (the user,
+// 2026-11-09, in place of the old spiral and scream rings). Every other
+// time its wings fling out (idle frame 2) it claps them together. CLAP_WARN
+// s before, it turns to the one of 8 directions nearest the player
+// (facing_toward; the user: 8 ways) and holds it -- the clap goes that way:
+//   Gust      -- UNAVOIDABLE (the user: "inevitable, decided by how the
+//                sprite is facing"): wherever they are, the player is blown
+//                straight along that direction -- a diagonal too -- until the
+//                first wall stops them (Enemy::take_gust). No warning lines (the user):
+//                its turn to face that way is the tell (once its views are drawn).
+//   Shockwave -- at once, a spray of CLAP_ROWS arcs of beak-yellow out of
+//                its body, fanned about the line to the player, each slower than the
+//                last and each with a gap somewhere -- they reach
+//                the player pinned at the wall after the gust, to slip through.
+// (Its art is a placeholder front-only still for now: the facing shows only
+// in the warning until the views are drawn.)
 // Phase 2 (half HP) -- it takes off and hangs in the air at the top, wings
-//   beating, and its glowing club fires LASERS that SPIN (the user): three
-//   beams, a third of a turn apart, shoot out (harmless, the warning) away
-//   from the player, then sweep round together (SPIN_W rad/s) for SPIN_T s -- hurting --
-//   slow enough to walk ahead of, always turning to drive the player away
-//   from their nearer side wall, never into a corner; and a
-//   slow ring of 20 from the club every RING_EVERY s.
-// Made harder after the user's F4 run of 2026-10-31 (never hit, feel 1): every
-// phase-1 shot quicker (115), the spiral thicker, the club's ring of 20 more often.
-// Again on 2026-11-01 (still never hit, rated 1, the player on the floor): the scream's
-// spokes curl -- each ring turned SCREAM_TWIST on -- so a lane drifts and has
-// to be followed; the club's ring every 1.3 s.
+//   beating, a slow ring of 20 from its club every RING_EVERY s while it
+//   hangs there; and every HOVER_REST s, CLAP AND DIVE (the user,
+//   2026-11-09; no lasers any more): it claps in the air -- the same
+//   unavoidable gust and the same spray at the player -- then shivers in
+//   place DIVE_WIND s (the warning) and comes down after them as the giant
+//   bee does (Moskitto, 56; the user): a swoop at DIVE_V to CHASE_NEAR px
+//   off them, then a CHASE straight at them for CHASE_T s at CHASE_V --
+//   faster than walking (160), slower than a sprint (250): only sprinting
+//   gets away. Its body hurts all the while. Then it flies back up (BACK_V).
+// Made harder after the user's F4 run of 2026-10-31 (never hit, feel 1):
+// the club's ring of 20 more often (every 1.3 s since 2026-11-01).
 class Makalala : public Enemy {
-    static constexpr float SPEED = 115.0f;                       // phase 1: every shot
-    static constexpr float ARM_EVERY = 0.10f, ARM_TURN = 0.21f;
-    static constexpr int   SCREAM_RINGS = 6;
-    static constexpr float SCREAM_GAP = 0.1f, SCREAM_TWIST = 0.05f;
-    static constexpr float GROW_T = 0.5f, SPIN_T = 3.0f, FADE_T = 0.3f, REST_T = 0.8f, SPIN_W = 0.35f;   // 0.35: a focusing player along the floor outruns it (the tester)
+    // The clap's shockwave: CLAP_ROWS arcs CLAP_ARC wide about its facing,
+    // CLAP_N shots each, the first CLAP_V fast and each next CLAP_DV slower,
+    // a CLAP_GAP-shot gap in each.
+    static constexpr float CLAP_ARC = 2.6f, CLAP_V = 165.0f, CLAP_DV = 25.0f, CLAP_WARN = 0.7f;
+    static constexpr int   CLAP_ROWS = 3, CLAP_N = 26, CLAP_GAP = 3;
+    static constexpr float HOVER_REST = 1.6f;                   // hanging at the top between dives
     static constexpr float RING_EVERY = 1.3f;
     static constexpr float HOVER_X = 320.0f, HOVER_Y = 130.0f;
-    float arm_t = 0.0f, arm_a = 0.0f, scream_t = 0.0f, scream_a = 0.0f, ring_t = 0.0f, bob = 0.0f;
-    float smx = 0.0f, smy = 0.0f;            // the scream's gaping beak, latched: all its rings from there
-    int   scream_left = 0;
+    static constexpr float DIVE_WIND = 0.6f, DIVE_V = 300.0f, BACK_V = 230.0f;
+    static constexpr float CHASE_NEAR = 120.0f, CHASE_V = 185.0f, CHASE_T = 2.0f;   // as Moskitto's grab
+    float ring_t = 0.0f, bob = 0.0f;
+    // Phase 2's clap and dive: D_NONE hanging at the top, D_WIND shivering
+    // after the clap, D_DIVE swooping in, D_CHASE after them, D_BACK up.
+    enum { D_NONE, D_WIND, D_DIVE, D_CHASE, D_BACK };
+    int   dive = D_NONE;
+    float dive_t = 0.0f, wx0 = 0.0f;
+    bool  clap_pending = false, p2_begun = false;
+    // The clap: breaths counted (every other one claps), time since the
+    // last and the last gap between two (the idle loop's beat), the gust
+    // waiting to be taken.
+    int   breaths = 0;
+    float since_breath = 0.0f, breath_gap = 1.3f;
+    bool  gust_ready = false;
+    int   clap_face = -1;                    // locked at the warning: one of the 8 FACE_s, -1 none
+    // The unit step of an 8-way facing.
+    static void face_dir(int f, float* dx, float* dy) {
+        float ux = (f == FACE_RIGHT || f == FACE_UP_RIGHT || f == FACE_DOWN_RIGHT) ? 1.0f
+                 : (f == FACE_LEFT || f == FACE_UP_LEFT || f == FACE_DOWN_LEFT) ? -1.0f : 0.0f;
+        float uy = (f == FACE_DOWN || f == FACE_DOWN_LEFT || f == FACE_DOWN_RIGHT) ? 1.0f
+                 : (f == FACE_UP || f == FACE_UP_LEFT || f == FACE_UP_RIGHT) ? -1.0f : 0.0f;
+        float l = (ux != 0.0f && uy != 0.0f) ? 0.70710678f : 1.0f;
+        *dx = ux * l; *dy = uy * l;
+    }
+    // The clap's shockwave: CLAP_ROWS arcs out of its body fanned about the
+    // line to the player (the user), each slower, each with a gap.
+    int spray(float px, float py, BulletSpawn out[], int max) const {
+        float a = aim_at(x, y, px, py);
+        int n = 0;
+        for (int r = 0; r < CLAP_ROWS; r++) {
+            int gap = (int)(ernd() * (CLAP_N - CLAP_GAP));       // the way through this arc
+            for (int i = 0; i < CLAP_N && n < max; i++) {
+                if (i >= gap && i < gap + CLAP_GAP) continue;
+                float s = a - CLAP_ARC * 0.5f + CLAP_ARC * (i + 0.5f) / CLAP_N;
+                BulletSpawn b = mk(s, CLAP_V - r * CLAP_DV, 3.0f, 5.0f);
+                b.from = true; b.ox = x; b.oy = y;
+                out[n++] = b;
+            }
+        }
+        return n;
+    }
     bool  hovering = false;
-    // The laser volley: latched at lock (cx, cy the club then).
-    float beam_age = -1.0f, rest = 0.0f, aim = 0.0f, spin_dir = 1.0f, cx = 0.0f, cy = 0.0f;   // spin_dir +1 clockwise
+    float rest = 0.0f;                       // hanging at the top this long
 
     // The glowing club: pinned at (49, 15) in every frame of the fly sheet
     // (the user), drawn 2x about the frame's middle (49, 32.5).
     void club(float* ox, float* oy) const { *ox = x; *oy = y + (15.0f - 32.5f) * 2.0f; }
-    // Its beak, where the idle sheet draws it (three-quarter, facing left; the one view):
-    // the hooked tip, closed, or the middle of its gape in the scream (frame 2).
-    // Art px in the 98x65 frame, drawn 2x about the frame's middle.
-    void beak(float, float, bool scream, float* ox, float* oy) const {
-        *ox = x + ((scream ? 42.5f : 40.5f) - 49.0f) * 2.0f; *oy = y + ((scream ? 17.0f : 20.5f) - 32.5f) * 2.0f;
-    }
-    // A phase-1 shot: out of the beak at (ox, oy).
-    BulletSpawn from_beak(float a, float r, float ox, float oy) const {
-        BulletSpawn b = mk(a, SPEED, r, 5.0f);
-        b.from = true; b.ox = ox; b.oy = oy;
-        return b;
-    }
-    TeleLine beam(int k) const {
-        float g = fminf(beam_age / GROW_T, 1.0f); g = 1.0f - (1.0f - g) * (1.0f - g);
-        float spun = fminf(fmaxf(beam_age - GROW_T, 0.0f), SPIN_T) * SPIN_W * spin_dir;
-        float a = aim + k * (TAU / 3) + spun, reach = 800.0f * g;
-        TeleLine L{ cx, cy, cx + cosf(a) * reach, cy + sinf(a) * reach };
-        L.stage = beam_age < GROW_T ? 0 : beam_age < GROW_T + SPIN_T ? 1 : 2;
-        L.fade = L.stage == 2 ? fminf((beam_age - GROW_T - SPIN_T) / FADE_T, 1.0f) : 0.0f;
-        L.hurt_w = (L.stage == 1 || (L.stage == 2 && L.fade < 0.33f)) ? 5.0f : 0.0f;
-        return L;
-    }
 public:
     Makalala() : Enemy(320, 140, 580, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()           const override { return "MAKALALA"; }
-    int         breath_frame()   const override { return 2; }       // the scream
+    int         breath_frame()   const override { return 2; }       // wings flung out: every other time, the clap
     int         fly_face = FACE_RIGHT;                               // flying: the side the player is on
-    int         move_facing()    const override { return ENRAGED ? fly_face : FACE_DOWN; }
+    int         move_facing()    const override { return ENRAGED ? fly_face : clap_face; }   // planted: the clap's held view, else toward the player
+    bool        four_views()     const override { return true; }
+    bool        free_movement()  const override { return ENRAGED; }   // phase 2's dive: the user's
     float       fire_interval()  const override { return 0.05f; }   // the spiral, burst and rings on their own clocks
     // Phase 2 is FLOWN, a wingbeat per 0.28 s.
     float flap_phase() const override { return ENRAGED ? fmodf(bob / 0.28f, 1.0f) : -1.0f; }
-    int telegraphs(TeleLine out[], int max) const override {
-        if (!hovering || beam_age < 0.0f || max < 3) return 0;
-        for (int k = 0; k < 3; k++) out[k] = beam(k);
-        return 3;
+    bool take_gust(float* dx, float* dy) override {
+        if (!gust_ready) return false;
+        gust_ready = false;
+        face_dir(clap_face, dx, dy);
+        clap_face = -1;                                          // clapped: free to turn again
+        return true;
     }
     void update(float dt, float px, float py) override {
         bob += dt;
         fly_face = px < x ? FACE_LEFT : FACE_RIGHT;
-        if (!ENRAGED) { arm_t += dt; scream_t += dt; return; }   // planted
+        if (!ENRAGED) {                                          // planted
+            since_breath += dt;
+            // The warning starts: it turns to the player, and holds that view.
+            if (breaths % 2 == 1 && clap_face < 0 && since_breath > breath_gap - CLAP_WARN)
+                clap_face = facing_toward(px - x, py - y);
+            return;
+        }
+        if (!p2_begun) { p2_begun = true; clap_face = -1; gust_ready = false; }   // a clap half-warned in phase 1: dropped
         if (!hovering) {
             // Taking off: up to its spot at the top, then hanging there.
             float hx = HOVER_X - x, hy = HOVER_Y - y, hd = hypotf(hx, hy);
             if (hd > 6.0f) { float st = fminf(150.0f * dt, hd); x += hx / hd * st; y += hy / hd * st; return; }
-            hovering = true; rest = REST_T;
+            hovering = true; rest = 0.0f;
+        }
+        if (dive != D_NONE) {                                    // the clap and dive
+            dive_t += dt;
+            auto go = [&](float tx, float ty, float v) {         // toward (tx, ty) at v; true there
+                float gx = tx - x, gy = ty - y, gd = hypotf(gx, gy), st = v * dt;
+                if (gd <= st) { x = tx; y = ty; return true; }
+                x += gx / gd * st; y += gy / gd * st; return false;
+            };
+            // Its body (26x43 drawn 2x) kept on screen.
+            auto keep = [&]() { x = fminf(fmaxf(x, 28.0f), ARENA_W - 28.0f); y = fminf(fmaxf(y, ARENA_TOP + 44.0f), ARENA_H - 44.0f); };
+            if (dive == D_WIND) {                                // shivering in place: a 2 px buzz
+                x = wx0 + ((int)(dive_t * 40.0f) % 2 ? 2.0f : -2.0f);
+                if (dive_t >= DIVE_WIND) { x = wx0; dive = D_DIVE; dive_t = 0.0f; }
+            } else if (dive == D_DIVE || dive == D_CHASE) {      // in fast to just off them, then straight at them
+                float gx = px - x, gy = py - y, gd = hypotf(gx, gy);
+                if (dive == D_DIVE && gd <= CHASE_NEAR) { dive = D_CHASE; dive_t = 0.0f; }
+                float st = (dive == D_DIVE ? DIVE_V : CHASE_V) * dt;
+                if (gd > 1.0f) { x += gx / gd * fminf(st, gd); y += gy / gd * fminf(st, gd); }
+                keep();
+                if (dive == D_CHASE && dive_t >= CHASE_T) { dive = D_BACK; dive_t = 0.0f; }
+            } else if (go(HOVER_X, HOVER_Y, BACK_V)) { dive = D_NONE; rest = 0.0f; }
+            return;
         }
         x = HOVER_X; y = HOVER_Y + 4.0f * sinf(bob * 3.0f);
         ring_t += dt;
-        if (beam_age >= 0.0f) {
-            beam_age += dt;
-            if (beam_age >= GROW_T + SPIN_T + FADE_T) { beam_age = -1.0f; rest = 0.0f; }
-        } else if ((rest += dt) >= REST_T) {
-            // A volley locks: from the club, the three beams set a sixth of
-            // a turn off the player (never on them), spinning so the beam
-            // coming at them drives them toward the open middle, away from
-            // their nearer side wall (clockwise sweeps a player below it
-            // left) -- the tester: the other way pins a slow one in a corner.
-            beam_age = 0.0f;
-            spin_dir = px > HOVER_X ? 1.0f : -1.0f;
-            club(&cx, &cy);
-            aim = aim_at(cx, cy, px, py) + TAU / 6;
+        if ((rest += dt) >= HOVER_REST) {
+            {
+                rest = 0.0f;
+                // Rested: it claps -- the gust the way nearest the player,
+                // the spray (fire) -- then shivers, and comes after them.
+                clap_face = facing_toward(px - x, py - y);
+                gust_ready = true; clap_pending = true;
+                dive = D_WIND; dive_t = 0.0f; wx0 = x;
+            }
         }
     }
     int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
-        if (!ENRAGED) {
-            while (arm_t >= ARM_EVERY && n + 3 <= max) {         // the spiral: three arms, turning
-                arm_t -= ARM_EVERY;
-                arm_a += ARM_TURN;
-                float ox, oy;
-                beak(px, py, false, &ox, &oy);
-                for (int k = 0; k < 3; k++) out[n++] = from_beak(arm_a + k * (TAU / 3), 3.0f, ox, oy);
-            }
-            while (scream_left > 0 && scream_t >= SCREAM_GAP && n + 24 <= max) {   // the scream's rings, lined up
-                scream_t -= SCREAM_GAP; scream_left--;
-                for (int i = 0; i < 24; i++) out[n++] = from_beak(scream_a + i * (TAU / 24), 2.5f, smx, smy);
-                scream_a += SCREAM_TWIST;                       // the next ring turned on: the spokes curl, the lanes drift
-            }
-            return n;
-        }
-        if (hovering && ring_t >= RING_EVERY) {                  // a slow ring of 20 from the club
+        if (!ENRAGED) return 0;                                  // phase 1 is the clap (breathe)
+        if (clap_pending) { clap_pending = false; n += spray(px, py, out, max); }
+        if (hovering && dive == D_NONE && ring_t >= RING_EVERY) {   // a slow ring of 20 from the club
             ring_t = 0.0f;
             float ox, oy, turn = ernd() * TAU;
             club(&ox, &oy);
@@ -9178,14 +9270,17 @@ public:
         }
         return n;
     }
-    int breathe(float px, float py, BulletSpawn out[], int) override {
+    int breathe(float px, float py, BulletSpawn out[], int max) override {
         if (ENRAGED) return 0;
-        // The scream: the first of its rings now, the rest SCREAM_GAP apart.
-        scream_a = ernd() * TAU;
-        scream_left = SCREAM_RINGS - 1; scream_t = 0.0f;
-        beak(px, py, true, &smx, &smy);
-        for (int i = 0; i < 24; i++) out[i] = from_beak(scream_a + i * (TAU / 24), 2.5f, smx, smy);
-        return 24;
+        if (since_breath > 0.3f) breath_gap = since_breath;     // the idle loop's beat: when the next comes
+        since_breath = 0.0f;
+        if (++breaths % 2) return 0;                             // wings out, no clap: the warning runs to the next
+        // The clap, from its body where the wings meet, along the view it
+        // holds (taken now if the warning never came -- a beat misjudged):
+        // the gust that way, and a spray of shots at the player.
+        if (clap_face < 0) clap_face = facing_toward(px - x, py - y);
+        gust_ready = true;
+        return spray(px, py, out, max);
     }
 };
 
@@ -9573,20 +9668,22 @@ public:
 // part of it that makes it (the user): its barking mouth, its humps.
 // SONIC WAVES are the fight (the user): a bullet hell, but a pretty and
 // predictable one, made to be learned.
-// Phase 1 -- holding still at the top of the loch, barking without end:
-//   Waves  -- every BARK (idle frame 2, its jaw open -- the animation runs
-//             BARK_RATE times quick, a bark every ~0.7 s) a ring of 144 -- a
-//             WALL where the player is -- rolls out of its barking mouth, cut
-//             by four gaps; ring after ring the gaps turn on a step, so they
+// It always faces down (the user), its head -- and its mouth, where every
+// wave starts -- in the one place on its sprite (the 53x51 still: the mouth
+// at art px (35, 13)).
+// Phase 1 -- STATIONARY at the top of the loch (the user), barking without end:
+//   Waves  -- every BARK (idle frame 2 -- the animation runs BARK_RATE
+//             times quick, a bark every ~0.7 s) a ring of 144 -- a WALL
+//             where the player is -- rolls out of its barking mouth, cut by
+//             four gaps; ring after ring the gaps turn on a step, so they
 //             trace four SPIRAL corridors turning slowly round it -- follow
-//             one. Every SPIN_FLIP s the turn reverses (count it), and only
-//             then does it turn its head to the player, so its mouth -- and
-//             the corridors -- hold still in between.
+//             one. Every SPIN_FLIP s the turn reverses (count it).
 //   Splash -- every SPLASH_EVERY s a hump breaks the water: two drops ricocheting
 //             off the shores.
-// Phase 2 (half HP): a second, sparse set of waves joins, between the first
-//   -- slower, 48 a ring, turning the other way -- weaving a lattice of
-//   diamonds over the corridors.
+// Phase 2 (half HP): it SWIMS round the top of the loch (the user), still
+//   facing down and barking all the way -- the spiral now carried about
+//   with it, each wall 120 shots, not 144 (the user: less busy; the second,
+//   counter-turning set of waves it once added is off).
 // Made harder after the user's F4 run of 2026-10-31 (never hit, feel 1.5): the
 // waves faster (118), corridors a shot narrower and turning quicker,
 // splashes more often and faster.
@@ -9594,23 +9691,18 @@ public:
 // corridors three shots wide and turning 0.09 a bark -- they have to be walked.
 class LochOich : public Enemy {
     static constexpr float BARK_RATE = 1.3f / 0.7f;   // the 1.3 s idle loop played in 0.7 s
-    static constexpr float WAVE2_EVERY = 0.5f, SPIN = 0.09f, SPIN_FLIP = 6.0f, SPLASH_EVERY = 1.4f;
-    float splash_t = 0.0f, wave2_t = WAVE2_EVERY * 0.5f;
-    int   face = -1;                         // the way it faces, turned to the player each spin flip
-    float turn = 0.0f, turn2 = 0.0f, spin = 1.0f, flip_t = 0.0f;
+    static constexpr float SPIN = 0.09f, SPIN_FLIP = 6.0f, SPLASH_EVERY = 1.4f;
+    static constexpr float HOME_X = 320.0f, HOME_Y = 125.0f;   // phase 1's spot
+    // Phase 2's swim: round the top, SWIM_RX either side, bobbing SWIM_RY.
+    static constexpr float SWIM_RX = 200.0f, SWIM_RY = 22.0f, SWIM_W = 0.5f;
+    float splash_t = 0.0f;
+    float turn = 0.0f, spin = 1.0f, flip_t = 0.0f, swim_t = 0.0f;
 
-    void at(float fx, float fy, float* ox, float* oy) const {   // art px (98x65, drawn 2x about its middle) -> screen
-        *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
+    void at(float fx, float fy, float* ox, float* oy) const {   // art px (53x51, drawn 2x about its middle) -> screen
+        *ox = x + (fx - 26.5f) * 2.0f; *oy = y + (fy - 25.5f) * 2.0f;
     }
-    // Its open mouth on the bark frame, in the way it faces (from behind:
-    // the top of its head).
-    void mouth(float* ox, float* oy) const {
-        int f = face;
-        float fx = f == FACE_DOWN ? 62.0f : f == FACE_DOWN_RIGHT ? 70.0f : f == FACE_RIGHT ? 80.0f
-                 : f == FACE_UP_RIGHT ? 66.0f : f == FACE_UP ? 54.0f : f == FACE_UP_LEFT ? 31.0f
-                 : f == FACE_LEFT ? 17.0f : 27.0f;
-        at(fx, f == FACE_UP ? 14.0f : f == FACE_UP_RIGHT || f == FACE_UP_LEFT ? 16.0f : 19.0f, ox, oy);
-    }
+    // Its barking mouth: the same spot whatever it does (it always faces down).
+    void mouth(float* ox, float* oy) const { at(35.0f, 13.0f, ox, oy); }
     // A wave: a ring of `m` from (ox, oy) at `speed`, `gaps` evenly round it
     // (`gap_w` shots each) starting at `a0`.
     int wave(float ox, float oy, int m, int gaps, int gap_w, float a0, float speed, BulletSpawn out[]) const {
@@ -9627,37 +9719,34 @@ public:
     LochOich() : Enemy(320, 125, 600, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "LOCH OICH MONSTER"; }
     int         breath_frame()  const override { return 2; }       // head up, barking
-    float       fire_interval() const override { return 0.05f; }   // the second set and splashes on their own clocks
+    float       fire_interval() const override { return 0.05f; }   // the splashes on their own clock
     float       anim_speed()    const override { return BARK_RATE; }
-    int         move_facing()   const override { return face; }
-    void update(float dt, float px, float py) override {
+    int         move_facing()   const override { return FACE_DOWN; }   // always looking down (the user)
+    bool        free_movement() const override { return ENRAGED; }     // phase 2's swim: the user's
+    void update(float dt, float, float) override {
         splash_t += dt; flip_t += dt;
-        if (ENRAGED) wave2_t += dt;
-        if (face < 0 || flip_t >= SPIN_FLIP) {                   // the spin turns; it turns its head
-            if (face >= 0) { flip_t = 0.0f; spin = -spin; }
-            face = facing_toward(px - x, py - y);
-        }
+        if (flip_t >= SPIN_FLIP) { flip_t = 0.0f; spin = -spin; } // the spiral turns back
+        if (!ENRAGED) { x = HOME_X; y = HOME_Y; return; }       // still
+        // Swimming round the top: eased in from its spot (the swim starts
+        // where it is), side to side, bobbing.
+        swim_t += dt;
+        float ease = fminf(swim_t / 1.5f, 1.0f);
+        x = HOME_X + SWIM_RX * ease * sinf(swim_t * SWIM_W);
+        y = HOME_Y + SWIM_RY * ease * sinf(swim_t * SWIM_W * 2.2f);
     }
     int breathe(float, float, BulletSpawn out[], int) override {
         // A bark: the main wave -- a wall, spiralling -- out of its open mouth.
         float ox, oy;
         mouth(&ox, &oy);
         turn += SPIN * spin;
-        return wave(ox, oy, 144, 4, 3, turn, 118.0f, out);
+        return wave(ox, oy, ENRAGED ? 120 : 144, 4, 3, turn, 118.0f, out);   // swimming: a thinner wall (the user: less busy, then a bit more)
     }
     int fire(float, float, BulletSpawn out[], int max) override {
         int n = 0;
-        float ox, oy;
-        mouth(&ox, &oy);
-        if (ENRAGED && wave2_t >= WAVE2_EVERY && n + 48 <= max) { // the sparse second set, turning the other way
-            wave2_t -= WAVE2_EVERY;
-            turn2 -= SPIN * 1.4f * spin;
-            n += wave(ox, oy, 48, 3, 3, turn2, 80.0f, out + n);
-        }
         if (splash_t >= SPLASH_EVERY && n + 2 <= max) {           // a hump breaks the water
             splash_t = 0.0f;
             float hx, hy, a = ernd() * TAU;
-            at(20.0f + ernd() * 56.0f, 52.0f, &hx, &hy);
+            at(4.0f + ernd() * 26.0f, 44.0f, &hx, &hy);          // along its humps
             for (int i = 0; i < 2; i++) {
                 BulletSpawn b = mk(a + i * PI, 110.0f, 3.0f, 5.0f);
                 b.from = true; b.ox = hx; b.oy = hy;

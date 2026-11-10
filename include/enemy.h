@@ -99,6 +99,12 @@ struct BulletSpawn {
     // lavender core, the HUD's POISON colour. What it sheds is poison too.
     // A minority threat: one or two poison sources a pattern, never a screen.
     bool  poison         = false;
+    // Glue: a hit glues the player for 1.5 s, each hit restarting it -- a
+    // crawl at 15% of their pace, no sprint (the user; BattleScene::_glue_t).
+    // No lockout: crawling, they can always creep clear. Drawn in
+    // the gel colour (GLUE_RGB) unless it has a colour of its own; the glued
+    // player shows tinted and dripping. Bes Rap's (74) spit first (the user).
+    bool  glue           = false;
     // A puppet (>= 0): a shot the enemy itself places every frame -- slot
     // `puppet` of a shape it steers (Enemy::puppet_at) -- not flying on its
     // own. It isn't spent on a hit (the shape stays whole), and goes when
@@ -178,6 +184,11 @@ public:
     // A shove: the player thrown this way, px/s, while it lasts (a bite that
     // flings them back down the arena). They are kept in the arena.
     virtual void shove(float* vx, float* vy) const { *vx = 0.0f; *vy = 0.0f; }
+    // A gust: true once, the moment it blows -- the player is driven along
+    // (dx, dy) (a unit vector) at GUST_SPEED, out of their control, until
+    // they meet the arena's wall (or anything solid); gust lines stream off
+    // them meanwhile (BattleScene::_gust_t). Makalala's (75) clap first.
+    virtual bool take_gust(float* /*dx*/, float* /*dy*/) { return false; }
     // Told the way the player faces, each frame (a Facing, entity.h) -- for a
     // gaze that must not be met.
     virtual void  see_facing(int /*facing*/) {}

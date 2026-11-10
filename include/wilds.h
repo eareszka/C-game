@@ -32,8 +32,9 @@ struct WildPack {
 // The pack square (cx, cy) holds. Asks only the finished map, so call it on
 // ground phase 2 has laid.
 void wild_pack(const Tilemap* map, unsigned seed, int cx, int cy, WildPack* out);
-// Tiles from (tx, ty) to the nearest road or trail, by the square ring it lies
-// on; cap if there is none within cap.
+// Tiles from (tx, ty) to the nearest road, by the square ring it lies on; cap
+// if there is none within cap. Trails do not count: packs may stand beside one
+// (the user, 2026-11-09: "unlike roads enemies can spawn around these trails").
 int wild_road_distance(const Tilemap* map, int tx, int ty, int cap);
 // A member's one number: what its win is kept by (persist_wild_*).
 inline uint32_t wild_key(int cx, int cy, int slot) {

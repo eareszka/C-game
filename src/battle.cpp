@@ -716,6 +716,7 @@ void BattleScene::update(const Input* in, float dt) {
     }
 
     if (_bp.iframes > 0.0f) _bp.iframes -= dt;
+    if (_glue_t > 0.0f) _glue_t -= dt;
     if (_enemy_flash > 0.0f) _enemy_flash -= dt;
     if (_flash_gap   > 0.0f) _flash_gap   -= dt;
     if (_pierce_wait > 0.0f) _pierce_wait -= dt;
@@ -856,11 +857,27 @@ void BattleScene::_update_movement(const Input* in, float dt) {
     // it back the same way on release: one tier per DIM_STEP seconds.
     const float DIM_STEP = 0.08f;
     _bp.dim = fminf(fmaxf(_bp.dim + (focus ? dt : -dt) / DIM_STEP, 0.0f), 2.0f);
-    const float PSPEED     = focus ? 70.0f : sprint ? 250.0f : 160.0f;
+    // Glued (a glue shot, BulletSpawn::glue): a crawl at GLUE_SLOW, no sprint.
+    const float GLUE_SLOW  = 0.15f;
+    if (_glue_t > 0.0f) sprint = false;
+    const float PSPEED     = (focus ? 70.0f : sprint ? 250.0f : 160.0f) * (_glue_t > 0.0f ? GLUE_SLOW : 1.0f);
     const float ANIM_SPEED = focus ? 0.30f : sprint ? 0.10f : 0.20f;
 
     float mx, my;
     player_read_input(_player_ref, in, &mx, &my);
+    if (_gust_t >= 0.0f) {
+        // Blown (Enemy::take_gust): no say in it, driven straight on until
+        // the wall (or anything solid) stops them -- or GUST_MAX s, a backstop.
+        const float GUST_SPEED = 560.0f, GUST_MAX = 2.0f;
+        _gust_t += dt;
+        float wx = _bp.x + _gust_dx * GUST_SPEED * dt, wy = _bp.y + _gust_dy * GUST_SPEED * dt;
+        float bx = _bp.x, by = _bp.y;
+        _walk(wx, wy);
+        bool stopped = fabsf(_bp.x - wx) > 0.01f || fabsf(_bp.y - wy) > 0.01f || (_bp.x == bx && _bp.y == by);
+        if (stopped || _gust_t >= GUST_MAX) _gust_t = -1.0f;
+        player_animate(_player_ref, dt, ANIM_SPEED);
+        return;
+    }
     _walk(_bp.x + mx * PSPEED * dt, _bp.y + my * PSPEED * dt);
 
     player_animate(_player_ref, dt, ANIM_SPEED);
@@ -1063,6 +1080,13 @@ void BattleScene::_update_enemy(float dt) {
     }
     _enemy->update(dt, _bp.x, _bp.y);
     _apply_move_rule(dt);
+    {   // A gust blowing: the player driven off along it (_update_movement)
+        float gx, gy;
+        if (_enemy->take_gust(&gx, &gy)) {
+            float gl = hypotf(gx, gy);
+            if (gl > 0.0f) { _gust_dx = gx / gl; _gust_dy = gy / gl; _gust_t = 0.0f; }
+        }
+    }
     // A pull: the player drawn toward it (they walk against it), kept in the arena.
     if (float pull = _enemy->pull()) {
         float dx = _enemy->x - _bp.x, dy = _enemy->y - _bp.y, d = sqrtf(dx * dx + dy * dy);
@@ -1477,6 +1501,7 @@ void BattleScene::_check_collisions() {
                 if (_trial) _trial_poisoned = true;
                 else        _player_ref->poisoned = 1;
             }
+            if (bl.glue) _glue_t = 1.5f;           // ...and it sticks: a crawl for 1.5 s, restarted by each hit
             if (bl.puppet < 0) bl.active = false;     // a puppet stays: its shape keeps whole
         }
     }
@@ -1610,6 +1635,7 @@ void BattleScene::_spawn_bullet_at(float ox, float oy, const BulletSpawn& bs) {
         bl.fade_out       = bs.fade_out;
         bl.behind         = bs.behind;
         bl.poison         = bs.poison;
+        bl.glue           = bs.glue;
         bl.color          = bs.color;
         bl.puppet         = bs.puppet;
         bl.grazed         = false;
@@ -1849,7 +1875,7 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
     // A capsule is convex, so each 2px row is one run.
     // A shot's own colour (BulletSpawn::color), or the enemy's.
     auto shot_rgb = [&](const Bullet& bl) -> SDL_Color {
-        if (bl.color < 0) return c;
+        if (bl.color < 0) return bl.glue ? SDL_Color{ 200, 224, 112, 255 } : c;   // glue: the gel colour
         return { (Uint8)((bl.color >> 16) & 255), (Uint8)((bl.color >> 8) & 255), (Uint8)(bl.color & 255), 255 };
     };
     auto capsule = [&](const Bullet& bl) {
@@ -2018,9 +2044,33 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
                     SDL_SetTextureAlphaMod(player_sprite, v);
                     SDL_SetTextureColorMod(player_sprite, v, v, v);
                 }
+                if (_glue_t > 0.0f) {          // glued: tinted the gel's green
+                    Uint8 v = tier > 0 ? (Uint8)(255 - 64 * tier) : 255;
+                    SDL_SetTextureColorMod(player_sprite, (Uint8)(v * 200 / 255), (Uint8)(v * 236 / 255), (Uint8)(v * 140 / 255));
+                }
                 SDL_RenderCopy(ren, player_sprite, &src, &dst);
                 SDL_SetTextureAlphaMod(player_sprite, 255);
                 SDL_SetTextureColorMod(player_sprite, 255, 255, 255);
+                if (_gust_t >= 0.0f) {
+                    // Blown: gust lines streaming off behind them, 2 px dashes
+                    // flickering along the wind.
+                    for (int l = -1; l <= 1; l++) {
+                        float sx = px - _gust_dx * 10.0f - _gust_dy * l * 7.0f, sy = py - _gust_dy * 10.0f + _gust_dx * l * 7.0f;
+                        int shift = ((int)(_t * 30.0f) + l * 2) % 3;
+                        for (int k = 0; k < 4; k++) {
+                            float d = (float)(k * 5 + shift * 2);
+                            _fill_rect(ren, ((int)(sx - _gust_dx * d)) & ~1, ((int)(sy - _gust_dy * d)) & ~1, 2, 2, 220, 220, 228, 255);
+                        }
+                    }
+                }
+                if (_glue_t > 0.0f) {
+                    // ...and dripping: three gel drops sliding off the body
+                    // to the feet, a 2 px step at a time, over and over.
+                    for (int d = 0; d < 3; d++) {
+                        int dx = -6 + d * 6, fall = ((int)(_t * 16.0f) + d * 5) % 10;
+                        _fill_rect(ren, ((int)px + dx) & ~1, (((int)py - 6) & ~1) + fall * 2, 2, 2, 200, 224, 112, 255);
+                    }
+                }
             } else {
                 _fill_rect(ren, (int)px - 6, (int)py - 6, 12, 12, 220, 220, 255, 255);
             }

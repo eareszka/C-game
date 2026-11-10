@@ -132,10 +132,14 @@ def main():
     def colour(s):
         k = (s - lo) / (hi - lo) if hi > lo else 0.5
         return (int(60 + 190 * k), int(200 - 150 * k), 60)
+    # Out of 10 (the user): the score spread over the played enemies, the
+    # easiest 1, the hardest 10.
+    def out_of_10(sc):
+        return 1 + round(9 * (sc - lo) / (hi - lo)) if hi > lo else 5
     def tags(i):
         if i not in score: return []
         # bottom left the first flag, short (^HARD: harder than HARD's median), bottom right hits a minute
-        out = [('tr', '%+.1f' % score[i], colour(score[i])), ('br', '%.0f/m' % hpm[i], (60, 60, 70))]
+        out = [('tr', '%d/10' % out_of_10(score[i]), colour(score[i])), ('br', '%.0f/m' % hpm[i], (60, 60, 70))]
         if flags[i]:
             f = flags[i][0].split(' (')[0]
             out.append(('bl', f.replace('ABOVE ', '^').replace('BELOW ', 'v'), (190, 40, 40)))
@@ -145,7 +149,7 @@ def main():
         return 'median %+.2f' % med[t] if t in med else 'not played'
     out_png = os.path.join(ROOT, 'playtest', 'difficulty_sheet.png')
     ets.main(out_png, tags=tags, dim={i for i in range(len(names)) if i not in score}, row_note=row_note,
-             title='Difficulty run: %d enemies, %d trials. Badge = score (0 average, + harder); ^TIER/vTIER = past that tier median; bottom right = hits a minute.'
+             title='Difficulty run: %d enemies, %d trials. Badge = difficulty out of 10 (1 the easiest played, 10 the hardest); ^TIER/vTIER = past that tier median; bottom right = hits a minute.'
                    % (len(score), len(rows)))
     print('\nwrote %s and %s' % (os.path.relpath(out_csv, ROOT), os.path.relpath(out_png, ROOT)))
     if not args.run: write_recheck(order, names)

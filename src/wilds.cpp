@@ -17,13 +17,14 @@ int wild_road_distance(const Tilemap* map, int tx, int ty, int cap) {
             int step = (dy == -r || dy == r) ? 1 : 2 * r;
             for (int dx = -r; dx <= r; dx += step ? step : 1) {
                 int x = tx + dx, y = ty + dy;
-                if (in_world(&x, &y) && map->route[y][x] != ROUTE_NONE) return r;
+                if (in_world(&x, &y) && map->route[y][x] == ROUTE_ROAD) return r;   // a trail does not keep them off
             }
         }
     return cap;
 }
 
-// Ground a pack may stand on: open, dry, off every track, out of the towns
+// Ground a pack may stand on: open, dry, off every track (a road or a trail:
+// beside a trail is fine, wild_road_distance; on it is not), out of the towns
 // and villages, and not on top of anything the player comes to the place for.
 static bool wild_ground(const Tilemap* map, int tx, int ty) {
     if (!in_world(&tx, &ty) || !tilemap_is_walkable(map, tx, ty)) return false;

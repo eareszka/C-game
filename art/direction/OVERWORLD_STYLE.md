@@ -142,6 +142,57 @@ so there is no straight line across it anywhere.
 | wasteland | `2b190e` `110000` |
 | snow | `c6ccda` `a4aaba` |
 
+**A trail is the road's band, thinner** (the user, 2026-11-09: "i want to
+have a smaller set of trails that connect to a road and go to specific dungeon
+types, however i also want some dungeon types to be not found by trails";
+then, of the look, "the same color as the roads" and "truly thinner than
+roads"). A trail leaves a road for a graveyard of either size, the catacombs, ruins,
+a stone circle, a pyramid or an oasis; caves and the great trees have none
+(small graveyards were added later the same day: "small graveyard yes"). It never crosses the start island, a town or a village.
+It is the road's band in the road's own tones -- no materials of its own --
+and the road's own shape, shrunk: the band and paving a road would have over
+the same two-tile stroke, eroded `TRAIL_THIN` (5) px all round
+(`trail_mask` in `src/tilemap.cpp`), so 14 px deep where a road is 24, three
+rows of edge, ten of paving, one of edge (the user, 2026-11-09: "same amount
+of thinness, make sure it follows the same natural formation as roads, make
+the transition between roads and trails smooth"). Shrinking a road's shape
+leaves a road's shape: it winds and rounds exactly as a road does. Near a
+road it is shrunk less, pixel by pixel with its distance from the road
+(`TRAIL_TAPER`, 44 px, eased), so it leaves a road at the road's width and
+narrows smoothly, with no step anywhere. It winds more than a road (the user,
+2026-11-09: "make trails more windier... they shouldnt be as straight as
+roads"): over the route's own wander it swings in S-curves, a long swing of
+20-32 tiles and a ripple of 9-14, up to five tiles off its line, and comes
+back onto the line by its ends so it meets the road and the door square on. Trails reach about two thirds of
+their dungeons (the user, 2026-11-09: "should be more expansive, so far they
+seem to only connect to the dungeons closest to the roads"; then "have them
+branch off instead of a continuous line connected"): outward from the roads
+in waves, a dungeon within a trail's length of one already reached takes a
+trail too, and it forks off that dungeon's trail at least twelve tiles back
+from its door rather than running on from the door, so the trails make a
+branching tree off each road and never a chain of dungeons. The remotest
+third, mostly in the roadless heart of the world, are left to be found. Short spurs, a
+trail's look and at most about 40 tiles long, leave a road or trail for some
+of the country's places that are not dungeons (the user, 2026-11-09): every
+old trail of the desert and abandoned expedition camp of the snow within
+reach, half the woodcutter's camps and a fifth of the farmsteads -- four in
+five of those with a barn, once the barn is drawn ("for those specifically it
+has a greater chance for the trail to choose that one"). A spur is laid after
+the props and goes round them and every landmark, felling only trees. No boss
+site and no landmark has one. A trail is one even band that meets the network once
+(the user, 2026-11-09, screenshots of rings, swellings and a fold, "problems
+with trail generation that must be fixed"): its stroke is laid as every tile
+within a tile of its smoothed line, two across at any slant, not stamped two
+by two (which left a winding line three or four thick); it keeps three tiles
+off older track but at its join, and takes no swing over its join, so it
+never runs beside the trail it meets; a branch may join a dungeon's trail up
+to four tiles from its door and no closer, and a spur anywhere; a sliver of
+eight tiles or less shut between strokes is filled in. Its run-ups to a bridge are the
+road's width, as the deck is cut for it. On the map it is the road's colour. The
+wasteland's old network of trails between its dungeons is gone (2026-11-09).
+Withered, patchy trails (worn into blobs) were tried and dropped the same
+day.
+
 **The desert's formations were retired** (2026-10-27): the strip of ten
 (saguaros, boulders, a spire, a shrub, bones) gave way to the desert props
 (`art/structures/props/desert/`), placed and broken in their themed groups.

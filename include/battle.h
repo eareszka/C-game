@@ -136,6 +136,7 @@ struct Bullet {
     bool  fade_out;       // with a life: fades over its last moments, harmless
     bool  behind;         // drawn behind the enemy
     bool  poison;         // a hit poisons the player too (BulletSpawn::poison)
+    bool  glue;           // a hit glues the player (BulletSpawn::glue)
     int   color;          // its own colour, 0xRRGGBB, or -1: the enemy's (BulletSpawn::color)
     int   puppet;         // >= 0: placed by the enemy every frame (BulletSpawn::puppet), its slot
     // Player shots: what fired it, so a shot in flight keeps its own weapon's
@@ -334,6 +335,9 @@ private:
     int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
     int          _hit_bars = 0;      // bars that hit took
+    float        _glue_t = 0.0f;     // > 0: glued by a glue shot, this many s more (BulletSpawn::glue)
+    float        _gust_t = -1.0f;    // >= 0: blown by a gust (Enemy::take_gust) this long; -1 none
+    float        _gust_dx = 0.0f, _gust_dy = 0.0f;
     bool         _trial    = false;  // a difficulty trial (set_trial)
     float        _trial_secs = TRIAL_DRAIN_SECS;
     bool         _trial_poisoned = false;   // a trial's poison: its own HP drains, never the save's

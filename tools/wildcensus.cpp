@@ -62,7 +62,10 @@ int main(int argc, char** argv) {
                     int tx = (int)(p.x[i] / TILE_SIZE), ty = (int)(p.y[i] / TILE_SIZE);
                     int d = wild_road_distance(&g_map, tx, ty, WILD_ROAD_CLEAR);
                     if (d < WILD_ROAD_CLEAR - 3) {   // members gather a couple of tiles round the spot
-                        printf("  seed %u square %d,%d member %d stands %d from a track\n", seed, cx, cy, i, d); bad++;
+                        printf("  seed %u square %d,%d member %d stands %d from a road\n", seed, cx, cy, i, d); bad++;
+                    }
+                    if (g_map.route[ty][tx] != ROUTE_NONE) {   // beside a trail is fine, on one is not
+                        printf("  seed %u square %d,%d member %d stands on a track\n", seed, cx, cy, i); bad++;
                     }
                     per_tier[enemy_tier(p.enemy[i])]++;
                     per_region[enemy_region(p.enemy[i])]++;

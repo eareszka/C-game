@@ -11,7 +11,7 @@
 // The world a seed grows. Bump it whenever generation changes what a seed
 // grows: a save names the version it was played in, and one from another is
 // refused (save.cpp), since its dungeons, landmarks and ground have moved.
-enum { WORLDGEN_VERSION = 10 };   // 3: the props (2026-10-26); 4: the snow's props (2026-10-27); 5: the wasteland overhaul, void pools and volcanoes (2026-10-27); 6: its stage 2, walls, mazes, the gate, rubble; 7: wasteland rivers are void; 8: their change cut across the river; 9: the wasteland's roster filled out, its remains; 10: town 2 (Xuelin) on the snow's edge
+enum { WORLDGEN_VERSION = 14 };   // 3: the props (2026-10-26); 4: the snow's props (2026-10-27); 5: the wasteland overhaul, void pools and volcanoes (2026-10-27); 6: its stage 2, walls, mazes, the gate, rubble; 7: wasteland rivers are void; 8: their change cut across the river; 9: the wasteland's roster filled out, its remains; 10: town 2 (Xuelin) on the snow's edge; 11: trails from the roads to some dungeons, the wasteland's trail network gone; 12: trails reach further, branching; 13: small graveyards trailed, spurs to camps, farms and old trails; 14: trails without rings, folds or fat stretches
 
 // The shape of the world. Two opposite edges are hard borders -- the ocean and
 // the mountain edge across from it -- and the other two are joined: walk off

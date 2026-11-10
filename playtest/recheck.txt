@@ -2,8 +2,27 @@
 # trial outside their tier's target (tools/playtest_report.py TARGET).
 # Written by tools/playtest_report.py; id, tier, name, why.
 8 MEDIUM SNAWFUS -- 0.0 hits/min, under 1.5; feel 1, under 2
-9 MEDIUM QUESTING BEAST -- 0.0 hits/min, under 1.5; feel 1, under 2
-17 MEDIUM QIQIRN -- 10.0 hits/min, over 8
-58 MEDIUM AGROPELTER -- 28.4 hits/min, over 8
-79 UPPER UGJUKNARPAK -- 0.0 hits/min, under 2
-10 ELITE GRAND'GOULE -- 5.5 hits/min, under 8; feel 2, under 3
+58 MEDIUM AGROPELTER -- 10.7 hits/min, over 8
+72 MEDIUM MAHWOT -- 11.8 hits/min, over 8
+21 UPPER ASP -- 14.8 hits/min, over 9
+77 UPPER HOGA -- 11.6 hits/min, over 9
+80 UPPER BES KOTAK -- 0.0 hits/min, under 2; feel 1, under 2
+82 UPPER NADUBI -- 0.0 hits/min, under 2; feel 1, under 2
+20 HARD SERMILIK -- 0.0 hits/min, under 3
+27 HARD GROOTSLANG -- 0.0 hits/min, under 3
+33 HARD TSE'NAGAHI -- 0.0 hits/min, under 3
+39 HARD AJAJU -- 0.0 hits/min, under 3
+42 HARD NYKUR -- 0.0 hits/min, under 3
+43 HARD SAZAE-ONI -- 0.0 hits/min, under 3
+83 HARD BEAST OF BARRISDALE -- 0.0 hits/min, under 3
+84 HARD KIGUTILIK -- 0.0 hits/min, under 3
+85 HARD NANABOLELE -- 0.0 hits/min, under 3
+86 HARD LEUCROCOTTA -- 0.0 hits/min, under 3
+87 HARD COROCOTTA -- 0.0 hits/min, under 3
+88 HARD AMIXSAK -- 0.0 hits/min, under 3
+25 SEVERE MYRMECOLEON -- 0.0 hits/min, under 5
+35 SEVERE LOMIE -- 0.0 hits/min, under 5
+10 ELITE GRAND'GOULE -- 0.0 hits/min, under 8
+12 ELITE EBIGANE -- 0.0 hits/min, under 8
+32 ELITE ANGONT -- 0.0 hits/min, under 8
+23 BOSS1 OLGOI-KHORKHOI -- 0.0 hits/min, under 6
