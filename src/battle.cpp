@@ -23,6 +23,10 @@ static const float ENEMY_FLASH_T   = 0.07f;  // seconds the enemy flashes white 
 static const float ENEMY_FLASH_GAP = 0.2f;
 // A piercing shot still inside the enemy strikes again after this long.
 static const float PIERCE_REHIT_T  = 0.07f;
+// The bomb (X): its ring of hitbox marks covers the screen in BOMB_T s (the
+// player unhittable meanwhile) and takes BOMB_DMG of the enemy's max HP.
+static const float BOMB_T          = 0.6f;
+static const float BOMB_DMG        = 0.08f;
 // Every shot flies at one speed: the one that crosses the gap the fight opens
 // at (player 400, enemy ~160) in BULLET_TRAVEL_T. Fixed, so a shot's pace
 // never depends on where it was fired from.
@@ -667,21 +671,43 @@ void BattleScene::update(const Input* in, float dt) {
     if (input_pressed(in, SDL_SCANCODE_E)) _cycle(1);
     _swap_t += dt;
 
-    // X: a bomb -- every enemy shot on screen gone, nothing more (no damage,
-    // no invincibility). One ITEM_BOMB from the save (a debug or trial fight
-    // spends its own); with none, X does nothing but a refusal.
+    // X: a bomb, Touhou-style (the user) -- a ring of hitbox marks grows from
+    // where it went off until it covers the whole screen (BOMB_T s), erasing
+    // every enemy shot inside it as it goes (new ones too); the player can't
+    // be hit while it grows, and it takes BOMB_DMG of the enemy's max HP
+    // when it reaches it (times armor(): nothing off an enemy that can't be
+    // hurt). One ITEM_BOMB from the save (a debug or trial fight spends its
+    // own); with none, X does nothing but a refusal.
     _bomb_t += dt; _no_bomb_t += dt;
     if (input_pressed(in, SDL_SCANCODE_X)) {
         if (_bombs > 0) {
             _bombs--;
             if (!_fixed_gear) { int& c = item_slot(_player_ref, ITEM_BOMB); if (c > 0) c--; }
-            for (int i = 0; i < MAX_ENEMY_BULLETS; i++) _enemy_bullets[i].active = false;
             _enemy->on_bomb();
             _bomb_t = 0.0f; _bomb_x = _bp.x; _bomb_y = _bp.y;
+            float fx = fmaxf(_bomb_x, ARENA_W - _bomb_x), fy = fmaxf(_bomb_y - ARENA_TOP, ARENA_H - _bomb_y);
+            _bomb_reach = hypotf(fx, fy) + 8.0f;
+            _bomb_hit = false;
+            _bp.iframes = fmaxf(_bp.iframes, BOMB_T);
             audio_play(SFX_BOMB);
         } else {
             _no_bomb_t = 0.0f;
             audio_play(SFX_DENY);
+        }
+    }
+    if (_bomb_t < BOMB_T) {                                      // the ring growing
+        float r = _bomb_r();
+        for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+            Bullet& bl = _enemy_bullets[i];
+            if (bl.active && hypotf(bl.x - _bomb_x, bl.y - _bomb_y) <= r) bl.active = false;
+        }
+        if (!_bomb_hit && hypotf(_enemy->x - _bomb_x, _enemy->y - _bomb_y) <= r) {
+            _bomb_hit = true;
+            if (_enemy->is_alive() && !_enemy_hidden() && _enemy->armor() > 0.0f) {
+                _enemy->take_damage(_enemy->max_hp * BOMB_DMG * _enemy->armor());
+                _enemy_flash = ENEMY_FLASH_T; _flash_gap = ENEMY_FLASH_GAP;
+                audio_play(SFX_ENEMY_HIT);
+            }
         }
     }
 
@@ -1964,6 +1990,20 @@ void BattleScene::_draw_shots(SDL_Renderer* ren, bool behind) const {
     }
 }
 
+float BattleScene::_bomb_r() const {
+    return _bomb_reach * fminf(_bomb_t / BOMB_T, 1.0f);
+}
+
+// The hitbox marker at (cx, cy): a white plus of 2 px squares, each with a
+// black outline round it.
+void BattleScene::_draw_hit_mark(SDL_Renderer* ren, int cx, int cy) {
+    const int BX[5] = { -3, 1, -1, -1, -1 }, BY[5] = { -1, -1, -3, 1, -1 };
+    for (int i = 0; i < 5; i++)
+        _fill_rect(ren, cx + BX[i] - 2, cy + BY[i] - 2, 6, 6, 0, 0, 0, 255);
+    for (int i = 0; i < 5; i++)
+        _fill_rect(ren, cx + BX[i], cy + BY[i], 2, 2, 252, 252, 252, 255);
+}
+
 void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     _fill_rect(ren, 0, 0, ARENA_W, ARENA_H, 0, 0, 0, 255);
 
@@ -2202,31 +2242,23 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     // outline so it stands off the sprite and any bullet. Always shown in a
     // fight, drawn over everything, and blinking for its first second so the
     // player sees that this dot is what gets hit.
-    // A bomb: the arena flashes white for a frame or two, then a white
-    // square shock ring, 4 px thick on the art grid, flies out from where it
-    // went off past every wall -- hard steps, no fade.
-    if (_bomb_t < 0.4f) {
-        if (_bomb_t < 0.05f) _fill_rect(ren, 0, ARENA_TOP, ARENA_W, ARENA_H - ARENA_TOP, 252, 252, 252, 255);
-        else {
-            int r = 2 * (int)((_bomb_t - 0.05f) / 0.35f * 200.0f) + 8;
-            int cx = (int)_bomb_x & ~1, cy = (int)_bomb_y & ~1;
-            Uint8 v = _bomb_t < 0.2f ? 252 : 188;
-            _fill_rect(ren, cx - r, cy - r, 2 * r, 4, v, v, v, 255);
-            _fill_rect(ren, cx - r, cy + r - 4, 2 * r, 4, v, v, v, 255);
-            _fill_rect(ren, cx - r, cy - r, 4, 2 * r, v, v, v, 255);
-            _fill_rect(ren, cx + r - 4, cy - r, 4, 2 * r, v, v, v, 255);
+    // A bomb: a ring of hitbox marks -- the player's own marker -- grows from
+    // where it went off past every corner of the arena, about 14 px apart,
+    // turning slowly; hard steps, no fade. It erases the shots it passes (update).
+    if (_bomb_t < BOMB_T) {
+        float r = _bomb_r();
+        int n = (int)(TAU * r / 14.0f);
+        n = n < 12 ? 12 : n > 180 ? 180 : n;
+        for (int i = 0; i < n; i++) {
+            float a = _bomb_t * 2.0f + TAU * i / n;
+            int mx = (int)(_bomb_x + cosf(a) * r), my = (int)(_bomb_y + sinf(a) * r);
+            if (mx < -4 || mx > ARENA_W + 4 || my < ARENA_TOP - 4 || my > ARENA_H + 4) continue;
+            _draw_hit_mark(ren, mx, my);
         }
     }
 
     bool intro_blink = _t < 1.0f && (int)(_t * 8.0f) % 2;
-    if (_phase == BATTLE_PHASE_FIGHTING && !intro_blink) {
-        int cx = (int)_bp.x, cy = (int)_bp.y;
-        const int BX[5] = { -3, 1, -1, -1, -1 }, BY[5] = { -1, -1, -3, 1, -1 };
-        for (int i = 0; i < 5; i++)
-            _fill_rect(ren, cx + BX[i] - 2, cy + BY[i] - 2, 6, 6, 0, 0, 0, 255);
-        for (int i = 0; i < 5; i++)
-            _fill_rect(ren, cx + BX[i], cy + BY[i], 2, 2, 252, 252, 252, 255);
-    }
+    if (_phase == BATTLE_PHASE_FIGHTING && !intro_blink) _draw_hit_mark(ren, (int)_bp.x, (int)_bp.y);
 
     // Victory / defeat overlay
     // A win: VICTORY, each letter stepping through bright colours in a

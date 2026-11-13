@@ -331,6 +331,10 @@ private:
     float        _bomb_t    = 99.0f;  // seconds since a bomb went off (its flash)
     float        _no_bomb_t = 99.0f;  // seconds since X was pressed with none
     float        _bomb_x = 0.0f, _bomb_y = 0.0f;   // where it went off
+    float        _bomb_reach = 0.0f;  // the ring's last radius: past the arena's farthest corner
+    bool         _bomb_hit = true;    // the ring has reached the enemy (its damage dealt)
+    float        _bomb_r() const;     // the ring's radius now
+    static void  _draw_hit_mark(SDL_Renderer* ren, int cx, int cy);   // the hitbox marker, the bomb ring's mark too
     float        _anim_ms    = 0.0f;   // the enemy's idle-animation clock, run at Enemy::anim_speed
     int          _idle_frame = -1;   // the enemy's idle frame last update, to catch frame 2 starting
     float        _fire_iv    = 0.0f; // the enemy's fire interval last update, to catch a speed-up
