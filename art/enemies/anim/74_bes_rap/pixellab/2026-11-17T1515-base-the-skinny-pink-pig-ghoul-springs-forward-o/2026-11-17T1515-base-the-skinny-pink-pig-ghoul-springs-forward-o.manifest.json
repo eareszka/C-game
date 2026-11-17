@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1515-base-the-skinny-pink-pig-ghoul-springs-forward-o",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1228 characters>",
+      "format": "png"
+    },
+    "action": "the skinny pink pig ghoul springs forward off its haunches in a quick lunge, long arms reaching ahead, jaw open",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "fcd9f6fd-6b07-4f1f-b990-e348fbe74a1e",
+    "generation_id": "97d3138a-e3dc-480c-919d-9e746122bf42"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "lunge-00.png",
+    "lunge-01.png",
+    "lunge-02.png",
+    "lunge-03.png",
+    "lunge-04.png"
+  ]
+}

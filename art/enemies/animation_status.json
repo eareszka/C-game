@@ -76,5 +76,12 @@
     "reviewed": "2026-11-04",
     "gens": 37,
     "notes": "Hand from the user's reference and description, fingertip mouths with tongues, plain thumb, true 8 views, 3 poses, pose 2 held on each shot, rings from the palm, aimed shots from fingertips in turn. Mini not installed: bosses are cutscenes (the user). Fight 445 HP, flagged."
+  },
+  "74": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-17",
+    "gens": 2,
+    "notes": "Front only (the user). PixelLab animate x2: idle 5 x 260 ms, pose 2 head turned to us spitting glue (breath_frame 2); flap = lunge pose held while it dashes (BesRap::flap_phase). 41x43 (was 37x43); mouth offset unchanged (-1, -15)."
   }
 }

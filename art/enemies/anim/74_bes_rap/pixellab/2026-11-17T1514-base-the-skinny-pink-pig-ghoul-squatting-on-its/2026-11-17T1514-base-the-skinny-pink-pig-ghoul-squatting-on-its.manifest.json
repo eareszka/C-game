@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1514-base-the-skinny-pink-pig-ghoul-squatting-on-its",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1228 characters>",
+      "format": "png"
+    },
+    "action": "the skinny pink pig ghoul squatting on its haunches breathes in, winds up, throws its head forward dropping its jaw wide and spits sticky glue, then breathes out",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0ef86e3d-f2ab-48f6-95c5-fe33c8708fe1",
+    "generation_id": "d7d474d4-06e9-4b17-9d2c-de4da105b60e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idle-00.png",
+    "idle-01.png",
+    "idle-02.png",
+    "idle-03.png",
+    "idle-04.png"
+  ]
+}

@@ -8953,13 +8953,13 @@ public:
 //   quick dash to where the player was as it set off (never off screen, its
 //   body hurting all the way); landing, it spits the glue cone (25) and
 //   marks a ring of 8 X's 70 px round the player plus one on them, landing
-//   as droppings. The tree fruits too: figs drop out of the canopy above
-//   and burst into seeds, fewer than before so the ring reads.
+//   as droppings. Each lunge leaves a TRAIL of shots on its track that sit
+//   and fade (the user, 2026-11-17: in place of the figs raining down).
 // Made harder after the user's F4 run of 2026-10-31 (never hit, rated 1):
-// a spit cone of 19 (25 in phase 2) arriving quicker, figs more often.
+// a spit cone of 19 (25 in phase 2) arriving quicker.
 class BesRap : public Enemy {
     static constexpr float DROP_LIFE = 2.5f, HINT_T = 0.8f, HINT_R = 7.0f;
-    float drop_t = 1.0f, fig_t = 0.0f;
+    float drop_t = 1.0f;
     static constexpr int MAX_SPOTS = 16;
     struct Spot { float x, y, t; } spots[MAX_SPOTS];     // droppings about to land, t = seconds marked
     int   nspot = 0;
@@ -8967,19 +8967,22 @@ class BesRap : public Enemy {
     // the player was when it set off; landing, the glue cone and a ring of
     // X's round the player (and one on them).
     static constexpr float LUNGE_SPEED = 560.0f, LUNGE_PAUSE = 1.3f, RING_R = 70.0f;
+    static constexpr float TRAIL_LIFE = 1.4f;                   // a trail shot sits this long, fading at the end
     static constexpr int   RING_N = 8;
     float lunge_wait = 0.6f, ltx = 0.0f, lty = 0.0f;
     bool  lunging = false, landed = false;
-    // Its sprite (37x43 drawn 2x) kept whole on screen.
-    static float keep_x(float v) { return fminf(fmaxf(v, 40.0f), ARENA_W - 40.0f); }
+    // Its sprite (41x43 drawn 2x) kept whole on screen.
+    static float keep_x(float v) { return fminf(fmaxf(v, 42.0f), ARENA_W - 42.0f); }
     static float keep_y(float v) { return fminf(fmaxf(v, ARENA_TOP + 46.0f), ARENA_H - 46.0f); }
     // A dropping's X: marked now, landing HINT_T s on.
     void mark(float sx, float sy) { if (nspot < MAX_SPOTS) spots[nspot++] = { sx, sy, 0.0f }; }
-    // The glue cone, from its mouth (the placeholder 37x43 front-only
-    // still's teeth row, art px (17.5, 13.5), drawn 2x: the same spot
-    // whichever way the player is).
-    int spit(float px, float py, BulletSpawn out[]) const {
-        float mx = x - 1.0f, my = y - 15.0f;
+    // The glue cone, from its mouth on the 41x43 front-only sheet (drawn 2x,
+    // the same whichever way the player is). Two spots: idle frame 2 (phase
+    // 1, head turned to us) has the jaw dropped open at art px (18.5, 18):
+    // (-4, -7); landing a lunge (phase 2) it's the resting teeth row, art px
+    // (20, 14): (-1, -15).
+    int spit(float px, float py, float ox, float oy, BulletSpawn out[]) const {
+        float mx = x + ox, my = y + oy;
         float a = aim_at(mx,my,px,py);
         int m = ENRAGED ? 25 : 19;
         for (int i = 0; i < m; i++) {
@@ -8996,7 +8999,8 @@ public:
     const char* name()          const override { return "BES RAP"; }
     int         breath_frame()  const override { return 2; }       // head lunges, jaw drops
     bool        free_movement() const override { return ENRAGED; }  // phase 2's lunges: the user's dash
-    float       fire_interval() const override { return 0.05f; }   // droppings and figs on their own clocks
+    float       flap_phase()    const override { return lunging ? 0.0f : -1.0f; }   // the lunge pose, held through the dash
+    float       fire_interval() const override { return 0.05f; }   // droppings on their own clock; a trail shot each tick of a lunge (~28 px apart)
     int telegraphs(TeleLine out[], int max) const override {
         // Each spot about to be dropped on: a small blinking X, harmless.
         int n = 0;
@@ -9010,7 +9014,7 @@ public:
         return n;
     }
     void update(float dt, float px, float py) override {
-        drop_t += dt; fig_t += dt;
+        drop_t += dt;
         for (int i = 0; i < nspot; i++) spots[i].t += dt;
         if (!ENRAGED) return;
         if (!lunging) {
@@ -9028,7 +9032,7 @@ public:
             // Landed: the glue cone at the player, and the X's -- one on
             // them, a ring round them (in the arena; any off it skipped).
             landed = false;
-            n += spit(px, py, out + n);
+            n += spit(px, py, -1.0f, -15.0f, out + n);
             mark(fminf(fmaxf(px, 20.0f), ARENA_W - 20.0f), fminf(fmaxf(py, ARENA_TOP + 20.0f), ARENA_H - 20.0f));
             float a0 = ernd() * TAU;
             for (int i = 0; i < RING_N; i++) {
@@ -9073,14 +9077,10 @@ public:
             out[n++] = b;
             spots[i] = spots[--nspot];
         }
-        if (ENRAGED && fig_t >= 0.6f) {                          // fewer than before the lunges: room to read the ring
-            // A fig dropping out of the canopy somewhere above, bursting
-            // into 5 seeds after it's fallen a way.
-            fig_t = 0.0f;
-            BulletSpawn b = mk(PI / 2, 120.0f, 4.0f, 5.0f);
-            b.from = true; b.ox = 40.0f + ernd() * (ARENA_W - 80.0f); b.oy = ARENA_TOP + 4.0f;
-            b.shed_first = 1.0f + ernd() * 0.8f; b.shed_times = 1; b.shed_dies = true;
-            b.shed_n = 5; b.shed_spread = TAU * 4.0f / 5.0f; b.shed_speed = 100.0f;
+        if (lunging) {                                           // the trail: a shot left at its feet, sitting, then fading
+            BulletSpawn b = mk(0.0f, 0.0f, 4.0f, 5.0f);
+            b.from = true; b.ox = x; b.oy = y + 30.0f;
+            b.life = TRAIL_LIFE; b.fade_out = true; b.behind = true;
             out[n++] = b;
         }
         return n;
@@ -9089,7 +9089,7 @@ public:
         // The spit, on its jaw-drop frame -- phase 1 only: in phase 2 it
         // spits as each lunge lands (fire).
         if (ENRAGED) return 0;
-        return spit(px, py, out);
+        return spit(px, py, -4.0f, -7.0f, out);
     }
 };
 

@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 30, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 30 Dajna
+        { 74, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 74 Bes Rap
     };
     const int    TEST_N             = 0;   // taken out of the room (user, 2026-11-06); the table kept for when one is wanted again
     // Beside the plant, against the back wall: where the dog's bowl stands on the
