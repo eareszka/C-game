@@ -1,0 +1,8 @@
+barn_a 34
+barn_b 34
+barn_c 20
+barn_d 55
+barn_e 36
+barn_f 32
+barn_g 36
+barn_h 43

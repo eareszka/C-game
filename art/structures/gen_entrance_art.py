@@ -423,7 +423,7 @@ def prop_frames():
 
 def prop_layers(pr, im):
     """A prop frame's (footy, foot, y0, way), as crop_layers gives a block's."""
-    footy, foot, way = prop_table.layers(im, pr[11])
+    footy, foot, way = prop_table.layers(im, pr[11], prop_table.foot_frame(pr))
     return footy, foot, 0, way
 
 
@@ -444,8 +444,8 @@ def props(legal):
         a = im.getchannel("A")
         cells = sum(1 for cy in range(h) for cx in range(w)
                     if a.crop((cx * CELL, cy * CELL, (cx + 1) * CELL, (cy + 1) * CELL)).getbbox())
-        hp = 2 if breaks == 'any' or cells == 1 else 3 if cells <= 4 else 5
-        target = {'axe': 'HARVEST_TREE', 'stone': 'HARVEST_ROCK', 'any': 'HARVEST_OTHER'}[breaks]
+        hp = 0 if breaks == 'never' else 2 if breaks == 'any' or cells == 1 else 3 if cells <= 4 else 5
+        target = {'axe': 'HARVEST_TREE', 'stone': 'HARVEST_ROCK', 'any': 'HARVEST_OTHER', 'never': 'HARVEST_OTHER'}[breaks]
         mask = " | ".join("1u << %s" % t for t in th) or "0"
         d = (list(drops) + [(None, 0)] * 2)[:2]
         items = ", ".join("ITEM_%s" % i if i else "-1" for i, _ in d)
@@ -458,7 +458,7 @@ def props(legal):
         "// in, the groups (themes, a bit each) it comes in, whether it is a group's",
         "// anchor, its weight among a group's fillers and as a lone stray, its block on",
         "// the sheet (col, row, w, h; an animation's frames side by side from there),",
-        "// the blows it takes and to which weapons it is what (HarvestTarget), and its",
+        "// the blows it takes (0: none breaks it, a building) and to which weapons it is what (HarvestTarget), and its",
         "// drops (item, or -1, and how many).",
         "enum PropBiome { %s, PB_COUNT };" % ", ".join(prop_table.BIOMES),
         "enum PropTheme { %s, TH_COUNT };" % ", ".join(themes),
@@ -470,6 +470,8 @@ def props(legal):
         "static const PropKind PROP_KINDS[] = {"] + rows + ["};",
         "// Each kind's name, by the same index.",
         "static const char* const PROP_NAMES[] = { %s };" % ", ".join('"%s"' % pr[0] for pr in prop_table.PROPS),
+        "// A building's door (the barns), its middle in pixels across its block, or -1: a lane ends there.",
+        "static const int PROP_DOOR_PX[] = { %s };" % ", ".join(str(prop_table.door_px(pr)) for pr in prop_table.PROPS),
         ""]), px
 
 

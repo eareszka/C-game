@@ -4891,13 +4891,49 @@ static int fill_trail_holes(Tilemap* map, const std::function<bool(int, int)>& p
 
 // The prop groups lay_props laid, for the spurs (lay_prop_spurs): the
 // middle, the theme, and whether a barn stands in it.
-struct PropSite { int x, y, theme; bool barn; };
+struct PropSite { int x, y, theme; bool barn; int door_x, door_y; };   // door: the ground in front of the barn's doors, or -1
 static std::vector<PropSite> s_prop_sites;
+static int s_barn_stats[2];      // the last world's farmsteads that rolled a barn, and those it stood in
 
 static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1, int iy1,
                       int cx, int cy, int hw) {
     s_prop_sites.clear();
-    const int barn_kind = prop_kind_named("barn");          // -1 until a barn is drawn (props.py)
+    // The barns (props.py barn_a..): about a third of the farmsteads stand one, and about a
+    // third of those have a lane to them (the user, 2026-11-16: "bring the number of barns
+    // to around 33% but still have the trail ones make up around 1/3 of that"). A lane can
+    // only reach a farmstead near a road or trail, so a farmstead there is the likelier to
+    // have a barn (BARN_PCT_NEAR) than one out in the fields (BARN_PCT_FAR),
+    // of eight designs, the least used first and never one within BARN_REPEAT_R of its own.
+    std::vector<int> barn_kinds;
+    for (int k = 0; k < PROP_KIND_N; k++)
+        if (!strncmp(PROP_NAMES[k], "barn_", 5)) barn_kinds.push_back(k);
+    const int BARN_PCT_NEAR = 60, BARN_PCT_FAR = 25, BARN_REPEAT_R = 120, BARN_TRIES = 40;
+    const int BARN_NEAR = 34;                                   // tiles from a road or trail: within a lane's reach
+    // How far each tile lies from a road or trail, out to BARN_NEAR (the tracks are laid by now).
+    std::vector<uint8_t> track_dist((size_t)MAP_WIDTH * MAP_HEIGHT, 0xFF);
+    {
+        std::vector<int> q;
+        for (int y = 0; y < MAP_HEIGHT; y++)
+            for (int x = 0; x < MAP_WIDTH; x++)
+                if (map->route[y][x] != ROUTE_NONE) { track_dist[(size_t)y * MAP_WIDTH + x] = 0; q.push_back(y * MAP_WIDTH + x); }
+        const int DX4[4] = {1,-1,0,0}, DY4[4] = {0,0,1,-1};
+        for (size_t h = 0; h < q.size(); h++) {
+            int qx = q[h] % MAP_WIDTH, qy = q[h] / MAP_WIDTH, d = track_dist[q[h]];
+            if (d >= BARN_NEAR) continue;
+            for (int k = 0; k < 4; k++) {
+                int nx = qx + DX4[k], ny = qy + DY4[k];
+                if (!in_world(&nx, &ny)) continue;
+                size_t ni = (size_t)ny * MAP_WIDTH + nx;
+                if (track_dist[ni] != 0xFF) continue;
+                track_dist[ni] = (uint8_t)(d + 1);
+                q.push_back((int)ni);
+            }
+        }
+    }
+    std::vector<int> barn_uses(barn_kinds.size(), 0);
+    struct BarnAt { int x, y, design; };
+    std::vector<BarnAt> barns_laid;
+    s_barn_stats[0] = s_barn_stats[1] = 0;
     const int GROUP_CELL = 36, SKIP_PCT = 25, STRAY_ROLL = 32686;   // a lone thing about a tile in four hundred
     const int MAYAN_NEAR0 = 12, MAYAN_NEAR1 = 60, FARM_FROM_PYRAMID = 70, THEMES_APART = 50;
     const float RUIN_FIELD = 24500.0f;                             // the slow noise's cut: a ruin field away from any pyramid
@@ -5031,13 +5067,56 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
         auto roll = [&](int n) { rs = rs * 1664525u + 1013904223u; return (int)((rs >> 16) % (unsigned)n); };
         int ak = pick(theme, true, roll(1 << 15)), placed = 0;
         bool barn = false;
+        int door_x = -1, door_y = -1;
         if (ak < 0) return false;
         const PropKind& a = PROP_KINDS[ak];
         for (int t = 0; t < 16 && !placed; t++) {               // nudged to the nearest place it fits
             int ox = x - a.w / 2 + (t ? roll(7) - 3 : 0), oy = y - a.h + 1 + (t ? roll(7) - 3 : 0);
-            if (fits(ak, ox, oy, ground, fell)) { lay(ak, ox, oy, fell); placed = 1; barn |= ak == barn_kind; }
+            if (fits(ak, ox, oy, ground, fell)) { lay(ak, ox, oy, fell); placed = 1; }
         }
         if (!placed) return false;
+        // the farmstead's barn, behind (north of) the haystack: the designs in the order
+        // least used, then farthest from the nearest of its own; the first that fits
+        const bool track_near = track_dist[(size_t)y * MAP_WIDTH + x] <= BARN_NEAR;
+        if (theme == TH_FARM && !barn_kinds.empty() && roll(100) < (track_near ? BARN_PCT_NEAR : BARN_PCT_FAR)) {
+            const int n = (int)barn_kinds.size();
+            std::vector<int> order(n), near_own(n, INT_MAX);
+            for (int i = 0; i < n; i++) order[i] = i;
+            for (const BarnAt& b : barns_laid) {
+                int dx = wrap_dx(x - b.x), dy = wrap_dy(y - b.y);
+                near_own[b.design] = std::min(near_own[b.design], (int)sqrtf((float)(dx * dx + dy * dy)));
+            }
+            const unsigned tie = (unsigned)tile_noise(x, y, s ^ 0xBA4E);
+            std::sort(order.begin(), order.end(), [&](int a2, int b2) {
+                bool ra = near_own[a2] < BARN_REPEAT_R, rb = near_own[b2] < BARN_REPEAT_R;
+                if (ra != rb) return !ra;                          // never near its own, if any is free
+                if (ra && near_own[a2] != near_own[b2]) return near_own[a2] > near_own[b2];
+                if (barn_uses[a2] != barn_uses[b2]) return barn_uses[a2] < barn_uses[b2];
+                return ((a2 * 2654435761u) ^ tie) < ((b2 * 2654435761u) ^ tie);
+            });
+            s_barn_stats[0]++;
+            bool stood = false;
+            for (int oi = 0; oi < n && !stood; oi++) {
+                const int bk = barn_kinds[order[oi]];
+                const PropKind& b = PROP_KINDS[bk];
+                for (int t = 0; t < BARN_TRIES && !stood; t++) {
+                    // behind the haystack first, then anywhere round it, a little farther each try
+                    int reach = 1 + t / 4;
+                    int ox = x - b.w / 2 + (t ? roll(2 * reach + 1) - reach : 0);
+                    int oy = y - a.h - b.h - 1 + (t ? roll(2 * reach + 1) - reach : 0);
+                    if (t >= BARN_TRIES / 2) { ox += (roll(2) ? 1 : -1) * (b.w + 1); oy += a.h + 1; }
+                    if (fits(bk, ox, oy, ground, fell)) {
+                        lay(bk, ox, oy, fell);
+                        stood = barn = true;
+                        barn_uses[order[oi]]++;
+                        barns_laid.push_back({ x, y, order[oi] });
+                        door_x = ox + (PROP_DOOR_PX[bk] - 8) / 16; door_y = oy + b.h;   // 16: a sheet cell, in pixels; a lane is two tiles wide, x and x + 1 straddle the doors
+                        in_world(&door_x, &door_y);
+                    }
+                }
+            }
+            s_barn_stats[1] += stood;
+        }
         // a volcano grove is dense, as the references' red groves are (the user, 2026-10-27:
         // "make volcanoes larger/denser"): many cones packed close round the big one
         const bool grove = theme == TH_VOLCANO;
@@ -5051,10 +5130,10 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
             if (used[k] >= (grove ? (p.w * p.h >= 4 ? 4 : 6) : p.w * p.h == 1 ? 2 : 1)) continue;
             int dx = roll(R + 1) - roll(R + 1), dy = (roll(R + 1) - roll(R + 1)) * 4 / 5;   // thinning toward the edge
             int ox = x + dx - p.w / 2, oy = y + dy - p.h + 1;
-            if (fits(k, ox, oy, ground, fell)) { lay(k, ox, oy, fell); placed++; used[k]++; barn |= k == barn_kind; }
+            if (fits(k, ox, oy, ground, fell)) { lay(k, ox, oy, fell); placed++; used[k]++; }
         }
         groups.push_back({ x, y, theme, placed });
-        s_prop_sites.push_back({ x, y, theme, barn });
+        s_prop_sites.push_back({ x, y, theme, barn, door_x, door_y });
         stats_props[biome_at(x, y)] += placed;
         return true;
     };
@@ -5168,6 +5247,19 @@ static void lay_props(Tilemap* map, unsigned int seed, int ix0, int iy0, int ix1
                     if (d < THEMES_APART) mixed++;
                 }
         fprintf(stderr, "  farm-ruin pairs closer than %d: %d (nearest %d)\n", THEMES_APART, mixed, nearest);
+        {                                                    // the barns: how many farmsteads, how even, how far apart
+            int farms = 0, same_near = INT_MAX;
+            for (const Group& g : groups) farms += g.theme == TH_FARM;
+            for (size_t i = 0; i < barns_laid.size(); i++)
+                for (size_t j = i + 1; j < barns_laid.size(); j++)
+                    if (barns_laid[i].design == barns_laid[j].design) {
+                        int dx = wrap_dx(barns_laid[i].x - barns_laid[j].x), dy = wrap_dy(barns_laid[i].y - barns_laid[j].y);
+                        same_near = std::min(same_near, (int)sqrtf((float)(dx * dx + dy * dy)));
+                    }
+            fprintf(stderr, "  barns: %d of %d farmsteads (%d rolled one), designs", (int)barns_laid.size(), farms, s_barn_stats[0]);
+            for (int u : barn_uses) fprintf(stderr, " %d", u);
+            fprintf(stderr, ", nearest same design %d tiles\n", same_near == INT_MAX ? -1 : same_near);
+        }
         for (auto& p : pyramids) {
             int n = 0;
             for (const Group& g : groups)
@@ -8310,7 +8402,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                 case TH_TRAIL:      return 100;
                 case TH_EXPEDITION: return 100;
                 case TH_CAMP:       return 50;
-                case TH_FARM:       return g.barn ? 80 : 20;
+                case TH_FARM:       return g.barn ? 100 : 0;    // only to a barn, every one in reach (2026-11-16; lay_props sets how many)
                 default:            return 0;
             }
         };
@@ -8379,6 +8471,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             }
         }
         std::vector<std::pair<int, std::pair<int,int>>> found;   // distance, the group's middle
+        std::vector<std::pair<int,int>> doors;                   // the barn doors a farm's lane ends at
         int by_theme[TH_COUNT] = {}, near_theme[TH_COUNT] = {};
         for (size_t i = 0; i < s_prop_sites.size(); i++) {
             const PropSite& g = s_prop_sites[i];
@@ -8387,19 +8480,26 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             // Aimed at the group's near side, the tile round it nearest the
             // track, not at its middle: aimed in among the props, a spur
             // wound round them to get there and closed a ring (2026-11-09).
+            // A farm's lane runs up to its barn's doors (the user, 2026-11-16).
             int best = 0xFFFF, bx = g.x, by = g.y;
-            for (int dy = -6; dy <= 6; dy++)
-                for (int dx = -6; dx <= 6; dx++) {
-                    int nx = g.x + dx, ny = g.y + dy;
-                    if (in_world(&nx, &ny) && dist[(size_t)ny * MAP_WIDTH + nx] < best) {
-                        best = dist[(size_t)ny * MAP_WIDTH + nx]; bx = nx; by = ny;
+            if (g.theme == TH_FARM) {
+                bx = g.door_x; by = g.door_y + 2;                // the network ends two rows out; the stub runs on up
+                in_world(&bx, &by);
+                best = dist[(size_t)by * MAP_WIDTH + bx];
+            } else
+                for (int dy = -6; dy <= 6; dy++)
+                    for (int dx = -6; dx <= 6; dx++) {
+                        int nx = g.x + dx, ny = g.y + dy;
+                        if (in_world(&nx, &ny) && dist[(size_t)ny * MAP_WIDTH + nx] < best) {
+                            best = dist[(size_t)ny * MAP_WIDTH + nx]; bx = nx; by = ny;
+                        }
                     }
-                }
             if (best == 0xFFFF || best < 4) continue;       // out of reach, or on the track already
             near_theme[g.theme]++;
             if ((int)(tile_noise(g.x, g.y, (int)seed ^ 0x5B0E5) % 100) >= c) continue;
             by_theme[g.theme]++;
             found.push_back({ best, { bx, by } });
+            if (g.theme == TH_FARM) doors.push_back({ g.door_x, g.door_y });
         }
         std::vector<uint16_t>().swap(dist);
         std::stable_sort(found.begin(), found.end(),
@@ -8416,6 +8516,33 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                       ROUTE_TRAIL, TILE_WASTE_BRIDGE,
                       3, 10, 6, 10, 10, false, SPUR_REACH,
                       0);   // a spur may join anything, another spur's end too: short, and to no dungeon
+        // the last of a farm's lane straight up to the barn doors, two tiles wide as a lane
+        // is, straddling them, on the two rows in front of them. It stops short of the doors
+        // (the user, 2026-11-16: "slightly before barn doors with some distance similar to
+        // how towns are"): a trail's end is drawn rounded and set back, which leaves a strip
+        // of grass between the lane and the doors.
+        for (const auto& d : doors) {
+            int x = d.first, y = d.second;
+            bool came = false;                                // only where the lane came this way
+            for (int dy = -1; dy <= 3 && !came; dy++)
+                for (int dx = -3; dx <= 4 && !came; dx++) {
+                    int nx = x + dx, ny = y + dy;
+                    came = in_world(&nx, &ny) && map->route[ny][nx] == ROUTE_TRAIL;
+                }
+            if (!came) continue;
+            // straight up from where the network ended, two rows out, to the row in front of
+            // the doors; drawn set back, the end stops a little short of them
+            // (a one-tile prop in the way -- a tuft, a bale, a barrel -- is cleared off it)
+            for (int dy = 0; dy <= 2; dy++)
+                for (int dx = 0; dx <= 1; dx++) {
+                    int nx = x + dx, ny = y + dy, pk, pcx, pcy;
+                    if (!in_world(&nx, &ny) || map->route[ny][nx] != ROUTE_NONE) continue;
+                    if (prop_at(map->overlay[ny][nx], &pk, &pcx, &pcy) && PROP_KINDS[pk].w * PROP_KINDS[pk].h == 1)
+                        map->overlay[ny][nx] = 0;
+                    if (spur_paint(nx, ny)) map->route[ny][nx] = ROUTE_TRAIL;
+                }
+            if (getenv("ROUTE_STATS") && &d - &doors[0] < 6) fprintf(stderr, "farm lane to a barn door at %d,%d%c", x, y, 10);
+        }
 
         // A scrap of trail the network does not reach: where the brush was
         // refused at a prop or a landmark, the far side of the refusal can be
@@ -9748,7 +9875,8 @@ static const int TRACK_INSET = 4, TRACK_RIM = 2, TRACK_DROP = 4;
 // it leaves a road at the road's width and narrows smoothly. Its run-ups to a
 // bridge are the road's (the deck is cut for that width).
 static const int   TRAIL_THIN  = 5;       // art pixels off each side
-static const float TRAIL_TAPER = 44.0f;   // art pixels from a road over which it narrows
+static const float TRAIL_TAPER = 0.0f;    // art pixels from a road over which it narrows: none (the user,
+                                          // 2026-11-16: the trails "should be all a consistant width and height")
 
 static void build_track_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
     // Grass's tones are the start town's street: the commonest two colours of
@@ -9993,7 +10121,7 @@ static int trail_mask(SDL_Renderer* renderer, const Tilemap* map, int x, int y, 
     for (int py = 0; py < 16; py++)
         for (int px = 0; px < 16; px++) {
             float r = (float)TRAIL_THIN;
-            if (!roads.empty()) {
+            if (TRAIL_TAPER > 0.0f && !roads.empty()) {
                 float best = 1e9f;
                 for (auto& rd : roads) {        // to the road tile's square
                     float ex = fmaxf(fmaxf(rd.first * 16.0f - (px + 0.5f), (px + 0.5f) - (rd.first * 16.0f + 16.0f)), 0.0f);
@@ -11063,6 +11191,7 @@ static std::unordered_map<uint32_t, Uint32> s_prop_struck;   // when each prop l
 static const Uint32 PROP_BLOW_MS = 200;
 static int prop_strike(Tilemap* map, int k, int ox, int oy, Weapon weapon, HarvestResult* out) {
     const PropKind& p = PROP_KINDS[k];
+    if (p.hp == 0) return 0;                  // a building (the barns): no blow takes it, nor shakes it
     const uint32_t key = tile_key(ox, oy);
     const Uint32 now = world_ms();
     auto last = s_prop_struck.find(key);

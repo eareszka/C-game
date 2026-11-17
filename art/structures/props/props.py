@@ -15,10 +15,12 @@ stray, stand, breaks, drops)
   anchor   laid once, at a group's middle, and only there
   weight   how often it is picked among a theme's fillers
   stray    how often it is picked as a lone thing between groups (0: never)
-  stand    'lying' walked over; 'low' all of it is ground (a log); or the
-           pixels of ground up from each column's lowest -- what the feet meet
+  stand    'lying' walked over; 'low' all of it is ground (a log); 'built' a
+           building's (the barns): its ground drawn in <export>_foot.png, each
+           column's line its lowest pixel, never open beneath; or the pixels
+           of ground up from each column's lowest -- what the feet meet
   breaks   'axe' (a tree to the weapons), 'stone' (a rock), 'any' (a fixed
-           number of blows)
+           number of blows), 'never' (a building: no blow takes it)
   drops    [(item, n)], existing items only (approved 2026-10-26; the
            desert's proposed with the install)
 """
@@ -94,6 +96,17 @@ PROPS = [
     ('field_gate',    P + 'field_gate.png',       0, 2, 2, 1, PLAINS, ['TH_FARM'],  False, 1, 0, 6,       'axe',   [('WOOD', 2)]),
     ('tall_grass_a',  P + 'tall_grass.png',       0, 1, 1, 1, PLAINS, ['TH_FARM'],  False, 3, 3, 'lying', 'any',   [('VINE', 1)]),
     ('tall_grass_b',  P + 'tall_grass.png',      16, 1, 1, 1, PLAINS, ['TH_FARM'],  False, 3, 3, 'lying', 'any',   [('VINE', 1)]),
+    # the farmsteads' barns (barn_design.py; approved as a start 2026-11-16, to be cleaned up):
+    # never picked as fillers (weight 0) -- worldgen stands one in four farmsteads in five,
+    # each design kept away from its own kind
+    ('barn_a',        P + 'barns.png',            0, 6, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_b',        P + 'barns.png',           96, 5, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_c',        P + 'barns.png',          176, 5, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_d',        P + 'barns.png',          256, 6, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_e',        P + 'barns.png',          352, 7, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_f',        P + 'barns.png',          464, 6, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_g',        P + 'barns.png',          560, 6, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
+    ('barn_h',        P + 'barns.png',          656, 7, 6, 1, PLAINS, ['TH_FARM'],  False, 0, 0, 'built', 'never', []),
     ('ball_ring',     P + 'ball_ring.png',        0, 2, 2, 1, PLAINS, ['TH_MAYAN'], True,  1, 0, 8,       'stone', [('STONE', 3)]),
     ('chacmool',      P + 'chacmool.png',         0, 2, 1, 1, PLAINS, ['TH_MAYAN'], True,  1, 0, 8,       'stone', [('STONE', 3)]),
     ('serpent_head',  P + 'serpent_head.png',     0, 2, 1, 1, PLAINS, ['TH_MAYAN'], True,  1, 0, 8,       'stone', [('STONE', 3)]),
@@ -156,7 +169,35 @@ CELL = 16
 OVERHANG = 6     # a column whose lowest pixel is this far above the prop's is open beneath (the arch)
 
 
-def layers(im, stand):
+def foot_frame(pr, f=0):
+    """A 'built' prop's frame of its ground mask (<export>_foot.png), or None."""
+    if pr[11] != 'built':
+        return None
+    import os
+    from PIL import Image
+    name, path, x, w, h = pr[:5]
+    stem, ext = os.path.splitext(path)
+    im = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), stem + '_foot' + ext)).convert('RGBA')
+    fx = x + f * w * CELL
+    return im.crop((fx, 0, fx + w * CELL, h * CELL))
+
+
+def door_px(pr):
+    """A 'built' prop's door, its middle in pixels across its frame (<export>_doors.txt,
+    written beside the export by its design), or -1."""
+    if pr[11] != 'built':
+        return -1
+    import os
+    stem, ext = os.path.splitext(pr[1])
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), stem + '_doors.txt')
+    for line in open(path):
+        name, x = line.split()
+        if name == pr[0]:
+            return int(x)
+    return -1
+
+
+def layers(im, stand, foot_im=None):
     """(footy, foot, way) for a frame: each pixel's ground line (-1 none), the
     ground the feet cannot go on, and no way in. A column's ground line is its
     lowest pixel; one standing well above the prop's own lowest is open
@@ -169,6 +210,15 @@ def layers(im, stand):
     if stand == 'lying':
         return footy, [''.join(r) for r in foot], way
     ink = lambda x, y: p[x, y][3] > 0
+    if stand == 'built':
+        q = foot_im.load()
+        for x in range(w):
+            ys = [y for y in range(h) if ink(x, y)]
+            for y in ys:
+                footy[y][x] = ys[-1]
+                if q[x, y][3]:
+                    foot[y][x] = '#'
+        return footy, [''.join(r) for r in foot], way
     bottom = max((y for y in range(h) for x in range(w) if ink(x, y)), default=-1)
     for x in range(w):
         ys = [y for y in range(h) if ink(x, y)]

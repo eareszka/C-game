@@ -102,6 +102,7 @@ The master to-do list, checked against the code on 2026-10-18 (HEAD a0d6754). It
 ### P5: release 1.0 — about 15–20 days
 - [ ] Balance pass with `spawncensus` plus tester reports: EXP, ore bands, gold prices, recipe costs. **Enemies, ore and EXP are now finite** (nothing respawns): check the curve can be climbed without grinding
 - [ ] Clean up loose ends: oilbloom art (`resource_node.cpp:78`), tail-swing TODO (`enemies.cpp:1808`), dead `#if 0` (`tilemap.cpp:4927`), rooms without layouts (`interior.cpp:135,180`)
+- [ ] Clean up the 8 farmstead barns (`art/structures/props/plains/barn_design.py`, `barns.png`). The user accepted them on 2026-11-16 as a starting point, to be cleaned up later. Weakest parts: barn g's hay hood and cupola, the silo's cap on d, the plank doors on f, and the small windows on e
 - [ ] Remaining music and a final sound pass
 - [ ] Update `CPP_GUIDE.md` §5 (it is stale)
 - [ ] A full playthrough from a fresh save on the packaged build, then **1.0**

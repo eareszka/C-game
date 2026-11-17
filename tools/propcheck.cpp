@@ -45,12 +45,17 @@ int main(int argc, char** argv) {
     tilemap_build_overworld_phase2(&g_map, seed);
 
     // one of each: by target, and the biggest
-    int want[4] = { -1, -1, -1, -1 }, wx[4], wy[4], laid[KINDS] = {};
+    // and a building (hp 0, the barns), which no blow takes
+    int want[5] = { -1, -1, -1, -1, -1 }, wx[5], wy[5], laid[KINDS] = {};
     for (int y = 0; y < MAP_HEIGHT; y++)
         for (int x = 0; x < MAP_WIDTH; x++) {
             int k, cx, cy;
             if (!kind_at(g_map.overlay[y][x], &k, &cx, &cy)) continue;
-            if (cx == 0 && cy == PROP_KINDS[k].h - 1) laid[k]++;
+            laid[k]++;
+            if (PROP_KINDS[k].hp == 0) {
+                if (want[4] < 0) { want[4] = k; wx[4] = x; wy[4] = y; }
+                continue;
+            }
             int slot = PROP_KINDS[k].target == HARVEST_TREE ? 0 : PROP_KINDS[k].target == HARVEST_ROCK ? 1 : 2;
             if (want[slot] < 0) { want[slot] = k; wx[slot] = x; wy[slot] = y; }
             if (want[3] < 0 || PROP_KINDS[k].w * PROP_KINDS[k].h > PROP_KINDS[want[3]].w * PROP_KINDS[want[3]].h) {
@@ -62,7 +67,7 @@ int main(int argc, char** argv) {
     printf("seed %u: %d of %d kinds laid\n", seed, KINDS - missing, KINDS);
 
     int failed = 0;
-    for (int s = 0; s < 4; s++) {
+    for (int s = 0; s < 5; s++) {
         int k = want[s];
         if (k < 0) { printf("slot %d: none found\n", s); failed++; continue; }
         const PropKind& p = PROP_KINDS[k];
@@ -70,8 +75,14 @@ int main(int argc, char** argv) {
         kind_at(g_map.overlay[wy[s]][wx[s]], &kk, &cx, &cy);
         const int ox = wx[s] - cx, oy = wy[s] - cy;
         Weapon club = { WEAPON_CLUB, MAT_STONE };
+        int before = 0;                                             // its own cells (a building's box may hold others)
+        for (int j = 0; j < p.h; j++)
+            for (int i = 0; i < p.w; i++) {
+                int a, b, c;
+                if (kind_at(g_map.overlay[oy + j][ox + i], &a, &b, &c) && a == k) before++;
+            }
         int blows = 0, broke = 0, paid[2] = { 0, 0 };
-        while (!broke && blows < 50) {
+        while ((s == 4 || !broke) && blows < 50) {
             HarvestResult out = {};
             world_advance(0.25f);                                   // past the one-blow window
             // a blow on the cell found, and in the same swing on its other cells
@@ -92,6 +103,13 @@ int main(int argc, char** argv) {
                 int a, b, c;
                 if (kind_at(g_map.overlay[oy + j][ox + i], &a, &b, &c) && a == k) left++;
             }
+        if (s == 4) {                                               // a building: 50 blows and every cell still there
+            bool ok = blows == 50 && left == before && left > 0 && !persist_tile_has(tilemap_tile_key(wx[s], wy[s]));
+            printf("built kind %2d at %d,%d (%dx%d): %d blows, %d of %d cells left  %s\n",
+                   k, ox, oy, p.w, p.h, blows, left, before, ok ? "ok" : "FAIL");
+            if (!ok) failed++;
+            continue;
+        }
         kept = persist_tile_has(tilemap_tile_key(wx[s], wy[s]));
         int expect = (p.hp + weapon_harvest_damage(club, p.target) - 1) / weapon_harvest_damage(club, p.target);
         bool ok = broke && left == 0 && kept && blows == expect &&
@@ -104,7 +122,7 @@ int main(int argc, char** argv) {
     // and regrown, the broken stay broken
     tilemap_build_overworld_phase1(&g_map, seed);
     tilemap_build_overworld_phase2(&g_map, seed);
-    for (int s = 0; s < 4; s++) {
+    for (int s = 0; s < 4; s++) {                                   // (the building was never broken)
         if (want[s] < 0) continue;
         int a, b, c;
         if (kind_at(g_map.overlay[wy[s]][wx[s]], &a, &b, &c)) { printf("slot %d: back after regrowth  FAIL\n", s); failed++; }

@@ -70,6 +70,7 @@ MATERIALS.update({
     'white paint': {'tones': ('fcfcfc', 'c6ccda', '9797aa'), 'joint': '000000'},
     'red paint':   {'tones': ('b70000', '7c0a1b'), 'joint': '000000'},
     'green paint': {'tones': ('235436',), 'joint': '000000'},
+    'barn green':  {'tones': ('2c6c44', '235436'), 'joint': '000000'},   # a farmstead barn's boards and their shadow (props/plains/barn_design.py)
     'navy paint':  {'tones': ('2850a0',), 'joint': '000000'},
     'black paint': {'tones': ('34343e',), 'joint': '000000'},
     'slate':       {'tones': ('595965', '474751'), 'joint': '000000'},      # roofs, and ironwork

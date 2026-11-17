@@ -156,10 +156,10 @@ the same two-tile stroke, eroded `TRAIL_THIN` (5) px all round
 rows of edge, ten of paving, one of edge (the user, 2026-11-09: "same amount
 of thinness, make sure it follows the same natural formation as roads, make
 the transition between roads and trails smooth"). Shrinking a road's shape
-leaves a road's shape: it winds and rounds exactly as a road does. Near a
-road it is shrunk less, pixel by pixel with its distance from the road
-(`TRAIL_TAPER`, 44 px, eased), so it leaves a road at the road's width and
-narrows smoothly, with no step anywhere. It winds more than a road (the user,
+leaves a road's shape: it winds and rounds exactly as a road does. It is
+one even width and depth all the way, up to the road it meets (the user,
+2026-11-16: "should be all a consistant width and height"); the taper that
+widened it toward a road (`TRAIL_TAPER`) is 0. It winds more than a road (the user,
 2026-11-09: "make trails more windier... they shouldnt be as straight as
 roads"): over the route's own wander it swings in S-curves, a long swing of
 20-32 tiles and a ripple of 9-14, up to five tiles off its line, and comes
@@ -175,9 +175,11 @@ third, mostly in the roadless heart of the world, are left to be found. Short sp
 trail's look and at most about 40 tiles long, leave a road or trail for some
 of the country's places that are not dungeons (the user, 2026-11-09): every
 old trail of the desert and abandoned expedition camp of the snow within
-reach, half the woodcutter's camps and a fifth of the farmsteads -- four in
-five of those with a barn, once the barn is drawn ("for those specifically it
-has a greater chance for the trail to choose that one"). A spur is laid after
+reach, half the woodcutter's camps, and every farmstead with a barn within
+reach, never one without (the user, 2026-11-16: "the trails only go to
+farmsteads with barns"), about a third of the barns. The lane runs straight
+up to the barn's doors and stops a little short of them, as a road stops
+short of a town ("slightly before barn doors with some distance"). A spur is laid after
 the props and goes round them and every landmark, felling only trees. No boss
 site and no landmark has one. A trail is one even band that meets the network once
 (the user, 2026-11-09, screenshots of rings, swellings and a fold, "problems
@@ -410,6 +412,18 @@ into the sheet's rows 226-245 and writes `src/props.inc`; then
   in the woods as on the meadow. Elsewhere a ruin field stands only where a slow
   noise runs high. Farms keep 70 tiles from a pyramid and 50 from any ruin
   group, so hay and statues never stand together.
+- **The barns.** About a third of the farmsteads stand a barn by the haystack
+  (the user, 2026-11-16, after four in five and then half), more often near a
+  road or trail (60%) than out in the fields (25%) so that about a third of
+  the barns have a lane, one of eight designs (`props/plains/barn_design.py`):
+  red, white, bare wood, green with a round white silo, long and low with a
+  lean-to, yellow under thatch, tall with a cupola and hay hood, and a bank
+  barn on stone. Each is a house in the houses' projection and parts -- gable
+  end to the front, roof running back, east side a step darker, black round
+  the whole -- and stands as a building: walked behind, solid on the ground
+  it covers, never broken. The design is the least used so far, and never
+  one standing within 120 tiles of its own kind if another is free. Accepted
+  as a start; to be cleaned up (TODO.md).
 - **Breaking.** A prop takes each blow at its block's top left, and it shakes
   whole. A blade crossing several of its cells deals one blow. When it breaks,
   every cell goes and stays gone (`persist.h`), and it pays its drops through
