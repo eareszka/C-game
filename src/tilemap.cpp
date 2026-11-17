@@ -282,6 +282,198 @@ static std::unordered_map<std::string, int> s_tmask_same;    // a mask's bits ->
 // keep.
 static std::atomic<unsigned> s_trail_world{0};
 static unsigned s_tmask_world = 0;
+// Each trail's centre line, as it was laid (route_network), in tiles (a tile
+// spans [t, t + 1]): the trail is drawn from it, one even width (trail_mask),
+// not from its tiles, whose stroke is two tiles thick here and three there
+// (the user, 2026-11-17: the trails "shrink and grow in width"). Bucketed by
+// TSEG_CHUNK-tile chunk.
+struct TrailSeg { float ax, ay, bx, by; };
+static std::vector<TrailSeg> s_trail_segs;
+static std::unordered_map<int, std::vector<int>> s_trail_seg_at;
+static const int TSEG_CHUNK = 8;
+// The trails' stroke on a grid of half-tile cells, (2 MAP_WIDTH) x (2 MAP_HEIGHT),
+// laid from the lines with the road's two-by-two brush (trail_seg_index), and a
+// cell's masks by its eight neighbours, the road's at half size
+// (build_track_textures): [0 beside the stroke, 1 on it][band, paving][config].
+static std::vector<uint8_t> s_trail_sub;
+static inline bool trail_sub_at(int sx, int sy) {
+    int tx = (int)floorf(sx / 2.0f), ty = (int)floorf(sy / 2.0f);
+    const int ox = sx - 2 * tx, oy = sy - 2 * ty;
+    if (s_trail_sub.empty() || !in_world(&tx, &ty)) return false;
+    return s_trail_sub[(size_t)(2 * ty + oy) * (2 * MAP_WIDTH) + 2 * tx + ox] != 0;
+}
+static float wrap_dt(float d, bool y) { return (y ? wrap_dpy(d * TILE_SIZE) : wrap_dpx(d * TILE_SIZE)) / TILE_SIZE; }
+static void trail_seg_add(float ax, float ay, float bx, float by) {
+    // b kept beside a across the world's seam
+    s_trail_segs.push_back({ ax, ay, ax + wrap_dt(bx - ax, false), ay + wrap_dt(by - ay, true) });
+}
+static const float BARN_LANE_END = 1.0f;   // a barn lane's line ends this many tiles below the doors' row
+// Once the trails are laid: the lines of trail since taken away (a scrap no
+// network reached) go, and the rest are bucketed by every chunk they cross.
+static void trail_seg_index(const Tilemap* map) {
+    std::vector<TrailSeg> kept;
+    for (const TrailSeg& s : s_trail_segs) {
+        int mx = (int)floorf((s.ax + s.bx) * 0.5f), my = (int)floorf((s.ay + s.by) * 0.5f);
+        if (in_world(&mx, &my) && map->route[my][mx] != ROUTE_NONE) kept.push_back(s);
+    }
+    s_trail_segs.swap(kept);
+    s_trail_seg_at.clear();
+    const int CW = (MAP_WIDTH + TSEG_CHUNK - 1) / TSEG_CHUNK;
+    auto chunk_of = [&](float fx, float fy) {
+        int tx = (int)floorf(fx), ty = (int)floorf(fy);
+        if (!in_world(&tx, &ty)) return -1;
+        return (ty / TSEG_CHUNK) * CW + tx / TSEG_CHUNK;
+    };
+    auto bucket = [&](int i) {
+        const TrailSeg& s = s_trail_segs[i];
+        int x0 = (int)floorf(fminf(s.ax, s.bx)) / TSEG_CHUNK - 1, x1 = (int)floorf(fmaxf(s.ax, s.bx)) / TSEG_CHUNK + 1;
+        int y0 = (int)floorf(fminf(s.ay, s.by)) / TSEG_CHUNK - 1, y1 = (int)floorf(fmaxf(s.ay, s.by)) / TSEG_CHUNK + 1;
+        for (int cy = y0; cy <= y1; cy++)
+            for (int cx = x0; cx <= x1; cx++) {
+                int tx = cx * TSEG_CHUNK, ty = cy * TSEG_CHUNK;
+                if (!in_world(&tx, &ty)) continue;
+                std::vector<int>& v = s_trail_seg_at[(ty / TSEG_CHUNK) * CW + tx / TSEG_CHUNK];
+                if (v.empty() || v.back() != i) v.push_back(i);
+            }
+    };
+    const int laid = (int)s_trail_segs.size();
+    for (int i = 0; i < laid; i++) bucket(i);
+
+    // A branch's line ends where its path did, beside the track it joins: the
+    // stroke's tiles filled the gap, the line does not. Each loose end -- no
+    // other line starts or ends there -- is carried on to the nearest point of
+    // another track within JOIN_R tiles, where the way there is all track's
+    // tiles: a line not its own (more than OWN tiles back along its chain) or
+    // a road tile's middle. A true end -- a dungeon's door, a barn's lane --
+    // has no track round it and stays as it is.
+    const float JOIN_R = 3.0f, OWN = 4.0f;
+    auto key = [](float fx, float fy) {
+        return (int64_t)lroundf(fx * 16.0f) * 1000003LL + (int64_t)lroundf(fy * 16.0f);
+    };
+    std::unordered_map<int64_t, std::vector<int>> ends;   // an end's spot -> the lines that end there
+    for (int i = 0; i < laid; i++) {                       // (a dot, where a path starts, is no line)
+        const TrailSeg& s = s_trail_segs[i];
+        if (key(s.bx, s.by) == key(s.ax, s.ay)) continue;
+        ends[key(s.ax, s.ay)].push_back(i);
+        ends[key(s.bx, s.by)].push_back(i);
+    }
+    auto on_track = [&](float ax, float ay, float bx, float by) {
+        float dx = bx - ax, dy = by - ay;
+        int n = (int)ceilf(sqrtf(dx * dx + dy * dy) * 4.0f) + 1;
+        for (int j = 0; j <= n; j++) {
+            int tx = (int)floorf(ax + dx * j / n), ty = (int)floorf(ay + dy * j / n);
+            if (!in_world(&tx, &ty) || map->route[ty][tx] == ROUTE_NONE) return false;
+        }
+        return true;
+    };
+    std::vector<TrailSeg> joins;
+    std::unordered_set<int> own;
+    for (int i = 0; i < laid; i++)
+        for (int e = 0; e < 2; e++) {
+            const TrailSeg& s = s_trail_segs[i];
+            const float ex = e ? s.bx : s.ax, ey = e ? s.by : s.ay;
+            if (key(s.bx, s.by) == key(s.ax, s.ay)) continue;   // a dot
+            if (ends[key(ex, ey)].size() != 1) continue;     // joined to another line
+            { int tx = (int)floorf(ex), ty = (int)floorf(ey);
+              if (in_world(&tx, &ty) && map->route[ty][tx] == ROUTE_ROAD) continue; }   // ends on a road: drawn over
+            // its own chain, OWN tiles back
+            own.clear();
+            std::vector<std::pair<int, float>> walk{ { i, 0.0f } };
+            own.insert(i);
+            for (size_t h = 0; h < walk.size(); h++) {
+                const TrailSeg& w = s_trail_segs[walk[h].first];
+                float len = walk[h].second + sqrtf((w.bx - w.ax) * (w.bx - w.ax) + (w.by - w.ay) * (w.by - w.ay));
+                if (len > OWN) continue;
+                for (int p = 0; p < 2; p++) {
+                    auto it = ends.find(p ? key(w.bx, w.by) : key(w.ax, w.ay));
+                    if (it == ends.end()) continue;
+                    for (int o : it->second)
+                        if (own.insert(o).second) walk.push_back({ o, len });
+                }
+            }
+            float best = JOIN_R * JOIN_R, bx = 0, by = 0;
+            bool found = false;
+            int c = chunk_of(ex, ey);
+            auto at = c >= 0 ? s_trail_seg_at.find(c) : s_trail_seg_at.end();
+            if (at != s_trail_seg_at.end())
+                for (int o : at->second) {
+                    if (own.count(o)) continue;
+                    const TrailSeg& t = s_trail_segs[o];
+                    if (key(t.ax, t.ay) == key(t.bx, t.by)) continue;     // a dot is no track
+                    float ux = wrap_dt(ex - t.ax, false), uy = wrap_dt(ey - t.ay, true);
+                    float sx = t.bx - t.ax, sy = t.by - t.ay, sl = sx * sx + sy * sy;
+                    float u = sl > 1e-6f ? fminf(1.0f, fmaxf(0.0f, (ux * sx + uy * sy) / sl)) : 0.0f;
+                    float qx = ex - ux + u * sx, qy = ey - uy + u * sy;     // the nearest point, beside the end
+                    float d2 = (qx - ex) * (qx - ex) + (qy - ey) * (qy - ey);
+                    if (d2 < best && on_track(ex, ey, qx, qy)) { best = d2; bx = qx; by = qy; found = true; }
+                }
+            for (int dy = -3; dy <= 3; dy++)                            // or a road tile's middle
+                for (int dx = -3; dx <= 3; dx++) {
+                    int tx = (int)floorf(ex) + dx, ty = (int)floorf(ey) + dy;
+                    if (!in_world(&tx, &ty) || map->route[ty][tx] != ROUTE_ROAD) continue;
+                    float qx = (int)floorf(ex) + dx + 0.5f, qy = (int)floorf(ey) + dy + 0.5f;
+                    float d2 = (qx - ex) * (qx - ex) + (qy - ey) * (qy - ey);
+                    if (d2 < best && on_track(ex, ey, qx, qy)) { best = d2; bx = qx; by = qy; found = true; }
+                }
+            if (found && best > 1e-3f) joins.push_back({ ex, ey, bx, by });   // (none where it already lies on one)
+        }
+    for (const TrailSeg& j : joins) {
+        s_trail_segs.push_back(j);
+        bucket((int)s_trail_segs.size() - 1);
+    }
+
+    // The stroke, laid on the half-tile grid as a road's is on the tiles: the
+    // two-by-two brush with its middle on the line, a cell at a time along it.
+    // Within TRAIL_FLARE tiles of a road it widens, to TRAIL_FLARE_R cells at
+    // the road's edge, so it opens into the road as one road opens into
+    // another (the user, 2026-11-17: "transition from roads to trails should
+    // be seemless").
+    const float TRAIL_FLARE = 1.25f, TRAIL_FLARE_R = 2.1f;
+    s_trail_sub.assign((size_t)(2 * MAP_WIDTH) * (2 * MAP_HEIGHT), 0);
+    auto set_cell = [&](int sx, int sy) {
+        int tx = (int)floorf(sx / 2.0f), ty = (int)floorf(sy / 2.0f);
+        const int ox = sx - 2 * tx, oy = sy - 2 * ty;
+        if (!in_world(&tx, &ty)) return;
+        s_trail_sub[(size_t)(2 * ty + oy) * (2 * MAP_WIDTH) + 2 * tx + ox] = 1;
+    };
+    auto stamp = [&](float px, float py) {                 // the line's point, in tiles
+        int sx0 = (int)floorf(2.0f * px - 1.0f), sy0 = (int)floorf(2.0f * py - 1.0f);
+        for (int k = 0; k < 4; k++) set_cell(sx0 + (k & 1), sy0 + (k >> 1));
+        // how far the road's edge is, in tiles: outside its tiles, the way to
+        // the nearest; inside, less how deep in (the band lies a quarter tile in)
+        const int bx = (int)floorf(px), by = (int)floorf(py);
+        auto square = [&](int dx, int dy) {
+            float ex = fmaxf(fmaxf((float)(bx + dx) - px, px - (float)(bx + dx + 1)), 0.0f);
+            float ey = fmaxf(fmaxf((float)(by + dy) - py, py - (float)(by + dy + 1)), 0.0f);
+            return sqrtf(ex * ex + ey * ey);
+        };
+        float to_road = 1e9f, to_off = 1e9f;
+        for (int dy = -2; dy <= 2; dy++)
+            for (int dx = -2; dx <= 2; dx++) {
+                int tx = bx + dx, ty = by + dy;
+                if (!in_world(&tx, &ty)) continue;
+                if (map->route[ty][tx] == ROUTE_ROAD) to_road = fminf(to_road, square(dx, dy));
+                else to_off = fminf(to_off, square(dx, dy));
+            }
+        const float e = to_road > 0.0f ? to_road : -to_off;
+        if (e >= TRAIL_FLARE || e < -0.5f) return;       // far off, or well inside the road
+        float f = 1.0f - fmaxf(e, 0.0f) / TRAIL_FLARE;
+        f = f * f;
+        const float r = 1.0f + (TRAIL_FLARE_R - 1.0f) * f;     // in cells, round the point
+        const float cx = 2.0f * px, cy = 2.0f * py;
+        for (int sy = (int)floorf(cy - r) - 1; sy <= (int)ceilf(cy + r); sy++)
+            for (int sx = (int)floorf(cx - r) - 1; sx <= (int)ceilf(cx + r); sx++) {
+                float ex = sx + 0.5f - cx, ey = sy + 0.5f - cy;
+                if (ex * ex + ey * ey <= r * r) set_cell(sx, sy);
+            }
+    };
+    for (const TrailSeg& s : s_trail_segs) {
+        float dx = s.bx - s.ax, dy = s.by - s.ay;
+        int steps = std::max(1, (int)ceilf(fmaxf(fabsf(dx), fabsf(dy)) * 2.0f));
+        for (int j = 0; j <= steps; j++) stamp(s.ax + dx * j / steps, s.ay + dy * j / steps);
+    }
+    if (getenv("ROUTE_STATS")) fprintf(stderr, "trail lines: %d, loose ends joined: %d%c", laid, (int)joins.size(), 10);
+}
 // And the track drawn slanted, the run-up to a bridge lying back: [its left
 // sliver, its middle, its right part][the band, the paving].
 static SDL_Texture* s_slant_tex[3][2] = {};
@@ -2834,6 +3026,9 @@ static void apply_destroyed(Tilemap* map);   // below tilemap_strike
 
 void tilemap_build_overworld_phase1(Tilemap* map, unsigned int seed) {
     s_world_done = false;
+    s_trail_segs.clear();
+    s_trail_sub.clear();
+    s_trail_seg_at.clear();
     // Which edge the ocean takes (0=W, 1=E, 2=N, 3=S), and with it which pair
     // of edges joins: the ocean and the edge across from it are the borders,
     // the other two wrap. Rolled here rather than in phase 2 so the runtime
@@ -4484,11 +4679,11 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // lump several tiles across where a trail turns sharp
                         // off a gate or a road.
                         float last_off = 0.0f;
-                        const float TRAIL_SLOPE = 0.6f;
+                        const float TRAIL_SLOPE = 0.7f;
                         if (reach) {
                             for (int m = 0; m < 2; m++) {
                                 ts = ts * 1664525u + 1013904223u;
-                                mper[m] = m ? 9.0f + (float)((ts >> 16) % 6u) : 20.0f + (float)((ts >> 16) % 13u);
+                                mper[m] = m ? 8.0f + (float)((ts >> 16) % 5u) : 16.0f + (float)((ts >> 16) % 11u);
                                 ts = ts * 1664525u + 1013904223u;
                                 mph[m] = (float)((ts >> 16) % 6283u) / 1000.0f;
                             }
@@ -4528,7 +4723,7 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             // Eased in over its first and last TRAIL_EASE
                             // points, so it still meets the road and the door
                             // square on. Roads are as they were.
-                            const float TRAIL_SWING = 4.5f, TRAIL_EASE = 4.0f;
+                            const float TRAIL_SWING = 5.5f, TRAIL_EASE = 4.0f;
                             if (reach) dvel = dvel * 0.90f + kick * 0.10f - drift * 0.012f;
                             else       dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
                             drift += dvel;
@@ -4539,10 +4734,11 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             if (reach) {
                                 float e = fminf((float)i, (float)(path.size() - 1 - i)) / TRAIL_EASE;
                                 ease = e >= 1.0f ? 1.0f : e * e * (3.0f - 2.0f * e);
-                                bend += 3.2f * sinf(6.2831853f * (float)i / mper[0] + mph[0])
-                                      + 0.9f * sinf(6.2831853f * (float)i / mper[1] + mph[1]);
-                                if (bend >  5.0f) bend =  5.0f;
-                                if (bend < -5.0f) bend = -5.0f;
+                                // (wound a little more, 2026-11-17: the user, "wind a bit more")
+                                bend += 4.2f * sinf(6.2831853f * (float)i / mper[0] + mph[0])
+                                      + 1.4f * sinf(6.2831853f * (float)i / mper[1] + mph[1]);
+                                if (bend >  6.5f) bend =  6.5f;
+                                if (bend < -6.5f) bend = -6.5f;
                                 float want = bend * ease;
                                 float to_end = TRAIL_SLOPE * (float)(path.size() - 1 - i);
                                 // and none at all over the points at its join, then
@@ -4715,6 +4911,11 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             const bool moved_ok = in_this((int)floorf(fxs[i]), (int)floorf(fys[i]));
                             float cx2 = (moved_ok ? fxs[i] : ox[i]) + 1.0f;
                             float cy2 = (moved_ok ? fys[i] : oy[i]) + 1.0f;
+                            if (route_kind == ROUTE_TRAIL) {               // its centre line, drawn (trail_mask)
+                                if (even) trail_seg_add(have_last ? lastfx : cx2, have_last ? lastfy : cy2, cx2, cy2);
+                                else trail_seg_add(have_last ? lastx + 1.0f : ix + 1.0f, have_last ? lasty + 1.0f : iy + 1.0f,
+                                                   ix + 1.0f, iy + 1.0f);
+                            }
                             if (even) {
                                 const float TRAIL_R = 1.0f;
                                 float ax2 = have_last ? lastfx : cx2, ay2 = have_last ? lastfy : cy2;
@@ -8363,6 +8564,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                       EDGE_CLEARANCE, ENDPOINT_FREE, ANCHOR_SEARCH, TRAIL_BRIDGE_MAX, TRAIL_BRIDGE_GAP,
                       false, TRAIL_REACH);
         fill_trail_holes(map, trail_paint);
+        trail_seg_index(map);
         s_trail_world++;
     }
 
@@ -8541,6 +8743,9 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
                         map->overlay[ny][nx] = 0;
                     if (spur_paint(nx, ny)) map->route[ny][nx] = ROUTE_TRAIL;
                 }
+            // its line: from where the lane's ends, up the middle of the two columns;
+            // the drawn end rounds off short of the doors
+            trail_seg_add(x + 1.0f, y + 3.0f, x + 1.0f, y + BARN_LANE_END);
             if (getenv("ROUTE_STATS") && &d - &doors[0] < 6) fprintf(stderr, "farm lane to a barn door at %d,%d%c", x, y, 10);
         }
 
@@ -8586,6 +8791,7 @@ void tilemap_build_overworld_phase2(Tilemap* map, unsigned int seed) {
             if (getenv("ROUTE_STATS")) fprintf(stderr, "trail scraps taken away: %d\n", scraps);
         }
         fill_trail_holes(map, spur_paint);
+        trail_seg_index(map);
         s_trail_world++;
     }
 
@@ -9045,8 +9251,8 @@ static const int EDGE_NB[8][2] = {
 // tile grid this way is what rounds the corners — a run of straight edge stays
 // straight because the two sides balance exactly on the tile line, while at a
 // corner the surrounding tiles outvote it and the boundary curves.
-static float edge_coverage(int config, int px, int py) {
-    float u = (px + 0.5f) / 16.0f, v = (py + 0.5f) / 16.0f;
+// u, v: the point in the tile, 0..1 (a trail's half-size cells sample it finer).
+static float edge_coverage_uv(int config, float u, float v) {
     float num = 0.0f, den = 0.0f;
     for (int dy = -1; dy <= 1; dy++) {
         for (int dx = -1; dx <= 1; dx++) {
@@ -9064,6 +9270,9 @@ static float edge_coverage(int config, int px, int py) {
         }
     }
     return den > 0.0f ? num / den : 0.0f;
+}
+static float edge_coverage(int config, int px, int py) {
+    return edge_coverage_uv(config, (px + 0.5f) / 16.0f, (py + 0.5f) / 16.0f);
 }
 
 // Ground-to-ground mask: solid where the other biome clearly owns the pixel,
@@ -9867,16 +10076,20 @@ static const int TRACK_INSET = 4, TRACK_RIM = 2, TRACK_DROP = 4;
 // A trail off a road to a dungeon is the road's band thinner (the user,
 // 2026-11-09: "truly thinner than roads", then "same amount of thinness, make
 // sure it follows the same natural formation as roads, make the transition
-// between roads and trails smooth"): the road's band and paving over the same
-// two-tile stroke, eroded TRAIL_THIN pixels all round (trail_mask) -- 14 deep
-// where a road is 24, three rows of edge, ten of paving, one of edge. An
-// erosion of the road's shape is the road's shape, so it winds and rounds as
-// a road does. Near a road it is eroded less, by the pixel, over TRAIL_TAPER:
-// it leaves a road at the road's width and narrows smoothly. Its run-ups to a
-// bridge are the road's (the deck is cut for that width).
-static const int   TRAIL_THIN  = 5;       // art pixels off each side
-static const float TRAIL_TAPER = 0.0f;    // art pixels from a road over which it narrows: none (the user,
-                                          // 2026-11-16: the trails "should be all a consistant width and height")
+// between roads and trails smooth"), and since 2026-11-17 "basicially the same
+// drawing code/logic as roads but half the diameter": the road's own drawing
+// on a grid of half-tile cells (s_trail_sub, laid from each trail's centre
+// line, s_trail_segs, with the road's two-by-two brush, flared into a road
+// it meets). Each pixel is cut by how much of the stroke lies round it, as a
+// road's are, over a wider ring so the edge runs smooth (trail_mask): the band
+// inset TRAIL_INSET, the paving TRACK_RIM more, so 12 deep where a road is 24,
+// with the road's three rows of edge above the paving and one below. Earlier tries
+// -- the road's tiles shrunk, a disc round the line -- swelled at bends or
+// did not look like a road (the user: they "shrink and grow in width"). A
+// trail and a road are two tracks drawn together, bands before pavings, so
+// where they meet the paving runs through. Its run-ups to a bridge are the
+// road's (the deck is cut for that width).
+static const int TRAIL_INSET = TRACK_INSET / 2;
 
 static void build_track_textures(SDL_Renderer* renderer, SDL_Surface* sheet) {
     // Grass's tones are the start town's street: the commonest two colours of
@@ -9997,27 +10210,39 @@ static int track_biome(const Tilemap* map, int x, int y) {
 // its bottom in its sliver and its middle, along its top in its middle and
 // its right part -- so the winding track ends flat against a run-up's end
 // and rounds off beside one as beside any ground.
-struct TrackPart { bool on, trail; int config, biome, slant; };
+//
+// The road's stroke is its own tiles and a trail's run-up to a bridge (a trail
+// tile with a run-up or a deck beside it), drawn at the road's width to meet
+// the deck. A trail is drawn over it as a second track (trail_mask): `trail`
+// where the trail's half-size stroke lies within a cell of the tile.
+struct TrackPart { bool on, trail, road; int config, biome, slant; };
+static bool trail_runup(const Tilemap* map, int x, int y) {
+    for (int i = 0; i < 8; i++) {
+        int nx = x + EDGE_NB[i][0], ny = y + EDGE_NB[i][1];
+        if (in_world(&nx, &ny) && (track_slant(map->overlay[ny][nx]) != SLANT_NONE || is_deck_floor(map->overlay[ny][nx])))
+            return true;
+    }
+    return false;
+}
 static bool track_part(const Tilemap* map, int x, int y, TrackPart* out) {
     if (!in_world(&x, &y)) return false;
     auto stroke = [&](int tx, int ty) {
-        return in_world(&tx, &ty) && map->route[ty][tx] != ROUTE_NONE && track_slant(map->overlay[ty][tx]) == SLANT_NONE;
+        if (!in_world(&tx, &ty) || track_slant(map->overlay[ty][tx]) != SLANT_NONE) return false;
+        return map->route[ty][tx] == ROUTE_ROAD || (map->route[ty][tx] == ROUTE_TRAIL && trail_runup(map, tx, ty));
     };
     out->slant = track_slant(map->overlay[y][x]);
     out->on = stroke(x, y);
     out->biome = track_biome(map, x, y);
     out->config = 0;
     out->trail = false;
+    out->road = false;
     if (out->slant != SLANT_NONE) return true;
-    // A trail's tile, or ground beside a trail and no road: drawn thinner.
-    // A trail's tile, or ground beside one: drawn eroded (trail_mask), which
-    // near a road comes to nothing, so a tile by both is safe either way.
-    if (out->on) out->trail = map->route[y][x] == ROUTE_TRAIL;
-    else
-        for (int i = 0; i < 8 && !out->trail; i++) {
-            int nx = x + EDGE_NB[i][0], ny = y + EDGE_NB[i][1];
-            out->trail = in_world(&nx, &ny) && map->route[ny][nx] == ROUTE_TRAIL;
-        }
+    for (int sy = 2 * y - 4; sy <= 2 * y + 5 && !out->trail; sy++)     // as far as trail_mask's ring reaches
+        for (int sx = 2 * x - 4; sx <= 2 * x + 5 && !out->trail; sx++)
+            out->trail = trail_sub_at(sx, sy);
+    for (int i = 0; i < 8 && out->biome < 0 && out->trail; i++)   // a trail's tones where the ground has none
+        if (map->route[(y + EDGE_NB[i][1] + MAP_HEIGHT) % MAP_HEIGHT][(x + EDGE_NB[i][0] + MAP_WIDTH) % MAP_WIDTH] != ROUTE_NONE)
+            out->biome = track_biome(map, x + EDGE_NB[i][0], y + EDGE_NB[i][1]);
     bool same[8];
     for (int i = 0; i < 8; i++) same[i] = stroke(x + EDGE_NB[i][0], y + EDGE_NB[i][1]);
     // The four beside it, then the corners: a deck counts at a corner only
@@ -10038,7 +10263,8 @@ static bool track_part(const Tilemap* map, int x, int y, TrackPart* out) {
         if (same[i] != out->on) out->config |= 1 << i;
     for (int i = 0; i < 8 && out->biome < 0; i++)
         if (same[i]) out->biome = track_biome(map, x + EDGE_NB[i][0], y + EDGE_NB[i][1]);
-    return out->on || (out->config && s_track_tex[0][0][out->config]);
+    out->road = out->on || (out->config && s_track_tex[0][0][out->config]);
+    return out->road || out->trail;
 }
 
 // A mask cut by a neighbouring ground's fringe: the pixels of it the fringe
@@ -10082,12 +10308,34 @@ static void draw_banded(SDL_Renderer* renderer, const Tilemap* map, int x, int y
     }
 }
 
-// A trail's mask over tile (x, y), band or paving (k): the road's masks of
-// the tile and the eight round it, laid side by side, eroded by a disc --
-// TRAIL_THIN pixels, less near a road (TRAIL_TAPER), by each pixel's own
-// distance from the nearest road tile, so it narrows smoothly off a junction.
-// The stroke under it is an even two tiles at every slant (the trail painter
-// in route_network), so the band is even too.
+static const float TRAIL_KERNEL_R = 2.4f;   // cells round a pixel that count toward it (a road's is EDGE_KERNEL_R = 1.6 tiles)
+// The coverage at which the band and the paving begin, measured down a straight
+// stroke two cells deep, halfway between one pixel row and the next.
+static const float* trail_cuts() {
+    static float cut[2] = { -1.0f, -1.0f };
+    if (cut[0] >= 0.0f) return cut;
+    for (int k = 0; k < 2; k++) {
+        const float d = (float)(TRAIL_INSET + k * TRACK_RIM);
+        float c = 0.0f;
+        for (int h = 0; h < 2; h++) {
+            const float v = (d - 0.5f + h) / 8.0f;          // rows into the stroke, which starts at 0
+            float num = 0.0f, den = 0.0f;
+            for (int cy = -4; cy <= 4; cy++)
+                for (int cx = -4; cx <= 4; cx++) {
+                    float ex = 0.5f - (cx + 0.5f), ey = v - (cy + 0.5f);
+                    float t = 1.0f - (ex * ex + ey * ey) / (TRAIL_KERNEL_R * TRAIL_KERNEL_R);
+                    if (t <= 0.0f) continue;
+                    den += t * t;
+                    if (cy == 0 || cy == 1) num += t * t;
+                }
+            c += num / den * 0.5f;
+        }
+        cut[k] = c;
+    }
+    return cut;
+}
+// A trail's mask over tile (x, y), band or paving (k): the road's drawing at
+// half size, over the tile's four half-tile cells of s_trail_sub.
 // Worked out once a tile and kept; tiles that come out the same share one.
 // Returns an index into s_tmask, or -1 for nothing drawn.
 static int trail_mask(SDL_Renderer* renderer, const Tilemap* map, int x, int y, int k) {
@@ -10097,47 +10345,28 @@ static int trail_mask(SDL_Renderer* renderer, const Tilemap* map, int x, int y, 
     const uint64_t key = ((uint64_t)wy * MAP_WIDTH + wx) * 2 + k;
     auto at = s_tmask_at.find(key);
     if (at != s_tmask_at.end()) return at->second;
-    // The road's band over the 3 x 3 tiles, 48 x 48 art pixels.
-    static bool big[48 * 48];
-    memset(big, 0, sizeof big);
-    for (int ty = 0; ty < 3; ty++)
-        for (int tx = 0; tx < 3; tx++) {
-            TrackPart t;
-            if (!track_part(map, x + tx - 1, y + ty - 1, &t)) continue;
-            const bool* m = t.slant != SLANT_NONE ? s_slant_on[t.slant + 1][k] : s_track_on[t.on][k][t.config];
-            if (!t.on && t.slant == SLANT_NONE && !s_track_tex[0][k][t.config]) continue;
-            for (int i = 0; i < 256; i++) big[(ty * 16 + i / 16) * 48 + tx * 16 + i % 16] = m[i];
-        }
-    // How far each pixel lies from a road tile, in art pixels.
-    std::vector<std::pair<int,int>> roads;
-    const int RT = (int)(TRAIL_TAPER / 16.0f) + 2;
-    for (int dy = -RT; dy <= RT; dy++)
-        for (int dx = -RT; dx <= RT; dx++) {
-            int nx = x + dx, ny = y + dy;
-            if (in_world(&nx, &ny) && map->route[ny][nx] == ROUTE_ROAD) roads.push_back({ dx, dy });
-        }
+    // Each pixel: how much of the stroke lies round it, the cells within
+    // TRAIL_KERNEL_R of it weighted by nearness as edge_coverage weighs a
+    // road's tiles, but over a wider ring, so a cell's step blends into the
+    // next and the edge runs smooth (the user, 2026-11-17: "trails edges should
+    // be slightly less rough"). Cut where a straight stroke two cells across
+    // has the band TRAIL_INSET in and the paving TRACK_RIM more (trail_cuts).
+    const float* cut = trail_cuts();
     std::array<bool, 256> out;
     bool any = false;
     for (int py = 0; py < 16; py++)
         for (int px = 0; px < 16; px++) {
-            float r = (float)TRAIL_THIN;
-            if (TRAIL_TAPER > 0.0f && !roads.empty()) {
-                float best = 1e9f;
-                for (auto& rd : roads) {        // to the road tile's square
-                    float ex = fmaxf(fmaxf(rd.first * 16.0f - (px + 0.5f), (px + 0.5f) - (rd.first * 16.0f + 16.0f)), 0.0f);
-                    float ey = fmaxf(fmaxf(rd.second * 16.0f - (py + 0.5f), (py + 0.5f) - (rd.second * 16.0f + 16.0f)), 0.0f);
-                    best = fminf(best, ex * ex + ey * ey);
+            const float u = 2.0f * wx + (px + 0.5f) / 8.0f, v = 2.0f * wy + (py + 0.5f) / 8.0f;
+            float num = 0.0f, den = 0.0f;
+            for (int cy = (int)floorf(v) - 3; cy <= (int)floorf(v) + 3; cy++)
+                for (int cx = (int)floorf(u) - 3; cx <= (int)floorf(u) + 3; cx++) {
+                    float ex = u - (cx + 0.5f), ey = v - (cy + 0.5f);
+                    float t = 1.0f - (ex * ex + ey * ey) / (TRAIL_KERNEL_R * TRAIL_KERNEL_R);
+                    if (t <= 0.0f) continue;
+                    den += t * t;
+                    if (trail_sub_at(cx, cy)) num += t * t;
                 }
-                float f = fminf(1.0f, sqrtf(best) / TRAIL_TAPER);
-                r *= f * f * (3.0f - 2.0f * f);
-            }
-            bool keep = big[(16 + py) * 48 + 16 + px];
-            const int ri = (int)ceilf(r);
-            for (int oy = -ri; oy <= ri && keep; oy++)
-                for (int ox = -ri; ox <= ri; ox++) {
-                    if ((float)(ox * ox + oy * oy) > r * r) continue;
-                    if (!big[(16 + py + oy) * 48 + 16 + px + ox]) { keep = false; break; }
-                }
+            bool keep = den > 0.0f && num / den > cut[k];
             out[py * 16 + px] = keep;
             any |= keep;
         }
@@ -10170,18 +10399,20 @@ static void draw_track(SDL_Renderer* renderer, const Tilemap* map, int x, int y,
             int r0 = part ? 0 : 16 - drop, rows = part ? 16 - drop : drop, to = part ? drop : 0;
             SDL_Rect src = { 0, r0, 16, rows };
             SDL_Rect dst = { sx, sy + to * size / 16, size, (to + rows) * size / 16 - to * size / 16 };
-            if (t.slant != SLANT_NONE)
+            if (t.slant != SLANT_NONE) {
                 draw_banded(renderer, map, x, ty, k, s_slant_tex[t.slant + 1][k], s_slant_on[t.slant + 1][k],
                             2048u + (uint32_t)(t.slant + 1) * 2 + k, t.biome, &src, &dst);
-            else if (t.trail) {
+                continue;
+            }
+            if (t.road)                                     // the road, then the trail over it
+                draw_banded(renderer, map, x, ty, k, s_track_tex[t.on][k][t.config], s_track_on[t.on][k][t.config],
+                            (uint32_t)(t.on * 2 + k) * 256 + (uint32_t)t.config, t.biome, &src, &dst);
+            if (t.trail) {
                 int m = trail_mask(renderer, map, x, ty, k);
                 if (m >= 0)
                     draw_banded(renderer, map, x, ty, k, s_tmask_tex[m], s_tmask[m].data(),
                                 8192u + (uint32_t)m, t.biome, &src, &dst);
             }
-            else
-                draw_banded(renderer, map, x, ty, k, s_track_tex[t.on][k][t.config], s_track_on[t.on][k][t.config],
-                            (uint32_t)(t.on * 2 + k) * 256 + (uint32_t)t.config, t.biome, &src, &dst);
         }
     }
 }

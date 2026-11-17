@@ -150,19 +150,28 @@ roads"). A trail leaves a road for a graveyard of either size, the catacombs, ru
 a stone circle, a pyramid or an oasis; caves and the great trees have none
 (small graveyards were added later the same day: "small graveyard yes"). It never crosses the start island, a town or a village.
 It is the road's band in the road's own tones -- no materials of its own --
-and the road's own shape, shrunk: the band and paving a road would have over
-the same two-tile stroke, eroded `TRAIL_THIN` (5) px all round
-(`trail_mask` in `src/tilemap.cpp`), so 14 px deep where a road is 24, three
-rows of edge, ten of paving, one of edge (the user, 2026-11-09: "same amount
-of thinness, make sure it follows the same natural formation as roads, make
-the transition between roads and trails smooth"). Shrinking a road's shape
-leaves a road's shape: it winds and rounds exactly as a road does. It is
-one even width and depth all the way, up to the road it meets (the user,
-2026-11-16: "should be all a consistant width and height"); the taper that
-widened it toward a road (`TRAIL_TAPER`) is 0. It winds more than a road (the user,
-2026-11-09: "make trails more windier... they shouldnt be as straight as
-roads"): over the route's own wander it swings in S-curves, a long swing of
-20-32 tiles and a ripple of 9-14, up to five tiles off its line, and comes
+and the road's own drawing at half size (the user, 2026-11-17: "basicially
+the same drawing code/logic as roads but half the diameter"): the road's
+two-by-two brush and its masks by eight neighbours, on a grid of half-tile
+cells (`s_trail_sub`, laid from each trail's centre line `s_trail_segs`;
+`s_sub_on`, `trail_mask` in `src/tilemap.cpp`). So 12 px deep where a road is
+24, with the road's rim kept: three rows of edge above the paving, one below.
+It bends and rounds as a road does, at half the scale, its edge cut by how
+much of the stroke lies round each pixel over a wider ring than a road's
+(`TRAIL_KERNEL_R`), so its steps blend smooth (the user, 2026-11-17: "trails
+edges should be slightly less rough"). A trail and a road are drawn as two
+tracks together, bands before pavings, and over its last tile and a quarter
+to a road the trail flares out (`TRAIL_FLARE`), so it opens into the road in
+a smooth funnel (the user, 2026-11-17: "transition from roads to trails
+should be seemless"); a branch's loose end is carried on to the track it joins. Its
+run-up to a bridge (a trail tile beside a run-up or a deck) is drawn at the
+road's width, as the deck is. Earlier tries, rejected: the road's tiles
+shrunk 5 px (it swelled where the tile stroke lay three thick), and a disc
+round the line (even, but not a road's look). It winds more than a road (the
+user, 2026-11-09: "make trails more windier... they shouldnt be as straight
+as roads"; 2026-11-17: "wind a bit more"): over the route's own wander it
+swings in S-curves, a long swing of 16-26 tiles and a ripple of 8-12, up to
+six and a half tiles off its line, and comes
 back onto the line by its ends so it meets the road and the door square on. Trails reach about two thirds of
 their dungeons (the user, 2026-11-09: "should be more expansive, so far they
 seem to only connect to the dungeons closest to the roads"; then "have them
