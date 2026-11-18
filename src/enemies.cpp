@@ -9214,6 +9214,21 @@ public:
 //   and fade (the user, 2026-11-17: in place of the figs raining down).
 // Made harder after the user's F4 run of 2026-10-31 (never hit, rated 1):
 // a spit cone of 19 (25 in phase 2) arriving quicker.
+// The GLUE SPIT (Bes's, shared with the hugag's pine-pitch spit): a frothing
+// cone of m loose bubbles from (mx, my) at the player, fast and slow mixed,
+// slowing as they come. 1 damage and a glued crawl (BulletSpawn::glue).
+static int glue_spit(float mx, float my, float px, float py, int m, BulletSpawn out[], int max) {
+    float a = aim_at(mx, my, px, py);
+    int n = 0;
+    for (; n < m && n < max; n++) {
+        BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.5f, 120.0f + ernd() * 130.0f, 2.5f, 1.0f);
+        b.accel = -90.0f; b.min_speed = 105.0f;
+        b.from = true; b.ox = mx; b.oy = my;                   // misses leave soon (at 70 they collected in the corners)
+        b.glue = true;                                         // glue spit: 1 damage, a crawl (the user)
+        out[n] = b;
+    }
+    return n;
+}
 class BesRap : public Enemy {
     static constexpr float DROP_LIFE = 2.5f, HINT_T = 0.8f, HINT_R = 7.0f;
     float drop_t = 1.0f;
@@ -9239,17 +9254,8 @@ class BesRap : public Enemy {
     // (-4, -7); landing a lunge (phase 2) it's the resting teeth row, art px
     // (20, 14): (-1, -15).
     int spit(float px, float py, float ox, float oy, BulletSpawn out[]) const {
-        float mx = x + ox, my = y + oy;
-        float a = aim_at(mx,my,px,py);
         int m = ENRAGED ? 25 : 19;
-        for (int i = 0; i < m; i++) {
-            BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.5f, 120.0f + ernd() * 130.0f, 2.5f, 1.0f);
-            b.accel = -90.0f; b.min_speed = 105.0f;
-            b.from = true; b.ox = mx; b.oy = my;               // misses leave soon (at 70 they collected in the corners)
-            b.glue = true;                                     // glue spit: 1 damage, a crawl (the user)
-            out[i] = b;
-        }
-        return m;
+        return glue_spit(x + ox, y + oy, px, py, m, out, m);
     }
 public:
     BesRap() : Enemy(320, 130, 560, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
@@ -9814,121 +9820,114 @@ public:
     }
 };
 
-// The hugag (Fearsome Creatures, the Lake States): a beast the size of a
-// moose on jointless legs -- it can never lie down, so it sleeps leaning on
-// a tree -- with a great overhanging upper lip, wandering the woods day and
-// night. UPPER tier, 640 HP, coat-gold bullets. BIG sheet; flap =
-// 62_hugag_stomp (a foot swung high, SLAM, the other foot, SLAM).
-// It never moves from its spot (the user), and every shot leaves from the
-// part of it that makes it (the user): its lip, its coat, its feet.
-// Phase 1 -- standing:
-//   Bellow -- when it lifts its head and flaps its lip open (idle frame 2):
-//             two rows of 17 fanned wide at the player out of its lip, the
-//             second slower and half a step over, each shot wobbling.
-//   Coat   -- every COAT_EVERY s the flaps of its shaggy coat shed: shots
-//             dropping off the hem of its body, swaying slowly down.
-// Phase 2 (half HP) -- it STOMPS in place, and each slammed foot (stomp
-//   frames 1 and 3) blows out a DENSE CLUSTER (the user) of 14 shots
-//   from under it, a clump flung at the player that loosens as it flies.
-//   The coat keeps shedding, faster; no bellow (it's stomping).
+// The hugag (A Book of Creatures; Fearsome Creatures, the Lake States): a
+// moose-like giant, 13 ft and 6,000 lb, on legs with no joints -- it can
+// never lie down, so it is nearly always on the move, and where it stands
+// the ground takes the weight. UPPER tier, 640 HP, coat-gold bullets. 98x65
+// drawn 2x, one side view (facing right; mirrored walking left). Idle 5
+// frames x 260 ms; flap = 62_hugag_stomp, 4 x 260 ms (1.04 s): f0 a foot
+// swung up, f1 SLAM, f2 the other foot, f3 SLAM. Every ring leaves from a
+// foot (measured), starting slow and speeding up.
+// The user (2026-11-18): "have it walk across the top of screen for first
+// attack, every stop it takes makes a ringe of bullets from each foot.
+// phase 2 is just aggressive stomp spamming".
+// Phase 1 -- it walks across the top, edge to edge, turning at the ends:
+//   WALK_T s walking, STOP_T s stopped; each stop a ring of RING1 out of
+//   EACH of its four feet, each foot's ring a quarter step over.
+// Phase 2 (half HP) -- it plants itself and STOMPS the whole time (the
+//   flap): every slam (f1, f3) a ring of RING2 from the slammed foot, half a
+//   step over and turned SPIN further each slam.
+// GLUE SPIT (the user: "this enemey also spits glue like bes"): Bes's cone
+//   (glue_spit), pine pitch, out of its lip open on idle f2: phase 1 at each
+//   stop (the stop plays idle f1, f2: the spit on f2, the rings on landing);
+//   phase 2 every other stomp cycle (2.08 s), as the foot swings up (f0).
+// Harder (the user: "too easy"): RING1 14 a foot, RING2 28 a slam, top speed
+//   RING_V1 115 (was 120) so more stays on screen.
+// Fairness: no ring or spit from within CLEAR of the player; 4 x RING1 = 56
+//   shots round in phase 1, RING2 = 28 a slam in phase 2.
 class Hugag : public Enemy {
-    static constexpr float STEP_T = 0.9f;    // one stomp cycle: two slams
-    float coat_t = 0.0f, step_t = 0.0f;
-    int   last_frame = 0, slam_foot = -1;    // the stomp frame shown last; a slam due (1 or 3)
+    static constexpr float STEP_T = 1.04f;   // one stomp cycle, 4 x 260 ms: two slams
+    static constexpr float WALK_V = 90.0f, WALK_T = 1.04f, STOP_T = 0.52f, WALK_X0 = 110.0f, WALK_X1 = ARENA_W - 110.0f;
+    static constexpr int   RING1 = 14, RING2 = 28, SPIT1 = 19, SPIT2 = 25;   // the spit: Bes's counts
+    static constexpr float RING_V0 = 50.0f, RING_ACC = 100.0f, RING_V1 = 115.0f, SPIN = 0.11f, CLEAR = 90.0f;
+    static constexpr float LIP[2] = { 68.0f, 17.0f };    // the lip, open on idle f2 (art px)
+    // Its feet, art px on the idle (the near pair, the far pair), and the
+    // slammed foot on stomp f1 (near front) and f3 (far front).
+    static constexpr float FEET[4][2] = { { 25.0f, 63.0f }, { 33.0f, 61.0f }, { 43.0f, 63.0f }, { 51.0f, 61.0f } };
+    float walk = 1.0f;                       // +1 right, -1 left
+    float leg_t = 0.0f, step_t = 0.0f, turn = 0.0f;
+    bool  stopped = false, stop_due = false, spit_due = false;
+    int   last_frame = 0, slam_foot = -1, cycles = 0;
 
-    float coat_every() const { return ENRAGED ? 0.8f : 0.9f; }
+    bool mirrored() const { return walk < 0.0f; }
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (98x65, drawn 2x about its middle) -> screen
+        if (mirrored()) fx = 98.0f - fx;
         *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
     }
-    // One view since 2026-10-10 (the user: its two sheets are the 3/4-front
-    // idle and stomp, as the old sprite stood), so it has one facing and only
-    // the tables' front entries below are used.
-    int facing(float, float) const { return FACE_DOWN; }
-    // Its lip flapped open on the bellow frame, by facing (seen from behind:
-    // the top of its head). Left facings mirror the right.
-    void lip(float px, float py, float* ox, float* oy) const {
-        int f = facing(px, py);
-        bool left = f == FACE_LEFT || f == FACE_DOWN_LEFT || f == FACE_UP_LEFT;
-        float fx = f == FACE_RIGHT || f == FACE_LEFT ? 75.0f
-                 : f == FACE_DOWN_RIGHT || f == FACE_DOWN_LEFT ? 63.0f
-                 : f == FACE_UP_RIGHT || f == FACE_UP_LEFT ? 64.0f : f == FACE_UP ? 60.0f : 67.0f;   // its one view: the open mouth, under its lifted head (62_hugag_follow.py prints it)
-        float fy = f == FACE_UP ? 15.0f : f == FACE_UP_RIGHT || f == FACE_UP_LEFT ? 20.0f : 18.0f;
-        at(left ? 97.0f - fx : fx, fy, ox, oy);
-    }
-    // The foot it just slammed (where the stomp sheet's dust bursts), by
-    // facing and slam (1 front-left, 3 front-right).
-    void foot(float px, float py, int slam, float* ox, float* oy) const {
-        static const float FX[8][2] = {   // [D DR R UR U UL L DL][frame 1, frame 3]
-            { 43.0f, 52.0f }, { 59.3f, 50.7f }, { 62.0f, 60.8f }, { 49.2f, 59.0f },   // (its one view: the near front foot, the far front foot)
-            { 50.0f, 60.9f }, { 47.8f, 38.0f }, { 35.0f, 36.2f }, { 37.7f, 46.3f } };
-        int f = facing(px, py);
-        int d = f == FACE_DOWN ? 0 : f == FACE_DOWN_RIGHT ? 1 : f == FACE_RIGHT ? 2 : f == FACE_UP_RIGHT ? 3
-              : f == FACE_UP ? 4 : f == FACE_UP_LEFT ? 5 : f == FACE_LEFT ? 6 : 7;
-        at(FX[d][slam == 1 ? 0 : 1], 61.0f, ox, oy);
+    void ring(float fx, float fy, int m, float a0, float px, float py, BulletSpawn out[], int max, int* n) const {
+        float ox, oy;
+        at(fx, fy, &ox, &oy);
+        if (hypotf(px - ox, py - oy) < CLEAR) return;            // never point-blank
+        for (int k = 0; k < m && *n < max; k++) {
+            BulletSpawn b = mk(a0 + k * (TAU / m), RING_V0, 3.0f, 5.0f);
+            b.accel = RING_ACC; b.max_speed = RING_V1;           // out of the foot slow, speeding up
+            b.from = true; b.ox = ox; b.oy = oy;
+            out[(*n)++] = b;
+        }
     }
 public:
     Hugag() : Enemy(320, 120, 640, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "HUGAG"; }
-    int         breath_frame()  const override { return 2; }       // head lifted, lip flapped open
-    float       fire_interval() const override { return 0.05f; }   // coat and stomps on their own clocks
-    float flap_phase() const override { return ENRAGED ? step_t / STEP_T : -1.0f; }
-    int   move_facing() const override { return FACE_DOWN; }      // one view: it never turns
+    float       fire_interval() const override { return 0.02f; }   // stops and slams on their own clocks
+    int   move_facing()   const override { return FACE_DOWN; }      // one view
+    bool  mirror_sprite() const override { return mirrored(); }     // facing the way it walks
+    float flap_phase()    const override { return ENRAGED ? step_t / STEP_T : -1.0f; }   // phase 2: stomping
+    // Phase 1 walking: the walk sheet (the alt, 4 x 260 ms = one leg),
+    // each leg from f0 (contact); stopped, the idle.
+    bool  walking()       const { return !ENRAGED && !stopped; }
+    bool  alt_pose()      const override { return walking(); }
+    int   anim_frame()    const override {               // stopped: idle f1 then f2, the lip open for the spit
+        if (ENRAGED) return -1;
+        return walking() ? (int)(leg_t / (WALK_T / 4.0f)) % 4 : 1 + (leg_t >= STOP_T * 0.5f);
+    }
     void update(float dt, float, float) override {
-        coat_t += dt;
-        if (!ENRAGED) return;
-        step_t = fmodf(step_t + dt, STEP_T);
-        int f = (int)(step_t / STEP_T * 4.0f) % 4;               // the stomp frame now
-        if (f != last_frame && (f == 1 || f == 3)) slam_foot = f; // a foot comes down
-        last_frame = f;
-    }
-    int fire(float px, float py, BulletSpawn out[], int) override {
-        int n = 0;
-        if (coat_t >= coat_every()) {
-            // The coat sheds: off the hem of its body (art y 37, x 19-52),
-            // swaying down.
-            coat_t = 0.0f;
-            int m = ENRAGED ? 5 : 6;
-            for (int i = 0; i < m; i++) {
-                float ox, oy;
-                at(19.0f + ernd() * 33.0f, 37.0f, &ox, &oy);
-                BulletSpawn b = mk(ernd() * TAU, 65.0f + ernd() * 20.0f, 3.0f, 5.0f);   // every way (the user)
-                b.from = true; b.ox = ox; b.oy = oy;
-                b.zig = 0.35f; b.zig_every = 0.5f;
-                out[n++] = b;
-            }
+        if (ENRAGED) {                                           // planted, stomping
+            step_t = fmodf(step_t + dt, STEP_T);
+            int f = (int)(step_t / STEP_T * 4.0f) % 4;           // the stomp frame now
+            if (f != last_frame && (f == 1 || f == 3)) slam_foot = f;   // a foot comes down
+            if (f != last_frame && f == 0 && (cycles++ & 1)) spit_due = true;   // the foot swung up, every other cycle: a spit
+            last_frame = f;
+            return;
         }
-        if (slam_foot > 0) {
-            // A slam: a dense clump blown out from under the foot at the
-            // player, loosening as it flies (speeds and angles mixed).
-            float ox, oy;
-            foot(px, py, slam_foot, &ox, &oy);
+        leg_t += dt;
+        if (stopped) {
+            if (leg_t - dt < STOP_T * 0.5f && leg_t >= STOP_T * 0.5f) spit_due = true;   // idle f2: the lip open
+            if (leg_t >= STOP_T) { stopped = false; leg_t = 0.0f; }
+            return;
+        }
+        float nx = x + walk * WALK_V * dt;
+        if (nx < WALK_X0 || nx > WALK_X1) walk = -walk;          // the edge: turning back
+        else x = nx;
+        if (leg_t >= WALK_T) { stopped = true; stop_due = true; leg_t = 0.0f; }
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        if (stop_due) {                                          // a stop: a ring out of each foot
+            stop_due = false;
+            turn = ernd() * TAU;
+            for (int k = 0; k < 4; k++) ring(FEET[k][0], FEET[k][1], RING1, turn + k * 0.25f * (TAU / RING1), px, py, out, max, &n);
+        }
+        if (slam_foot > 0) {                                     // a slam: a ring from the slammed foot
+            turn += 0.5f * (TAU / RING2) + SPIN;
+            ring(slam_foot == 1 ? 43.0f : 52.0f, 61.0f, RING2, turn, px, py, out, max, &n);
             slam_foot = -1;
-            float a = aim_at(ox, oy, px, py);
-            for (int i = 0; i < 14; i++)
-                out[n++] = mk(a + (ernd() * 2.0f - 1.0f) * 0.35f, 110.0f + ernd() * 60.0f, 2.5f, 5.0f);
-            for (int i = n - 14; i < n; i++) { out[i].from = true; out[i].ox = ox; out[i].oy = oy; }
         }
-        return n;
-    }
-    int breathe(float px, float py, BulletSpawn out[], int) override {
-        if (ENRAGED) return 0;                                   // stomping, not bellowing
-        // The bellow: all round out of its lip (the user: every way, not just
-        // at the player), in CLUMPS -- two rings of 16 clumps of 4, the
-        // second slower and half a step over (the user: denser), each clump
-        // a tight knot of mixed speeds, wobbling.
-        float ox, oy;
-        lip(px, py, &ox, &oy);
-        float turn = ernd() * TAU;
-        int n = 0;
-        for (int r = 0; r < 2; r++)
-        for (int c = 0; c < 16; c++)
-            for (int i = 0; i < 4; i++) {
-                BulletSpawn b = mk(turn + (c + r * 0.5f) * (TAU / 16) + (ernd() * 2.0f - 1.0f) * 0.07f,
-                                   (r ? 70.0f : 100.0f) + ernd() * 25.0f, 3.0f, 5.0f);
-                b.from = true; b.ox = ox; b.oy = oy;
-                b.zig = 0.2f; b.zig_every = 0.3f;
-                out[n++] = b;
-            }
+        if (spit_due) {                                          // pine-pitch glue out of its lip: Bes's spit
+            spit_due = false;
+            float ox, oy;
+            at(LIP[0], LIP[1], &ox, &oy);
+            if (hypotf(px - ox, py - oy) >= CLEAR) n += glue_spit(ox, oy, px, py, ENRAGED ? SPIT2 : SPIT1, out + n, max - n);
+        }
         return n;
     }
 };

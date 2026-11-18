@@ -205,7 +205,8 @@ struct EnemySheet { const char* path; Uint8 loop[4]; int frames = 3; bool rows =
                     const char* marks = nullptr;     // ground marks (footprints): a row of frames, Enemy::marks picks one
                     int step_ms = 0;                 // ms a frame of a longer (not 3-frame) idle; 0 = STEP_MS
                     const char* parts = nullptr;     // pieces drawn over it on their own (Enemy::parts): cells cut by the enemy
-                    const char* spawner = nullptr; };  // its spawners (Enemy::spawners): one row of square frames
+                    const char* spawner = nullptr;   // its spawners (Enemy::spawners): one row of square frames
+                    int alt_frames = 0; };           // frames a direction in the alt sheet (its own count: a walk); 0 = frames
 static const int FLAP_FRAMES = 4;   // wings up, mid, down, mid
 static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/00_skvader.png",                {}, 4, false, "assets/enemies/00_skvader_hop.png", "assets/enemies/00_skvader_attack.png" },  // 20x21, four views (art/enemies/anim/00_skvader/build.py): sit idle rest, stretch, wing flick, squash at 260 ms; alt = the attack pose, one step a fan; flap = the hop: crouch, launch, air, land
@@ -273,7 +274,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/59_tripodero.png",              {}, 5, false, "assets/enemies/redraws/59_tripodero_dance.png" },  // 44x56, four views, PixelLab (art/enemies/anim/59_tripodero/build.py): 5 x 260 ms -- 1 legs tall, the SLUG; 3 the pouch SPIT; flap = the dance, 4 poses at 260 ms
     { "assets/enemies/60_rumptifusel.png",            {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // 56x44, one 3/4 view facing left in every direction (never mirrored), PixelLab (art/enemies/anim/60_rumptifusel/build.py): flat, rising, REARED belly bared (frame 2, the sheets), still up, coming down -- 5 x 390 ms, its old ~1.94 s loop
     { "assets/enemies/redraws/61_roperite.png",       {}, 9, false, "assets/enemies/redraws/61_roperite_dash.png", nullptr, nullptr, 1, 1, nullptr, 0, nullptr, "assets/enemies/61_roperite_ghosts.png" },  // big (frame 60x62), the user's approved 39x52 front still, one view in every direction (art/enemies/anim/61_roperite/build.py), always walking or dashing (the user): idle 9 x 260 ms -- the walk bound/contact/bound cycles under everything; 0-2 walking, 3-5 the rope GROWING, 6 THE LASSO fully out, 7-8 the rope drawn back; flap = the DASH, 4 x 260 ms (crouch-stride, air, crouch-stride, air); spawner = the ghost herd: 13 square 62x62 cells, 0-8 the idle, 9-12 the dash
-    { "assets/enemies/62_hugag.png",                  {}, 5, false, nullptr },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
+    { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png", "assets/enemies/62_hugag_walk.png", nullptr, 1, 1, nullptr, 0, nullptr, nullptr, 4 },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams (phase 2); alt = the walk, 4 frames (phase 1, f0 contact)
     { "assets/enemies/redraws/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
     { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
     { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, "assets/enemies/redraws/65_mice_that_eat_iron_walk.png" },   // 28x23, front only: three mice sharing an iron beam (the user), gnawing it out of step -- rest, then each dips in turn, 260 ms (art/enemies/anim/65_mice_that_eat_iron/build.py); alt = the same gnaw with their feet stepping, while it drifts (MiceThatEatIron::alt_pose)
@@ -1803,8 +1804,9 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
             // bigger than the idle's: centred, feet down.
             int aw, ah;
             SDL_QueryTexture(_alt, NULL, NULL, &aw, &ah);
-            fw = es.rows ? aw / es.frames : aw / (8 * es.frames); fh = es.rows ? ah / 8 : ah;
-            src = es.rows ? SDL_Rect{ frame * fw, dir * fh, fw, fh } : SDL_Rect{ (dir * es.frames + frame) * fw, 0, fw, fh };
+            int an = es.alt_frames ? es.alt_frames : es.frames;
+            fw = es.rows ? aw / an : aw / (8 * an); fh = es.rows ? ah / 8 : ah;
+            src = es.rows ? SDL_Rect{ frame % an * fw, dir * fh, fw, fh } : SDL_Rect{ (dir * an + frame % an) * fw, 0, fw, fh };
             tex = _alt;
         }
         _drawn_sheet = tex == _flap ? 1 : tex == _alt ? 2 : 0;   // for a sprite-shaped hitbox (_on_sprite)
