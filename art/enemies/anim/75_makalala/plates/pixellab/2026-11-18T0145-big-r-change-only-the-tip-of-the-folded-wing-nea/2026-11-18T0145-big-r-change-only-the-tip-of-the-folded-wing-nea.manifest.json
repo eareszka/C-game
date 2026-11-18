@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0145-big-r-change-only-the-tip-of-the-folded-wing-nea",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1520 characters>",
+      "format": "png"
+    },
+    "description": "change only the tip of the folded wing, near the tail: it becomes a small flat dark amber-brown horn plate. The ivory knob on its head stays ivory. Nothing else changes",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b3f62bc3-b463-49d0-b0c8-9b16a3074046",
+    "generation_id": "f17fd77f-1f37-4d56-956f-7fdb4aa17784"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-rest2-r.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0135-p-rest-d-keep-its-head-ivory-club-on-the-head-ho",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2736 characters>",
+      "format": "png"
+    },
+    "description": "<elided 489 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c1efb6e9-92c9-4e22-ad8e-62043579b88f",
+    "generation_id": "067aacc4-b7fe-4650-bbdd-d544b3f8deed"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-low2-d.png"
+  ]
+}

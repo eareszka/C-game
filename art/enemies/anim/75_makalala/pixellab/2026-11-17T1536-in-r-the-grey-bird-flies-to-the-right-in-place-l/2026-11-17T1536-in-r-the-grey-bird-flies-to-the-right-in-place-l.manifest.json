@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1536-in-r-the-grey-bird-flies-to-the-right-in-place-l",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1336 characters>",
+      "format": "png"
+    },
+    "action": "the grey bird flies to the right in place, legs tucked up, one full wingbeat: both wings sweep from raised high down below the body and back up, head and the ivory knob on its head stay level",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b9ef0ddd-ee26-4a44-9d84-5c23c892ff67",
+    "generation_id": "2584edef-ccda-4677-bc14-3aca12032813"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "fly-00.png",
+    "fly-01.png",
+    "fly-02.png",
+    "fly-03.png",
+    "fly-04.png"
+  ]
+}

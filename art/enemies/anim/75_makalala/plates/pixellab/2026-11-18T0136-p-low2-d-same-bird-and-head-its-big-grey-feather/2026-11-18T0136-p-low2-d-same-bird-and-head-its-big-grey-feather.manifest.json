@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0136-p-low2-d-same-bird-and-head-its-big-grey-feather",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4624 characters>",
+      "format": "png"
+    },
+    "description": "same bird and head; its big grey feathered wings sweep wide to both sides at chest height and curve forward; only the two wingtips are brown horn plates, clashing together in front of its chest below the beak; wings stay below its head",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "00cf96bc-d969-4d3c-aadd-b582362e926b",
+    "generation_id": "ee4cff1e-c163-4564-8d23-863eb2de42e8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-low3-d.png"
+  ]
+}

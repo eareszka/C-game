@@ -83,5 +83,12 @@
     "reviewed": "2026-11-17",
     "gens": 2,
     "notes": "Front only (the user). PixelLab animate x2: idle 5 x 260 ms, pose 2 head turned to us spitting glue (breath_frame 2); flap = lunge pose held while it dashes (BesRap::flap_phase). 41x43 (was 37x43); mouth offset unchanged (-1, -15)."
+  },
+  "75": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-18",
+    "gens": 7,
+    "notes": "2026-11-18: reverted to the first PixelLab version (7 gens; the user called the horn-plate redo overengineered). 45x51, idle 5 x 260 ms, D/R/U with L mirrored, f2 wings flung out (the spray); fly 4 frames per 0.28 s, club pinned at (+24.3, -21.6). Unused work kept: the horn-plate redo (47 gens) in 75_makalala/plates/, the big-wing redo (21 gens) in 75_makalala/redo/; the horn-plate sheets backed up in art/_backup/75_before_revert_*."
   }
 }

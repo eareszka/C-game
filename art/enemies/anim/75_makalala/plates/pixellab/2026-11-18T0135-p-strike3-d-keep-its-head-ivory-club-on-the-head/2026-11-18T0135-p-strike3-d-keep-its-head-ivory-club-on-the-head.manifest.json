@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0135-p-strike3-d-keep-its-head-ivory-club-on-the-head",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 5760 characters>",
+      "format": "png"
+    },
+    "description": "<elided 488 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6dc67579-8878-4a47-81af-7744594389f2",
+    "generation_id": "9b35f767-07d0-4b84-9d9e-81f7b5f8bbcc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-low-d.png"
+  ]
+}

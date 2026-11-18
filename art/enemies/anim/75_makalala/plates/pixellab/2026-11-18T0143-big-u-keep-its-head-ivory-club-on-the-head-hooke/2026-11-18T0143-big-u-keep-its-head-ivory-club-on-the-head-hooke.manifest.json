@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0143-big-u-keep-its-head-ivory-club-on-the-head-hooke",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1212 characters>",
+      "format": "png"
+    },
+    "description": "<elided 332 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4264d089-6827-4f22-973b-48d2b972400b",
+    "generation_id": "cba3306d-a054-4dc2-afee-58156ff8b23a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-rest-u.png"
+  ]
+}

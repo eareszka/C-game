@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1757-key-spread-d-keep-its-head-ivory-club-on-the-hea",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 9440 characters>",
+      "format": "png"
+    },
+    "description": "<elided 366 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3715b326-e7ed-43ae-bf47-0f0eeb59c23c",
+    "generation_id": "4df7ab89-2424-4492-9631-5952fd07503a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key3-clap-d.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0147-big-u-keep-the-round-ivory-knob-on-top-of-its-he",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1212 characters>",
+      "format": "png"
+    },
+    "description": "keep the round ivory knob on top of its head exactly as it is, no horns. Only the bottom tips of the folded grey wings, beside its legs, become small flat dark amber-brown horn plates",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "283b97fe-b0ab-4779-be53-f814efe278f9",
+    "generation_id": "d685e357-7c14-49b9-b4d6-af8bcbd7aec6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-rest3-u.png"
+  ]
+}

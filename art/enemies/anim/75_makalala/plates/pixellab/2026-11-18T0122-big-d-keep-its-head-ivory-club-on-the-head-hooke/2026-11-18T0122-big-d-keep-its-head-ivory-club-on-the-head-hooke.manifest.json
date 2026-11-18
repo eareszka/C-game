@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0122-big-d-keep-its-head-ivory-club-on-the-head-hooke",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1176 characters>",
+      "format": "png"
+    },
+    "description": "<elided 357 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b3b1b274-acbf-448d-83e0-d477a2573400",
+    "generation_id": "a822fd9e-1cc2-468b-be74-60321d331307"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-rest-d.png"
+  ]
+}

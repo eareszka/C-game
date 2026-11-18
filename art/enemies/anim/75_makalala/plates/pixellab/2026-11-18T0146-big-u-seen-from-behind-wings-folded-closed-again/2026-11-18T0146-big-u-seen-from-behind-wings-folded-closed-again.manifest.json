@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0146-big-u-seen-from-behind-wings-folded-closed-again",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1212 characters>",
+      "format": "png"
+    },
+    "description": "seen from behind, wings folded closed against its back. Change only the two wingtips beside its legs: each becomes a small flat dark amber-brown horn plate. Legs stay grey. Nothing else changes",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "50a241d6-7f75-4518-b41c-b065b8ac09af",
+    "generation_id": "9bbeced3-7c87-4a49-9d56-1cfc883b5935"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-rest2-u.png"
+  ]
+}

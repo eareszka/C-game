@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1537-in-r-the-same-bird-flying-to-the-right-body-leve",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1336 characters>",
+      "format": "png"
+    },
+    "description": "the same bird flying to the right: body level and horizontal, both wings spread wide and raised above its back, legs tucked up under the tail, head and beak pointing right, ivory knob on its head",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "715c1223-2d09-45e2-b51b-e719f18e50c2",
+    "generation_id": "e9d806d1-7af3-4cef-b41e-12dcb9fece9b"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flykey.png"
+  ]
+}

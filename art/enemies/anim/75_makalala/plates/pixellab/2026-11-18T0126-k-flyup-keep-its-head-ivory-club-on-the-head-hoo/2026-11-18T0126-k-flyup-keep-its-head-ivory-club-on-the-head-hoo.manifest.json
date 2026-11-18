@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0126-k-flyup-keep-its-head-ivory-club-on-the-head-hoo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4392 characters>",
+      "format": "png"
+    },
+    "description": "<elided 429 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0512ba60-0119-4d67-bfd9-b0fc02887779",
+    "generation_id": "d8ca29f2-0eeb-4124-a32d-f244541cbefa"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-airstrike.png"
+  ]
+}

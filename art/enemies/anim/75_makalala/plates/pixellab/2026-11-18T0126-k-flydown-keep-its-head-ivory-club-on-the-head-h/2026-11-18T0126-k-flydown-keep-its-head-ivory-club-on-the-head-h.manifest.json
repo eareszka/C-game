@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0126-k-flydown-keep-its-head-ivory-club-on-the-head-h",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 7636 characters>",
+      "format": "png"
+    },
+    "description": "<elided 344 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "75b66d0f-51a1-4a3b-875d-f24e882c2f09",
+    "generation_id": "89a79412-0b07-4c96-a5b8-ea5585eb334d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-flydown.png"
+  ]
+}

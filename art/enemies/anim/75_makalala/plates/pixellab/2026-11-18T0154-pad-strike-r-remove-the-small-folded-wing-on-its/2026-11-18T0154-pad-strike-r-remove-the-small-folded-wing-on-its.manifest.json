@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0154-pad-strike-r-remove-the-small-folded-wing-on-its",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 5248 characters>",
+      "format": "png"
+    },
+    "description": "remove the small folded wing on its body side; body side plain grey; keep everything else",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "56660224-6b17-4fb6-b50d-7eb862a732ce",
+    "generation_id": "662ddb44-fa31-4c40-a191-e1df226b5c1c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "pad-strike2-r.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0132-p2-flydown-keep-its-head-ivory-club-hooked-yello",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 7880 characters>",
+      "format": "png"
+    },
+    "description": "<elided 411 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "94c429f5-8e2c-4c84-9bab-397d419e08bd",
+    "generation_id": "4e46606a-b1b2-4893-8b6c-c4ea42943283"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p3-airstrike.png"
+  ]
+}

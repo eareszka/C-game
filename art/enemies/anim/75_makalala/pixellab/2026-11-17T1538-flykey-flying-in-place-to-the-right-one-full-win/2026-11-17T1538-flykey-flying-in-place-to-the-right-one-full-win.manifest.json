@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1538-flykey-flying-in-place-to-the-right-one-full-win",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2000 characters>",
+      "format": "png"
+    },
+    "action": "flying in place to the right, one full wingbeat: both wings sweep from raised high down below the body and back up, body, head and the ivory knob on its head stay level",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "eba6006a-028b-4b9e-a499-3c466192f92a",
+    "generation_id": "125af11f-dd36-4c93-b348-90d7a2540a00"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wing-00.png",
+    "wing-01.png",
+    "wing-02.png",
+    "wing-03.png",
+    "wing-04.png"
+  ]
+}

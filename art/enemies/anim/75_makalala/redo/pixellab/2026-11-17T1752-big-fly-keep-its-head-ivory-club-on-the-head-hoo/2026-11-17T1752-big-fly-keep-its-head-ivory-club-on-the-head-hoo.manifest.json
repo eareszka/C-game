@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1752-big-fly-keep-its-head-ivory-club-on-the-head-hoo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2236 characters>",
+      "format": "png"
+    },
+    "description": "<elided 259 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ea1813b4-d68d-40c2-8279-be59b891ad4c",
+    "generation_id": "711f40b2-f807-4bda-9bd3-b7663739cd33"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-airclap.png"
+  ]
+}

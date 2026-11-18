@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0141-big-u-same-bird-head-ivory-club-hooked-yellow-be",
+  "provider": "pixellab",
+  "route": "edit-images-v2",
+  "arguments": {
+    "method": "edit_with_reference",
+    "edit_images": [
+      {
+        "image": {
+          "type": "base64",
+          "base64": "<elided 1212 characters>",
+          "format": "png"
+        },
+        "width": 128,
+        "height": 128
+      }
+    ],
+    "image_size": {
+      "width": 128,
+      "height": 128
+    },
+    "description": "<elided 265 characters>",
+    "reference_image": {
+      "image": {
+        "type": "base64",
+        "base64": "<elided 5068 characters>",
+        "format": "png"
+      },
+      "width": 128,
+      "height": 128
+    },
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3dc95540-5f67-43fc-b294-13899b8241cd",
+    "generation_id": "3236d8f1-5d0e-4508-9486-18fb22d0d94b"
+  },
+  "cost": {
+    "generations": 10.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-low-u.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1802-big-r-keep-its-head-ivory-club-on-the-head-hooke",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1520 characters>",
+      "format": "png"
+    },
+    "description": "<elided 445 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a8f44411-1e1c-43bc-b7cf-fcc0f8a7c279",
+    "generation_id": "df8e430b-93eb-463f-a150-036debe8c93e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-spread-r.png"
+  ]
+}

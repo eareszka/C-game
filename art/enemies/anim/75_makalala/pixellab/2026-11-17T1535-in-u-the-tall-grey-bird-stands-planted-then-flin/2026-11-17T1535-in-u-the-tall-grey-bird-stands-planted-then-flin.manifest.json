@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1535-in-u-the-tall-grey-bird-stands-planted-then-flin",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1036 characters>",
+      "format": "png"
+    },
+    "action": "the tall grey bird stands planted, then flings both wings out wide and gapes its yellow beak open in a scream, then folds its wings back in, legs stay planted",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "685275e3-cb15-41af-9689-b3e7624dd4a9",
+    "generation_id": "e159abaf-fe37-4620-868a-1056a06251f7"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "idleu-00.png",
+    "idleu-01.png",
+    "idleu-02.png",
+    "idleu-03.png",
+    "idleu-04.png"
+  ]
+}

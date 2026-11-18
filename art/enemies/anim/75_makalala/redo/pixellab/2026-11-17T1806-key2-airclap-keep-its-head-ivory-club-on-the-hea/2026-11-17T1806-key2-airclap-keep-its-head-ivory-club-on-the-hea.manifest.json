@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1806-key2-airclap-keep-its-head-ivory-club-on-the-hea",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3688 characters>",
+      "format": "png"
+    },
+    "description": "<elided 409 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "20add2bb-a5b1-47ea-9665-c4c943e5ba10",
+    "generation_id": "863a6d70-9a0f-436a-b053-72d876b4b967"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-airclap-a.png"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0155-a-rest-r-the-tall-grey-bird-stands-planted-and-o",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1984 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 4148 characters>",
+      "format": "png"
+    },
+    "action": "the tall grey bird stands planted and opens its wings, swinging them up and forward around its body so the brown horn plates at the wingtips rise beside its head; head, ivory knob and legs stay still",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7f407443-62a1-4183-85e7-a5b2139b4608",
+    "generation_id": "382a9c4f-85ea-4365-92d6-e3527e58f4fd"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "sr2-00.png",
+    "sr2-01.png",
+    "sr2-02.png",
+    "sr2-03.png",
+    "sr2-04.png"
+  ]
+}

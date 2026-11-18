@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0124-key-spread-d-keep-its-head-ivory-club-on-the-hea",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 9440 characters>",
+      "format": "png"
+    },
+    "description": "<elided 434 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "003190ec-0fc0-4b20-8203-c684b6c90a0f",
+    "generation_id": "d4a3832b-b7af-43cf-92cc-97742c283980"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-strike2-d.png"
+  ]
+}

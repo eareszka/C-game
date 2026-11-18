@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1532-tall-slate-grey-ground-bird-with-a-hooked-yellow",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1012 characters>",
+      "format": "png"
+    },
+    "description": "tall slate-grey ground bird with a hooked yellow beak and an ivory club-shaped knob on its head, long thin grey legs, NES pixel art",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a8d20c10-8585-4cb7-a97d-6d7b2ffef94e",
+    "generation_id": "22f2f53a-2c9a-47f4-bb31-a8ff01de4661"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "view-south-00.png",
+    "view-south-east-01.png",
+    "view-east-02.png",
+    "view-north-east-03.png",
+    "view-north-04.png",
+    "view-north-west-05.png",
+    "view-west-06.png",
+    "view-south-west-07.png"
+  ]
+}

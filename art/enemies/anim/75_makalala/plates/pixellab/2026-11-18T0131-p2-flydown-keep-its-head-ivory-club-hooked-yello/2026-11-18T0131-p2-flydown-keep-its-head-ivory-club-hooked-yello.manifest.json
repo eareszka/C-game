@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0131-p2-flydown-keep-its-head-ivory-club-hooked-yello",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 7880 characters>",
+      "format": "png"
+    },
+    "description": "<elided 328 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3599f4d8-a157-40c4-b437-6d7046dc4e3c",
+    "generation_id": "144c738a-ec09-40c9-80d0-68703ea87152"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p3-flyup.png"
+  ]
+}

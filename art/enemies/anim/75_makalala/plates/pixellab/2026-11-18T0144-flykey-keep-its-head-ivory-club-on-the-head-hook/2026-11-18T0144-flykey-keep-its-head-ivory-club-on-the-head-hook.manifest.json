@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T0144-flykey-keep-its-head-ivory-club-on-the-head-hook",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2000 characters>",
+      "format": "png"
+    },
+    "description": "<elided 311 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d3ec8652-7350-4023-9b2f-9a589501364c",
+    "generation_id": "d78a4a68-5d78-4edd-921d-b8076311af8c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "p-flykey.png"
+  ]
+}

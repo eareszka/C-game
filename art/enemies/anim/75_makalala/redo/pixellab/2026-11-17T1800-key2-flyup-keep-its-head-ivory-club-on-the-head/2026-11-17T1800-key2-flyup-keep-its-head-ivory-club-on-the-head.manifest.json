@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1800-key2-flyup-keep-its-head-ivory-club-on-the-head",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4236 characters>",
+      "format": "png"
+    },
+    "description": "<elided 317 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2c492138-444d-4bd8-8be5-18d939765348",
+    "generation_id": "cd38f824-dab0-41da-bd22-26e8ccf3c22f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key4-airclap.png"
+  ]
+}

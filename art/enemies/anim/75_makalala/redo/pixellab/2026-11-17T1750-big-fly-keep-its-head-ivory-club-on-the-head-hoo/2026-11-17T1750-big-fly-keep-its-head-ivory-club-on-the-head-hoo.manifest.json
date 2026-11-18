@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1750-big-fly-keep-its-head-ivory-club-on-the-head-hoo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2236 characters>",
+      "format": "png"
+    },
+    "description": "keep its head, ivory club on the head, hooked yellow beak, body, legs and colours the same; the grey bird flies to the right, body level, its two enormous wings raised high above its back at the top of a slow wingbeat, long feathers spread",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4e7b12c8-fcaf-4bfe-8578-75a15dec4747",
+    "generation_id": "4d9f306b-2dfc-4ffb-b4a3-db352a75d7b9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-flyup.png"
+  ]
+}

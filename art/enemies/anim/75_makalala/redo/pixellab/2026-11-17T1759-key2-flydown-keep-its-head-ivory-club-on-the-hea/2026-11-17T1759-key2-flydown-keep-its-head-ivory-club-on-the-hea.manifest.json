@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1759-key2-flydown-keep-its-head-ivory-club-on-the-hea",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 4284 characters>",
+      "format": "png"
+    },
+    "description": "<elided 317 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "61d3f323-6636-46dc-bc6f-d12e2f26f6e7",
+    "generation_id": "6db1c810-a7b3-469d-a13d-bb37e8901916"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key3-airclap.png"
+  ]
+}

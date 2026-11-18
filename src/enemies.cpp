@@ -9094,175 +9094,190 @@ public:
 };
 
 // The makalala of East Africa, "the noisy one" (A Book of Creatures): a
-// giant ground bird that screams, and clubs its prey to death with the great
-// bony knob on its head. MEDIUM tier, 580 HP, beak-yellow bullets. BIG sheet,
-// the idle drawn from the front only (the user): planted, it faces us.
-// flap = 75_makalala_fly (wings beating, the club on its head glowing), drawn
-// from the side only: flying, it faces left or right, to the player's side.
-// Phase 1 -- planted on the ground, never moving: the CLAP (the user,
-// 2026-11-09, in place of the old spiral and scream rings). Every other
-// time its wings fling out (idle frame 2) it claps them together. CLAP_WARN
-// s before, it turns to the one of 8 directions nearest the player
-// (facing_toward; the user: 8 ways) and holds it -- the clap goes that way:
-//   Gust      -- UNAVOIDABLE (the user: "inevitable, decided by how the
-//                sprite is facing"): wherever they are, the player is blown
-//                straight along that direction -- a diagonal too -- until the
-//                first wall stops them (Enemy::take_gust). No warning lines (the user):
-//                its turn to face that way is the tell (once its views are drawn).
-//   Shockwave -- at once, a spray of CLAP_ROWS arcs of beak-yellow out of
-//                its body, fanned about the line to the player, each slower than the
-//                last and each with a gap somewhere -- they reach
-//                the player pinned at the wall after the gust, to slip through.
-// (Its art is a placeholder front-only still for now: the facing shows only
-// in the warning until the views are drawn.)
-// Phase 2 (half HP) -- it takes off and hangs in the air at the top, wings
-//   beating, a slow ring of 20 from its club every RING_EVERY s while it
-//   hangs there; and every HOVER_REST s, CLAP AND DIVE (the user,
-//   2026-11-09; no lasers any more): it claps in the air -- the same
-//   unavoidable gust and the same spray at the player -- then shivers in
-//   place DIVE_WIND s (the warning) and comes down after them as the giant
-//   bee does (Moskitto, 56; the user): a swoop at DIVE_V to CHASE_NEAR px
-//   off them, then a CHASE straight at them for CHASE_T s at CHASE_V --
-//   faster than walking (160), slower than a sprint (250): only sprinting
-//   gets away. Its body hurts all the while. Then it flies back up (BACK_V).
-// Made harder after the user's F4 run of 2026-10-31 (never hit, feel 1):
-// the club's ring of 20 more often (every 1.3 s since 2026-11-01).
+// giant ground bird that SCREAMS, whose horny wingtips clatter together in a
+// loud rattle, and that clubs its prey to death with the great bony knob on
+// its head. MEDIUM tier, 580 HP, beak-yellow bullets. 45x51 sheets drawn 2x
+// (redraws/75_makalala*.png, PixelLab, the first art): the idle in 4 views
+// (down, right, up; left = right mirrored), 5 x 260 ms, frame 2 its wings
+// flung out and beak gaping. flap = 75_makalala_fly (4 frames per 0.28 s),
+// side only, left mirrored: flying, it faces the player's side.
+// Bullet redo (the user, 2026-11-18): its three traits, one pattern a beat.
+// Phase 1 -- on the ground, facing the player. Every loop, wings flung out
+//   (idle frame 2), it GLIDES at them (the user, 2026-11-17): GLIDE_D px over
+//   frames 2-3, easing out, never nearer than GLIDE_NEAR; and as it LANDS
+//   (the user: "launches when maka lands"), by turns:
+//   Scream -- a ring of SCREAM_N from its beak, every other shot SCREAM_V2
+//             to SCREAM_V's: a rippled double edge. 16 px+ clear at 100 px:
+//             weave through anywhere.
+//   Rattle -- the wingtips clatter: a stream of RATTLE_N from each, one
+//             every RATTLE_DT s at RATTLE_V, each stream fixed on where the
+//             player stood as it landed (+-RATTLE_JIT): one sidestep clears both.
+// Phase 2 (half HP) -- it flies: hovering in the upper arena, drifting at the
+//   player at DRIFT_V (never nearer than DRIFT_NEAR, never below DRIFT_LOW),
+//   and screams from its beak every RING_EVERY s (a ring of 20 at 95). Every
+//   HOVER_REST s the CLUB DIVE (the user, 2026-11-09): it shivers DIVE_WIND s
+//   (the warning), swoops at DIVE_V to CHASE_NEAR px off them, then CHASES
+//   straight at them for CHASE_T s at CHASE_V -- faster than walking (160),
+//   slower than a sprint (250): only sprinting gets away; its body (the
+//   club) hurts all the while. Chasing, its wings RATTLE: every FLICK_DT s
+//   each flicks a shot out square to its flight at FLICK_V, fading in
+//   FLICK_LIFE s -- two short walls along its track, never a shot ahead of
+//   it. Then back up (BACK_V) to where it was hovering.
+// Origins measured on the installed f2 frames / the fly sheet (screen px
+// from the frame's middle): see beak() and wingtips().
 class Makalala : public Enemy {
-    // The clap's shockwave: CLAP_ROWS arcs CLAP_ARC wide about its facing,
-    // CLAP_N shots each, the first CLAP_V fast and each next CLAP_DV slower,
-    // a CLAP_GAP-shot gap in each.
-    static constexpr float CLAP_ARC = 2.6f, CLAP_V = 165.0f, CLAP_DV = 25.0f, CLAP_WARN = 0.7f;
-    static constexpr int   CLAP_ROWS = 3, CLAP_N = 26, CLAP_GAP = 3;
-    static constexpr float HOVER_REST = 1.6f;                   // hanging at the top between dives
-    static constexpr float RING_EVERY = 1.3f;
+    static constexpr int   SCREAM_N = 36, RATTLE_N = 6;
+    static constexpr float SCREAM_V = 130.0f, SCREAM_V2 = 112.0f;
+    static constexpr float RATTLE_DT = 0.06f, RATTLE_V = 170.0f, RATTLE_JIT = 0.06f;
+    static constexpr float GLIDE_D = 60.0f, GLIDE_T = 0.52f, GLIDE_NEAR = 140.0f;  // idle frames 2-3
+    static constexpr float HOVER_REST = 1.6f, RING_EVERY = 1.3f;
     static constexpr float HOVER_X = 320.0f, HOVER_Y = 130.0f;
-    static constexpr float DIVE_WIND = 0.6f, DIVE_V = 300.0f, BACK_V = 230.0f;
-    static constexpr float CHASE_NEAR = 120.0f, CHASE_V = 185.0f, CHASE_T = 2.0f;   // as Moskitto's grab
+    static constexpr float DRIFT_V = 45.0f, DRIFT_NEAR = 160.0f, DRIFT_LOW = 230.0f;
+    static constexpr float DIVE_WIND = 0.6f, DIVE_V = 340.0f, BACK_V = 230.0f;
+    static constexpr float CHASE_NEAR = 120.0f, CHASE_V = 235.0f, CHASE_T = 2.0f;   // the user, 2026-11-18: "the bird flys faster", still under a sprint
+    static constexpr float FLICK_DT = 0.2f, FLICK_V = 110.0f, FLICK_LIFE = 1.0f;   // 47 px apart along its track at CHASE_V
     float ring_t = 0.0f, bob = 0.0f;
-    // Phase 2's clap and dive: D_NONE hanging at the top, D_WIND shivering
-    // after the clap, D_DIVE swooping in, D_CHASE after them, D_BACK up.
+    float glide_t = -1.0f;                   // into phase 1's glide; < 0 not gliding
+    int   lands = 0;                         // phase 1's landings: scream, rattle, scream...
+    bool  scream_pending = false;
+    int   rattle_left = 0, rattle_due = 0;   // rattle shots still to come / due now
+    float rattle_clock = 0.0f;
+    float ro[4] = {}, ra[2] = {};            // the two streams' origins and aims, fixed at landing
+    float hx = HOVER_X, hy = HOVER_Y;        // phase 2: where it hovers, drifting
+    // Phase 2's dive: D_NONE hovering, D_WIND shivering, D_DIVE swooping in,
+    // D_CHASE after them (rattling), D_BACK up.
     enum { D_NONE, D_WIND, D_DIVE, D_CHASE, D_BACK };
     int   dive = D_NONE;
-    float dive_t = 0.0f, wx0 = 0.0f;
-    bool  clap_pending = false, p2_begun = false;
-    // The clap: breaths counted (every other one claps), time since the
-    // last and the last gap between two (the idle loop's beat), the gust
-    // waiting to be taken.
-    int   breaths = 0;
-    float since_breath = 0.0f, breath_gap = 1.3f;
-    bool  gust_ready = false;
-    int   clap_face = -1;                    // locked at the warning: one of the 8 FACE_s, -1 none
-    // The unit step of an 8-way facing.
-    static void face_dir(int f, float* dx, float* dy) {
-        float ux = (f == FACE_RIGHT || f == FACE_UP_RIGHT || f == FACE_DOWN_RIGHT) ? 1.0f
-                 : (f == FACE_LEFT || f == FACE_UP_LEFT || f == FACE_DOWN_LEFT) ? -1.0f : 0.0f;
-        float uy = (f == FACE_DOWN || f == FACE_DOWN_LEFT || f == FACE_DOWN_RIGHT) ? 1.0f
-                 : (f == FACE_UP || f == FACE_UP_LEFT || f == FACE_UP_RIGHT) ? -1.0f : 0.0f;
-        float l = (ux != 0.0f && uy != 0.0f) ? 0.70710678f : 1.0f;
-        *dx = ux * l; *dy = uy * l;
-    }
-    // The clap's shockwave: CLAP_ROWS arcs out of its body fanned about the
-    // line to the player (the user), each slower, each with a gap.
-    int spray(float px, float py, BulletSpawn out[], int max) const {
-        float a = aim_at(x, y, px, py);
-        int n = 0;
-        for (int r = 0; r < CLAP_ROWS; r++) {
-            int gap = (int)(ernd() * (CLAP_N - CLAP_GAP));       // the way through this arc
-            for (int i = 0; i < CLAP_N && n < max; i++) {
-                if (i >= gap && i < gap + CLAP_GAP) continue;
-                float s = a - CLAP_ARC * 0.5f + CLAP_ARC * (i + 0.5f) / CLAP_N;
-                BulletSpawn b = mk(s, CLAP_V - r * CLAP_DV, 3.0f, 5.0f);
-                b.from = true; b.ox = x; b.oy = y;
-                out[n++] = b;
-            }
-        }
-        return n;
-    }
+    float dive_t = 0.0f, wx0 = 0.0f, flick_clock = 0.0f, cdx = 0.0f, cdy = 1.0f;
+    int   flick_due = 0;
     bool  hovering = false;
-    float rest = 0.0f;                       // hanging at the top this long
-
-    // The glowing club: pinned at (49, 15) in every frame of the fly sheet
-    // (the user), drawn 2x about the frame's middle (49, 32.5).
-    void club(float* ox, float* oy) const { *ox = x; *oy = y + (15.0f - 32.5f) * 2.0f; }
+    float rest = 0.0f;                       // hovering this long
+    // Its body (45x51 drawn 2x) kept whole on screen.
+    void keep() { x = fminf(fmaxf(x, 46.0f), ARENA_W - 46.0f); y = fminf(fmaxf(y, ARENA_TOP + 52.0f), ARENA_H - 52.0f); }
+    // The gaping beak: idle f2 by the view drawn (D, R, U the head; L = R
+    // mirrored), or flying, the fly sheet's beak (side, mirrored left).
+    void beak(float px, float py, float* ox, float* oy) const {
+        if (ENRAGED) { *ox = x + (fly_face == FACE_LEFT ? -40.0f : 40.0f); *oy = y - 9.0f; return; }
+        int f = facing_toward4(px - x, py - y);
+        float bx = f == FACE_DOWN ? -12.0f : f == FACE_UP ? -1.0f : 26.0f, by = f == FACE_DOWN ? -22.0f : f == FACE_UP ? -36.0f : -25.0f;
+        *ox = x + (f == FACE_LEFT ? -bx : bx); *oy = y + by;
+    }
+    // The two wingtips on idle f2, by view (side views: the near wing's tip
+    // and its lower edge). o = { x0, y0, x1, y1 }.
+    void wingtips(float px, float py, float o[4]) const {
+        static const float D[4] = { -34, 6, 34, 10 }, R[4] = { -34, 4, -26, 18 }, U[4] = { -38, -10, 38, -10 };
+        int f = facing_toward4(px - x, py - y);
+        const float* t = f == FACE_DOWN ? D : f == FACE_UP ? U : R;
+        float m = f == FACE_LEFT ? -1.0f : 1.0f;
+        o[0] = x + m * t[0]; o[1] = y + t[1]; o[2] = x + m * t[2]; o[3] = y + t[3];
+    }
 public:
     Makalala() : Enemy(320, 140, 580, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()           const override { return "MAKALALA"; }
-    int         breath_frame()   const override { return 2; }       // wings flung out: every other time, the clap
+    int         breath_frame()   const override { return 2; }       // wings flung out: the glide
     int         fly_face = FACE_RIGHT;                               // flying: the side the player is on
-    int         move_facing()    const override { return ENRAGED ? fly_face : clap_face; }   // planted: the clap's held view, else toward the player
+    int         move_facing()    const override { return ENRAGED ? fly_face : -1; }   // planted: toward the player
     bool        four_views()     const override { return true; }
     bool        free_movement()  const override { return ENRAGED; }   // phase 2's dive: the user's
-    float       fire_interval()  const override { return 0.05f; }   // the spiral, burst and rings on their own clocks
+    float       fire_interval()  const override { return 0.05f; }   // everything on its own clocks
     // Phase 2 is FLOWN, a wingbeat per 0.28 s.
     float flap_phase() const override { return ENRAGED ? fmodf(bob / 0.28f, 1.0f) : -1.0f; }
-    bool take_gust(float* dx, float* dy) override {
-        if (!gust_ready) return false;
-        gust_ready = false;
-        face_dir(clap_face, dx, dy);
-        clap_face = -1;                                          // clapped: free to turn again
-        return true;
-    }
     void update(float dt, float px, float py) override {
         bob += dt;
         fly_face = px < x ? FACE_LEFT : FACE_RIGHT;
-        if (!ENRAGED) {                                          // planted
-            since_breath += dt;
-            // The warning starts: it turns to the player, and holds that view.
-            if (breaths % 2 == 1 && clap_face < 0 && since_breath > breath_gap - CLAP_WARN)
-                clap_face = facing_toward(px - x, py - y);
+        if (rattle_left > 0 && (rattle_clock -= dt) <= 0.0f) { rattle_clock += RATTLE_DT; rattle_left--; rattle_due++; }
+        if (!ENRAGED) {
+            if (glide_t < 0.0f) return;                          // on the ground till the next flap
+            float t0 = glide_t / GLIDE_T, t1 = fminf((glide_t += dt) / GLIDE_T, 1.0f);
+            float st = GLIDE_D * ((1.0f - t0) * (1.0f - t0) - (1.0f - t1) * (1.0f - t1));   // easing out
+            float gx = px - x, gy = py - y, gd = hypotf(gx, gy);
+            bool near = st >= gd - GLIDE_NEAR;
+            st = fminf(st, fmaxf(gd - GLIDE_NEAR, 0.0f));
+            if (gd > 1.0f) { x += gx / gd * st; y += gy / gd * st; }
+            keep();
+            if (t1 >= 1.0f || near) {                            // landed: a scream or a rattle, by turns
+                glide_t = -1.0f;
+                if (lands++ % 2 == 0) scream_pending = true;
+                else {
+                    wingtips(px, py, ro);
+                    ra[0] = aim_at(ro[0], ro[1], px, py); ra[1] = aim_at(ro[2], ro[3], px, py);
+                    rattle_left = RATTLE_N; rattle_clock = 0.0f;
+                }
+            }
             return;
         }
-        if (!p2_begun) { p2_begun = true; clap_face = -1; gust_ready = false; }   // a clap half-warned in phase 1: dropped
+        rattle_left = 0;                                         // no rattle carried into the air
         if (!hovering) {
-            // Taking off: up to its spot at the top, then hanging there.
-            float hx = HOVER_X - x, hy = HOVER_Y - y, hd = hypotf(hx, hy);
-            if (hd > 6.0f) { float st = fminf(150.0f * dt, hd); x += hx / hd * st; y += hy / hd * st; return; }
+            // Taking off: up to its spot at the top, then hovering.
+            float gx = hx - x, gy = hy - y, gd = hypotf(gx, gy);
+            if (gd > 6.0f) { float st = fminf(150.0f * dt, gd); x += gx / gd * st; y += gy / gd * st; return; }
             hovering = true; rest = 0.0f;
         }
-        if (dive != D_NONE) {                                    // the clap and dive
+        if (dive != D_NONE) {                                    // the club dive
             dive_t += dt;
             auto go = [&](float tx, float ty, float v) {         // toward (tx, ty) at v; true there
                 float gx = tx - x, gy = ty - y, gd = hypotf(gx, gy), st = v * dt;
                 if (gd <= st) { x = tx; y = ty; return true; }
                 x += gx / gd * st; y += gy / gd * st; return false;
             };
-            // Its body (26x43 drawn 2x) kept on screen.
-            auto keep = [&]() { x = fminf(fmaxf(x, 28.0f), ARENA_W - 28.0f); y = fminf(fmaxf(y, ARENA_TOP + 44.0f), ARENA_H - 44.0f); };
             if (dive == D_WIND) {                                // shivering in place: a 2 px buzz
                 x = wx0 + ((int)(dive_t * 40.0f) % 2 ? 2.0f : -2.0f);
                 if (dive_t >= DIVE_WIND) { x = wx0; dive = D_DIVE; dive_t = 0.0f; }
             } else if (dive == D_DIVE || dive == D_CHASE) {      // in fast to just off them, then straight at them
                 float gx = px - x, gy = py - y, gd = hypotf(gx, gy);
-                if (dive == D_DIVE && gd <= CHASE_NEAR) { dive = D_CHASE; dive_t = 0.0f; }
+                if (dive == D_DIVE && gd <= CHASE_NEAR) { dive = D_CHASE; dive_t = 0.0f; flick_clock = 0.0f; }
                 float st = (dive == D_DIVE ? DIVE_V : CHASE_V) * dt;
-                if (gd > 1.0f) { x += gx / gd * fminf(st, gd); y += gy / gd * fminf(st, gd); }
+                if (gd > 1.0f) { cdx = gx / gd; cdy = gy / gd; x += cdx * fminf(st, gd); y += cdy * fminf(st, gd); }
                 keep();
+                if (dive == D_CHASE && (flick_clock -= dt) <= 0.0f) { flick_clock += FLICK_DT; flick_due++; }   // the rattle
                 if (dive == D_CHASE && dive_t >= CHASE_T) { dive = D_BACK; dive_t = 0.0f; }
-            } else if (go(HOVER_X, HOVER_Y, BACK_V)) { dive = D_NONE; rest = 0.0f; }
+            } else if (go(hx, hy, BACK_V)) { dive = D_NONE; rest = 0.0f; }
             return;
         }
-        x = HOVER_X; y = HOVER_Y + 4.0f * sinf(bob * 3.0f);
+        {   // drifting at the player, kept off them and in the upper arena
+            float gx = px - hx, gy = py - hy, gd = hypotf(gx, gy);
+            if (gd > DRIFT_NEAR) { float st = fminf(DRIFT_V * dt, gd - DRIFT_NEAR); hx += gx / gd * st; hy += gy / gd * st; }
+            hx = fminf(fmaxf(hx, 46.0f), ARENA_W - 46.0f); hy = fminf(fmaxf(hy, ARENA_TOP + 52.0f), DRIFT_LOW);
+        }
+        x = hx; y = hy + 4.0f * sinf(bob * 3.0f);
         ring_t += dt;
-        if ((rest += dt) >= HOVER_REST) {
-            {
-                rest = 0.0f;
-                // Rested: it claps -- the gust the way nearest the player,
-                // the spray (fire) -- then shivers, and comes after them.
-                clap_face = facing_toward(px - x, py - y);
-                gust_ready = true; clap_pending = true;
-                dive = D_WIND; dive_t = 0.0f; wx0 = x;
-            }
+        if ((rest += dt) >= HOVER_REST) {                        // rested: it shivers, and comes after them
+            rest = 0.0f;
+            dive = D_WIND; dive_t = 0.0f; wx0 = x;
         }
     }
     int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
-        if (!ENRAGED) return 0;                                  // phase 1 is the clap (breathe)
-        if (clap_pending) { clap_pending = false; n += spray(px, py, out, max); }
-        if (hovering && dive == D_NONE && ring_t >= RING_EVERY) {   // a slow ring of 20 from the club
+        float ox, oy;
+        if (scream_pending) {                                    // the scream: a rippled ring from its beak
+            scream_pending = false;
+            beak(px, py, &ox, &oy);
+            float turn = ernd() * TAU;
+            for (int i = 0; i < SCREAM_N && n < max; i++) {
+                BulletSpawn b = mk(turn + i * (TAU / SCREAM_N), i % 2 ? SCREAM_V2 : SCREAM_V, 3.0f, 5.0f);
+                b.from = true; b.ox = ox; b.oy = oy;
+                out[n++] = b;
+            }
+        }
+        for (; rattle_due > 0; rattle_due--)                     // the rattle: a shot down each stream
+            for (int k = 0; k < 2 && n < max; k++) {
+                BulletSpawn b = mk(ra[k] + (ernd() * 2.0f - 1.0f) * RATTLE_JIT, RATTLE_V, 3.0f, 5.0f);
+                b.from = true; b.ox = ro[2 * k]; b.oy = ro[2 * k + 1];
+                out[n++] = b;
+            }
+        for (; flick_due > 0; flick_due--)                       // chasing: each wing flicks one out square
+            for (int k = -1; k <= 1 && n < max; k += 2) {
+                float sx = -cdy * k, sy = cdx * k;
+                BulletSpawn b = mk(atan2f(sy, sx), FLICK_V, 3.0f, 5.0f);
+                b.from = true; b.ox = x + sx * 20.0f; b.oy = y + sy * 20.0f;
+                b.life = FLICK_LIFE; b.fade_out = true;
+                out[n++] = b;
+            }
+        if (ENRAGED && hovering && dive == D_NONE && ring_t >= RING_EVERY) {   // the scream from the air: a slow ring of 20
             ring_t = 0.0f;
-            float ox, oy, turn = ernd() * TAU;
-            club(&ox, &oy);
-            for (int i = 0; i < 20; i++) {
+            beak(px, py, &ox, &oy);
+            float turn = ernd() * TAU;
+            for (int i = 0; i < 20 && n < max; i++) {
                 BulletSpawn b = mk(turn + i * (TAU / 20), 95.0f, 3.0f, 5.0f);
                 b.from = true; b.ox = ox; b.oy = oy;
                 out[n++] = b;
@@ -9271,16 +9286,8 @@ public:
         return n;
     }
     int breathe(float px, float py, BulletSpawn out[], int max) override {
-        if (ENRAGED) return 0;
-        if (since_breath > 0.3f) breath_gap = since_breath;     // the idle loop's beat: when the next comes
-        since_breath = 0.0f;
-        if (++breaths % 2) return 0;                             // wings out, no clap: the warning runs to the next
-        // The clap, from its body where the wings meet, along the view it
-        // holds (taken now if the warning never came -- a beat misjudged):
-        // the gust that way, and a spray of shots at the player.
-        if (clap_face < 0) clap_face = facing_toward(px - x, py - y);
-        gust_ready = true;
-        return spray(px, py, out, max);
+        if (!ENRAGED) glide_t = 0.0f;                            // wings flung out (every loop): it glides at them (update)
+        return 0;
     }
 };
 
