@@ -3765,77 +3765,155 @@ public:
 // wings and a falcon's head crowned with three uraei -- the royal cobras,
 // each with its sun disc -- and sometimes a serpent's tail; a creature of the
 // desert's edge, an ally of Set. UPPER tier, 650 HP, sun-gold bullets. MEDIUM
-// sheet (frame 1 the wings raised, frame 2 the downstroke). It hangs still in
-// the air at the top. Every shot at one pace, SPEED.
+// sheet, 8 views, {0, 1, 0, 2} at 260 ms -- a wingbeat every 1.04 s: frame 1
+// the wings raised, frame 2 the downstroke. Every shot at one pace, SPEED.
+// It FLIES (the user, 2026-11-18: "flying around a bit more"): a slow figure
+// of eight across the upper arena (FLY_RX x FLY_RY about FLY_X, FLY_Y, a
+// lap every FLY_T s), holding back while the player is within FLY_NEAR px.
+// Its own shots are LOCKED to it (the user: "the bullets should lock with the
+// position of the enemy"): the shield and the uraei's rays are puppets
+// (BulletSpawn::puppet) placed round where it is every frame; the feathers
+// and the chaos water leave from where it is and fly free.
 // Round it always turns a SHIELD (the user): a ring of SHIELD_N shots
 // spinning at SHIELD_R, and every pattern flies out of that ring --
 // Phase 1:
-//   Uraei -- three arms of fire wheeling out of the ring, turning with it --
-//            a sun's rays.
-//   Wings -- every downstroke (idle frame 2) a fan of feathers off each side
-//            of the ring, curling in toward each other as they fly, mirror
+//   Uraei -- THE THREE URAEI, its crown's royal cobras: three arms of cobra
+//            venom (venom green, URAEUS_RGB), one off each WING TIP and the TAIL TIP (the
+//            user, 2026-11-18; as drawn on the frame shown), wheeling round,
+//            turning with the shield -- a sun's rays; a shot down each
+//            every ARM_EVERY s.
+//   Wings -- every downstroke (idle frame 2) a fan of feathers out of its body,
+//            one each side of the player, curling in toward each other as they fly, mirror
 //            images: a pair of wings drawn in shots.
-// Phase 2 (half HP) -- Set's sandstorm: three more arms wheeling the other
-//   way (the rays cross), wider wing fans, and every SAND_EVERY s a ring of
-//   sand spiralling off the whole shield.
+// Phase 2 (half HP) -- Set's CHAOS WATER (the lore: Set's ally, of darkness
+//   and the waters of chaos): as many arms again wheeling the other way (the
+//   rays cross), wider wing fans, and a ring of dark water (CHAOS_RGB)
+//   spiralling out
+//   of it as its wings rise (frame 1), every other wingbeat.
+// Every shot starts at its body and moves out from there -- nothing pops in
+// away from it (the user). Eased (the user, 2026-11-18: "both phases need
+// to be easier"): ARMS rays a set, an 18-shot shield, fans of FAN1 / FAN2,
+// the chaos water every other beat -- ~30% fewer shots a second.
 class Akhekh : public Enemy {
-    static constexpr float SPEED = 100.0f, ARM_EVERY = 0.05f, SAND_EVERY = 1.5f;
+    static constexpr float SPEED = 100.0f, ARM_EVERY = 0.125f;  // a shot down each arm every 0.125 s (the user: "less dense", then "slightly more dense")
+    static constexpr float FLY_X = 320.0f, FLY_Y = 130.0f, FLY_RX = 140.0f, FLY_RY = 35.0f, FLY_T = 12.48f, FLY_NEAR = 150.0f;   // a lap of 12 wingbeats; at most ~70 px/s
+    static constexpr int   URAEUS_RGB = 0x58d854, CHAOS_RGB = 0x1848b8;   // cobra venom; Set's dark water (white cores, as every shot)
+    static constexpr int   ARM_SLOT0 = 64;                   // puppet slots: 0..SHIELD_N-1 the shield, then the rays' shots
     static constexpr float SHIELD_R = 60.0f, SHIELD_W = 0.92f, SHIELD_FORM = 0.8f;   // the arms leave from it, so they wheel at its pace
-    static constexpr int   SHIELD_N = 24;
-    float arm_t = 0.0f, sand_t = 0.0f, t = 0.0f;
-    bool  shield_out = false;
+    static constexpr int   SHIELD_N = 18;            // 18 (was 24): easier (the user, 2026-11-18)
+    static constexpr int   ARMS = 3, FAN1 = 8, FAN2 = 11;   // an arm off each tip; feathers a fan (were 9 / 13, then 7 / 10)
+    // The arms' three tips -- LEFT WING, RIGHT WING, TAIL (the user: "from the
+    // tail wings end points") -- screen px from the frame's middle, by the
+    // view drawn (D DR R UR U UL L DL) and the idle frame (0 1 2).
+    // Measured by sprites (2026-11-18). From the side (R, L) one wing patch
+    // covers both: its one tip stands for both wings.
+    static constexpr float TIP[8][3][3][2] = {
+        { { { -43, -20 }, { 43, -20 }, { 29, 32 } }, { { -37, -20 }, { 35, -20 }, { 29, 32 } }, { { -45, 8 }, { 45, 8 }, { 25, 42 } } },   // D
+        { { { -33, -14 }, { 25, -24 }, { 21, 30 } }, { { -33, -2 }, { 27, -18 }, { 25, 28 } }, { { -31, 8 }, { 25, 2 }, { 23, 30 } } },   // DR
+        { { { -13, -14 }, { -13, -14 }, { 3, 32 } }, { { -17, -8 }, { -17, -8 }, { -25, 32 } }, { { -19, 16 }, { -19, 16 }, { -23, 28 } } },   // R
+        { { { -33, -20 }, { 33, -12 }, { -29, 36 } }, { { -35, -16 }, { 37, 2 }, { -29, 34 } }, { { -39, -4 }, { 35, 20 }, { -29, 32 } } },   // UR
+        { { { -43, -18 }, { 43, -18 }, { -33, 30 } }, { { -33, -14 }, { 33, -14 }, { -33, 36 } }, { { -21, 12 }, { 21, 12 }, { -33, 38 } } },   // U
+        { { { -33, -12 }, { 33, -20 }, { 29, 36 } }, { { -37, 2 }, { 35, -16 }, { 29, 34 } }, { { -35, 20 }, { 39, -4 }, { 29, 32 } } },   // UL
+        { { { 13, -14 }, { 13, -14 }, { -3, 32 } }, { { 17, -8 }, { 17, -8 }, { 25, 32 } }, { { 19, 16 }, { 19, 16 }, { 9, 24 } } },   // L
+        { { { -25, -24 }, { 33, -14 }, { -21, 30 } }, { { -27, -18 }, { 33, -2 }, { -25, 28 } }, { { -25, 2 }, { 31, 8 }, { -23, 30 } } },   // DL
+    };
+    static constexpr int   RAY_LOG = 128;            // the tips each stream shot left from, kept this many shots back (~19 s)
+    float ray_tip[RAY_LOG][ARMS][2] = {};
+    float ray_born[RAY_LOG] = {};            // when each stream shot left (its clock t) -- not when it was due: the
+                                             // fight holds its fire a moment at the start (the opening grace), and
+                                             // shots placed from when they were due popped in already out (the user)
+    float shield_t0 = 0.0f;                  // when the shield began to open (likewise)
+    float arm_t = 0.0f, t = 0.0f, fly = 0.0f, px_ = 320.0f, py_ = 400.0f;
+    int   arm_i = 0, beats = 0, idle_f = 0;        // the rays' shots so far; wingbeats so far; the idle frame shown
+    bool  shield_out = false, chaos_due = false;
 
     float spin() const { return t * SHIELD_W; }              // the shield's turn now
     void  on_ring(float a, float* ox, float* oy, float r = SHIELD_R) const { *ox = x + cosf(a) * r; *oy = y + sinf(a) * r; }
-    static constexpr float ARM_R = 20.0f;   // the arms start inside the shield and pass out through it: no safe spot just outside it (the tester)
+    // A ray's shot, from its puppet slot: shot i of the stream (one every
+    // ARM_EVERY s), arm k (its tip), the counter-turning set (phase 2) or
+    // not. Where it is now: out along its heading from the tip it left (as
+    // drawn when it left), carried with where the akhekh is NOW.
+    void ray_at(int slot, float* ox, float* oy) const {
+        int q = slot - ARM_SLOT0, i = q / 6, k = (q % 6) / 2;
+        bool counter = q & 1;
+        float born = ray_born[i % RAY_LOG], a = (counter ? -born * SHIELD_W + PI / ARMS : born * SHIELD_W) + k * (TAU / ARMS);
+        float r = SPEED * (t - born);
+        const float* tip = ray_tip[i % RAY_LOG][k];
+        *ox = x + tip[0] + cosf(a) * r; *oy = y + tip[1] + sinf(a) * r;
+    }
 public:
     Akhekh() : Enemy(320, 130, 650, {0.5f,0.5f,0.75f,0.5f,1.5f,1.0f,1.5f}) {}
     const char* name()          const override { return "AKHEKH"; }
     int         breath_frame()  const override { return 2; }       // the downstroke
-    float       fire_interval() const override { return 0.02f; }   // the shield, arms and sand on their own clocks
-    void update(float dt, float, float) override { t += dt; arm_t += dt; sand_t += dt; }
+    float       fire_interval() const override { return 0.02f; }   // the shield, arms and chaos water on their own clocks
+    // Where its puppets are this frame: the shield round it, the rays out of it.
+    bool puppet_at(int slot, float* ox, float* oy) const override {
+        if (slot < SHIELD_N) {
+            float u = fminf((t - shield_t0) / SHIELD_FORM, 1.0f), r = SHIELD_R * (1.0f - (1.0f - u) * (1.0f - u));   // opening out, easing
+            on_ring(spin() + slot * (TAU / SHIELD_N), ox, oy, r);
+            return true;
+        }
+        ray_at(slot, ox, oy);
+        return *ox > -20.0f && *ox < ARENA_W + 20.0f && *oy > ARENA_TOP - 20.0f && *oy < ARENA_H + 20.0f;   // gone once off the arena
+    }
+    void update(float dt, float px, float py) override {
+        t += dt; arm_t += dt; px_ = px; py_ = py;
+        // The figure of eight, held back while the player is near its body.
+        float d = hypotf(px - x, py - y);
+        fly += dt * fminf(fmaxf((d - FLY_NEAR) / 60.0f, 0.0f), 1.0f);
+        float w = TAU / FLY_T;
+        x = FLY_X + FLY_RX * sinf(w * fly);
+        y = FLY_Y + FLY_RY * sinf(2.0f * w * fly);
+    }
+    int on_idle_frame(int f, float, float, BulletSpawn[], int) override {
+        idle_f = f;
+        if (f == 1 && ENRAGED && beats++ % 2 == 0) chaos_due = true;   // its wings rise: the chaos water, every other beat (easier, the user)
+        return 0;
+    }
     int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
         if (!shield_out && max >= SHIELD_N) {
             // The shield: a ring opening out of it to SHIELD_R and spinning
             // there for the whole fight.
             shield_out = true;
-            for (int k = 0; k < SHIELD_N; k++) {
-                float v0 = 2.0f * SHIELD_R / SHIELD_FORM;
-                BulletSpawn b = mk(k * (TAU / SHIELD_N), v0, 3.0f, 5.0f);
-                b.accel = -v0 / SHIELD_FORM; b.min_speed = 0.01f;
-                b.orbit_w = SHIELD_W;
+            shield_t0 = t;                                       // it opens from its body NOW
+            arm_t = fminf(arm_t, ARM_EVERY);                     // and the rays start now too, no backlog
+            for (int k = 0; k < SHIELD_N; k++) {                 // puppets: held round it wherever it flies
+                BulletSpawn b = mk(0.0f, 0.0f, 3.0f, 5.0f);
+                b.from = true; puppet_at(k, &b.ox, &b.oy);
+                b.puppet = k;
                 out[n++] = b;
             }
         }
         while (arm_t >= ARM_EVERY && n + 6 <= max) {
-            // The uraei: three arms leaving the shield, wheeling with it (in
-            // phase 2 three more the other way).
+            // The three uraei: an arm of venom off each tip, wheeling with the shield (in
+            // phase 2 three more the other way) -- each shot starting at its
+            // tip as drawn now.
             arm_t -= ARM_EVERY;
-            for (int k = 0; k < 3; k++) {
-                float a = spin() + k * (TAU / 3), ox, oy;
-                on_ring(a, &ox, &oy, ARM_R);
-                BulletSpawn b = mk(a, SPEED, 2.5f, 5.0f);
-                b.from = true; b.ox = ox; b.oy = oy;
-                out[n++] = b;
-                if (ENRAGED) {
-                    float c = -spin() + k * (TAU / 3) + PI / 3;
-                    on_ring(c, &ox, &oy, ARM_R);
-                    BulletSpawn e = mk(c, SPEED, 2.5f, 5.0f);
-                    e.from = true; e.ox = ox; e.oy = oy;
-                    out[n++] = e;
-                }
+            int i = arm_i++, v = face8(facing_toward(px_ - x, py_ - y));
+            ray_born[i % RAY_LOG] = t;                           // it leaves its tip now
+            for (int k = 0; k < ARMS; k++) {
+                ray_tip[i % RAY_LOG][k][0] = TIP[v][idle_f % 3][k][0];
+                ray_tip[i % RAY_LOG][k][1] = TIP[v][idle_f % 3][k][1];
             }
+            for (int k = 0; k < ARMS; k++)
+                for (int c = 0; c <= (ENRAGED ? 1 : 0); c++) {   // puppets: the rays carried with it as it flies
+                    BulletSpawn b = mk(0.0f, 0.0f, 2.5f, 5.0f);
+                    b.puppet = ARM_SLOT0 + i * 6 + k * 2 + c;
+                    b.color = URAEUS_RGB;
+                    b.from = true; ray_at(b.puppet, &b.ox, &b.oy);
+                    out[n++] = b;
+                }
         }
-        if (ENRAGED && sand_t >= SAND_EVERY && n + SHIELD_N <= max) {
-            // Set's sand: off every shot of the shield, spiralling out.
-            sand_t = 0.0f;
+        if (chaos_due && n + SHIELD_N <= max) {
+            // Set's chaos water: a ring out of its body, spiralling out.
+            chaos_due = false;
             for (int k = 0; k < SHIELD_N; k++) {
-                float a = spin() + k * (TAU / SHIELD_N), ox, oy;
-                on_ring(a, &ox, &oy);
+                float a = spin() + k * (TAU / SHIELD_N);
                 BulletSpawn b = mk(a, SPEED * 0.8f, 2.5f, 5.0f);
-                b.from = true; b.ox = ox; b.oy = oy;
+                b.from = true; b.ox = x; b.oy = y;                // out of its body, through the shield (no pop-in)
                 b.orbit_w = 0.7f;
+                b.color = CHAOS_RGB;                              // colour only: a wave would not ride on its spiral (orbiting shots don't wave)
                 out[n++] = b;
             }
         }
@@ -3844,10 +3922,8 @@ public:
     int breathe(float px, float py, BulletSpawn out[], int max) override {
         // The downstroke: a fan of feathers off each side of the shield,
         // curling in toward each other -- mirror images.
-        int fan = ENRAGED ? 13 : 9, n = 0;
-        float down = aim_at(x, y, px, py), lx, ly, rx, ry;
-        on_ring(down + PI / 2, &lx, &ly);                        // the shield's left and right of the player's line
-        on_ring(down - PI / 2, &rx, &ry);
+        int fan = ENRAGED ? FAN2 : FAN1, n = 0;
+        float down = aim_at(x, y, px, py), lx = x, ly = y, rx = x, ry = y;   // out of its body (no pop-in, the user)
         for (int k = 0; k < fan && n + 2 <= max; k++) {
             float off = (k - (fan - 1) * 0.5f) * 0.12f;
             BulletSpawn l = mk(down + 0.25f + off, SPEED * 1.1f, 2.5f, 5.0f);  // the left wing's fan, leaning just left of the player
