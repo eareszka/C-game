@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1701-base-a-strong-gust-of-wind-blows-its-red-feather",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "description": "a strong gust of wind blows its red feather crest, the three plumes flung out wide and streaming to the side. keep the body, face and pose the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "cbe26a3a-8708-4425-980d-5db297160439",
+    "generation_id": "ffbf70e7-5dc9-4072-8744-df6bdb7c3e0c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-crest.png"
+  ]
+}

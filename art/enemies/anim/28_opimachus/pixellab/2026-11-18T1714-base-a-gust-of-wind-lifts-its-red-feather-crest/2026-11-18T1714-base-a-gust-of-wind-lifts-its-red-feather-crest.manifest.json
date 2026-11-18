@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1714-base-a-gust-of-wind-lifts-its-red-feather-crest",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 2948 characters>",
+      "format": "png"
+    },
+    "action": "a gust of wind lifts its red feather crest, the plumes rising and streaming out; the body stays still",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "30e8e9c0-d7c3-4995-8da0-c2321de2783e",
+    "generation_id": "2b1231ef-d72f-4821-8ed5-67e2e8bdbb25"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "cr-00.png",
+    "cr-01.png",
+    "cr-02.png",
+    "cr-03.png",
+    "cr-04.png"
+  ]
+}

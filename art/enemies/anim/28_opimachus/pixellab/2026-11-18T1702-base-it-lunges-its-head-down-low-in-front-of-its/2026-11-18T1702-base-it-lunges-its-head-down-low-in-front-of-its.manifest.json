@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1702-base-it-lunges-its-head-down-low-in-front-of-its",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "description": "it lunges its head down low in front of its chest, beak jabbing straight down and open, crest swept back. the body stays sitting, face still toward us",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "dae55f2b-8cbd-45a9-96be-34f62fd6dddb",
+    "generation_id": "2188a7bd-1768-4f5f-baeb-8170d14c981e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-peck2.png"
+  ]
+}

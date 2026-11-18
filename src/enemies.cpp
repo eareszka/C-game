@@ -4041,54 +4041,101 @@ public:
 
 // ── Wasteland enemies (IDs 28–34) ─────────────────────────────────────────────
 
-// The opimachus ("snake-fighter") of the medieval encyclopedias (A Book of
-// Creatures): small and weak beside a serpent but bold and skilled, it wins
-// by latching on just below the snake's head; by the Ortus Sanitatis a small
-// four-legged griffin with a long pointed beak and big rabbit's ears. UPPER
-// tier, 640 HP, gold bullets. MEDIUM sheet, redrawn 2026-10-12 as a crested,
-// sitting cat-griffin: 10 frames of 130 ms, the same 1.3 s loop as the old
-// 0 1 0 2 (frame 3, at 390 ms, the wind throws its crest furthest; frame 8, at
-// 1040 ms, it breathes out). It stands its ground. Every shot at one pace, SPEED.
-// Phase 1 -- the easier half (the user):
-//   Peck -- as it breathes out (idle frame PECK_FRAME) rings of small shots
-//           burst from the centre of its body: three rings, packed tight, each
-//           turned on from the last and turning as they spread -- curling chains.
-//   Ears -- the crest is blown out (idle frame CREST_FRAME): a ring of 8 off the
-//           top of each outer plume, the two rings half a step apart.
-// Phase 2 (half HP) -- the full pattern: four rings a peck (five hit 11 a
-//   minute, 2026-10-31), every other peck
-//   curling the other way; ear rings of 12.
+// The opimachus, "ophiomachus", the SNAKE-FIGHTER (A Book of Creatures):
+// Leviticus's chargol, a locust or cricket said to fight and kill snakes --
+// it latches on just below a snake's head, can't be pulled off, and kills
+// it; later drawn as a small griffin-fowl with a long pointed beak, big
+// rabbit's ears and long hind legs. UPPER tier, 640 HP, gold bullets. 48x54
+// sheet drawn 2x, one view, 5 frames x 260 ms (1.3 s): 0 rest, 1 crest
+// lifting, 2 CREST BLOWN OUT, 3 head drawn back, 4 THE PECK. It stands its
+// ground. Every shot starts at the part of it that makes it.
+// Bullet redo (the user, 2026-11-18):
+// Phase 1:
+//   Crest   -- blown out (f2): a ring of CREST1 off the top of each outer
+//              plume, half a step apart, at CREST_V.
+//   Serpents -- the peck (f4): its beak darts and SERPENTS pour from its tip
+//              at the player -- SERP_FAN apart, each a chain of SERP_N shots
+//              slithering (a wave) along one path, a shot every SERP_EVERY s.
+// Phase 2 (half HP) -- THE SNAKE FIGHT: as its crest lifts (f1) a SNAKE slithers
+//   in from a side wall toward it -- SNAKE_SEGS shots, a living chain (puppets:
+//   it places them) -- and holds, latched, SNAKE_HOLD px off it. On the peck
+//   (f4) it kills every snake within PECK_REACH: each bursts, a shot off
+//   each side of every segment flying out square to its body. A snake a
+//   beat, two every other beat (from both walls), up to six out. Crest rings of CREST2; the
+//   serpents still pour.
+// Fairness: a serpent or a snake is a line to go round, not through (its
+//   shots 12-17 px apart); serpents 0.3 rad apart (45 px at 150, ~38 px
+//   clear as they sway together); a burst's two walls 11 px clear; crest
+//   rings 0.52 / 0.39 rad round; nothing spawns within 90 px of the player.
 class Opimachus : public Enemy {
-    static constexpr float SPEED = 100.0f;
+    static constexpr int   CREST_FRAME = 2, PECK_FRAME = 4, SNAKE_FRAME = 1;
+    // Much denser (the user, 2026-11-18): crest 12 / 16 (was 8 / 12), five
+    // serpents of 8 (was three of 7), six snakes, bursts both sides.
+    static constexpr int   CREST1 = 12, CREST2 = 16;
+    static constexpr float CREST_V = 85.0f;
+    static constexpr int   SERP_N = 8, SERPS = 5;
+    static constexpr float SERP_EVERY = 0.1f, SERP_V = 120.0f, SERP_FAN = 0.3f, SERP_WAVE = 0.35f, SERP_WAVE_W = 6.0f;
+    static constexpr int   SNAKES = 6, SNAKE_SEGS = 9, SNAKE_SLOT0 = 2000;
+    static constexpr float SNAKE_V = 90.0f, SEG_GAP = 17.0f, SNAKE_A = 18.0f, SNAKE_K = 0.05f, SNAKE_HOLD = 70.0f;
+    static constexpr float PECK_REACH = 240.0f, BURST_V = 80.0f, CLEAR = 90.0f;
+    // Screen px from the frame's middle (48x54 drawn 2x; sprites, measured):
+    // the two outer plume tips blown out (f2) -- the far-right one streaming
+    // -- and the beak's tip darted forward (f4; the serpents' one path).
+    static constexpr float PLUME[2][2] = { { -5.0f, -49.0f }, { 43.0f, -15.0f } };
+    static constexpr float BEAK[2] = { -1.0f, 11.0f };
     float t = 0.0f;
-    static constexpr int   PECK_N = 36;
-    static constexpr float PECK_SPIN = 0.25f;  // the rings' turn as they spread: slow enough to adjust to (the user; was 0.5)
-    static constexpr float PECK_GAP = 0.16f;   // between rings: ~16 px apart as they spread (the user: wider)
-    int   rings_left = 0, pecks = 0;
-    float ring_t = 0.0f, ring_turn = 0.0f, ring_spin = PECK_SPIN, rx_ = 0.0f, ry_ = 0.0f;
-    // The 5-frame sheet (old 10-frame 0 2 3 6 8): the crest blown out, the peck.
-    static constexpr int CREST_FRAME = 2, PECK_FRAME = 4;
+    // The serpents pouring from its beak: shots still to come, their aims.
+    int   serp_left = 0;
+    float serp_t = 0.0f, serp_a[SERPS] = {};
+    // Phase 2's snakes: each slithers from (sx, sy) toward where it was aimed,
+    // its head s px along a wave, held at its hold distance; dead once pecked.
+    struct Snake { bool on = false; float t0 = 0.0f, sx = 0.0f, sy = 0.0f, ux = 1.0f, uy = 0.0f, hold = 0.0f; };
+    Snake snakes[SNAKES];
+    int   next_snake = 0, lifts = 0;
+    float burst_at[SNAKES][SNAKE_SEGS][2] = {}, burst_n[SNAKES][SNAKE_SEGS][2] = {};
+    bool  burst_due[SNAKES] = {};
 
-    void at(float fx, float fy, float* ox, float* oy) const {   // art px (50x39, drawn 2x about its middle) -> screen
-        *ox = x + (fx - 25.0f) * 2.0f; *oy = y + (fy - 19.5f) * 2.0f;
+    float head_s(const Snake& k) const { return fminf(SNAKE_V * (t - k.t0), k.hold); }
+    // Segment j of a snake: s px along its path (its tail still at the wall
+    // till it's out), the wave across it.
+    void seg_at(const Snake& k, int j, float* ox, float* oy, float* nx = nullptr, float* ny = nullptr) const {
+        float sj = fmaxf(head_s(k) - j * SEG_GAP, 0.0f), w = SNAKE_A * sinf(sj * SNAKE_K);
+        *ox = k.sx + k.ux * sj - k.uy * w; *oy = k.sy + k.uy * sj + k.ux * w;
+        if (nx) { *nx = -k.uy; *ny = k.ux; }
     }
 public:
     Opimachus() : Enemy(320, 140, 640, {1.0f,1.0f,1.0f,1.25f,1.0f,1.25f,1.25f}) {}
     const char* name()          const override { return "OPIMACHUS"; }
-    float       fire_interval() const override { return 0.02f; }   // the peck's rings on their own clock
-    void update(float dt, float, float) override { t += dt; ring_t += dt; }
+    float       fire_interval() const override { return 0.02f; }   // the serpents and bursts on their own clock
+    bool puppet_at(int slot, float* ox, float* oy) const override {
+        int q = slot - SNAKE_SLOT0, i = q / 16, j = q % 16;
+        if (q < 0 || i >= SNAKES || j >= SNAKE_SEGS || !snakes[i].on) return false;   // pecked: gone
+        seg_at(snakes[i], j, ox, oy);
+        return true;
+    }
+    void update(float dt, float, float) override { t += dt; serp_t += dt; }
     int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
-        while (rings_left > 0 && ring_t >= PECK_GAP && n + PECK_N <= max) {
-            // The peck's rings: small balls packed tight, each ring turned on a
-            // step, all turning as they spread -- curling chains.
-            ring_t -= PECK_GAP; rings_left--;
-            ring_turn += 0.06f;
-            for (int k = 0; k < PECK_N; k++) {
-                BulletSpawn b = mk(ring_turn + k * (TAU / PECK_N), SPEED, 3.0f, 5.0f);   // small (the user)
-                b.from = true; b.ox = rx_; b.oy = ry_;
-                b.orbit_w = ring_spin;
+        while (serp_left > 0 && serp_t >= SERP_EVERY && n + SERPS <= max) {   // the serpents: a shot down each path
+            serp_t -= SERP_EVERY; serp_left--;
+            for (int k = 0; k < SERPS; k++) {
+                BulletSpawn b = mk(serp_a[k], SERP_V, 3.0f, 5.0f);
+                b.from = true; b.ox = x + BEAK[0]; b.oy = y + BEAK[1];
+                b.wave = SERP_WAVE; b.wave_w = SERP_WAVE_W;   // every shot on the same wave: one slithering chain
                 out[n++] = b;
+            }
+        }
+        for (int i = 0; i < SNAKES; i++) {                       // a pecked snake bursts: a shot off every segment
+            if (!burst_due[i]) continue;
+            burst_due[i] = false;
+            for (int j = 0; j < SNAKE_SEGS && n + 2 <= max; j++) {
+                float bx = burst_at[i][j][0], by = burst_at[i][j][1];
+                if (hypotf(px - bx, py - by) < CLEAR) continue;
+                for (int sd = -1; sd <= 1; sd += 2) {              // both sides of its body: two walls moving apart, 11 px clear
+                    BulletSpawn b = mk(atan2f(burst_n[i][j][1] * sd, burst_n[i][j][0] * sd), BURST_V, 3.0f, 5.0f);
+                    b.from = true; b.ox = bx; b.oy = by;
+                    out[n++] = b;
+                }
             }
         }
         return n;
@@ -4096,21 +4143,52 @@ public:
     int on_idle_frame(int frame, float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
         if (frame == PECK_FRAME) {
-            // The peck: rings start bursting from the centre of its body (the user).
-            rx_ = x; ry_ = y;
-            rings_left = ENRAGED ? 4 : 3; ring_t = PECK_GAP;
-            ring_turn = ernd() * TAU;
-            ring_spin = (ENRAGED && (pecks & 1)) ? -PECK_SPIN : PECK_SPIN;
-            pecks++;
+            // The peck: serpents pour from its beak at the player...
+            float bx = x + BEAK[0], by = y + BEAK[1];
+            if (hypotf(px - bx, py - by) >= CLEAR) {
+                float a = aim_at(bx, by, px, py);
+                for (int k = 0; k < SERPS; k++) serp_a[k] = a + (k - (SERPS - 1) * 0.5f) * SERP_FAN;
+                serp_left = SERP_N; serp_t = SERP_EVERY;
+            }
+            // ...and every snake in reach is killed: it bursts.
+            for (int i = 0; i < SNAKES; i++) {
+                Snake& k = snakes[i];
+                if (!k.on) continue;
+                float hx, hy;
+                seg_at(k, 0, &hx, &hy);
+                if (hypotf(hx - x, hy - y) > PECK_REACH) continue;
+                for (int j = 0; j < SNAKE_SEGS; j++) seg_at(k, j, &burst_at[i][j][0], &burst_at[i][j][1], &burst_n[i][j][0], &burst_n[i][j][1]);
+                k.on = false; burst_due[i] = true;
+            }
+        } else if (frame == SNAKE_FRAME && ENRAGED) {
+          // A snake slithers in from a side wall, toward it -- and every other
+          // beat a second from the other wall.
+          float side = ernd() < 0.5f ? 4.0f : ARENA_W - 4.0f;
+          for (int c = 0; c < (lifts++ % 2 ? 2 : 1); c++, side = ARENA_W - side) {
+            int i = next_snake;
+            next_snake = (next_snake + 1) % SNAKES;
+            if (snakes[i].on) continue;                          // all six still out: none this beat
+            Snake& k = snakes[i];
+            k.on = true; k.t0 = t;
+            k.sx = side;
+            k.sy = ARENA_TOP + 60.0f + ernd() * (ARENA_H - ARENA_TOP - 120.0f);
+            float dx = x - k.sx, dy = y - k.sy, d = hypotf(dx, dy);
+            k.ux = dx / d; k.uy = dy / d; k.hold = fmaxf(d - SNAKE_HOLD, 0.0f);
+            for (int j = 0; j < SNAKE_SEGS && n < max; j++) {    // its body: puppets, out of the wall one by one
+                BulletSpawn b = mk(0.0f, 0.0f, 3.0f, 5.0f);
+                b.puppet = SNAKE_SLOT0 + i * 16 + j;
+                b.from = true; seg_at(k, j, &b.ox, &b.oy);
+                out[n++] = b;
+            }
+          }
         } else if (frame == CREST_FRAME) {
             // The crest blown out: a ring off the top of each outer plume, half a
-            // step apart (phase 1 a lighter ring). The tops as drawn on this frame.
-            float ex[2], ey[2], turn = ernd() * TAU;
-            at(22.0f, 4.5f, &ex[0], &ey[0]); at(36.0f, 4.5f, &ex[1], &ey[1]);
+            // step apart (phase 1 a lighter ring).
+            float turn = ernd() * TAU;
             for (int e = 0; e < 2; e++)
-                for (int k = 0, m = ENRAGED ? 12 : 8; k < m && n < max; k++) {
-                    BulletSpawn b = mk(turn + (k + e * 0.5f) * (TAU / m), SPEED * 0.85f, 2.5f, 5.0f);
-                    b.from = true; b.ox = ex[e]; b.oy = ey[e];
+                for (int k = 0, m = ENRAGED ? CREST2 : CREST1; k < m && n < max; k++) {
+                    BulletSpawn b = mk(turn + (k + e * 0.5f) * (TAU / m), CREST_V, 2.5f, 5.0f);
+                    b.from = true; b.ox = x + PLUME[e][0]; b.oy = y + PLUME[e][1];
                     out[n++] = b;
                 }
         }

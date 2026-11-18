@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1702-base-it-rears-its-head-up-and-jabs-the-beak-forw",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "description": "it rears its head up and jabs the beak forward at us, beak wide open, eyes wide, crest pressed flat back. keep the body the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "718d1d94-f082-4512-9a33-bd21a7720264",
+    "generation_id": "5c375e78-1d3f-4c4f-9561-3ee5eee3df1a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-peck3.png"
+  ]
+}

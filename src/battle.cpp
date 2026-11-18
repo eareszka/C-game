@@ -238,7 +238,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
     { "assets/enemies/redraws/26_akhekh.png",                 {0, 1, 0, 2} },
     { "assets/enemies/27_grootslang.png",             {}, 5 },
-    { "assets/enemies/28_opimachus.png",              {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // medium (frame 50x39), one view, never mirrored: sitting, tail curling up then stretching out, crest in the wind; 5 frames x 260 ms (cut from 10: 0 2 3 6 8)
+    { "assets/enemies/28_opimachus.png",              {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // medium (frame 48x54), front only in all 8 dirs, never mirrored (art/enemies/anim/28_opimachus/build.py: the still + PixelLab crest, hand head moves): 5 x 260 ms -- 0 rest, 1 crest lifting, 2 CREST BLOWN OUT (the ear rings; plume tips (-5,-49) (+15,-51) (+35,-31) (+43,-15)), 3 head drawn back, 4 THE PECK (head dips; beak tip (-1,+11), else (-1,+3))
     { "assets/enemies/redraws/29_karnabo.png",                {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: stooped green bogey in a huge slate robe, trunk of a nose; idle 0 and 1, pose 2 hands flung out, trunk coiled in a ring, held as a shot leaves it
     { "assets/enemies/30_dajna.png",                  {}, 8, true, "assets/enemies/30_dajna_sit.png", "assets/enemies/30_dajna_sat.png" },   // fills the top of the arena: one row per direction
     { "assets/enemies/redraws/31_man_eating_boulder.png",     {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: moss-draped boulder that is mostly mouth; idle 0 jaws open and 1 shut, pose 2 reared, jaws widest, held as rocks leave its gullet

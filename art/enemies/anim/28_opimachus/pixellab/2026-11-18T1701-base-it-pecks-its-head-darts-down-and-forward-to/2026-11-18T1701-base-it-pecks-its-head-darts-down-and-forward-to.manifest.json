@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1701-base-it-pecks-its-head-darts-down-and-forward-to",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1356 characters>",
+      "format": "png"
+    },
+    "description": "it pecks: its head darts down and forward toward the viewer, short beak open, neck stretched, crest flattened back. keep the sitting body the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "13546ae5-45ee-4c92-b400-1e544175e761",
+    "generation_id": "e6659021-bd3d-4aaf-98b6-c397482e2244"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-peck.png"
+  ]
+}
