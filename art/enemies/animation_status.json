@@ -111,5 +111,12 @@
     "reviewed": "2026-11-18",
     "gens": 5,
     "notes": "The user: keep the design (the crested sitting cat-griffin), add animation. The installed sheet had been a still in every frame since the stills commit. Now front only, 5 x 260 ms, 48x54 (was 44x44: the blown crest rises above it): 0 rest (the still), 1 crest lifting (PixelLab animate), 2 CREST BLOWN OUT (PixelLab edit, above the neck, on the still's body), 3 head drawn back (hand, up 2), 4 THE PECK (hand, the head dips 4). From the centre x2: f2 plume tips (-5,-49) (+15,-51) (+35,-31) (+43,-15); beak tip (-1,+3), on f4 (-1,+11)."
+  },
+  "61": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-18",
+    "gens": 10,
+    "notes": "The user's approved FRONT still (39x52 3/4 view), exactly, one view in every direction; the side cycle they passed on is in art/_backup/61_side_cycle_* (build_side.py), and the a87c503d run in art/_backup/61_run_restored_*. 60x60, 9 x 260 ms: 0 sprint bound (the whole body 2 px up, the left leg up 5), 1 contact, 2 bound (the right leg), 3-5 the rope growing (PixelLab animate still -> f-lasso), 6 THE LASSO fully out (f-lasso), 7-8 drawn back. The user: the rope must be seen growing; the legs aggressive. From the centre x2: loop front (+57,-19) on f6; snout (+1,-1), on f0/f2 (+1,-5); rattle tip (-41,-29)..(-45,-15). Ghosts: assets/enemies/61_roperite_ghosts.png, 9 square 60x60 cells, the same frames, pale blue-white at baked alpha 150. 2026-11-18 play-test (the user: 'always either walking or dashing'): the walk (bound / contact / bound) now cycles under the rope too. Frames 3-8 are the walking body with the PixelLab rope pasted on, its own rope and rattle masked out. New frame 60x62. The flap = the DASH (61_roperite_dash.png, 4 x 260 ms by hand: crouch-stride with a 6 px kick, a weave and a dust puff / airborne 3 px). Ghosts: 13 cells, 0-8 the idle, 9-12 the dash. From the centre x2: lasso loop front (+57,-21) on f6; snout (+1,-3) on the bound frames, (+1,+1) on contact; rattle tip (-41..-35, -31..-27)."
   }
 }

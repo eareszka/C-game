@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1744-base-its-rope-snout-unfurls-and-grows-outward-th",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 3684 characters>",
+      "format": "png"
+    },
+    "action": "its rope snout unfurls and grows outward, the loop widening step by step into a huge lasso circle round its body; the body and legs stay still",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5bab5375-9cfb-4093-a2e0-b5c07166353c",
+    "generation_id": "15dbe338-cb2d-4a6e-9a05-5ded3022e306"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "grow-00.png",
+    "grow-01.png",
+    "grow-02.png",
+    "grow-03.png",
+    "grow-04.png"
+  ]
+}

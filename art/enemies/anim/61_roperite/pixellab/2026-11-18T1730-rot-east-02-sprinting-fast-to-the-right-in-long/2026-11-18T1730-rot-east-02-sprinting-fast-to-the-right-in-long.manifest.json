@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1730-rot-east-02-sprinting-fast-to-the-right-in-long",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1868 characters>",
+      "format": "png"
+    },
+    "action": "sprinting fast to the right in long low bounds, legs reaching far front and back, the rope snout loop and rattle tail bouncing",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "524dc9c1-7cf5-494d-92c8-2d55c8eff03a",
+    "generation_id": "072dfd77-73e8-4f0a-aff3-db1b76e68dc1"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "run-00.png",
+    "run-01.png",
+    "run-02.png",
+    "run-03.png",
+    "run-04.png"
+  ]
+}

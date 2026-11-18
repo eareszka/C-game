@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1727-a-tan-desert-runner-beast-its-snout-drawn-out-in",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "a tan desert runner beast, its snout drawn out into a long rope looped above its head, flipper-like legs, a big orange and red rattle on its tail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "bcaa9379-2cfe-413c-ab44-64dadb8a009b",
+    "generation_id": "f55654c3-6bae-44d4-9796-8d9785742e6c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1731-run-02-the-rope-arching-over-its-back-now-whips",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1796 characters>",
+      "format": "png"
+    },
+    "description": "the rope arching over its back now whips forward past its head and out to the right, ending in an open lasso loop ahead of its snout. keep the body, legs, striped rattle and colours exactly",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "548f9571-aa3f-4a0e-a116-a43370c2910d",
+    "generation_id": "0dd72759-d8bb-43a0-8abd-fa1008a0a300"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-lasso2.png"
+  ]
+}

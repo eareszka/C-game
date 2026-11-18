@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1820-base-it-dashes-toward-us-at-full-speed-body-lean",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "it dashes toward us at full speed: body leaning far forward and low, head down, legs stretched wide in a long running stride, rattle tail streaming flat out behind, the rope snout pulled back tight over its back. keep its colours and face",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c2a38bec-93fd-41d9-a4f9-6c062b7bd890",
+    "generation_id": "98accc10-6033-400d-9098-3c1517a84e9c"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "d-key.png"
+  ]
+}

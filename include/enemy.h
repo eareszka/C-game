@@ -8,6 +8,7 @@ struct BulletSpawn {
     float radius;
     float damage;
     bool  bouncing       = false;
+    int   max_bounces    = 3;       // a bouncing shot is gone at this many wall hits (2: one bounce, then gone at the next wall)
     bool  spawner        = false;
     float spawn_interval = 0.0f;
     bool  homing         = false;
@@ -213,7 +214,8 @@ public:
     // own fire()/breathe() (shots with from = true at their spot), so each
     // enemy designs its turrets' patterns. Drawn over the enemy and under the
     // shots; none once the enemy is dead. Fills `out`, returns how many.
-    struct Spawner { float x, y; int frame = 0; float hurt_r = 0.0f; };
+    // `scale`: screen px per art px (2, as everything; 1 draws it half size).
+    struct Spawner { float x, y; int frame = 0; float hurt_r = 0.0f; float scale = 2.0f; };
     virtual int spawners(Spawner /*out*/[], int /*max*/) const { return 0; }
     // Marks it leaves on the ground (footprints) -- drawn under everything,
     // seen however far away, harmless; `kind` picks the frame of the

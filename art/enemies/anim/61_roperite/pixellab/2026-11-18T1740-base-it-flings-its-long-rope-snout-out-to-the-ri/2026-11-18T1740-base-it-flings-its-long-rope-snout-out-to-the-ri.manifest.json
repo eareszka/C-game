@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1740-base-it-flings-its-long-rope-snout-out-to-the-ri",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "it flings its long rope snout out to the right in a big open lasso loop, the rope stretched far out from its face. keep its body, legs, rattle tail, face and colours exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "cb72fbff-e726-4bc2-b60c-4d323655fadc",
+    "generation_id": "1069a3f6-9808-41cf-a4fc-bd2f5b3003ab"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f-lasso.png"
+  ]
+}

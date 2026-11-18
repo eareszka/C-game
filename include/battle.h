@@ -99,7 +99,8 @@ struct Bullet {
     float damage;
     bool  active;
     bool  bouncing;
-    int   bounces;        // wall hits; deleted at 3
+    int   bounces;        // wall hits; deleted at max_bounces (BulletSpawn::max_bounces, 3)
+    int   max_bounces;
     bool  spawner;        // orange orb — emits sub-bullets while in flight
     float spawn_timer;
     float spawn_interval;

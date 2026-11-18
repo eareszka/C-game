@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1729-rot-east-02-while-running-right-it-flings-its-lo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1868 characters>",
+      "format": "png"
+    },
+    "description": "while running right it flings its long rope snout far out ahead of it in a big open lasso loop, the rope stretched forward. keep its body, rattle tail and colours",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0b10fbac-f61e-4da7-b762-a4953aa458bb",
+    "generation_id": "511f956c-8e5e-473f-8e69-12e7c9cce560"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-lasso.png"
+  ]
+}

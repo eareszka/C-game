@@ -9548,103 +9548,267 @@ public:
     }
 };
 
-// The roperite (Fearsome Creatures, California): a fast runner whose snout
-// is drawn out into a long rope that it lassos its prey with, running it
-// down; the rattle on its tail warns it's coming. UPPER tier, 620 HP,
-// rattle-orange bullets. BIG sheet, the idle a sprint cycle -- it is
-// DASHING AT ALL TIMES (the user): it runs laps of the upper arena, round an
-// ellipse, facing the way it runs.
-// Every shot leaves from the part of it that throws it (the user): the
-// lasso from the forward tip of its rope loop, the rattle shots from its tail.
+// The roperite (A Book of Creatures; Fearsome Creatures, California): a
+// pony-sized runner with a rope-like beak it LASSOES its prey with, then DRAGS
+// the catch through the THORNBUSHES till it dies; so fast -- "between
+// bounding and flying" -- nothing outruns it; its RATTLE tail whirs like a
+// giant rattlesnake's in the chase; it runs in HERDS, said to be the ghosts
+// of Spanish ranchers. UPPER tier, 620 HP, ROPE bullets (the user: "all of
+// its bullets should be rope themed"): rope-tan, knots brown. The user's
+// approved 3/4 FRONT still, animated, one view whichever way it runs: 9
+// frames x 260 ms (2.34 s), f6 the LASSO fully out. Ghosts:
+// 61_roperite_ghosts, one view, a cell per frame. It MOVES as a fast
+// bullet-hell boss (the user, 2026-11-18): in time with its loop it DARTS
+// across the upper arena on f0-f2 (the dash sheet), eased in and out, to a
+// spot DART_MIN-DART_MAX px off, never into or past the player, then HOLDS
+// on f3-f8 (the idle, walking under its rope) and throws. Every shot starts
+// at the part that makes it (no pop-in).
+// Bullet redo (the user, 2026-11-18):
 // Phase 1:
-//   Rattle -- as it runs its tail drops a rattle shot every RATTLE_EVERY s;
-//             each sits RATTLE_WAIT s where it fell, then darts at the player.
-//   Lasso  -- when it flicks its rope out (idle frame 2) it throws a LOOP: a
-//             ring of 12 flying together at the player, slowing to a stop
-//             out where the player was, then reeled back the way it came
-//             (never thrown at a player within LASSO_MIN px: no dodging it).
-// Phase 2 (half HP): it runs faster and turns back on itself every TURN_EVERY
-//   s; it throws two loops either side of the player, and the rattle comes
-//   quicker and darts faster.
+//   Lasso  -- the throw (f6): a LOOP of LASSO_N opens out of its rope's tip
+//             and flies at where the player is, slowing to a stop there; it
+//             CINCHES shut, then is reeled back to the tip, wherever the
+//             roperite has run to -- the catch dragged home. A puppet ring:
+//             it places every shot. Not thrown at a player within LASSO_MIN.
+//   Knot   -- as a loop cinches shut, a KNOT bursts off it: a ring of KNOT_N;
+//             every other knot RICOCHETS off a wall ONCE (BulletSpawn::bouncing,
+//             max_bounces 2: gone at the next wall). Not within KNOT_CLEAR of
+//             the player. (Lighter: the user found the ricochets too dense.)
+//   Rings  -- a ring rolls out of its body as each dart sets off
+//             (STRIDE_N), and another as it lands (LAND_N).
+// Circles and some ricochet, nothing else (the user, 2026-11-18: "no rope,
+// just circles and some ricochet"); no trail when moving.
+// Phase 2 (half HP) -- the HERD: GHOSTS of the ranchers (spawners: drawn from
+//   their own sheet at half size, untouchable, hurting to touch) dart with
+//   it, each to its own spot in the upper arena, and throw lassos with it.
+//   Each throw (f6): two loops -- at the player and beside them, by turns
+//   either side -- and one from each ghost.
 class Roperite : public Enemy {
-    static constexpr float CX = 320.0f, CY = 190.0f, RX = 230.0f, RY = 100.0f;
-    static constexpr float RATTLE_WAIT = 1.0f, TURN_EVERY = 4.0f, LASSO_MIN = 180.0f;
-    float th = -PI / 2;                      // where on its lap it is
-    float dir = 1.0f;                        // +1 clockwise on screen
-    float rattle_t = 0.0f, turn_t = 0.0f;
-    float vx_ = 1.0f, vy_ = 0.0f;            // the way it's running
+    static constexpr float LASSO_MIN = 180.0f, LASSO_MAX = 300.0f;
+    // The darts: within this box (the upper arena), DART_MIN-DART_MAX px a
+    // dart, over the three dash frames (0.78 s: ~320-450 px/s, eased, peaking
+    // ~500-670), never within CLEAR of the player on the way.
+    static constexpr float BOX_X0 = 70.0f, BOX_X1 = ARENA_W - 70.0f, BOX_Y0 = ARENA_TOP + 60.0f, BOX_Y1 = 230.0f;
+    static constexpr float DART_MIN = 250.0f, DART_MAX = 350.0f, DART_T = 0.78f, CLEAR = 110.0f;
+    // At each stop it PACES a circle: PACE_R round, one lap over the hold,
+    // eased in and out, from where it landed back to it; the other way each
+    // time. Dart f0-f2 (the dash sheet), hold f3-f8 (the idle, 1.56 s, the
+    // throw on f6). (The user's curling run was tried and dropped, 2026-11-18.)
+    static constexpr float PACE_R = 35.0f, HOLD_T = 1.56f;
+    static constexpr int   RUN_FRAMES = 3;
+    static constexpr int   LASSO_N = 12, LASSOS = 16, LASSO_SLOT0 = 3000, LASSO_SLOTS = 16, GHOSTS = 2, GHOST_FRAMES = 9;
+    static constexpr int   FRAMES = 9, THROW_FRAME = 6;      // the 2.34 s loop; the lasso fully out
+    static constexpr float LASSO_V = 330.0f, LASSO_R = 30.0f, CINCH_R = 12.0f, OPEN_T = 0.25f, CINCH_T = 0.3f, REEL_V = 600.0f, REEL_MAX = 1.2f;   // reeled faster than it ever runs; gone after REEL_MAX s regardless
+    static constexpr int   KNOT_N = 8, DASH_FRAMES = 4;
+    static constexpr int   STRIDE_N1 = 16, STRIDE_N2 = 20, LAND_N1 = 20, LAND_N2 = 28;   // a ring setting off, a ring landing
+    static constexpr float KNOT_V = 90.0f, KNOT_CLEAR = 90.0f, STRIDE_V = 100.0f;
+    static constexpr int   ROPE_RGB = 0xd0c078, KNOT_RGB = 0x9c6b30;   // rope-tan; a knot's brown
+    static constexpr float GHOST_HURT = 8.0f, GHOST_SCALE = 1.0f;   // drawn half size (the user: "make them smaller")
+    float t = 0.0f;
+    int   idle_f = 0;
+    bool  set_off_due = false, land_due = false;
+    // A darter (it, then the ghosts): from (ax, ay) to (bx, by), dart_t into it.
+    struct Dart { float ax = 320, ay = 90, bx = 320, by = 90, cx = 320, cy = 125, a0 = -PI / 2, turn = 1; };
+    Dart  me, gh[2];
+    float dart_t = 99.0f;
+    bool  herd_out = false;
+    // A lasso: a puppet ring. Out from (sx, sy) along (ux, uy), slowing to a
+    // stop d px out (decel a); there it cinches; then it is reeled back to the
+    // rope's tip of whoever threw it (k: -1 it, else ghost k).
+    struct Lasso { bool on = false, knot = false; int k = -1; float t0 = 0, sx = 0, sy = 0, ux = 1, uy = 0, d = 0, a = 1, cx = 0, cy = 0, reel_t = -1; };
+    Lasso lassos[LASSOS];
+    int   next_lasso = 0;
 
-    float speed()        const { return ENRAGED ? 320.0f : 260.0f; }
-    float rattle_every() const { return ENRAGED ? 0.25f : 0.35f; }
-    int   facing()       const { return facing_toward(vx_, vy_); }
-    // Art px in the 98x65 frame -> the screen, drawn 2x about its middle.
-    void at(float fx, float fy, float* ox, float* oy) const {
-        *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
+    bool  sprinting() const { return idle_f < RUN_FRAMES; }   // darting: f0-f2, the dash sheet
+    int   knots = 0;
+    // Where a darter is now: eased in and out along its dart, then held.
+    void at_dart(const Dart& d, float* ox, float* oy) const {
+        if (dart_t < DART_T) {
+            float u = dart_t / DART_T, k = u * u * (3.0f - 2.0f * u);
+            *ox = d.ax + (d.bx - d.ax) * k; *oy = d.ay + (d.by - d.ay) * k;
+            return;
+        }
+        float u = fminf((dart_t - DART_T) / HOLD_T, 1.0f), k = u * u * (3.0f - 2.0f * u);   // pacing its circle
+        float a = d.a0 + d.turn * TAU * k;
+        *ox = d.cx + cosf(a) * PACE_R; *oy = d.cy + sinf(a) * PACE_R;
     }
-    // The forward tip of its rope loop, flicked out (frame 2), by facing.
-    void rope_tip(float* ox, float* oy) const {
-        int f = facing();
-        float fx = f == FACE_RIGHT ? 79.0f : f == FACE_LEFT ? 18.0f
-                 : (f == FACE_DOWN_RIGHT || f == FACE_UP_RIGHT) ? 70.0f
-                 : (f == FACE_DOWN_LEFT  || f == FACE_UP_LEFT)  ? 27.0f : 63.0f;
-        at(fx, f == FACE_DOWN || f == FACE_UP ? 23.0f : 21.0f, ox, oy);
+    // A new spot for a darter at (fx, fy): in the box, DART_MIN-DART_MAX off,
+    // its whole path kept CLEAR of the player (the best of a few tries).
+    void pick(Dart& d, float fx, float fy, float px, float py) const {
+        float best = -1.0f;
+        for (int k = 0; k < 16; k++) {
+            float a = ernd() * TAU, r = DART_MIN + ernd() * (DART_MAX - DART_MIN);
+            float tx = fminf(fmaxf(fx + cosf(a) * r, BOX_X0), BOX_X1), ty = fminf(fmaxf(fy + sinf(a) * r, BOX_Y0), BOX_Y1);
+            float sx = tx - fx, sy = ty - fy, l2 = sx * sx + sy * sy;
+            float u = l2 > 0.0f ? fminf(fmaxf(((px - fx) * sx + (py - fy) * sy) / l2, 0.0f), 1.0f) : 0.0f;
+            float clear = fminf(hypotf(fx + sx * u - px, fy + sy * u - py),     // the path's nearest pass by the player
+                                hypotf(tx - px, ty - py) - 2.0f * PACE_R);      // ...and its circle's
+            float score = fminf(clear, CLEAR) + 0.001f * sqrtf(l2);
+            if (score > best) { best = score; d.bx = tx; d.by = ty; }
+            if (clear >= CLEAR && sqrtf(l2) >= DART_MIN * 0.8f) break;
+        }
+        d.ax = fx; d.ay = fy;
+        // Its circle: from where it lands, round a middle PACE_R toward the
+        // box's middle (so it stays in the box); the other way each time.
+        float mx = (BOX_X0 + BOX_X1) * 0.5f - d.bx, my = (BOX_Y0 + BOX_Y1) * 0.5f - d.by, ml = hypotf(mx, my);
+        if (ml < 1.0f) { mx = 0.0f; my = -1.0f; ml = 1.0f; }
+        d.cx = d.bx + mx / ml * PACE_R; d.cy = d.by + my / ml * PACE_R;
+        d.a0 = atan2f(d.by - d.cy, d.bx - d.cx);
+        d.turn = -d.turn;
     }
-    // The rattle on its tail, by facing.
-    void rattle(float* ox, float* oy) const {
-        int f = facing();
-        float fx = f == FACE_RIGHT ? 19.8f : f == FACE_LEFT ? 77.2f
-                 : f == FACE_DOWN_RIGHT ? 28.5f : f == FACE_DOWN_LEFT ? 68.5f
-                 : f == FACE_UP_RIGHT ? 30.0f : f == FACE_UP_LEFT ? 67.0f : 38.0f;
-        at(fx, 28.0f, ox, oy);
+    // ONE VIEW (the user's approved 3/4 front still, lightly animated): the
+    // same frames whichever way it runs. Screen px from the frame's middle,
+    // by sprint frame.
+    // 60x62 drawn 2x, 9 frames (sprites, measured), walking all through: f0
+    // bound (left leg up), f1 contact, f2 bound (right leg up), f3-f5 the
+    // rope growing, f6 the LASSO fully out (the throw), f7-f8 drawing back in.
+    static void rope_off(int f, float* ox, float* oy) {          // the rope loop's front
+        static const float R[FRAMES][2] = { { 35, -23 }, { 35, -19 }, { 35, -23 }, { 41, -11 }, { 43, -11 }, { 53, -17 }, { 57, -21 }, { 43, -11 }, { 41, -11 } };
+        *ox = R[f % FRAMES][0]; *oy = R[f % FRAMES][1];
+    }
+    // The rope's tip of the thrower: it (k < 0) or ghost k.
+    void tip(int k, float* ox, float* oy) const {
+        float bx = x, by = y;
+        if (k >= 0) at_dart(gh[k], &bx, &by);
+        rope_off(THROW_FRAME, ox, oy);                           // the throw frame's tip
+        if (k >= 0) { *ox *= GHOST_SCALE * 0.5f; *oy *= GHOST_SCALE * 0.5f; }   // a ghost's, drawn at its own scale
+        *ox += bx; *oy += by;
+    }
+    void lasso_at(const Lasso& L, int j, float* ox, float* oy) const {
+        float age = t - L.t0, r;
+        float stop = sqrtf(2.0f * L.d / L.a);                    // when it comes to rest
+        if (L.reel_t < 0.0f) {
+            r = LASSO_R * fminf(age / OPEN_T, 1.0f);             // opening out of the tip
+            if (age > stop) r = LASSO_R + (CINCH_R - LASSO_R) * fminf((age - stop) / CINCH_T, 1.0f);   // cinching shut
+        } else r = CINCH_R;
+        float spin = age * 2.0f, c = spin + j * (TAU / LASSO_N);
+        *ox = L.cx + cosf(c) * r; *oy = L.cy + sinf(c) * r;
+    }
+    void throw_lasso(int k, float aim_x, float aim_y, float off, BulletSpawn out[], int max, int* n) {
+        float sx, sy;
+        tip(k, &sx, &sy);
+        float dist = hypotf(aim_x - sx, aim_y - sy);
+        if (dist < LASSO_MIN) return;                            // too close to dodge a loop
+        int i = next_lasso;
+        next_lasso = (next_lasso + 1) % LASSOS;
+        if (lassos[i].on) return;                                // all out: none this throw
+        Lasso& L = lassos[i];
+        float a = aim_at(sx, sy, aim_x, aim_y) + off;
+        L.on = true; L.k = k; L.t0 = t; L.sx = L.cx = sx; L.sy = L.cy = sy;
+        L.ux = cosf(a); L.uy = sinf(a); L.reel_t = -1.0f;
+        L.d = fminf(fmaxf(dist, LASSO_MIN), LASSO_MAX);          // to where the player stands
+        L.a = LASSO_V * LASSO_V / (2.0f * L.d);
+        L.knot = false;
+        for (int j = 0; j < LASSO_N && *n < max; j++) {          // the loop, out of the tip (no pop-in)
+            BulletSpawn b = mk(0.0f, 0.0f, 3.0f, 5.0f);
+            b.puppet = LASSO_SLOT0 + i * LASSO_SLOTS + j;
+            b.color = ROPE_RGB;
+            b.from = true; puppet_at(b.puppet, &b.ox, &b.oy);
+            out[(*n)++] = b;
+        }
     }
 public:
-    Roperite() : Enemy(CX, CY - RY, 620, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
+    Roperite() : Enemy(320, 90, 620, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "ROPERITE"; }
-    int         breath_frame()  const override { return 2; }       // the lasso flicked out
-    float       fire_interval() const override { return 0.05f; }   // the rattle on its own clock
-    int move_facing() const override { return facing(); }
-    void update(float dt, float, float) override {
-        rattle_t += dt;
-        if (ENRAGED && (turn_t += dt) >= TURN_EVERY) { turn_t = 0.0f; dir = -dir; }   // doubling back
-        // Round its lap at a steady speed: the angle steps by speed over the
-        // ellipse's radius of the moment.
-        float r = hypotf(RX * sinf(th), RY * cosf(th));
-        th += dir * speed() / fmaxf(r, 1.0f) * dt;
-        float nx = CX + RX * cosf(th), ny = CY + RY * sinf(th);
-        vx_ = nx - x; vy_ = ny - y;
-        x = nx; y = ny;
+    int         breath_frame()  const override { return THROW_FRAME; }   // the lasso fully out
+    float       fire_interval() const override { return 0.02f; }   // the knots and stride rings as they come due
+    int move_facing() const override { return FACE_DOWN; }      // one view, whichever way it runs
+    bool free_movement() const override { return true; }        // its darts at full speed
+    // Sprinting (its bounding strides), the dash sheet (61_roperite_dash, 4
+    // frames: crouch-stride right, airborne, crouch-stride left, airborne), a
+    // pose a beat. (Without the sheet the idle shows.)
+    float flap_phase() const override { return sprinting() ? fmodf(t / (0.26f * DASH_FRAMES), 1.0f) : -1.0f; }
+    bool puppet_at(int slot, float* ox, float* oy) const override {
+        int q = slot - LASSO_SLOT0, i = q / LASSO_SLOTS, j = q % LASSO_SLOTS;
+        if (q < 0 || i >= LASSOS || j >= LASSO_N || !lassos[i].on) return false;
+        lasso_at(lassos[i], j, ox, oy);
+        return true;
     }
-    int fire(float, float, BulletSpawn out[], int max) override {
+    // The herd in phase 2, drawn from the spawner sheet: one view, cells 0-8
+    // the idle's frames, 9-12 the dash's (as they dart).
+    int spawners(Spawner out_s[], int max) const override {
+        if (!ENRAGED || !herd_out) return 0;
         int n = 0;
-        while (rattle_t >= rattle_every() && n < max) {
-            // A rattle shot dropped from its tail: it sits, then darts at the player.
-            rattle_t -= rattle_every();
-            float ox, oy;
-            rattle(&ox, &oy);
-            BulletSpawn b = mk(0.0f, 0.0f, 3.0f, 5.0f);
-            b.from = true; b.ox = ox; b.oy = oy;
-            b.delay = RATTLE_WAIT; b.launch_speed = ENRAGED ? 150.0f : 130.0f; b.launch_off = 0.0f;
-            out[n++] = b;
+        for (int k = 0; k < GHOSTS && n < max; k++) {
+            float gx, gy;
+            at_dart(gh[k], &gx, &gy);
+            int cell = sprinting() ? GHOST_FRAMES + (int)(flap_phase() * DASH_FRAMES) % DASH_FRAMES   // dashing: cells 9-12
+                                   : idle_f % GHOST_FRAMES;
+            out_s[n++] = { gx, gy, cell, GHOST_HURT, GHOST_SCALE };
         }
         return n;
     }
-    int breathe(float px, float py, BulletSpawn out[], int) override {
-        // The lasso: a loop of 12 thrown from its rope's tip at the player --
-        // flying together, slowing to a stop ~260 px out, reeled back.
-        float tx, ty;
-        rope_tip(&tx, &ty);
-        if (hypotf(px - tx, py - ty) < LASSO_MIN) return 0;     // too close to dodge a loop at 330 (the tester)
-        float a0 = aim_at(tx, ty, px, py);
-        int n = 0, loops = ENRAGED ? 2 : 1;
-        for (int l = 0; l < loops; l++) {
-            float a = loops == 1 ? a0 : a0 + (l ? 0.3f : -0.3f);
-            for (int i = 0; i < 12; i++) {
-                float c = i * (TAU / 12);
-                BulletSpawn b = mk(a, 330.0f, 3.0f, 5.0f);
-                b.accel = -210.0f; b.max_speed = 330.0f;
-                b.from = true; b.ox = tx + cosf(c) * 30.0f; b.oy = ty + sinf(c) * 30.0f;
+    int on_idle_frame(int frame, float px, float py, BulletSpawn[], int) override {
+        idle_f = frame;
+        if (frame == 0) {                                        // a dart sets off: a new spot for it and each ghost
+            pick(me, x, y, px, py);
+            if (ENRAGED) {
+                if (!herd_out) { herd_out = true; for (Dart& g : gh) { g.ax = g.bx = x; g.ay = g.by = y; } }   // the herd comes out of it
+                for (Dart& g : gh) { float gx, gy; at_dart(g, &gx, &gy); pick(g, gx, gy, px, py); }
+            }
+            dart_t = 0.0f; set_off_due = true;
+        } else if (frame == RUN_FRAMES) land_due = true;         // landed: pacing its circle for the throw
+        return 0;
+    }
+    void update(float dt, float, float) override {
+        t += dt; dart_t += dt;
+        at_dart(me, &x, &y);                                     // darting, or held where it landed
+        for (Lasso& L : lassos) {                                // the loops: out, cinch, reeled home
+            if (!L.on) continue;
+            float age = t - L.t0, stop = sqrtf(2.0f * L.d / L.a);
+            if (L.reel_t < 0.0f) {
+                float tt = fminf(age, stop), s = LASSO_V * tt - 0.5f * L.a * tt * tt;
+                L.cx = L.sx + L.ux * s; L.cy = L.sy + L.uy * s;
+                if (age >= stop + CINCH_T) { L.reel_t = 0.0f; L.knot = true; }   // cinched: the knot bursts (fire)
+            } else {
+                float hx, hy;
+                tip(L.k, &hx, &hy);
+                float gx = hx - L.cx, gy = hy - L.cy, gd = hypotf(gx, gy), st = REEL_V * dt;
+                if (gd <= st + 6.0f || (L.reel_t += dt) >= REEL_MAX) { L.on = false; continue; }   // home: gone into the rope
+                L.cx += gx / gd * st; L.cy += gy / gd * st;
+            }
+        }
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        for (Lasso& L : lassos) {                                // a cinched loop: its knot bursts
+            if (!L.knot) continue;
+            L.knot = false; knots++;
+            if (hypotf(px - L.cx, py - L.cy) < KNOT_CLEAR) continue;
+            float turn = ernd() * TAU;
+            for (int k = 0; k < KNOT_N && n < max; k++) {
+                BulletSpawn b = mk(turn + k * (TAU / KNOT_N), KNOT_V, 3.0f, 5.0f);
+                b.from = true; b.ox = L.cx; b.oy = L.cy; b.color = KNOT_RGB;
+                if (knots & 1) { b.bouncing = true; b.max_bounces = 2; }   // every other knot ricochets, once
                 out[n++] = b;
             }
+        }
+        for (int r = 0; r < 2; r++) {                            // a ring out of its body as a dart sets off, and as it lands
+            bool& due = r ? land_due : set_off_due;
+            if (!due) continue;
+            due = false;
+            if (hypotf(px - x, py - y) < CLEAR) continue;
+            int m = r ? (ENRAGED ? LAND_N2 : LAND_N1) : (ENRAGED ? STRIDE_N2 : STRIDE_N1);
+            float turn = ernd() * TAU;
+            for (int k = 0; k < m && n < max; k++) {
+                BulletSpawn b = mk(turn + k * (TAU / m), STRIDE_V, 3.0f, 5.0f);
+                b.from = true; b.ox = x; b.oy = y; b.color = ROPE_RGB;
+                out[n++] = b;
+            }
+        }
+        return n;
+    }
+    int throws = 0;
+    int breathe(float px, float py, BulletSpawn out[], int max) override {
+        // The throw, once a 2.34 s loop: a loop at where the player is and
+        // one beside it, by turns either side; in phase 2 each of the herd's
+        // ghosts throws one with it.
+        int n = 0;
+        float side = (throws++ & 1) ? 0.5f : -0.5f;
+        throw_lasso(-1, px, py, 0.0f, out, max, &n);
+        throw_lasso(-1, px, py, side, out, max, &n);
+        if (ENRAGED && herd_out) {
+            for (int k = 0; k < GHOSTS; k++) throw_lasso(k, px, py, 0.0f, out, max, &n);
         }
         return n;
     }

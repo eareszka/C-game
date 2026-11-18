@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1741-base-the-rope-that-loops-over-its-head-is-thrown",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "the rope that loops over its head is thrown forward toward the viewer and to the right as a wide lasso loop. everything else stays exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "bc100a7f-5f7b-4f9c-b5b5-53a0c539a885",
+    "generation_id": "a604299d-f9de-4f0c-9108-cbf12d1bbea3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "f-lasso2.png"
+  ]
+}

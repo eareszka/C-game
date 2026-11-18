@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1821-base-running-flat-out-crouched-low-and-leaning-f",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1556 characters>",
+      "format": "png"
+    },
+    "description": "running flat out, crouched low and leaning forward, one leg kicked far forward and one far back, the rope loop squeezed tight and small against its head, rattle tail swept back. same creature, same colours",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "637f7249-21c6-4ed1-9ebf-be450a106858",
+    "generation_id": "f2051874-65bc-4dae-8961-a59846168375"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "d-key2.png"
+  ]
+}

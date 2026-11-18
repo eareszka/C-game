@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1729-rot-east-02-it-sprints-to-the-right-in-a-long-lo",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1868 characters>",
+      "format": "png"
+    },
+    "description": "it sprints to the right in a long low bound, almost flying, flipper-like legs stretched out front and back, its rattle tail raised and blurred. keep its look and colours",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7b210c93-9f40-4d45-887e-840699b7f5d3",
+    "generation_id": "8996cdc2-238e-4ea9-9f97-7148bcca4896"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-stride.png"
+  ]
+}
