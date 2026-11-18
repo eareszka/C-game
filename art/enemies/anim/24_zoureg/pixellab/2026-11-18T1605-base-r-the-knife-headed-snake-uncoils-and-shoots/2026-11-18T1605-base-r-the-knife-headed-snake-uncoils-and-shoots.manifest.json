@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1605-base-r-the-knife-headed-snake-uncoils-and-shoots",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 572 characters>",
+      "format": "png"
+    },
+    "description": "the knife-headed snake uncoils and shoots forward to the right in one straight line like a thrown knife, its blade head leading, glowing white hot",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6a20ca7a-e7f8-471a-b290-084242769e49",
+    "generation_id": "89279e8d-47f7-4047-a22d-64c83efb6c66"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-thrust-r.png"
+  ]
+}

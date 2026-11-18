@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1604-base-r-the-knife-headed-snake-coils-tighter-and",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 572 characters>",
+      "format": "png"
+    },
+    "description": "the knife-headed snake coils tighter and draws its blade head far back, neck cocked like a spring, glowing white hot",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "baa29e8c-83e1-425a-9bf7-475542ec812d",
+    "generation_id": "8303a0bc-e938-4800-b1d8-229c233c5ea3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-windup-r.png"
+  ]
+}

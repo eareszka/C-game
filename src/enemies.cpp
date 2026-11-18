@@ -3363,222 +3363,185 @@ public:
     }
 };
 
-// The zoureg (de Plancy's Dictionnaire Infernal): a snake a foot long of the
-// Arabian desert that goes through rocks, trees, walls and bodies "like a
-// hot knife through butter". UPPER tier, 640 HP, molten-orange bullets.
-// MEDIUM sheets, redrawn 2026-10-12, four drawn directions (the user): a
-// red-hot knife of a snake. The idle (6 frames) while it rests and all of
-// phase 2; its `alt` (24_zoureg_windup: head drawn back, glowing hotter)
-// while it aims; its `flap` (24_zoureg_dash: uncoiled, thrown like a knife)
-// while it thrusts. Its shots leave from the part of it
-// that makes them (the user): the white-hot line it cuts.
-// The pattern: it coils and DRAWS BACK, glowing hotter (the alt sheet) -- the only
-// warning (the user: no line, its sprite signals it), AIM_T s -- fixed on
-// where the player is, then THRUSTS (the dash sheet) straight there, right across
-// to the far wall: it shoots down
-// the line to the wall, touching it hurts, the cut FORMING behind it as it
-// goes -- a white-hot laser (the user) -- and the moment it stops the cut
-// dissipates, spitting EMBERS to both sides, a step apart all along it. It
-// rests a beat where it stopped, and again.
-// Phase 2 (half HP) -- it glides back to the middle and stays there, idle,
-//   with its one head (the user, 2026-10-12: the three heads are gone), and
-//   three LASERS form out of its blade's point, each time shooting
-//   out a different way, then sweeping round to ENCLOSE where
-//   the player is: two close in from either side like a pair of shears,
-//   stopping just short of each other -- the gap opens a little off where the
-//   player stood when they formed (read where they meet) -- while the third
-//   circles round behind, and molten spit flies from its head at the player
-//   as they close: sidestep inside the gap.
+// The zoureg (A Book of Creatures, from de Plancy): a snake a foot long of
+// the Arabian desert that goes straight THROUGH rocks, trees, walls and
+// bodies "like a hot knife through butter" -- whoever it passes through
+// dies -- and can only be killed by cutting off its head while it SLEEPS.
+// UPPER tier, 640 HP, molten-orange bullets. 44x29 sheets drawn 2x, four
+// views (D, R, U; L = R mirrored), 260 ms a frame: the idle (6, coiled, its
+// knife-blade head up) resting and asleep; its `alt` (24_zoureg_windup, 6:
+// drawn back, white-hot) while it aims. (Its `flap`, 24_zoureg_dash, stays
+// installed but unused: it dashes as a laser.)
+// Bullet redo (the user, 2026-11-18), the same both phases:
+//   Aim    -- it draws back white-hot (the alt) AIM_T s, facing straight
+//             along its ROW or COLUMN (by turns), the way it will go: the
+//             tell (no line: its sprite shows it). It fixes on where the
+//             player stands along that line.
+//   Dash   -- THROUGH the wall, AS A LASER (the user, 2026-11-18: "it moving
+//             should basically be the laser"): the snake gone (opacity 0),
+//             a laser's head -- its body, hurting as its body did -- streaks
+//             off the long way, AWAY from the player, out through the arena's
+//             edge and back in from the opposite one -- the same row or
+//             column -- on round to where the player stood (a lap at least
+//             DASH_MIN long), the lit beam behind it (hurts). Never stand in
+//             its row or column. There it coils again, and the beam
+//             DISSIPATES, oldest part first, spitting EMBERS out to both
+//             sides a step apart all along it.
+//   Chains -- below CHAIN2_AT of its HP it dashes in PAIRS, and in phase 2
+//             in THREES: row, column, row, each dash's aim straight after the
+//             last (still AIM_T, the tell), so both the player's lines get cut.
+//   Rest   -- REST s coiled where it stopped -- a fan of SPIT_N molten spit
+//             from its head at the player (not within SPIT_CLEAR px).
+//   Sleep  -- after every DOZE_EVERY dashes it DOZES DOZE_T s, coiled and
+//             still: its weakness (the lore) -- it takes DOZE_HURT times the
+//             damage. No new pose: the idle.
+// Phase 2 (half HP): it rests less, the embers come a step closer, and it
+// sleeps less often.
+// Fairness: the dash runs on its own row or column only, its facing shows
+// which, and it reaches the player at the earliest AIM_T + DASH_MIN/DASH_V s
+// after it starts drawing back; embers 20 px apart (16 in phase 2: 11 px
+// clear), none within 60 px of the player; spit 0.18 rad apart.
 class Zoureg : public Enemy {
-    enum State { REST, AIM, THRUST, HOME, SHEARS };
-    static constexpr float AIM_T = 0.6f, THRUST_SPEED = 1100.0f, FADE_T = 0.35f, REST_T = 1.0f;
-    static constexpr float EMBER_SPEED = 70.0f;
-    static constexpr float BELLY = (17.0f - 14.5f) * 2.0f;   // its underside as it dashes, art y 17 in the 29-tall frame: the cut runs along under it
-    static constexpr float DASH_LOOP = 1.04f;                // the dash sheet's four frames, 260 ms each
+    enum State { REST, AIM, DASH, DOZE };
+    // Made harder after the user's play-test of 2026-11-18 ("too easy"):
+    // a two-beat tell, chains of dashes, denser and faster embers, a wider
+    // spit, fewer and shorter naps.
+    static constexpr float AIM_T = 0.65f, DASH_V = 900.0f, DASH_MIN = 160.0f, FADE_T = 0.35f;   // the tell: 0.65 s (the user)
+    static constexpr float REST1 = 0.52f, REST2 = 0.26f, STEP1 = 20.0f, STEP2 = 16.0f, EMBER_SPEED = 90.0f;
+    static constexpr int   DOZE_EVERY1 = 6, DOZE_EVERY2 = 8, SPIT_N = 7;
+    static constexpr float DOZE_T = 1.56f, DOZE_HURT = 1.5f, SPIT_GAP = 0.18f, SPIT_V = 120.0f, SPIT_CLEAR = 110.0f;
+    static constexpr float CHAIN2_AT = 0.75f;                // below this share of its HP, phase 1 dashes in pairs
+    static constexpr float MX = 44.0f, MY = 29.0f;           // half its frame drawn 2x: wholly off screen past this
+    static constexpr float BELLY = (17.0f - 14.5f) * 2.0f;   // its underside as it dashes along a row: the cut runs under it
+    static constexpr float TIP_R = 10.0f;                    // the laser's head while it dashes: its body
     State state = REST;
     float t = 0.0f;
-    float sx = 0, sy = 0, ex = 0, ey = 0;   // the line: where it set off, where it stops
-    float cut = -1.0f;                       // seconds the cut has been dissipating (-1 = none)
-    float cx0 = 0, cy0 = 0, cx1 = 0, cy1 = 0;   // the cut line, latched as it was cut
-    int   thrusts_left = 0;
-    bool  embers = false;
-    // Phase 2's shears: the cycle clock and the aim they close on.
-    static constexpr float HOME_X = 320.0f, HOME_Y = 170.0f, HOME_SPEED = 300.0f;
-    static constexpr float S_GROW = 0.5f, S_CLOSE = 1.6f, S_FADE = 0.3f, S_REST = 0.4f;
-    static constexpr float S_OPEN = 1.3f, S_GAP_PX = 40.0f;   // S_OPEN: how far the third beam circles   // the shears open this wide, and close to a gap this wide (centre to centre) at the player's distance -- thin (the user), the same wherever they stand
-    static constexpr float S_SHIFT = 0.2f, SPIT_EVERY = 0.25f;  // the gap's shift off the player; spit from its head while the shears close
-    float spit_t = 0.0f;
-    float shear_t = 0.0f, shear_aim = 0.0f;
-    float shx[3] = {}, shy[3] = {}, shear_end[2] = {};   // this volley's heads, and the angles the two shear beams close to
-    float shear_start[3] = {};                            // ...and the random ways they shoot out first (the user)
-    void shear_origin(float* ox, float* oy) const { *ox = x; *oy = y - 12.0f; }   // its head, reared up (aiming)
-    // Its blade's point, where all three lasers leave it now it has one head:
-    // on the idle sheet's front view (44x29, drawn 2x about its middle) art
-    // column 22.0, and the row the idle frame shown has it on -- the neck
-    // stretches a row and settles a row -- so the lasers stay on the point.
-    int idle_f = 0;
-    void heads(float, float, float hx[3], float hy[3]) const {
-        static const float ROW[6] = { 2, 1, 1, 2, 3, 3 };   // [idle frame]: the point's row
-        for (int b = 0; b < 3; b++) { hx[b] = x; hy[b] = y + 2.0f * (ROW[idle_f % 6] + 0.5f - 14.5f); }
-    }
+    bool  horiz = false;                     // this dash along its row (else its column); they take turns
+    float dir = 1.0f, togo = 0.0f;           // +1 right / down; px of the lap still to run
+    int   dashes = 0, chain_left = 0;          // dashes since its last nap; dashes still to come in this chain
+    bool  spit_due = false, embers = false;
+    // The cut: up to four straight pieces (a lap wraps through the walls).
+    struct Seg { float x0, y0, x1, y1; };
+    Seg   seg[4];
+    int   nseg = 0;
+    float cut = -1.0f;                       // s the cut has been cooling (-1: none / still forming)
 
+    float lo() const { return horiz ? -MX : ARENA_TOP - MY; }
+    float hi() const { return horiz ? ARENA_W + MX : ARENA_H + MY; }
+    float& u() { return horiz ? x : y; }
+    float  line_off() const { return horiz ? BELLY : 0.0f; }
+    void open_seg() {
+        if (nseg < 4) { seg[nseg] = { x, y + line_off(), x, y + line_off() }; nseg++; }
+    }
+    int chain_len() const { return ENRAGED ? 3 : hp < max_hp * CHAIN2_AT ? 2 : 1; }
     void aim(float px, float py) {
-        // Straight at the player, to 40 px short of the far wall.
-        state = AIM; t = 0.0f; sx = x; sy = y;
-        float a = aim_at(x, y, px, py), dx = cosf(a), dy = sinf(a), reach = 1e9f;
-        if (dx > 1e-3f)  reach = fminf(reach, (ARENA_W - 40.0f - x) / dx);
-        if (dx < -1e-3f) reach = fminf(reach, (40.0f - x) / dx);
-        if (dy > 1e-3f)  reach = fminf(reach, (ARENA_H - 40.0f - y) / dy);
-        if (dy < -1e-3f) reach = fminf(reach, (ARENA_TOP + 40.0f - y) / dy);
-        reach = fmaxf(reach, 0.0f);
-        ex = x + dx * reach; ey = y + dy * reach;
+        state = AIM; t = 0.0f;
+        horiz = !horiz;
+        float cur = horiz ? x : y;
+        float tgt = horiz ? fminf(fmaxf(px, MX), ARENA_W - MX) : fminf(fmaxf(py, ARENA_TOP + MY), ARENA_H - MY);
+        dir = tgt > cur ? -1.0f : 1.0f;                      // the long way: away from them, through the wall
+        float P = hi() - lo();
+        togo = dir < 0.0f ? cur - tgt : tgt - cur;
+        togo = fmodf(togo + 2.0f * P, P);
+        if (togo < DASH_MIN) togo += P;                      // already level with them: a whole lap
     }
 public:
     Zoureg() : Enemy(320, 140, 640, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
     const char* name()          const override { return "ZOUREG"; }
-    float       fire_interval() const override { return 0.02f; }   // the embers as the cut dissipates
-    bool  alt_pose()    const override { return state == AIM; }      // drawn back, glowing hotter: the warning
-    float flap_phase()  const override { return state == THRUST ? fmodf(t / DASH_LOOP, 1.0f) : -1.0f; }   // the dash
+    float       fire_interval() const override { return 0.02f; }
+    bool        free_movement() const override { return true; }   // its dashes at full speed, through the walls
+    float       armor()         const override { return state == DOZE ? DOZE_HURT : 1.0f; }   // asleep: its weakness
+    bool  alt_pose()    const override { return state == AIM; }      // drawn back, white-hot: the warning
+    float opacity(float, float) const override { return state == DASH ? 0.0f : 1.0f; }   // dashing it IS the laser (the user): unseen as a snake
     int   move_facing() const override {
-        if (state == HOME || state == SHEARS) return FACE_DOWN;      // phase 2: from the front, where its point is measured
-        if (state != AIM && state != THRUST) return -1;
-        float dx = ex - sx, dy = ey - sy;                            // four drawn directions (the user): the nearer axis
-        return fabsf(dx) > fabsf(dy) ? (dx > 0.0f ? FACE_RIGHT : FACE_LEFT) : (dy > 0.0f ? FACE_DOWN : FACE_UP);
+        if (state != AIM && state != DASH) return -1;            // coiled: toward the player
+        return horiz ? (dir > 0.0f ? FACE_RIGHT : FACE_LEFT) : (dir > 0.0f ? FACE_DOWN : FACE_UP);
     }
-    int on_idle_frame(int frame, float, float, BulletSpawn[], int) override { idle_f = frame; return 0; }   // the frame its point is read on
     int telegraphs(TeleLine out[], int max) const override {
         int n = 0;
-        if (state == SHEARS && max >= 3) {
-            // The shears: growing out harmless, then hot as two close on the
-            // aim from either side (to a gap S_GAP_PX wide) and the third
-            // circles round behind; then fading.
-            const float* hx = shx; const float* hy = shy;      // a laser out of each head (the user), latched for the volley
-            float k = fminf(shear_t / S_GROW, 1.0f); k = 1.0f - (1.0f - k) * (1.0f - k);
-            float c = fminf(fmaxf((shear_t - S_GROW) / S_CLOSE, 0.0f), 1.0f);   // how far they've closed
-            float ang[3] = { shear_start[0] + (shear_end[0] - shear_start[0]) * c,
-                             shear_start[1] + (shear_end[1] - shear_start[1]) * c,
-                             shear_start[2] + c * S_OPEN };
-            bool fading = shear_t >= S_GROW + S_CLOSE;
-            float fade = fading ? fminf((shear_t - S_GROW - S_CLOSE) / S_FADE, 1.0f) : 0.0f;
-            for (int b = 0; b < 3; b++) {
-                TeleLine L{ hx[b], hy[b], hx[b] + cosf(ang[b]) * 800.0f * k, hy[b] + sinf(ang[b]) * 800.0f * k };
-                L.stage = shear_t < S_GROW ? 0 : fading ? 2 : 1;
-                L.fade = fade;
-                L.hurt_w = (L.stage == 1 || (L.stage == 2 && fade < 0.33f)) ? 5.0f : 0.0f;
-                out[n++] = L;
-            }
-        }
-        if (state == THRUST && max > n) {                        // the cut FORMING behind it as it shoots along (the user): white-hot
-            TeleLine L{ sx, sy + BELLY, x, y + BELLY };            // under it: it runs on its sluggish belly (the user)
-            L.stage = 1; L.hurt_w = 5.0f;
+        if (state != DASH && cut < 0.0f) return 0;
+        for (int k = 0; k < nseg && n < max; k++) {
+            TeleLine L{ seg[k].x0, seg[k].y0, seg[k].x1, seg[k].y1 };
+            if (state == DASH) { L.stage = 1; L.hurt_w = 5.0f; }   // the laser it streaks along as: lit
+            else { L.stage = 2; L.fade = fminf(cut / FADE_T, 1.0f); L.hurt_w = L.fade < 0.33f ? 5.0f : 0.0f; }   // dissipating, oldest first
             out[n++] = L;
         }
-        if (cut >= 0.0f && max > n) {                            // ...and dissipating once it has stopped
-            TeleLine L{ cx0, cy0, cx1, cy1 };
-            L.stage = 2;
-            L.fade = fminf(cut / FADE_T, 1.0f);
-            L.hurt_w = L.fade < 0.33f ? 5.0f : 0.0f;
-            out[n++] = L;
+        if (state == DASH && n < max) {                          // its tip: the zoureg itself, hurting as its body did
+            TeleLine T{ x, y + line_off(), x, y + line_off() };
+            T.stage = 1; T.orb = TIP_R; T.hurt_w = TIP_R;
+            out[n++] = T;
         }
         return n;
     }
     void update(float dt, float px, float py) override {
         t += dt;
-        if (ENRAGED && (state == REST || state == AIM)) state = HOME;   // phase 2: back to the middle
-        if (state == HOME) {
-            float dx = HOME_X - x, dy = HOME_Y - y, d = hypotf(dx, dy), st = HOME_SPEED * dt;
-            if (d > st) { x += dx / d * st; y += dy / d * st; }
-            else { x = HOME_X; y = HOME_Y; state = SHEARS; shear_t = S_GROW + S_CLOSE + S_FADE + S_REST; }
-        }
-        if (state == SHEARS) {
-            spit_t += dt;
-            heads(px, py, shx, shy);                             // the lasers ride the point as it rises and settles
-            if ((shear_t += dt) >= S_GROW + S_CLOSE + S_FADE + S_REST) {   // the next pair of shears, on where the player is now
-                float ox, oy;
-                shear_origin(&ox, &oy);
-                shear_t = 0.0f; shear_aim = aim_at(ox, oy, px, py) + (ernd() * 2.0f - 1.0f) * S_SHIFT;   // the gap opens a little off where they stand: read where
-                // Each shear beam closes to pass S_GAP_PX/2 either side of the
-                // gap's middle at the player's distance -- worked out from its
-                // own head, so the gap is the same width at any facing and
-                // range (the tester: a fixed angle shut it toward the corners).
-                heads(px, py, shx, shy);
-                // They shoot out each time a different way (the user): the two
-                // shears opened a random width, 0.7-2.0 rad, but the SAME either
-                // side of the gap, so where they'll meet reads from the first
-                // frame (the tester: uneven widths hid the gap); the third
-                // anywhere its circle (S_OPEN round) keeps 0.6 rad clear of the
-                // gap -- it must never sweep over the player.
-                float w = 0.7f + ernd() * 1.3f;
-                shear_start[0] = shear_aim - w;
-                shear_start[1] = shear_aim + w;
-                shear_start[2] = shear_aim + 0.6f + ernd() * (TAU - 1.2f - S_OPEN);
-                float d = hypotf(px - ox, py - oy), gx = ox + cosf(shear_aim) * d, gy = oy + sinf(shear_aim) * d;
-                for (int b = 0; b < 2; b++) {
-                    float side = b ? 1.0f : -1.0f;                // beam 0 closes from aim - open, beam 1 from aim + open
-                    float tx = gx + cosf(shear_aim + side * PI / 2) * S_GAP_PX * 0.5f, ty = gy + sinf(shear_aim + side * PI / 2) * S_GAP_PX * 0.5f;
-                    float e = atan2f(ty - shy[b], tx - shx[b]);
-                    shear_end[b] = shear_aim + remainderf(e - shear_aim, TAU);   // the same turn as the aim, so it closes the short way
-                }
-            }
-        }
-        if (cut >= 0.0f) {
-            cut += dt;
-            if (cut >= FADE_T) cut = -1.0f;
-        }
+        if (cut >= 0.0f && (cut += dt) >= FADE_T) { cut = -1.0f; nseg = 0; }
         switch (state) {
         case REST:
-            if (t >= REST_T) { if (thrusts_left <= 0) thrusts_left = ENRAGED ? 2 : 1; aim(px, py); }
+            if (t >= (ENRAGED ? REST2 : REST1)) { chain_left = chain_len() - 1; aim(px, py); }
+            break;
+        case DOZE:
+            if (t >= DOZE_T) { chain_left = chain_len() - 1; aim(px, py); }
             break;
         case AIM:
-            if (t >= AIM_T) { state = THRUST; t = 0.0f; }
+            if (t >= AIM_T) { state = DASH; t = 0.0f; cut = -1.0f; nseg = 0; open_seg(); }
             break;
-        case THRUST: {
-            float dx = ex - x, dy = ey - y, d = hypotf(dx, dy), st = THRUST_SPEED * dt;
-            if (d > st) { x += dx / d * st; y += dy / d * st; break; }
-            x = ex; y = ey;
-            cx0 = sx; cy0 = sy + BELLY; cx1 = ex; cy1 = ey + BELLY; cut = 0.0f;   // there: the cut dissipates, spitting embers
-            embers = true;
-            // Phase 2: again -- once the cut has cooled past hurting, so the
-            // new line never makes you cross a hot one (the tester).
-            state = REST;
-            t = --thrusts_left > 0 ? REST_T - FADE_T * 0.34f : 0.0f;
+        case DASH: {
+            float st = fminf(DASH_V * dt, togo);
+            togo -= st;
+            u() += dir * st;
+            if (u() < lo() || u() >= hi()) {                     // out through the wall, in through the far one
+                Seg& g = seg[nseg - 1];
+                (horiz ? g.x1 : g.y1) = dir > 0.0f ? hi() : lo();
+                u() += dir > 0.0f ? lo() - hi() : hi() - lo();
+                open_seg();
+                (horiz ? seg[nseg - 1].x0 : seg[nseg - 1].y0) = dir > 0.0f ? lo() : hi();
+            }
+            Seg& g = seg[nseg - 1];
+            g.x1 = x; g.y1 = y + line_off();
+            if (togo <= 0.0f) {                                  // there: the cut cools, spitting embers
+                cut = 0.0f; embers = true;
+                ++dashes;
+                if (chain_left-- > 0) { aim(px, py); break; }    // a chain: straight into the next aim, across the last line
+                if (dashes >= (ENRAGED ? DOZE_EVERY2 : DOZE_EVERY1)) { state = DOZE; dashes = 0; }   // asleep at once
+                else { state = REST; spit_due = true; }
+                t = 0.0f;
+            }
             break;
         }
         }
     }
     int fire(float px, float py, BulletSpawn out[], int max) override {
-        if (state == SHEARS) {
-            // While the shears close, molten spit from its head at the player:
-            // three, fanned -- sidestep inside the gap.
-            bool closing = shear_t >= S_GROW && shear_t < S_GROW + S_CLOSE;
-            if (!closing || spit_t < SPIT_EVERY || max < 3) return 0;
-            spit_t = 0.0f;
-            float ox, oy;
-            shear_origin(&ox, &oy);
-            float a = aim_at(ox, oy, px, py);
-            for (int k = -1; k <= 1; k++) {
-                BulletSpawn b = mk(a + k * 0.12f, 95.0f, 2.5f, 5.0f);
-                b.from = true; b.ox = ox; b.oy = oy;
-                out[k + 1] = b;
-            }
-            return 3;
-        }
-        if (!embers) return 0;
-        embers = false;
-        // Embers off the cooling cut: a pair every step along it, out to
-        // both sides.
-        float dx = cx1 - cx0, dy = cy1 - cy0, len = hypotf(dx, dy);
-        if (len < 1.0f) return 0;
-        float ux = dx / len, uy = dy / len, a = atan2f(uy, ux);
-        float step = ENRAGED ? 24.0f : 32.0f;
         int n = 0;
-        for (float d = step * 0.5f; d < len && n + 2 <= max; d += step) {
-            float ox = cx0 + ux * d, oy = cy0 + uy * d;
-            if (hypotf(px - ox, py - oy) < 60.0f) continue;      // none beside a player who only just stepped clear (the tester)
-            for (int side = -1; side <= 1; side += 2) {
-                BulletSpawn b = mk(a + side * PI / 2, EMBER_SPEED, 2.5f, 5.0f);
-                b.from = true; b.ox = ox; b.oy = oy; b.flash_in = true;
-                out[n++] = b;
+        if (embers) {                                            // embers off the cooling cut: a pair every step, out to both sides
+            embers = false;
+            float step = ENRAGED ? STEP2 : STEP1;
+            for (int k = 0; k < nseg; k++) {
+                float dx = seg[k].x1 - seg[k].x0, dy = seg[k].y1 - seg[k].y0, len = hypotf(dx, dy);
+                if (len < 1.0f) continue;
+                float ux = dx / len, uy = dy / len, a = atan2f(uy, ux);
+                for (float d = step * 0.5f; d < len && n + 2 <= max; d += step) {
+                    float ox = seg[k].x0 + ux * d, oy = seg[k].y0 + uy * d;
+                    if (ox < 0.0f || ox > ARENA_W || oy < ARENA_TOP || oy > ARENA_H) continue;   // off screen
+                    if (hypotf(px - ox, py - oy) < 60.0f) continue;   // none beside a player who only just stepped clear
+                    for (int side = -1; side <= 1; side += 2) {
+                        BulletSpawn b = mk(a + side * PI / 2, EMBER_SPEED, 2.5f, 5.0f);
+                        b.from = true; b.ox = ox; b.oy = oy; b.flash_in = true;
+                        out[n++] = b;
+                    }
+                }
+            }
+        }
+        if (spit_due) {                                          // coiled again: molten spit from its head
+            spit_due = false;
+            float hx = x, hy = y - 22.0f;
+            if (hypotf(px - hx, py - hy) >= SPIT_CLEAR) {
+                float a = aim_at(hx, hy, px, py);
+                for (int k = 0; k < SPIT_N && n < max; k++) {
+                    BulletSpawn b = mk(a + (k - (SPIT_N - 1) * 0.5f) * SPIT_GAP, SPIT_V, 2.5f, 5.0f);
+                    b.from = true; b.ox = hx; b.oy = hy;
+                    out[n++] = b;
+                }
             }
         }
         return n;
