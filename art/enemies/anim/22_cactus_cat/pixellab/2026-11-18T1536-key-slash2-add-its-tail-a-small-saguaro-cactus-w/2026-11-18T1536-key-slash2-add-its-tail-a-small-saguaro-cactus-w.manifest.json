@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1536-key-slash2-add-its-tail-a-small-saguaro-cactus-w",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3180 characters>",
+      "format": "png"
+    },
+    "description": "add its tail: a small saguaro cactus with arms and red flowers, standing up behind it on the left. keep the pose",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "428dff7b-5933-44a4-a100-f0bdf4917265",
+    "generation_id": "ab7f1599-030f-40d8-8805-ad9ba5dab174"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-slash3.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1535-key-windup2-its-tail-is-a-small-saguaro-cactus-w",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3664 characters>",
+      "format": "png"
+    },
+    "description": "its tail is a small saguaro cactus with arms and red flowers, standing up behind it on the left. keep the pose",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "02f4d3dc-e7f5-461c-8e55-afe31a72d603",
+    "generation_id": "91de8f45-b1c3-475a-93eb-7eead47ecfbf"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-windup3.png"
+  ]
+}

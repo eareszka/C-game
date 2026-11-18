@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1532-base-the-cat-sways-drunk-leaning-to-one-side-eye",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "the cat sways drunk, leaning to one side, eyes half closed, a sleepy silly grin",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "15d18f6b-b19a-4d7d-8fd6-19f351a8ce16",
+    "generation_id": "0aca975e-ae0a-4c7b-9bc4-1956936fa743"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-drunk.png"
+  ]
+}

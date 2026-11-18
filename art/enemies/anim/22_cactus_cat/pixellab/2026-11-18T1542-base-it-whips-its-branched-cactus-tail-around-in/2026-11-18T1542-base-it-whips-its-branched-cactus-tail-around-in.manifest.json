@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1542-base-it-whips-its-branched-cactus-tail-around-in",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "it whips its branched cactus tail around in a wide swing to its right side, body twisting, keep the cactus tail spiny",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c0f95de8-bb9c-4149-bfb3-18f235983ad3",
+    "generation_id": "3d302719-8703-4cd5-912e-ff02f4de3300"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-lash.png"
+  ]
+}

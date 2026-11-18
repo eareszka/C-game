@@ -215,7 +215,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/04_lili.png",                   {}, 4 },  // 28x22, 4 dirs (D R U, L mirrored; art/enemies/anim/04_lili/build.py): pink many-legged scuttler; frames 0-2 its run (Lili::anim_frame steps 0 1 2 1 at 260 ms), 3 the pinch: braced, ears in
     { "assets/enemies/05_crowing_crested_cobra.png",  {}, 4, false, "assets/enemies/05_crowing_crested_cobra_slither.png", "assets/enemies/05_crowing_crested_cobra_hiss.png" },  // 26x24, four views (art/enemies/anim/05_crowing_crested_cobra/build.py): coiled rest, rear, tail curl, low at 260 ms; alt = the hiss, one step a volley; flap = phase 2: the uncoiling hiss, then the 4-pose slither wave (5 frames)
     { "assets/enemies/redraws/06_wakmangganchi_aragondi.png", {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 0, "assets/enemies/redraws/06_wakmangganchi_aragondi_bite.png" },   // giant, the Dajna's size (302x166), one view: seven roaring heads, mouths snapping, drool, rivers running, bamboo swaying; one row per direction; its two lowest heads are parts (the bite sheet), not on this one
-    { "assets/enemies/07_alber.png",                  {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 72x64), 4 dirs (front, side, back; left mirrored): its one animation, flying -- a 6-frame wingbeat, 0.72 s
+    { "assets/enemies/07_alber.png",                  {}, 3, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // big (frame 72x64), 4 dirs (front, side, back; left mirrored): its one animation, flying -- a 3-frame wingbeat x 260 ms (cut from 6: 0 2 4)
     { "assets/enemies/08_snawfus.png",                {}, 4, false, "assets/enemies/08_snawfus_gallop.png", "assets/enemies/08_snawfus_volley.png" },  // 44x44, four views, PixelLab (art/enemies/anim/08_snawfus/build.py): idle breathing 4 x 260 ms; flap = the gallop, 4 big poses (130 ms fast, 260 slow; the user asked for it quicker); alt = reared, the volley
     { "assets/enemies/09_questing_beast.png",         {}, 4, false, "assets/enemies/09_questing_beast_gallop.png", "assets/enemies/09_questing_beast_throw.png" },  // 44x44, four views, PixelLab (art/enemies/anim/09_questing_beast/build.py): idle neck sway 4 x 260 ms; flap = 8 a direction, all its walk: 0-3 played at 130 ms for the dash, 4-7 at 260 ms for the slow walk; alt = the braced shake, a spot volley
     { "assets/enemies/redraws/10_grand_goule.png",            {0, 1, 0, 2} },   // big (frame 98x65), one view in all 8 dirs: gaunt blue bat-winged gargoyle, long beak; 1 head drawn back, 2 beak gaping: the frame its ring leaves on
@@ -231,14 +231,14 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/18_vatnaormur.png",     {}, 5 },         // big (frame 98x65), front only, symmetrical: slug-faced lake serpent, no water; frame 1 spits the gold ring, 3-4 its body heaves as a ripple leaves (Vatnaormur::anim_frame)
     { "assets/enemies/redraws/19_skeljaskrimsli.png",         {}, 5 },
     { "assets/enemies/redraws/20_sermilik.png",               {}, 5 },
-    { "assets/enemies/21_asp.png",                    {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130, nullptr, "assets/enemies/21_asp_heads.png" },   // medium (frame 48x49), 4 views (D the still, R side, U back, L = R mirrored; art/enemies/anim/21_asp/build.py, PixelLab + hand fixes): coiled serpent; 10 x 130 ms -- 1-2 tail rising, 3-5 tail tip pressed to its ear (the ring on f3), 6 tail down, 7 mouth opening, 8 tongue fully out (the hiss), 9 tongue drawing back
-    { "assets/enemies/22_cactus_cat.png",             {}, 8, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 170 },   // medium (frame 50x35), 3/4 only: sitting, its cactus tail swaying a pixel a frame, the breath a frame behind; 8 frames in a 1.36 s loop
+    { "assets/enemies/21_asp.png",                    {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0, nullptr, "assets/enemies/21_asp_heads.png" },   // medium (frame 48x49), 4 views (D the still, R side, U back, L = R mirrored; art/enemies/anim/21_asp/build.py, PixelLab + hand fixes): coiled serpent; 5 x 260 ms (cut from 10 drawn: 0 2 4 7 8) -- 0 rest, 1 tail rising, 2 tail tip pressed to its ear, 3 mouth opening, 4 tongue fully out (the hiss)
+    { "assets/enemies/22_cactus_cat.png",             {}, 8, false, "assets/enemies/22_cactus_cat_slash.png" },  // 58x54, front only in all 8 dirs, PixelLab + hand (art/enemies/anim/22_cactus_cat/build.py), 260 ms: idle = phase 1, the DRUNK sway (eyes shut, grin), 8 frames, its branched cactus tail swinging the other way (tail out right f2, far left f6); flap = phase 2, the SLASH (4 frames): 0 wind-up (blades drawn in), 1 BLADES OUT (fire; held while dashing), 2 flung flat, 3 straightening -> the idle
     { "assets/enemies/23_olgoi_khorkhoi.png",         {}, 12, true, "assets/enemies/23_olgoi_khorkhoi_spinup.png", "assets/enemies/23_olgoi_khorkhoi_spin.png", nullptr, 1, 1, nullptr, 170 },   // giant (frame 320x124: the whole arena, its ringed body runs off the right edge), one view, one row per direction: the arch heaves and leans, the body slithers, the head dips and the maw's lobes spread, feelers whip; flap = the spin firing up (11 frames, once, as it enrages); alt = the head and blades spinning with the body pumping; 12 frames in a 2.04 s loop
-    { "assets/enemies/24_zoureg.png",                 {}, 6, false, "assets/enemies/24_zoureg_dash.png", "assets/enemies/24_zoureg_windup.png", nullptr, 1, 1, nullptr, 170 },  // medium (frame 44x29), 4 dirs (front, side, back; left mirrored): 6-frame idle; flap = the dash, uncoiled and thrown like a knife; alt = drawn back and glowing hotter, shown while it aims
+    { "assets/enemies/24_zoureg.png",                 {}, 6, false, "assets/enemies/24_zoureg_dash.png", "assets/enemies/24_zoureg_windup.png", nullptr, 1, 1, nullptr, 0 },  // medium (frame 44x29), 4 dirs (front, side, back; left mirrored): 6-frame idle; flap = the dash, uncoiled and thrown like a knife; alt = drawn back and glowing hotter, shown while it aims
     { "assets/enemies/25_myrmecoleon.png",            {}, 5 },
     { "assets/enemies/redraws/26_akhekh.png",                 {0, 1, 0, 2} },
     { "assets/enemies/27_grootslang.png",             {}, 5 },
-    { "assets/enemies/28_opimachus.png",              {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 50x39), one view, never mirrored: sitting, tail curling up then stretching out, crest in the wind; 10 frames in the old 1.3 s loop
+    { "assets/enemies/28_opimachus.png",              {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // medium (frame 50x39), one view, never mirrored: sitting, tail curling up then stretching out, crest in the wind; 5 frames x 260 ms (cut from 10: 0 2 3 6 8)
     { "assets/enemies/redraws/29_karnabo.png",                {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: stooped green bogey in a huge slate robe, trunk of a nose; idle 0 and 1, pose 2 hands flung out, trunk coiled in a ring, held as a shot leaves it
     { "assets/enemies/30_dajna.png",                  {}, 8, true, "assets/enemies/30_dajna_sit.png", "assets/enemies/30_dajna_sat.png" },   // fills the top of the arena: one row per direction
     { "assets/enemies/redraws/31_man_eating_boulder.png",     {0, 1, 0, 1} },   // big (frame 98x65), one view in all 8 dirs: moss-draped boulder that is mostly mouth; idle 0 jaws open and 1 shut, pose 2 reared, jaws widest, held as rocks leave its gullet
@@ -247,18 +247,18 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/34_anaye.png",                  {}, 9, true },   // giant (frame 130x118), one view in all 8 dirs: armoured bone-masked titan, feather crest, reality-shard axe; 9 poses 260 ms, picked by Anaye::anim_frame: idle, lift, slam
     { "assets/enemies/redraws/35_lomie.png",                  {0, 1, 0, 2} },
     { "assets/enemies/redraws/36_cu_sith.png",                {0, 1, 0, 2} },
-    { "assets/enemies/redraws/37_celestial_stag.png",         {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 150 },   // big (frame 98x65), 4 dirs (front, side, back; left mirrored): the spectral stag of the shard caves; 5 frames at the torches' 150 ms, its antlers' rainbow stripes a step along each frame, strobing as the torch flames do
+    { "assets/enemies/redraws/37_celestial_stag.png",         {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // big (frame 98x65), 4 dirs (front, side, back; left mirrored): the spectral stag of the shard caves; 5 frames at the torches' 150 ms, its antlers' rainbow stripes a step along each frame, strobing as the torch flames do
     { "assets/enemies/redraws/38_igtuk.png",                  {0, 1, 0, 2} },
-    { "assets/enemies/redraws/39_ajaju.png",                  {}, 10, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },   // medium (frame 62x47), 4 dirs (front, side, back; left mirrored): its idle, 10 frames in the old 1.3 s loop -- breath on 2-4, tongues fanned on 3, a flick on 8, the tail flipping on 5-8
-    { "assets/enemies/redraws/40_slide_rock_bolter.png",      {}, 6, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 120 },   // big (frame 98x65), side on, right views mirrored: the rock-hided, moss-backed whale, beached and flopping uncomfortably (the user)
+    { "assets/enemies/redraws/39_ajaju.png",                  {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // medium (frame 62x47), 4 dirs (front, side, back; left mirrored): its idle, 5 frames x 260 ms (cut from 10: 0 2 3 6 8) -- old 2 breath, old 3 tongues fanned, old 6 the tail flipping, old 8 a flick
+    { "assets/enemies/redraws/40_slide_rock_bolter.png",      {}, 3, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // big (frame 98x65), side on, right views mirrored: the rock-hided, moss-backed whale, beached and flopping uncomfortably (the user); 3 x 260 ms (cut from 6: 0 2 4)
     { "assets/enemies/redraws/41_sasnalkahi.png",     {}, 5 },
     { "assets/enemies/redraws/42_nykur.png",                  {0, 1, 0, 2} },
     { "assets/enemies/redraws/43_sazae_oni.png",              {0, 1, 0, 2} },
     { "assets/enemies/redraws/44_itqiirpak.png",              {0, 1, 0, 1} },   // giant (frame 130x88), 8 dirs (DL mirrored): a huge hand, a palm mouth with a long tongue, a mouth and tongue on each fingertip, a plain thumb; idle 0 1, pose 2 mouths wide, held on each shot
     { "assets/enemies/redraws/45_kusa_kap.png",       {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (left mirrored): rust sea eagle, a dugong in its talons; wings level, raised, highest
     { "assets/enemies/redraws/46_lusca.png",          {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (left mirrored): tall shark head on crimson octopus arms; jaws open, half open, nearly shut
-    { "assets/enemies/47_moha_moha.png",              {}, 24, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 100 },  // approved side view: 24 frames at 100 ms, always facing right
-    { "assets/enemies/48_bjarndyrakongur.png",        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 162 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on 5-9; 12 frames in a 1.94 s loop; one row per direction
+    { "assets/enemies/47_moha_moha.png",              {}, 8, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },  // approved side view: 8 frames x 260 ms (cut from 24: every third), always facing right
+    { "assets/enemies/48_bjarndyrakongur.png",        {}, 6, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // giant (frame 64x142, drawn 57x136), front view only, the user's own drawing: standing polar bear king; breath rising on 1-7, hands swaying a pixel, ear tufts flaring on 3-4 and 8-9, star twinkling, a cold-breath puff from the mouth on old 5-9; 6 frames x 260 ms (cut from 12: the evens); one row per direction
     { "assets/enemies/redraws/49_physeter.png",       {}, 8, true },   // mutant sperm whale first pose, breathing; one row per direction
     { "assets/enemies/redraws/50_teakettler.png",             {}, 5, false, "assets/enemies/redraws/50_teakettler_walk.png", "assets/enemies/redraws/50_teakettler_steam.png" },  // 32x29, four views (art/enemies/anim/50_teakettler/build.py): rest, WHISTLE (frame 1), puff trailing, rest, squash at 260 ms (1.3 s, the old loop); alt = the steam snort, one step a volley; walk = backwards, 4 poses at 260 ms
     { "assets/enemies/redraws/51_aspidochelone.png",   {}, 8, true },  // island turtle first pose, no water beneath; breathing fallback
@@ -271,7 +271,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/57_dingbat.png",                {}, 5, false, "assets/enemies/57_dingbat_stare.png", "assets/enemies/57_dingbat_catch.png" },  // 48x40, front only (a flyer), PixelLab (art/enemies/anim/57_dingbat/build.py): gliding wingbeat 5 x 260 ms, downstroke on frame 2; alt = perched, catching (cupped wings); flap = 0-1 the stare (cupped, flare), 2 guard in, 3 guard out
     { "assets/enemies/58_agropelter.png",             {}, 5 },   // 60x44, front only (it never moves), PixelLab (art/enemies/anim/58_agropelter/build.py): rest, RIGHT lash (1), arms wide, LEFT lash (3), SCREAM (4) -- 260 ms, the old 1.3 s loop
     { "assets/enemies/redraws/59_tripodero.png",              {}, 5, false, "assets/enemies/redraws/59_tripodero_dance.png" },  // 44x56, four views, PixelLab (art/enemies/anim/59_tripodero/build.py): 5 x 260 ms -- 1 legs tall, the SLUG; 3 the pouch SPIT; flap = the dance, 4 poses at 260 ms
-    { "assets/enemies/60_rumptifusel.png",            {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 390 },   // 56x44, one 3/4 view facing left in every direction (never mirrored), PixelLab (art/enemies/anim/60_rumptifusel/build.py): flat, rising, REARED belly bared (frame 2, the sheets), still up, coming down -- 5 x 390 ms, its old ~1.94 s loop
+    { "assets/enemies/60_rumptifusel.png",            {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // 56x44, one 3/4 view facing left in every direction (never mirrored), PixelLab (art/enemies/anim/60_rumptifusel/build.py): flat, rising, REARED belly bared (frame 2, the sheets), still up, coming down -- 5 x 390 ms, its old ~1.94 s loop
     { "assets/enemies/redraws/61_roperite.png",       {}, 5 },         // approved running cycle, 8 dirs (left views mirrored); existing frame-2 lasso hook and timing
     { "assets/enemies/62_hugag.png",                  {}, 5, false, nullptr },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams
     { "assets/enemies/redraws/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
@@ -283,24 +283,24 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/69_bes_chem.png",               {}, 5, false, "assets/enemies/69_bes_chem_fly.png", "assets/enemies/69_bes_chem_perch.png" },  // 45x39, front view only (art/enemies/anim/69_bes_chem/build.py, PixelLab): chest mouth shut, WIDE (frame 1, the burst), opening, rest, clenched, wings beating over it (phase 1) -- 260 ms, 1.3 s; alt = the same mouth cycle, wings still (perched, phase 2); flap = flying: wings down, out, up, out, legs tucked
     { "assets/enemies/70_trollgadda.png",             {}, 5, false, "assets/enemies/70_trollgadda_shake.png" },   // big, side view only (mirrored when the player is on its left): green pike, a tree wedged in its jaws; tail flicking, crown swaying; frame 2 jaws strained widest; flap = the shake sheet, always on (Trollgadda::flap_phase): 12 a view, 0-3 swaying, 4-7 shaken hard, 8-11 thrashing
     { "assets/enemies/redraws/71_namungumi.png",              {}, 8, false, "assets/enemies/redraws/71_namungumi_beam.png" },   // 52x40, front view only, PixelLab (art/enemies/anim/71_namungumi/build.py): breath 0-4 (crest highest on 2), steps 5-7, 260 ms; flap = the beam, 8 angles x (charge: the line dashed across its body, fire: solid + recoil)
-    { "assets/enemies/72_mahwot.png",                 {}, 4, false, "assets/enemies/72_mahwot_close.png", "assets/enemies/72_mahwot_roar.png", nullptr, 1, 1, nullptr, 105 },  // 60x40, side view only (left mirrored), PixelLab (art/enemies/anim/72_mahwot/build.py): the swim, 4 x 105 ms (its old pace, the user); alt = the roar, one held pose, jaws wide -- the beam leaves its mouth; flap = the mouth CLOSING after the breath, slowly, across its cooldown (Mahwot::flap_phase)
+    { "assets/enemies/72_mahwot.png",                 {}, 4, false, "assets/enemies/72_mahwot_close.png", "assets/enemies/72_mahwot_roar.png", nullptr, 1, 1, nullptr, 0 },  // 60x40, side view only (left mirrored), PixelLab (art/enemies/anim/72_mahwot/build.py): the swim, 4 x 105 ms (its old pace, the user); alt = the roar, one held pose, jaws wide -- the beam leaves its mouth; flap = the mouth CLOSING after the breath, slowly, across its cooldown (Mahwot::flap_phase)
     { "assets/enemies/73_liderc_anim.png",                    {}, 4, false, "assets/enemies/73_liderc_streak.png", nullptr, nullptr, 1, 1, "assets/enemies/73_liderc_prints.png" },  // 48x48, front only (floating phaser): idle 4 x 260 ms flames leaping, frame 2 the flare-up (spit); flap = the streak pose, legs tucked; fades in only as the player nears; prints: human + goose foot
     { "assets/enemies/74_bes_rap.png",                {}, 5, false, "assets/enemies/74_bes_rap_lunge.png" },  // 41x43, front view only, always as drawn, PixelLab (art/enemies/anim/74_bes_rap/build.py): skinny pink pig ghoul squatting; 1 winds up, 2 head turned to us spitting glue, 3 jaw closing, 4 breathes out, 260 ms; flap = the lunge, arms flung ahead, held while it dashes (BesRap::flap_phase)
     { "assets/enemies/redraws/75_makalala.png",               {}, 5, false, "assets/enemies/redraws/75_makalala_fly.png" },  // 45x51, D/R/U with L mirrored. PixelLab first version (art/enemies/anim/75_makalala/build.py): slate ground bird, ivory club on its head; 5 x 260 ms, f2 = wings flung out, beak gaping (the spray); flap = flying, 4 frames per 0.28 s (raised, level, lowered, level), the club pinned at (+24.3, -21.6) from the frame centre (mirrored facing left)
-    { "assets/enemies/redraws/76_loch_oich_monster.png", {}, 5 },       // reviewed first pose; breathing fallback
+    { "assets/enemies/redraws/76_loch_oich_monster.png", {}, 3 },       // reviewed first pose; breathing fallback, 3 x 260 ms (cut from 5: 0 2 4)
     { "assets/enemies/redraws/77_hoga.png",           {}, 5 },         // reviewed first pose; breathing fallback
-    { "assets/enemies/78_zankallala.png",             {}, 10, false, "assets/enemies/78_zankallala_run.png", nullptr, nullptr, 1, 1, nullptr, 130 },  // medium (frame 58x53), 4 dirs (front, side, back; left mirrored): hairy trickster in a beehive hat riding a jerboa; 10 frames in the old 1.3 s loop, frames 3-4 the boast, staff raised; flap = the dash, staff levelled ahead
+    { "assets/enemies/78_zankallala.png",             {}, 5, false, "assets/enemies/78_zankallala_run.png", nullptr, nullptr, 1, 1, nullptr, 0 },  // medium (frame 58x53), 4 dirs (front, side, back; left mirrored): hairy trickster in a beehive hat riding a jerboa; 5 frames x 260 ms (cut from 10: 0 2 3 6 8), frame 2 (old 3) the boast, staff raised; flap = the dash, staff levelled ahead
     { "assets/enemies/redraws/79_ugjuknarpak.png",            {}, 5 },         // big, 8 dirs: giant tusked bearded seal reared on its hind legs, clawing the air; frame 2 widest roar
     { "assets/enemies/redraws/80_bes_kotak.png",              {}, 5 },         // big, 8 dirs: blocky floating box spirit; frame 2 lid lifts, mouth slot gapes
     { "assets/enemies/81_ieltxu.png",                 {0, 1, 0, 2}, 3, false, nullptr, nullptr },  // medium, 8 dirs: near-black night bird, dark; alt = lit up breathing fire (frame 1 the jet)
     { "assets/enemies/82_nadubi.png",                 {}, 5, false, nullptr, nullptr },  // big, 8 dirs: barbed spirit on all fours; flap = spider crawl; alt = reared, raking claws
-    { "assets/enemies/redraws/83_beast_of_barrisdale.png",    {}, 10, true, "assets/enemies/redraws/83_beast_of_barrisdale_block.png", "assets/enemies/redraws/83_beast_of_barrisdale_fly.png", nullptr, 1, 1, nullptr, 130 },  // 100x65, one left-facing view, Dingbat's choppiness: 5 poses each held two 130 ms cells; alt = airborne for all phase two; flap = the block, wrapped in its wings for the whole hang (7 frames: closing, A B C B A, opening)
+    { "assets/enemies/redraws/83_beast_of_barrisdale.png",    {}, 5, true, "assets/enemies/redraws/83_beast_of_barrisdale_block.png", "assets/enemies/redraws/83_beast_of_barrisdale_fly.png", nullptr, 1, 1, nullptr, 0 },  // 100x65, one left-facing view, Dingbat's choppiness: its 5 poses at 260 ms (cut from 10 cells: 0 2 4 6 8; the alt cut the same); alt = airborne for all phase two; flap = the block, wrapped in its wings for the whole hang (7 frames: closing, A B C B A, opening)
     { "assets/enemies/redraws/84_kigutilik.png",              {}, 5 },  // big, 8 dirs: violet stilt-legged beast, walrus head, cup on its head; frame 2 jaws open
     { "assets/enemies/redraws/85_nanabolele.png",                    {}, 5 },  // big, 8 dirs: glowing-scaled river dragon; frame 2 jaws gape, lights blaze
-    { "assets/enemies/86_leucrocotta.png",                   {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 170 },  // big (frame 98x65), 4 dirs (front, side, back; left mirrored): stag-legged lion, badger head; 5 frames, 0.85 s, its call's beat -- mouth gaping on 2-3 (Leucrocotta::anim_frame keeps it on the call); flap = the gallop, drawn from the side only
+    { "assets/enemies/86_leucrocotta.png",                   {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },  // big (frame 98x65), 4 dirs (front, side, back; left mirrored): stag-legged lion, badger head; 5 frames, 0.85 s, its call's beat -- mouth gaping on 2-3 (Leucrocotta::anim_frame keeps it on the call); flap = the gallop, drawn from the side only
     { "assets/enemies/redraws/87_corocotta.png",                     {}, 5 },  // big, 8 dirs: grey hyena-wolf, bristling mane, colour-shifting eyes; frame 2 jaws wide
     { "assets/enemies/redraws/88_amixsak.png",                       {}, 5 },  // big, 8 dirs: risen empty walrus hide, floating; frame 2 flippers flung high to seize
-    { "assets/enemies/redraws/89_cuero.png",                  {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 250 },   // big (frame 98x65), one view: the living stretched cowhide, clawed rim, rippling and heaving (the user)
+    { "assets/enemies/redraws/89_cuero.png",                  {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // big (frame 98x65), one view: the living stretched cowhide, clawed rim, rippling and heaving (the user)
     { "assets/enemies/redraws/90_chipekwe.png",              {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (R, UL, DL mirrored): huge periwinkle beast, one ivory horn, a trunk in the middle of its face; weight shifting, trunk swinging, feet planted
     { "assets/enemies/redraws/91_kurrea.png",                {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (L, UR, DL mirrored): dark purple serpent of reality shard in one great loop, rainbow crystal plates, one colour each; a slow ripple
     { "assets/enemies/redraws/92_siehnam.png",               {0, 1, 0, 2} },   // big (frame 98x65), 8 dirs (UL, L, DL mirrored): skull-faced night deer, vast bone antlers bloodied at the tips; head and antlers swaying
@@ -310,7 +310,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/96_bregdi.png",                {0, 1, 0, 2} },   // big (frame 98x72), one view in all 8 dirs, no water: tall gray sea beast of Shetland, gaping jaws, ivory teeth, long fins that sweep up over its head
     { "assets/enemies/redraws/97_ro.png",             {}, 8, true },   // the only black enemy: charcoal hide, black outline, red accents; reviewed first pose, breathing
     { "assets/enemies/98_boiuna.png",                        {}, 12, true, nullptr, nullptr, nullptr, 1, 1, nullptr, 130 },  // giant (frame 192x176, drawn 163x162), front view only: great green river snake, its winding body laid out behind, its front reared and arched over, head hanging open-mouthed, yellow slit eyes; 12 frames in a 1.56 s loop -- a wave runs back along it to the tail's tip (the back moves more than the front), it breathes, the head lifts a pixel on 4-8; one row per direction
-    { "assets/enemies/redraws/99_fad_felen.png", {}, 10, true, nullptr, "assets/enemies/redraws/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 180 },  // approved crouched idle; alt = standing on hind legs, ten frames at 180ms
+    { "assets/enemies/redraws/99_fad_felen.png", {}, 5, true, nullptr, "assets/enemies/redraws/99_fad_felen_standing.png", nullptr, 1, 1, nullptr, 0 },  // approved crouched idle; alt = standing on hind legs; both 5 frames x 260 ms (cut from 10: the evens)
     { "assets/enemies/100_flesh_planet.png",          {}, 8, true },   // giant: the final boss's ball (final_boss_views, one row a direction, all alike) -- the rest of its fight later
 };
 static const int ENEMY_SHEET_COUNT = sizeof(ENEMY_SHEETS) / sizeof(ENEMY_SHEETS[0]);
@@ -334,17 +334,24 @@ static int log_row(const Bullet& bl, const EnemySheet& es) {
     static const int STEPS[4] = { 0, 1, 0, 2 };
     return es.log_rows > 1 ? STEPS[(int)(bl.age / ROCK_STEP) % 4] : 0;
 }
-static const Uint32 LOOP_MS[4] = { 400, 250, 400, 250 };
 static const Uint32 STEP_MS = 260;
+// Three-frame sheets play `loop` in 1.3 s. Every enemy but the bosses steps
+// on the one STEP_MS beat (the user, 2026-11-18: the same frame rate for all
+// battle sprites): the first pose held two beats, the rest one. The bosses
+// keep their old 400/250 swing.
+static const Uint32 LOOP_MS[4]      = { 2 * STEP_MS, STEP_MS, STEP_MS, STEP_MS };
+static const Uint32 BOSS_LOOP_MS[4] = { 400, 250, 400, 250 };
 
 // The idle frame an enemy sheet shows right now: three frames in `loop`
-// order at LOOP_MS, more straight through at STEP_MS. Drawing and the breath
+// order (LOOP_MS), more straight through at STEP_MS. Drawing and the breath
 // hook (Enemy::breathe) both read it, so a volley leaves on the frame shown.
-static int idle_frame_now(const EnemySheet& es, Uint32 ms) {
-    if (es.frames != 3) return (ms / (es.step_ms ? es.step_ms : STEP_MS)) % es.frames;
-    Uint32 t = ms % (LOOP_MS[0] + LOOP_MS[1] + LOOP_MS[2] + LOOP_MS[3]);
+static int idle_frame_now(const EnemySheet& es, int id, Uint32 ms) {
+    bool looped = es.frames == 3 && (es.loop[1] | es.loop[2] | es.loop[3]);   // a 3-frame sheet with no loop order plays straight through
+    if (!looped) return (ms / (es.step_ms ? es.step_ms : STEP_MS)) % es.frames;
+    const Uint32* L = enemy_is_boss(id) ? BOSS_LOOP_MS : LOOP_MS;
+    Uint32 t = ms % (L[0] + L[1] + L[2] + L[3]);
     int step = 0;
-    while (t >= LOOP_MS[step]) t -= LOOP_MS[step++];
+    while (t >= L[step]) t -= L[step++];
     return es.loop[step];
 }
 
@@ -1146,7 +1153,7 @@ void BattleScene::_update_enemy(float dt) {
     }
     // The breath frame: the moment the idle animation turns to it.
     if (_enemy_id >= 0 && _enemy_id < ENEMY_SHEET_COUNT) {
-        int f = idle_frame_now(ENEMY_SHEETS[_enemy_id], (Uint32)_anim_ms), bf = _enemy->breath_frame();
+        int f = idle_frame_now(ENEMY_SHEETS[_enemy_id], _enemy_id, (Uint32)_anim_ms), bf = _enemy->breath_frame();
         if (f == bf && _idle_frame != bf) {
             int count = _enemy->breathe(_bp.x, _bp.y, spawns, 256);
             for (int i = 0; i < count; i++)
@@ -1772,7 +1779,7 @@ void BattleScene::_draw_enemy(SDL_Renderer* ren) const {
         SDL_QueryTexture(_sheet, NULL, NULL, &sw, &sh);
         const EnemySheet& es = ENEMY_SHEETS[_enemy_id];
         int fw = es.rows ? sw / es.frames : sw / (8 * es.frames), fh = es.rows ? sh / 8 : sh;
-        int frame = _enemy->anim_frame() >= 0 ? _enemy->anim_frame() : idle_frame_now(es, (Uint32)_anim_ms);
+        int frame = _enemy->anim_frame() >= 0 ? _enemy->anim_frame() : idle_frame_now(es, _enemy_id, (Uint32)_anim_ms);
         int mf  = _enemy->move_facing();   // running somewhere: face that way, not the player
         int dir = sheet_dir(mf >= 0 ? mf : (_enemy->four_views() ? facing_toward4 : facing_toward)(_bp.x - _enemy->x, _bp.y - _enemy->y));
         SDL_Rect src = es.rows ? SDL_Rect{ frame * fw, dir * fh, fw, fh }

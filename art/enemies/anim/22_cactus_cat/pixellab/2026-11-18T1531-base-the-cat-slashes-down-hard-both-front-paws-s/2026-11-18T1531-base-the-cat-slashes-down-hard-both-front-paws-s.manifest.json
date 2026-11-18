@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1531-base-the-cat-slashes-down-hard-both-front-paws-s",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "the cat slashes down hard, both front paws swept down and crossed in an X in front of its chest, long white bone blades on its forearms, mouth open hissing",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "839647eb-0512-4073-9396-af0dc0e1a403",
+    "generation_id": "3aabffd3-c1f3-4346-8cdc-5309aefc3f0d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-slash.png"
+  ]
+}

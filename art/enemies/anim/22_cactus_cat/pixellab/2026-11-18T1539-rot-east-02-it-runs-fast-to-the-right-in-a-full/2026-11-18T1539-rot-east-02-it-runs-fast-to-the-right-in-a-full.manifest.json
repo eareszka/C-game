@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1539-rot-east-02-it-runs-fast-to-the-right-in-a-full",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2204 characters>",
+      "format": "png"
+    },
+    "description": "it runs fast to the right in a full gallop, legs stretched out, its cactus tail streaming behind, short white bone blades on its forearms",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a72f1530-0fbe-443a-94a0-43410d159303",
+    "generation_id": "0c927c14-556e-4095-b68f-3c89cde5b333"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-run.png"
+  ]
+}

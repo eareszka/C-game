@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1551-key-drunk2-remove-the-cactus-tail-completely-kee",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3608 characters>",
+      "format": "png"
+    },
+    "description": "remove the cactus tail completely, keep the cat exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4b1db702-bbdc-442b-bdee-c899890c9655",
+    "generation_id": "10066f7b-d962-4c2f-87f5-a91d023464f0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-drunk-notail.png"
+  ]
+}

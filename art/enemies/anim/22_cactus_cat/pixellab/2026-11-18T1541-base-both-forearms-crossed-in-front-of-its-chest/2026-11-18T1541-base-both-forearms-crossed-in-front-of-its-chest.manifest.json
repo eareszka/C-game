@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1541-base-both-forearms-crossed-in-front-of-its-chest",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "both forearms crossed in front of its chest, white bone blades scraping together, head thrown back yowling, mouth wide open. keep the cactus tail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3e22dd83-5189-4753-ad30-b40df2b1c50b",
+    "generation_id": "0255d701-2531-41e5-b486-7efeb3d6d156"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-yowl.png"
+  ]
+}

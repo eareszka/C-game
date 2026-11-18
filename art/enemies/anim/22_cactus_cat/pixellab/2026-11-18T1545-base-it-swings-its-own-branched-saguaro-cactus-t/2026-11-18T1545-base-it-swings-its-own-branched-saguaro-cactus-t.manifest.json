@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1545-base-it-swings-its-own-branched-saguaro-cactus-t",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "it swings its own branched saguaro cactus tail hard across to its right side like a club, the cactus tail sweeping low, only one tail",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "587eff5e-683f-403e-a143-175834ff3378",
+    "generation_id": "a4839fcd-2c58-43da-900d-cb8f86c560a9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-lash2.png"
+  ]
+}

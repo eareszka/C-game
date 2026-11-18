@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1537-a-green-bobcat-covered-in-thorny-hair-long-spine",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "a green bobcat covered in thorny hair, long spines on its ears, its tail a branched saguaro cactus with red flowers, white bone blades on its forearms",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "0920ac03-256d-4e16-94c5-836d32f64980",
+    "generation_id": "21cc5251-e125-4004-b316-bbf3f52a49d8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "rot-south-00.png",
+    "rot-south-east-01.png",
+    "rot-east-02.png",
+    "rot-north-east-03.png",
+    "rot-north-04.png",
+    "rot-north-west-05.png",
+    "rot-west-06.png",
+    "rot-south-west-07.png"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1534-base-keep-the-saguaro-cactus-tail-and-thorny-gre",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "keep the saguaro cactus tail and thorny green coat. the cat slashes both front paws down and out to the sides, sharp bone blades on its forearms, mouth open hissing",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4eb5b54b-ad61-4945-b3ad-ec1e342e0994",
+    "generation_id": "781afad7-a5d1-488a-8e96-763f8349ea42"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-slash2.png"
+  ]
+}

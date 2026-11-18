@@ -1,7 +1,7 @@
 """Asp's animation. PixelLab from its 47x42 NES still (pixellab/base.png, 64x64); the old sheet was that still in all
 80 cells. Four views (the fight's tongue() / hiss_face: it holds the view it faced at the flick):
   D = the still (3/4 front), R = PixelLab's east view, U = its north view, L = R mirrored.
-The 10-frame loop at 130 ms (the old 1.3 s; the fangs keep their own clock):
+The 10 drawn frames (at 260 ms the sheet keeps KEEP: 0 2 4 7 8 -> 5 frames, the hiss on 4):
   0 rest  1-2 the tail rising  3-5 the tail tip pressed on its ear (it stops its ears against the charmer)
   6 the tail coming down  7 the mouth opening  8 the tongue fully out (breath_frame 8: the hiss leaves its tip)
   9 the tongue drawing back
@@ -22,7 +22,9 @@ IDLE = {'down': ['in_D', 'tailgo-d-01', 'tailgo-d-03', 'tailgo-d-04', 'tailgo-d-
                   'tonguego-r-02', 'tonguego-r-03', 'tonguego-r-04'],
         'up': ['in_U', 'tailgo-u-01', 'tailgo-u-03', 'tailgo-u-04', 'tailgo-u-04', 'tailgo-u-04', 'tailgo-u-02',
                'tongueu-02', 'tongueu-04', 'tongueu-04']}
-MS, HISS = 130, 8
+MS, HISS = 260, 4
+KEEP = [0, 2, 4, 7, 8]   # the 260 ms rule (the user, 2026-11-18; bullets' cut): rest, tail rising, tail on the ear, mouth
+                         # opening, tongue out -- of the 10 drawn below
 
 def frames():
     P = [c for c in pt.palette_of(os.path.join(HERE, 'original_sprite.png')) if c != (14, 32, 22, 255)] + [RED]   # its near-black (9 px) goes to black: room for the tongue in 8 + black
@@ -40,7 +42,7 @@ def frames():
             c = Image.new('RGBA', (W, H), pt.CLEAR); part = f.crop(b)
             c.paste(part, ((W - part.width) // 2, H - part.height), part); out[v].append(c)
     fix_up_tail(out['up']); [fix_down_eyes(f) for f in out['down'][1:7]]; [fix_right_eye(f) for f in out['right'][2:6]]
-    return out, W, H
+    return {v: [fs[i] for i in KEEP] for v, fs in out.items()}, W, H
 
 # The user's review fixes (2026-11-18), on the cut frames:
 GOLD = ((240, 188, 60, 255), (201, 164, 51, 255), (193, 138, 57, 255))
@@ -146,7 +148,7 @@ def gif(fs, ms, path):
 
 if __name__ == '__main__':
     idle, W, H = frames(); gap = 4
-    board = Image.new('RGBA', (10 * (W + gap) + gap, 3 * (H + gap) + gap), (24, 24, 32, 255))
+    board = Image.new('RGBA', (len(KEEP) * (W + gap) + gap, 3 * (H + gap) + gap), (24, 24, 32, 255))
     for r, v in enumerate(('down', 'right', 'up')):
         for i, fr in enumerate(idle[v]): board.paste(fr, (gap + i * (W + gap), gap + r * (H + gap)), fr)
     rv = os.path.join(HERE, 'review'); os.makedirs(rv, exist_ok=True)
@@ -155,15 +157,15 @@ if __name__ == '__main__':
     off = lambda c: '(%.1f, %.1f)' % ((c[0] + 0.5 - W / 2) * 2, (c[1] + 0.5 - H / 2) * 2) if c else 'none'
     print('frame %dx%d' % (W, H))
     for v in ('down', 'right', 'up'):
-        print('tongue tip', v, 'frame', HISS, off(tongue_tip(idle[v][HISS], v)), '| frame 9', off(tongue_tip(idle[v][9], v)))
+        print('tongue tip', v, 'frame', HISS, off(tongue_tip(idle[v][HISS], v)), )
     print('coils (down, frame 0)', off(coils(idle['down'][0])))
     if '--install' in sys.argv:
         P = {v: {'idle': idle[v]} for v in ('down', 'right', 'up')}
         path = os.path.join(ROOT, 'assets/enemies/21_asp.png')
         pt.sheet(P, 'idle', path, W, H)
-        print('21_asp.png', *pt.check_frames(path, 10, W, H), sep='\n  ')
+        print('21_asp.png', *pt.check_frames(path, len(KEEP), W, H), sep='\n  ')
     else:
         import tempfile
         t = os.path.join(tempfile.gettempdir(), '21_check.png')
         pt.sheet({v: {'idle': idle[v]} for v in ('down', 'right', 'up')}, 'idle', t, W, H)
-        print('check', *pt.check_frames(t, 10, W, H), sep='\n  ')
+        print('check', *pt.check_frames(t, len(KEEP), W, H), sep='\n  ')

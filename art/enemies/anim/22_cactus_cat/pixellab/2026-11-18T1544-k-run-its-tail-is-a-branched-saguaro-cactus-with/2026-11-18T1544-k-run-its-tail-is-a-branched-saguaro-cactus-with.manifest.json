@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1544-k-run-its-tail-is-a-branched-saguaro-cactus-with",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2584 characters>",
+      "format": "png"
+    },
+    "description": "its tail is a branched saguaro cactus with spines and red flowers, streaming out behind it. keep the running pose",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c750f35d-361f-4f42-bae1-679e2631026d",
+    "generation_id": "0f5bdb54-ac3a-440a-93c2-fff0681b599e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-run2.png"
+  ]
+}

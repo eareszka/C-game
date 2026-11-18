@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1531-base-the-cat-rears-up-on-its-hind-legs-both-fron",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1832 characters>",
+      "format": "png"
+    },
+    "description": "the cat rears up on its hind legs, both front paws raised high above its head, long white bone blades jutting from its forearms, mouth open snarling",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "43bed8ae-50c8-4a14-9b43-54e1018f6654",
+    "generation_id": "b27d9247-7347-4391-94e9-f3fb877772af"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-windup.png"
+  ]
+}

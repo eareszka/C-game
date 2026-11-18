@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1556-k-drunk-notail-it-straightens-up-pulls-both-fore",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 3112 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 3180 characters>",
+      "format": "png"
+    },
+    "action": "it straightens up, pulls both forelegs in tight to its chest, then flings them out to the sides slashing with the bone blades, mouth opening in a hiss",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ba2d29b9-d6cc-470f-ae86-0e6b538c586d",
+    "generation_id": "ed6fe095-89dd-4c17-a91d-413f59b9da60"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "sl-00.png",
+    "sl-01.png",
+    "sl-02.png",
+    "sl-03.png",
+    "sl-04.png"
+  ]
+}

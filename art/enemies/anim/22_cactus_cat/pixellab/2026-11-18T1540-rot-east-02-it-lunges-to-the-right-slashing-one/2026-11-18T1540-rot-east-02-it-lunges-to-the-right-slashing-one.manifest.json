@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1540-rot-east-02-it-lunges-to-the-right-slashing-one",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 2204 characters>",
+      "format": "png"
+    },
+    "description": "it lunges to the right slashing one foreleg forward, a long white bone blade on the forearm sweeping, mouth open, cactus tail behind",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7abda090-93b1-4510-92fc-88edd09a7c16",
+    "generation_id": "75f02f7b-0c32-42b5-be14-4179dffc5208"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-slash-side.png"
+  ]
+}

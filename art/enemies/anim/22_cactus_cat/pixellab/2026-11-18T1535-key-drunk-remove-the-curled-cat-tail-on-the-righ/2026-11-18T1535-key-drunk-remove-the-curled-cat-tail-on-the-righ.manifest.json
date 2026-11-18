@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-18T1535-key-drunk-remove-the-curled-cat-tail-on-the-righ",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3384 characters>",
+      "format": "png"
+    },
+    "description": "remove the curled cat tail on the right side, keep everything else",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "bef0969d-5097-4cf8-95bf-a787f921d593",
+    "generation_id": "a1c57870-c63a-49f3-ae73-08e0695ac31a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "key-drunk2.png"
+  ]
+}
