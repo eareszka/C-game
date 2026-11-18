@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1655-in-d-do-not-change-the-head-shape-face-or-coils",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "description": "do not change the head shape, face or coils. Add only a thin forked red tongue, one pixel wide and about seven pixels long, coming out of the closed mouth and pointing down to the lower left",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "37a2116b-2bd3-4d46-9bb0-44f9402b7969",
+    "generation_id": "0afe2813-439f-41e7-99f4-51e8f978c692"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tonguekey2d.png"
+  ]
+}

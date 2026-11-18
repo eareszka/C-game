@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1654-in-d-do-not-change-the-head-face-or-coils-at-all",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "description": "do not change the head, face or coils at all. Only the tail on the right changes: the upright tail leans over to the left and its thin tip touches the right side of the head beside the eye",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "87d0f686-0146-4e35-989d-0c662af91024",
+    "generation_id": "4f10d89f-f505-4ca0-8e1e-0d76f1c61cc0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tailkey2d.png"
+  ]
+}

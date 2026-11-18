@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1643-a-green-serpent-coiled-in-a-tall-heap-head-raise",
+  "provider": "pixellab",
+  "route": "generate-8-rotations-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "description": "a green serpent coiled in a tall heap, head raised on top, tail tip standing up at its right, yellow belly",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3530d10f-b28b-418b-a01b-13af78e7bd77",
+    "generation_id": "d4b705cf-49ad-494f-a520-e39faf319ccc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "view-south-00.png",
+    "view-south-east-01.png",
+    "view-east-02.png",
+    "view-north-east-03.png",
+    "view-north-04.png",
+    "view-north-west-05.png",
+    "view-west-06.png",
+    "view-south-west-07.png"
+  ]
+}

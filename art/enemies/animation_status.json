@@ -90,5 +90,12 @@
     "reviewed": "2026-11-18",
     "gens": 7,
     "notes": "2026-11-18: reverted to the first PixelLab version (7 gens; the user called the horn-plate redo overengineered). 45x51, idle 5 x 260 ms, D/R/U with L mirrored, f2 wings flung out (the spray); fly 4 frames per 0.28 s, club pinned at (+24.3, -21.6). Unused work kept: the horn-plate redo (47 gens) in 75_makalala/plates/, the big-wing redo (21 gens) in 75_makalala/redo/; the horn-plate sheets backed up in art/_backup/75_before_revert_*."
+  },
+  "21": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-18",
+    "gens": 19,
+    "notes": "PixelLab from the 47x42 still (edit keys + animate --last), approved by the user 2026-11-18. 48x49, 4 views (D the still, R side, U back, L = R mirrored), 10 x 130 ms: 1-2 tail rising, 3-5 tail tip on its ear (ring on f3), 6 tail down, 7 mouth opening, 8 tongue out (the hiss, tongue tip from centre x2: D (-9,-18), R (+37,-12), U (+37,-20)), 9 tongue back. Hand fixes in build.py from the user's review: the back view's tail redrawn as one tail that rises to the ear (PixelLab had drawn a second tail, an arch), the down view's yellow eyes on 1-6 closed to frame 0's slits, the gold blob round the side view's eye on 2-5 removed. Up 0-2, 6 keep the still's '4 shades of one colour' warning. Phase-2 satellite Medusa heads (approved 2026-11-18): assets/enemies/21_asp_heads.png, 128x16, one row of 8 16x16 facings D DR R UR U UL L DL (the orbit angle picks it), hand-drawn in art/enemies/anim/21_asp/heads.py (D DR R UR U drawn, the left side mirrored), gold face, red eyes, fanged red mouth, green snake locks; 0 gens. Mouth from centre (screen px): D (0,+6.5), DR (+0.5,+6.5), R (+7.9,+5.3), back views none."
   }
 }

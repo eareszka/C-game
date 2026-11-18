@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1646-in-d-the-green-serpent-stays-coiled-in-its-heap",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "the green serpent stays coiled in its heap without moving its coils; it draws its head back a little, opens its mouth and flicks a long forked red tongue straight out, hissing, tongue fully extended",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "843b49bf-a6dd-451f-9de0-012c4e1c4606",
+    "generation_id": "1e65c2be-99b4-430f-9787-175b3fa6295e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tongued-00.png",
+    "tongued-01.png",
+    "tongued-02.png",
+    "tongued-03.png",
+    "tongued-04.png"
+  ]
+}

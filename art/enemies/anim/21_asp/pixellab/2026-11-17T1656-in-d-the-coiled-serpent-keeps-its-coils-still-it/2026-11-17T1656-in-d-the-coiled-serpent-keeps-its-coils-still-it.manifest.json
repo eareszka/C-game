@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1656-in-d-the-coiled-serpent-keeps-its-coils-still-it",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 2616 characters>",
+      "format": "png"
+    },
+    "action": "the coiled serpent keeps its coils still; its upright tail bends over and its tip presses against the side of its head, stopping its ear",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6f9fd7f5-0f7a-4b46-bbb6-7e53370f499e",
+    "generation_id": "438b93c9-aa37-4015-a6cc-3ab4c9d10f01"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tailgo-d-00.png",
+    "tailgo-d-01.png",
+    "tailgo-d-02.png",
+    "tailgo-d-03.png",
+    "tailgo-d-04.png"
+  ]
+}

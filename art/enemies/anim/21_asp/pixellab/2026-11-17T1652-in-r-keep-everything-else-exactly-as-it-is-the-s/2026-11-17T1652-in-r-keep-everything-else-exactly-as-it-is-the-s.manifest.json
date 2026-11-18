@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1652-in-r-keep-everything-else-exactly-as-it-is-the-s",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1540 characters>",
+      "format": "png"
+    },
+    "description": "keep everything else exactly as it is; the serpent's mouth is open and a thin forked red tongue sticks straight out of the mouth, fully extended",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d0b84bb0-cb14-4762-ba84-d90199ad5299",
+    "generation_id": "c3d80bc9-d2c6-4650-a6c2-08eaffb768af"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tonguekeyr.png"
+  ]
+}

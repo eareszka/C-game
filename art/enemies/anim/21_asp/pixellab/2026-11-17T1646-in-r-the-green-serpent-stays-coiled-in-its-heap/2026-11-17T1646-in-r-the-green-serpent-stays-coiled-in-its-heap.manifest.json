@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1646-in-r-the-green-serpent-stays-coiled-in-its-heap",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1540 characters>",
+      "format": "png"
+    },
+    "action": "the green serpent stays coiled in its heap without moving its coils; the tip of its upright tail rises, curls over and presses flat against the side of its head, stopping up its ear, and holds there",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6feceb4c-758b-493d-966c-9904ef587fd3",
+    "generation_id": "3e2048bf-d57a-43a4-8758-5d3ebb31a998"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tailr-00.png",
+    "tailr-01.png",
+    "tailr-02.png",
+    "tailr-03.png",
+    "tailr-04.png"
+  ]
+}

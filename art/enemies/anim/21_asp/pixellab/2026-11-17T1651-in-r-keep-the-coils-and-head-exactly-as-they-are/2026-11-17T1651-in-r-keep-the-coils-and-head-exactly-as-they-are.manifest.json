@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1651-in-r-keep-the-coils-and-head-exactly-as-they-are",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1540 characters>",
+      "format": "png"
+    },
+    "description": "keep the coils and head exactly as they are; bend the upright tail so its tip curls over and presses flat against the side of the serpent's head, covering its ear hole",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "73147b23-c8ac-4d7c-b63d-2d0e32cf3e69",
+    "generation_id": "b3459df0-a7eb-41eb-b761-a862dd0f8ca3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tailkeyr.png"
+  ]
+}

@@ -2754,91 +2754,159 @@ public:
 
 // ── Desert enemies (IDs 21–27) ────────────────────────────────────────────────
 
-// The asp of the medieval bestiaries (A Book of Creatures): a serpent that
-// "carries instantaneous death in its fangs" and, to resist the snake
-// charmer, presses one ear to the ground and "stops its ears with its tail".
-// UPPER tier, 600 HP, venom-red bullets. MEDIUM sheet (ten idle frames: its
-// tail plugging its ear on 3-5, its forked tongue out on 8-9), drawn from
-// the front, the side and behind. Coiled in place, it never moves. Every
-// shot leaves from the part of it that makes it (the user): its forked
-// tongue, its coils.
+// The asp of the medieval bestiaries (A Book of Creatures): a cobra-like
+// serpent, the most venomous of all -- its bite a painless death or an
+// endless SLEEP (the hypnalis); the spitting asp sprays its venom; half
+// blind, it stops one ear with its tail and presses the other to the ground
+// against the charmer; and it was the first serpent born of MEDUSA'S BLOOD.
+// UPPER tier (the first), 600 HP, venom-green POISON bullets (the user,
+// 2026-11-18: "use poisonous bullets"; BulletSpawn::poison, 1 HP/s until an
+// Antidote). 48x49 sheet (art/enemies/anim/21_asp), four views (front,
+// side, back; left mirrored), 10 frames x 130 ms: 0 rest, 1-2 the tail
+// rising, 3-5 its tail stopping its ear, 6 the tail down, 7 the mouth
+// opening, 8 the tongue out, 9 drawing back. Coiled in place, it never moves.
+// Bullet redo (the user, 2026-11-18): every move on the frame that shows it.
 // Phase 1:
-//   Hiss  -- when its tongue flicks out (idle frame 8) a FORKED stream
-//            pours from the tongue's tip at the player for HISS_T s: two
-//            snaking lines, swaying opposite ways -- a double helix -- each
-//            curve a serpent winding toward you.
-//   Fangs -- every FANG_EVERY s its coils loose a ring of 12 fang PAIRS, the
-//            ring turned a little each time.
-// Phase 2 (half HP): three forked streams, at the player and either side;
-//   the fang rings come quicker.
+//   Ear to the ground (f3, the tail in its ear) -- it hears through the
+//          ground: a ring of RING_PAIRS fang pairs from its coils at RING_V,
+//          turned a little each loop. Plain shots.
+//   Spit (f7 aims, f8 spits) -- the mouth opens on where the player is (half
+//          blind: it aims there, not on the spit), and the tongue sprays a
+//          fan of SPIT_N venom globs from its tip, SPIT_GAP rad apart, at
+//          mixed speeds -- POISON. It holds the view it aimed from till f9.
+// Phase 2 (half HP) -- the loop quickens (ANIM2), the ring is RING_PAIRS2
+//   pairs, and:
+//   Hypnalis -- the spit is SPIT_N2 globs; its middle SLEEP_N are the
+//          sleeping venom: pale, not poison, but a hit GLUES (a drowsy crawl
+//          1.5 s, BulletSpawn::glue).
+//   Medusa's heads (the user, 2026-11-18: "satellite medusa heads come out
+//          of the snake that spin around shooting bullets") -- as phase 2
+//          begins HEADS_N heads come out of its body (over HEAD_OUT s) to
+//          HEAD_R px and ORBIT it at HEAD_W rad/s, each face turned outward
+//          (Enemy::spawners, the 21_asp_heads sheet: a frame per way it
+//          faces). In turn, one every HEAD_EVERY / HEADS_N s, a head spits a
+//          SPOKE from its mouth at the player: HEAD_SPOKE shots in a line, HEAD_V up. Not
+//          a head within HEAD_SAFE px of the player. Touching one costs a bar.
+// Fairness: the spit's globs 0.15 rad apart (3 px): 12 px clear at 120 px;
+// the ring's pairs ~0.42 rad apart; a spoke is one line -- one sidestep;
+// the heads keep a steady circle round its body (the tell), never past it
+// by more than HEAD_R.
 class Asp : public Enemy {
-    static constexpr float HISS_T = 0.8f, HISS_EVERY = 0.03f, WIND = 12.0f, SWAY = 0.35f;
-    float hiss_t = -1.0f, emit_t = 0.0f, aim = 0.0f, tx = 0.0f, ty = 0.0f;
-    float fang_t = 0.0f, fang_turn = 0.0f;
-    int   hiss_face = -1;                    // the way it faced at the flick: held till the hiss is done (the user)
-
-    float fang_every() const { return ENRAGED ? 0.9f : 1.3f; }
-    void at(float fx, float fy, float* ox, float* oy) const {   // art px (42x35, drawn 2x about its middle) -> screen
-        *ox = x + (fx - 21.0f) * 2.0f; *oy = y + (fy - 17.5f) * 2.0f;
+    static constexpr int   RING_PAIRS = 12, RING_PAIRS2 = 14, SPIT_N = 7, SPIT_N2 = 9, SLEEP_N = 3;
+    static constexpr float RING_V = 100.0f, RING_V2 = 110.0f, SPIT_GAP = 0.15f, ANIM2 = 1.25f;
+    static constexpr int   HEADS_N = 3, HEAD_SPOKE = 3;
+    static constexpr float HEAD_R = 72.0f, HEAD_W = 1.1f, HEAD_OUT = 0.8f, HEAD_EVERY = 1.2f;
+    static constexpr float HEAD_V = 120.0f, HEAD_DV = 22.0f, HEAD_SAFE = 90.0f, HEAD_HURT = 11.0f;
+    static constexpr int   VENOM = 0x58d854, SLEEP = 0xa4e4fc;
+    float ring_turn = 0.0f, aim_x = 0.0f, aim_y = 0.0f;
+    int   face = -1;                         // the view it spits from, held f7-f9
+    float heads_t = -1.0f;                   // since the heads came out; < 0 not yet
+    float orbit = 0.0f, spoke_t = 0.0f;
+    int   next_head = 0;
+    // Head k's place: out of its body to HEAD_R over HEAD_OUT s, round it.
+    float head_a(int k) const { return orbit + k * (TAU / HEADS_N); }
+    void  head_at(int k, float* hx, float* hy) const {
+        float r = HEAD_R * fminf(heads_t / HEAD_OUT, 1.0f);
+        *hx = x + cosf(head_a(k)) * r; *hy = y + sinf(head_a(k)) * r;
     }
-    // Its tongue's tip on the hiss frame as drawn, by facing: the front view
-    // (a diagonal below it too, the lower left one mirrored), the side (and
-    // a diagonal above it; the left its mirror), and from behind the top of
-    // its head.
-    void tongue(float px, float py, float* ox, float* oy) const {
-        static const float TX[8] = { 21.5f, 21.5f, 37.5f, 37.5f, 21.5f, 4.5f, 4.5f, 20.5f },
-                           TY[8] = { 14.5f, 14.5f, 9.5f, 9.5f, 4.5f, 9.5f, 9.5f, 14.5f };
-        int d = face8(facing_toward(px - x, py - y));
-        at(TX[d], TY[d], ox, oy);
+    // The way head k faces -- outward -- as its sheet frame (D DR R UR U UL L DL).
+    int head_dir(int k) const { return ((int)lroundf((PI / 2 - head_a(k)) / (PI / 4)) % 8 + 8) % 8; }
+    // Its mouth, screen px from the frame's middle, by that frame (sprites,
+    // 2026-11-18); facing away (UR U UL) none shows: the middle.
+    void head_mouth(int k, float* hx, float* hy) const {
+        static const float MX[8] = { 0.0f, 0.5f, 7.9f, 0.0f, 0.0f, 0.0f, -7.9f, -0.5f },
+                           MY[8] = { 6.5f, 6.5f, 5.3f, 0.0f, 0.0f, 0.0f,  5.3f,  6.5f };
+        head_at(k, hx, hy);
+        int d = head_dir(k);
+        *hx += MX[d]; *hy += MY[d];
+    }
+    // Its tongue's tip on f8 by the view drawn (screen px from the frame's
+    // middle): D, R, U, L = R mirrored.
+    void tongue(float* ox, float* oy) const {
+        float tx = face == FACE_RIGHT ? 37.0f : face == FACE_LEFT ? -37.0f : face == FACE_UP ? 37.0f : -9.0f;
+        float ty = face == FACE_UP ? -20.0f : face == FACE_DOWN ? -18.0f : -12.0f;
+        *ox = x + tx; *oy = y + ty;
     }
 public:
     Asp() : Enemy(320, 140, 600, {1.0f,0.75f,1.0f,1.25f,1.25f,1.5f,1.25f}) {}
     const char* name()          const override { return "ASP"; }
-    int         breath_frame()  const override { return 8; }       // tongue out
-    float       fire_interval() const override { return 0.02f; }   // the hiss and fangs on their own clocks
-    int         move_facing()   const override { return hiss_t >= 0.0f ? hiss_face : -1; }
-    void update(float dt, float, float) override {
-        fang_t += dt;
-        if (hiss_t >= 0.0f) { hiss_t += dt; emit_t += dt; if (hiss_t >= HISS_T) hiss_t = -1.0f; }
-    }
-    int fire(float, float, BulletSpawn out[], int max) override {
+    int         breath_frame()  const override { return 8; }       // the tongue out: the spit
+    bool        four_views()    const override { return true; }
+    int         move_facing()   const override { return face; }    // held through the spit, else toward the player
+    float       anim_speed()    const override { return ENRAGED ? ANIM2 : 1.0f; }
+    float       fire_interval() const override { return 0.05f; }   // the body on its frames, the heads on their clock
+    // The heads: drawn from 21_asp_heads, the frame the way each faces --
+    // outward -- in D DR R UR U UL L DL order.
+    int spawners(Spawner out_s[], int max) const override {
+        if (heads_t < 0.0f) return 0;
         int n = 0;
-        int streams = ENRAGED ? 3 : 1;
-        while (hiss_t >= 0.0f && emit_t >= HISS_EVERY && n + 2 * streams <= max) {
-            // The hiss: each stream two winding lines, swaying opposite ways.
-            emit_t -= HISS_EVERY;
-            float w = SWAY * sinf((hiss_t - emit_t) * WIND);
-            for (int k = 0; k < streams; k++) {
-                float a = aim + (k - (streams - 1) * 0.5f) * 0.7f;
-                for (int side = -1; side <= 1; side += 2) {
-                    BulletSpawn b = mk(a + side * w, 140.0f, 2.5f, 5.0f);
-                    b.from = true; b.ox = tx; b.oy = ty;
-                    out[n++] = b;
-                }
+        for (int k = 0; k < HEADS_N && n < max; k++) {
+            float hx, hy;
+            head_at(k, &hx, &hy);
+            out_s[n++] = { hx, hy, head_dir(k), HEAD_HURT };
+        }
+        return n;
+    }
+    void update(float dt, float, float) override {
+        if (!ENRAGED) return;
+        if (heads_t < 0.0f) heads_t = 0.0f;                      // phase 2 begins: out they come
+        heads_t += dt;
+        orbit = fmodf(orbit + HEAD_W * dt, TAU);
+        if (heads_t >= HEAD_OUT) spoke_t += dt;
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        while (spoke_t >= HEAD_EVERY / HEADS_N && n + HEAD_SPOKE <= max) {   // a head's turn: a spoke at the player
+            spoke_t -= HEAD_EVERY / HEADS_N;
+            float hx, hy;
+            head_mouth(next_head, &hx, &hy);                     // from its mouth
+            next_head = (next_head + 1) % HEADS_N;
+            if (hypotf(px - hx, py - hy) < HEAD_SAFE) continue;  // never point-blank
+            float a = aim_at(hx, hy, px, py);
+            for (int i = 0; i < HEAD_SPOKE; i++) {
+                BulletSpawn b = mk(a, HEAD_V + i * HEAD_DV, 3.0f, 5.0f);
+                b.from = true; b.ox = hx; b.oy = hy;
+                out[n++] = b;
             }
         }
-        if (fang_t >= fang_every() && n + 24 <= max) {
-            // Fangs: a ring of 12 pairs from its coils, turning on each time.
-            fang_t = 0.0f;
-            fang_turn += 0.13f;
-            float cx, cy;
-            at(21.0f, 28.0f, &cx, &cy);
-            for (int i = 0; i < 12; i++)
-                for (int side = -1; side <= 1; side += 2) {
-                    BulletSpawn b = mk(fang_turn + i * (TAU / 12) + side * 0.05f, 100.0f, 3.0f, 5.0f);
-                    b.from = true; b.ox = cx; b.oy = cy;
+        return n;
+    }
+    int on_idle_frame(int f, float px, float py, BulletSpawn out[], int max) override {
+        int n = 0;
+        if (f == 7) {                                            // the mouth opens: it turns to them and aims
+            face = facing_toward4(px - x, py - y);
+            aim_x = px; aim_y = py;
+        } else if (f == 0) {
+            face = -1;
+        } else if (f == 3) {                                     // its ear to the ground: a ring from its coils
+            int pairs = ENRAGED ? RING_PAIRS2 : RING_PAIRS;
+            ring_turn += 0.17f;
+            for (int i = 0; i < pairs; i++)
+                for (int side = -1; side <= 1 && n < max; side += 2) {
+                    BulletSpawn b = mk(ring_turn + i * (TAU / pairs) + side * 0.05f, ENRAGED ? RING_V2 : RING_V, 3.0f, 5.0f);
+                    b.from = true; b.ox = x + 1.0f; b.oy = y + 28.0f;
                     out[n++] = b;
                 }
         }
         return n;
     }
-    int breathe(float px, float py, BulletSpawn[], int) override {
-        // The tongue flicks out: the hiss pours from its tip, aimed now.
-        tongue(px, py, &tx, &ty);
-        hiss_face = facing_toward(px - x, py - y);
-        aim = aim_at(tx, ty, px, py);
-        hiss_t = 0.0f; emit_t = HISS_EVERY;
-        return 0;
+    int breathe(float px, float py, BulletSpawn out[], int max) override {
+        // The spit: a fan of venom from its tongue's tip, at where it aimed on f7.
+        if (face < 0) { face = facing_toward4(px - x, py - y); aim_x = px; aim_y = py; }   // f7 not seen (the fight's first loop)
+        float ox, oy;
+        tongue(&ox, &oy);
+        float a = aim_at(ox, oy, aim_x, aim_y);
+        int m = ENRAGED ? SPIT_N2 : SPIT_N, n = 0;
+        for (int i = 0; i < m && n < max; i++) {
+            float off = (i - (m - 1) * 0.5f);
+            bool sleep = ENRAGED && fabsf(off) <= (SLEEP_N - 1) * 0.5f;
+            BulletSpawn b = mk(a + off * SPIT_GAP, 150.0f + 40.0f * ernd(), 3.0f, 5.0f);
+            b.from = true; b.ox = ox; b.oy = oy;
+            if (sleep) { b.glue = true; b.color = SLEEP; }       // the hypnalis: a drowsy crawl
+            else       { b.poison = true; b.color = VENOM; }
+            out[n++] = b;
+        }
+        return n;
     }
 };
 

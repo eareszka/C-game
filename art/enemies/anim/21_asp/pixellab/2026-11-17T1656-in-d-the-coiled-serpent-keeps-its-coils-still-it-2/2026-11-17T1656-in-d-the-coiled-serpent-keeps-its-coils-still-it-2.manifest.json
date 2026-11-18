@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-17T1656-in-d-the-coiled-serpent-keeps-its-coils-still-it-2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 2824 characters>",
+      "format": "png"
+    },
+    "action": "the coiled serpent keeps its coils still; it opens its mouth and flicks a thin forked red tongue out",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "46734825-08f2-4ae5-90d5-9d3f91539586",
+    "generation_id": "d085b56f-c94d-40e3-bbb7-bdde0662985d"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tonguego-d-00.png",
+    "tonguego-d-01.png",
+    "tonguego-d-02.png",
+    "tonguego-d-03.png",
+    "tonguego-d-04.png"
+  ]
+}
