@@ -607,6 +607,18 @@ int main(int argc, char** argv) {
                    hitter && hitter->poison ? " POISON" : "");
             if (shots && hits <= 4) shot(hits);
         }
+        // env SPAWN_LOG=1: each shot spawned this frame -- the idle frame the
+        // battle used (the draw reads the same clock), the enemy's opacity, and
+        // where the shot was spawned (its first drawn spot less one step).
+        if (getenv("SPAWN_LOG")) {
+            for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+                const Bullet& b = bs._enemy_bullets[i];
+                if (!b.active || b.age > DT * 1.5f) continue;
+                printf("  spawn f=%d t=%.3f idle_f=%d op=%.2f at %.1f,%.1f enemy %.1f,%.1f speed %.0f\n", frame, t,
+                       bs._idle_frame, en->opacity(bs._bp.x, bs._bp.y), b.x - b.vx * b.age, b.y - b.vy * b.age, en->x, en->y,
+                       hypotf(b.vx, b.vy));
+            }
+        }
         // env TELE_LOG=1: each frame's telegraph lines (H/V, stage, fade, length).
         if (getenv("TELE_LOG")) {
             Enemy::TeleLine tl[64];

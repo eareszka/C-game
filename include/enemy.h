@@ -230,7 +230,8 @@ public:
     // charged (full length), 2 dissipating -- `fade` 0..1 through that;
     // 3 a mark: a thin blinking line, no beam (a spot about to be hit).
     struct TeleLine { float x0, y0, x1, y1; int stage = 0; float fade = 0.0f; float hurt_w = 0.0f;
-                      float orb = 0.0f; };   // orb > 0: not a line but a glowing ball of that radius at (x0, y0), drawn like the lasers
+                      float orb = 0.0f;      // orb > 0: not a line but a glowing ball of that radius at (x0, y0), drawn like the lasers
+                      bool pale = false; };  // an orb drawn the same but tinted toward white: outer band its bullet colour, middle halfway to white, white core (a near-white glow, not the darkened outer band)
     virtual int telegraphs(TeleLine /*out*/[], int /*max*/) const { return 0; }
     // Bars it is still forming, held on the part that makes them: drawn like
     // its logs without a sprite (its bullet colour, white core), harmless --

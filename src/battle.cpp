@@ -275,7 +275,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/60_rumptifusel.png",            {}, 5, false, nullptr, nullptr, nullptr, 1, 1, nullptr, 0 },   // 56x44, one 3/4 view facing left in every direction (never mirrored), PixelLab (art/enemies/anim/60_rumptifusel/build.py): flat, rising, REARED belly bared (frame 2, the sheets), still up, coming down -- 5 x 390 ms, its old ~1.94 s loop
     { "assets/enemies/redraws/61_roperite.png",       {}, 9, false, "assets/enemies/redraws/61_roperite_dash.png", nullptr, nullptr, 1, 1, nullptr, 0, nullptr, "assets/enemies/61_roperite_ghosts.png" },  // big (frame 60x62), the user's approved 39x52 front still, one view in every direction (art/enemies/anim/61_roperite/build.py), always walking or dashing (the user): idle 9 x 260 ms -- the walk bound/contact/bound cycles under everything; 0-2 walking, 3-5 the rope GROWING, 6 THE LASSO fully out, 7-8 the rope drawn back; flap = the DASH, 4 x 260 ms (crouch-stride, air, crouch-stride, air); spawner = the ghost herd: 13 square 62x62 cells, 0-8 the idle, 9-12 the dash
     { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png", "assets/enemies/62_hugag_walk.png", nullptr, 1, 1, nullptr, 0, nullptr, nullptr, 4 },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams (phase 2); alt = the walk, 4 frames (phase 1, f0 contact)
-    { "assets/enemies/redraws/63_hidebehind.png",             {0, 1, 0, 2} },  // big, front only (drawn flat to SPRITE_STYLE.md): faceless shaggy fur cone, a fan of hooked claws raised at each side
+    { "assets/enemies/redraws/63_hidebehind.png",             {}, 4 },  // big (frame 52x48), front only: faceless shaggy fur cone, a fan of hooked claws raised at each side (the user's 49x46 still); idle (art/enemies/anim/63_hidebehind/build.py, PixelLab) 4 x 260 ms in order: rest, breathing in (risen, claws curling), fists + eyes shut, breathing out; UL L DL mirrored
     { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
     { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, "assets/enemies/redraws/65_mice_that_eat_iron_walk.png" },   // 28x23, front only: three mice sharing an iron beam (the user), gnawing it out of step -- rest, then each dips in turn, 260 ms (art/enemies/anim/65_mice_that_eat_iron/build.py); alt = the same gnaw with their feet stepping, while it drifts (MiceThatEatIron::alt_pose)
     { "assets/enemies/redraws/66_ayotochtli.png",     {}, 5, false, "assets/enemies/redraws/66_ayotochtli_roll.png" },  // 48x35, four views (art/enemies/anim/66_ayotochtli/build.py): rest, HUNCH (frame 1, the ring), rest, low, rest at 260 ms (1.3 s, the old loop); roll sheet: 0 hunch, 1 ball (guard in/out), 2-5 the roll, a plain spinning ball (the user) -- 65 ms a pose fast, 130 slow (the user asked for it faster, twice)
@@ -2162,6 +2162,10 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
                 int pulse = (now / 70) % 2 ? 2 : 0;
                 float rr[3] = { L.orb + pulse, L.orb - 4.0f, L.orb * 0.5f };
                 Uint8 cr[3] = { dr, mr, 252 }, cg[3] = { dg, mg, 252 }, cb[3] = { db, mb, 252 };
+                if (L.pale) {                                               // tinted toward white: its colour, halfway, white
+                    cr[0] = mr; cg[0] = mg; cb[0] = mb;
+                    cr[1] = (Uint8)((mr + 252) / 2); cg[1] = (Uint8)((mg + 252) / 2); cb[1] = (Uint8)((mb + 252) / 2);
+                }
                 int cx = (int)L.x0 & ~1, cy = (int)L.y0 & ~1;
                 for (int pass = 0; pass < 3; pass++) {
                     float r = rr[pass];

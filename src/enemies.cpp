@@ -6711,6 +6711,70 @@ public:
 
 };
 
+// GOING UNDER and coming up somewhere else -- the amixsak's dive, the
+// hidebehind's stalk: it fades out over sink_t, glides UNSEEN at glide px/s to
+// where it is heading (a harmless trail of orbs gives it away), a harmless
+// swelling (heave_r over heave_t) marks where it will come up, and it fades
+// back in over rise_t. Its owner keeps x, y and decides when to dive().
+struct Lurk {
+    enum State { UP, SINKING, UNDER, HEAVING, RISING };
+    static constexpr int TRAIL = 12;
+    float sink_t, glide, heave_t, heave_r, rise_t;
+    bool  pale = false;                                          // trail and swelling tinted toward white (TeleLine::pale)
+    State state = UP;
+    float state_t = 0.0f, trail_t = 0.0f;
+    float tx[TRAIL], ty[TRAIL];                                  // the trail: where it has been, unseen
+    int   nt = 0, head = 0;
+    Lurk(float sink, float gl, float heave, float hr, float rise) : sink_t(sink), glide(gl), heave_t(heave), heave_r(hr), rise_t(rise) {}
+    void  dive() { state = SINKING; state_t = 0.0f; }
+    bool  hidden() const { return state == UNDER || state == HEAVING; }
+    float opacity() const {
+        return state == UP ? 1.0f : state == SINKING ? 1.0f - state_t / sink_t : state == RISING ? state_t / rise_t : 0.0f;
+    }
+    // A step: gliding toward (gx, gy) while under (t: its owner's clock, for
+    // the trail's wobble). True the moment it is fully up again.
+    bool update(float dt, float t, float* x, float* y, float gx, float gy) {
+        state_t += dt;
+        switch (state) {
+        case UP: break;
+        case SINKING:
+            if (state_t >= sink_t) { state = UNDER; state_t = 0.0f; nt = 0; trail_t = 0.0f; }
+            break;
+        case UNDER: {
+            float dx = gx - *x, dy = gy - *y, d = hypotf(dx, dy), st = glide * dt;
+            if (d > st) { *x += dx / d * st; *y += dy / d * st; } else { *x = gx; *y = gy; }
+            if ((trail_t += dt) >= 0.12f) { trail_t = 0.0f; tx[head] = *x + 10.0f * sinf(t * 7.0f); ty[head] = *y; head = (head + 1) % TRAIL; if (nt < TRAIL) nt++; }
+            if (d <= st) { state = HEAVING; state_t = 0.0f; }
+            break;
+        }
+        case HEAVING:
+            if (state_t >= heave_t) { state = RISING; state_t = 0.0f; }
+            break;
+        case RISING:
+            if (state_t >= rise_t) { state = UP; state_t = 0.0f; return true; }
+            break;
+        }
+        return false;
+    }
+    // The trail, the newest biggest; the swelling where it will come up.
+    int telegraphs(float x, float y, Enemy::TeleLine out[], int max) const {
+        int n = 0;
+        if (hidden())
+            for (int k = 0; k < nt && n < max; k++) {
+                int i = (head - 1 - k + TRAIL) % TRAIL;
+                Enemy::TeleLine b{ tx[i], ty[i], tx[i], ty[i] };
+                b.stage = 0; b.orb = 5.0f - 3.0f * k / (float)TRAIL; b.pale = pale;
+                out[n++] = b;
+            }
+        if (state == HEAVING && n < max) {
+            Enemy::TeleLine h{ x, y, x, y };
+            h.stage = 0; h.orb = heave_r * fminf(state_t / heave_t, 1.0f); h.pale = pale;
+            out[n++] = h;
+        }
+        return n;
+    }
+};
+
 // The amixsak of the Yupik of the Bering Sea (A Book of Creatures): a walrus
 // skin left behind on the ice sinks and becomes a vengeful monster that rises
 // under a skin boat, reaches its flippers over the gunwales and pulls it
@@ -6737,21 +6801,17 @@ public:
 //   then stays risen RISEN_T s and (ARM_DELAY s on, the player having had
 //   time to get clear) makes one seize -- the only time it can be hurt -- and
 //   sinks again. It never comes up in a corner (the player boxed in there
-//   with it had nowhere to go).
+//   with it had nowhere to go). The dive is Lurk's.
 class Amixsak : public Enemy {
     static constexpr float SPEED = 90.0f, ARM_T = 3.4f, ARM_EVERY = 0.06f, SEIZE_EVERY = 1.0f, CLEAR = 50.0f;   // ARM_T: 2.5 rad at ~0.7 rad/s, slow enough to walk ahead of; CLEAR: nothing put down this near the player
     static constexpr int   ARM_W = 3, ARMS = 4;                  // streams to an arm; seizes sweeping at once
     static constexpr float SINK_T = 0.6f, GLIDE = 220.0f, HEAVE_T = 0.8f, HEAVE_R = 48.0f, RISE_T = 0.4f, RISEN_T = 3.0f, DRAG = 45.0f, DRAG_T = 0.8f, ARM_DELAY = 0.9f;
-    static constexpr int   BUBBLES = 12, BURST_N = 30, BURST_RINGS = 3;   // the burst: rings close behind one another, each half a step round
-    enum State { RISEN, SINKING, UNDER, HEAVING, RISING };
-    State state = RISEN;
-    float t = 0.0f, state_t = 0.0f, seize_t = 0.0f, bob0 = 140.0f;
+    static constexpr int   BURST_N = 30, BURST_RINGS = 3;   // the burst: rings close behind one another, each half a step round
+    Lurk  lurk{ SINK_T, GLIDE, HEAVE_T, HEAVE_R, RISE_T };      // its dive (phase 2)
+    float t = 0.0f, seize_t = 0.0f, bob0 = 140.0f;
     float arm_t[ARMS] = { -1.0f, -1.0f, -1.0f, -1.0f };          // each seize's clock (-1: free)
     int   arm_k[ARMS] = { 0, 0, 0, 0 };
     bool  burst_due = false, seize_due = false;
-    float bx[BUBBLES], by[BUBBLES];                              // the bubble trail: where it has been, under
-    int   nb = 0, bhead = 0;
-    float bubble_t = 0.0f;
 
     // Art px (98x65, drawn 2x about its middle) -> screen.
     void at(float fx, float fy, float* ox, float* oy) const { *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f; }
@@ -6767,62 +6827,24 @@ public:
     Amixsak() : Enemy(320, 140, 980, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()           const override { return "AMIXSAK"; }
     float       fire_interval()  const override { return 0.02f; }   // the arms on their own clocks
-    float       opacity(float, float) const override {
-        return state == RISEN ? 1.0f : state == SINKING ? 1.0f - state_t / SINK_T : state == RISING ? state_t / RISE_T : 0.0f;
-    }
-    float       armor()          const override { return state == RISEN ? 1.0f : 0.0f; }   // only hurt risen
-    float       contact_damage() const override { return state == UNDER || state == HEAVING ? 0.0f : 5.0f; }  // sunk out of sight there is nothing to touch
-    float       pull()           const override { return state == RISING || (state == RISEN && ENRAGED && state_t < DRAG_T) ? DRAG : 0.0f; }
-    int telegraphs(TeleLine out[], int max) const override {
-        int n = 0;
-        if (state == UNDER || state == HEAVING) {
-            // The bubble trail, the newest biggest.
-            for (int k = 0; k < nb && n < max; k++) {
-                int i = (bhead - 1 - k + BUBBLES) % BUBBLES;
-                TeleLine b{ bx[i], by[i], bx[i], by[i] };
-                b.stage = 0; b.orb = 5.0f - 3.0f * k / (float)BUBBLES;
-                out[n++] = b;
-            }
-        }
-        if (state == HEAVING && n < max) {
-            // The water heaving where it will rise.
-            TeleLine h{ x, y, x, y };
-            h.stage = 0; h.orb = HEAVE_R * fminf(state_t / HEAVE_T, 1.0f);
-            out[n++] = h;
-        }
-        return n;
-    }
+    float       opacity(float, float) const override { return lurk.opacity(); }
+    float       armor()          const override { return lurk.state == Lurk::UP ? 1.0f : 0.0f; }   // only hurt risen
+    float       contact_damage() const override { return lurk.hidden() ? 0.0f : 5.0f; }  // sunk out of sight there is nothing to touch
+    float       pull()           const override { return lurk.state == Lurk::RISING || (lurk.state == Lurk::UP && ENRAGED && lurk.state_t < DRAG_T) ? DRAG : 0.0f; }
+    int telegraphs(TeleLine out[], int max) const override { return lurk.telegraphs(x, y, out, max); }   // the bubble trail; the water heaving where it will rise
     void update(float dt, float px, float py) override {
-        t += dt; state_t += dt;
-        if (state == RISEN && !ENRAGED) seize_t += dt;
+        t += dt;
+        if (lurk.state == Lurk::UP && !ENRAGED) seize_t += dt;
         for (int i = 0; i < ARMS; i++) if (arm_t[i] >= 0.0f) arm_t[i] += dt;
-        switch (state) {
-        case RISEN:
-            if (ENRAGED && state_t >= RISEN_T) { state = SINKING; state_t = 0.0f; drop_arms(); break; }   // (an arm half swept is dropped, not banked)
-            y = bob0 + 4.0f * sinf(t * 1.6f);                    // bobbing on the water
-            break;
-        case SINKING:
-            y += 25.0f * dt;
-            if (state_t >= SINK_T) { state = UNDER; state_t = 0.0f; nb = 0; bubble_t = 0.0f; }
-            break;
-        case UNDER: {
-            // Gliding beneath the water to the player -- or as near as its
-            // bulk can get to one against a wall (it heaves there: a player
-            // hugging a wall used to leave it circling under for ever).
-            float tx = fminf(fmaxf(px, 130.0f), ARENA_W - 130.0f), ty = fminf(fmaxf(py, ARENA_TOP + 80.0f), ARENA_H - 110.0f);   // never in a corner
-            float dx = tx - x, dy = ty - y, d = hypotf(dx, dy), st = GLIDE * dt;
-            if (d > st) { x += dx / d * st; y += dy / d * st; } else { x = tx; y = ty; }
-            if ((bubble_t += dt) >= 0.12f) { bubble_t = 0.0f; bx[bhead] = x + 10.0f * sinf(t * 7.0f); by[bhead] = y; bhead = (bhead + 1) % BUBBLES; if (nb < BUBBLES) nb++; }
-            if (d <= st) { state = HEAVING; state_t = 0.0f; }
-            break;
-        }
-        case HEAVING:
-            if (state_t >= HEAVE_T) { state = RISING; state_t = 0.0f; }
-            break;
-        case RISING:
-            if (state_t >= RISE_T) { state = RISEN; state_t = 0.0f; bob0 = y; seize_due = burst_due = true; }
-            break;
-        }
+        if (lurk.state == Lurk::SINKING) y += 25.0f * dt;        // going down
+        // Gliding beneath the water to the player -- or as near as its bulk
+        // can get to one against a wall (it heaves there: a player hugging a
+        // wall used to leave it circling under for ever). Never in a corner.
+        float gx = fminf(fmaxf(px, 130.0f), ARENA_W - 130.0f), gy = fminf(fmaxf(py, ARENA_TOP + 80.0f), ARENA_H - 110.0f);
+        if (lurk.update(dt, t, &x, &y, gx, gy)) { bob0 = y; seize_due = burst_due = true; return; }   // risen under them
+        if (lurk.state != Lurk::UP) return;
+        if (ENRAGED && lurk.state_t >= RISEN_T) { lurk.dive(); drop_arms(); return; }   // (an arm half swept is dropped, not banked)
+        y = bob0 + 4.0f * sinf(t * 1.6f);                        // bobbing on the water
     }
     int fire(float px, float py, BulletSpawn out[], int max) override {
         int n = 0;
@@ -6842,8 +6864,8 @@ public:
                     out[n++] = b;
                 }
         }
-        if (state != RISEN) return n;
-        if (seize_due && state_t >= ARM_DELAY) { seize_due = false; seize(); }   // phase 2, risen a moment: one seize
+        if (lurk.state != Lurk::UP) return n;
+        if (seize_due && lurk.state_t >= ARM_DELAY) { seize_due = false; seize(); }   // phase 2, risen a moment: one seize
         while (!ENRAGED && seize_t >= SEIZE_EVERY) { seize_t -= SEIZE_EVERY; seize(); }   // phase 1: seize on seize
         int f = facing_toward(px - x, py - y);
         for (int i = 0; i < ARMS; i++) {
@@ -9935,79 +9957,125 @@ public:
 // The hidebehind (Fearsome Creatures, the north woods): it always hides
 // behind something -- a tree, your own back -- so no one has ever seen it;
 // turn to look and it's already behind you. UPPER tier, 660 HP, claw-ivory
-// bullets. BIG sheet. It never moves (the user). Every shot leaves from the
+// bullets. 52x48 drawn 2x, front only (PixelLab, the user's pick): a
+// faceless shaggy fur cone, a fan of hooked claws raised at each side; idle
+// 4 x 260 ms (1.04 s): f0 open, f1 breathing in (claws curling), f2 FISTS
+// (eyes shut), f3 breathing out (claws opening). Every shot leaves from the
 // part of it that makes it (the user): its claws, its fur.
-// Phase 1:
-//   Swipe -- when it rears and raises its claws (idle frame 2) it slashes:
-//            a BAR of 9 claw marks flung from its claws at the player, flying
-//            past, slowing, and coming BACK the way it went -- at the player
-//            from behind, the way it hunts.
+// Phase 1 -- it stands its ground:
+//   Swipe -- on the clench (f2) it slashes: three BARS of 7 claw marks flung from its
+//            claws (the side the player is on) at the player, flying past,
+//            stopping behind them and coming BACK -- at the player from
+//            behind, the way it hunts.
 //   Fur   -- every FUR_EVERY s loose shots drift off its shaggy coat, every
 //            way, slowly.
-// Phase 2 (half HP) -- it HIDES: faded nearly out of sight (so the player's
-//   shots go where they face, not at it), showing only for a blink
-//   (REVEAL_T) as it rears to swipe; the swipe is five bars fanned, and the
-//   fur sheds faster.
+// Phase 2 (half HP) -- it STALKS (the user, 2026-11-18: the amixsak's move;
+//   the dive is Lurk's, shared): up UP_T s, swiping (five bars) and shedding,
+//   then it fades and glides UNSEEN round to BEHIND the player -- the side
+//   away from where it set off, BEHIND px past them -- a trail of rustling
+//   fur tufts (harmless) giving it away, a shadow swelling there for HEAVE_T
+//   (harmless), and it rises. Only hurt while up; untouchable unseen; never
+//   up in a corner; no swipe for SWIPE_WAIT s after it rises.
 class Hidebehind : public Enemy {
-    static constexpr float REVEAL_T = 0.25f;   // phase 2: seen only this long a swipe (the user: hidden longer)
-    float fur_t = 0.0f, reveal = 0.0f;
+    static constexpr float UP_T = 2.6f, SWIPE_WAIT = 0.5f, BEHIND = 130.0f, CLEAR = 60.0f;   // 2.5 idle loops up: always two swipes past SWIPE_WAIT
+    static constexpr float BOX_X0 = 150.0f, BOX_X1 = ARENA_W - 150.0f, BOX_Y0 = ARENA_TOP + 100.0f, BOX_Y1 = ARENA_H - 100.0f;   // where it may rise: never a corner, never pinning the player to a wall
+    Lurk  lurk{ 0.6f, 220.0f, 0.8f, 40.0f, 0.4f };              // the amixsak's timings; a shadow its size
+    float fur_t = 0.0f, t = 0.0f;
+    float ux = 0.0f, uy = 1.0f;                                  // the way it set off toward the player: it rises past them
 
-    float fur_every() const { return ENRAGED ? 0.4f : 0.45f; }
-    void at(float fx, float fy, float* ox, float* oy) const {   // art px (76x61, drawn 2x about its middle) -> screen
-        *ox = x + (fx - 38.0f) * 2.0f; *oy = y + (fy - 30.5f) * 2.0f;
+    float fur_every() const { return ENRAGED ? 0.4f : 0.6f; }   // phase 1 0.45 -> 0.6: the 4-frame idle swipes every 1.04 s (was 1.3), same ~30 shots/s
+    bool  up() const { return lurk.state == Lurk::UP; }
+    void at(float fx, float fy, float* ox, float* oy) const {   // art px (52x48, drawn 2x about its middle) -> screen
+        *ox = x + (fx - 26.0f) * 2.0f; *oy = y + (fy - 24.0f) * 2.0f;
     }
-    // Its raised claws: it only ever shows its front, a fan of claws at each
-    // upper corner (art x 3-17 and 58-72, y 2-26) -- the one on the player's side.
+    // Its raised claws, the fan on the player's side: the fan's centre on
+    // the swipe frame (sprites measured, per frame).
     void claws(float px, float, float* ox, float* oy) const {
-        at(px < x ? 10.0f : 65.0f, 13.0f, ox, oy);
+        static const float FAN[4][2][2] = { { { 6.7f, 9.3f }, { 43.3f, 9.3f } }, { { 6.0f, 9.1f }, { 44.1f, 9.1f } },
+                                            { { 5.6f, 9.5f }, { 44.6f, 9.6f } }, { { 6.1f, 9.0f }, { 43.9f, 9.1f } } };
+        const float* c = FAN[breath_frame() & 3][px < x ? 0 : 1];
+        at(c[0], c[1], ox, oy);
     }
-    // A slash: 7 claw marks in a row across the throw, flung out at `a`,
-    // stopping `reach` px out and coming back along the same line.
-    int bar(float ox, float oy, float a, float reach, BulletSpawn out[]) const {
-        // Never stopping past a wall: out there it would be culled leaving
-        // and never come back (the tester).
-        float c = cosf(a), sn = sinf(a), edge = 1e9f;
-        if (c > 1e-3f)  edge = fminf(edge, (ARENA_W - ox) / c);
-        if (c < -1e-3f) edge = fminf(edge, -ox / c);
-        if (sn > 1e-3f)  edge = fminf(edge, (ARENA_H - oy) / sn);
-        if (sn < -1e-3f) edge = fminf(edge, (ARENA_TOP - oy) / sn);
-        reach = fmaxf(fminf(reach, edge - 10.0f), 60.0f);
-        float vx = -sn, vy = c;
+    // Where it rises: BEHIND px past the player along the way it came, or
+    // the nearest turn of that round them that is in the box -- further out
+    // if none is (a player in a corner: not blocking the way out of it).
+    void behind(float px, float py, float* gx, float* gy) const {
+        float a0 = atan2f(uy, ux);
+        for (float r = BEHIND; r <= BEHIND + 80.0f; r += 40.0f)
+        for (int k = 0; k <= 8; k++)
+            for (int sd = -1; sd <= 1; sd += 2) {
+                float a = a0 + sd * k * (PI / 8);
+                float qx = px + cosf(a) * r, qy = py + sinf(a) * r;
+                if (qx >= BOX_X0 && qx <= BOX_X1 && qy >= BOX_Y0 && qy <= BOX_Y1) { *gx = qx; *gy = qy; return; }
+                if (!k) break;
+            }
+        *gx = fminf(fmaxf(px, BOX_X0), BOX_X1); *gy = fminf(fmaxf(py, BOX_Y0), BOX_Y1);
+    }
+    // A slash: 7 claw marks flung out of the claws at `a`, all from the claw
+    // fan (no pop-in), fanned so that `dist` px out -- where the player is --
+    // they lie in a row 24 px apart (an 18 px gap to slip through, the user);
+    // each stops 70 px past that and comes back along its own line.
+    int bar(float ox, float oy, float a, float dist, float px, float py, BulletSpawn out[]) const {
+        if (hypotf(px - ox, py - oy) < CLEAR) return 0;          // never point-blank (a player who has walked up to it)
+        float step = 24.0f / fmaxf(dist, 60.0f);
+        int n = 0;
         for (int i = 0; i < 7; i++) {
-            BulletSpawn b = mk(a, 300.0f, 3.0f, 5.0f);
+            float ai = a + (i - 3) * step;
+            // Never stopping past a wall: out there it would be culled
+            // leaving and never come back (the tester).
+            float c = cosf(ai), sn = sinf(ai), edge = 1e9f;
+            if (c > 1e-3f)  edge = fminf(edge, (ARENA_W - ox) / c);
+            if (c < -1e-3f) edge = fminf(edge, -ox / c);
+            if (sn > 1e-3f)  edge = fminf(edge, (ARENA_H - oy) / sn);
+            if (sn < -1e-3f) edge = fminf(edge, (ARENA_TOP - oy) / sn);
+            float reach = fmaxf(fminf(dist + 70.0f, edge - 10.0f), 60.0f);
+            BulletSpawn b = mk(ai, 300.0f, 3.0f, 5.0f);
             b.accel = -(300.0f * 300.0f) / (2.0f * reach); b.max_speed = 300.0f;   // stops exactly there
-            // 24 px apart: an 18 px gap between shots to slip through (the user)
-            b.from = true; b.ox = ox + vx * (i - 3) * 24.0f; b.oy = oy + vy * (i - 3) * 24.0f;
-            out[i] = b;
+            b.from = true; b.ox = ox; b.oy = oy;
+            out[n++] = b;
         }
-        return 7;
+        return n;
     }
 public:
-    Hidebehind() : Enemy(320, 130, 660, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
-    const char* name()          const override { return "HIDEBEHIND"; }
-    int         breath_frame()  const override { return 2; }       // the dip of its idle; the claws are always raised
-    float       fire_interval() const override { return 0.05f; }   // the fur on its own clock
-    float opacity(float, float) const override { return !ENRAGED || reveal > 0.0f ? 1.0f : 0.15f; }
-    void update(float dt, float, float) override {
-        fur_t += dt;
-        if (reveal > 0.0f) reveal -= dt;
+    Hidebehind() : Enemy(320, 130, 660, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {
+        lurk.pale = true;                                        // its fur tufts and shadow glow near-white like its bullets (the user)
     }
-    int fire(float, float, BulletSpawn out[], int) override {
-        if (fur_t < fur_every()) return 0;
+    const char* name()          const override { return "HIDEBEHIND"; }
+    int         breath_frame()  const override { return 2; }       // the clench: fists, eyes shut
+    float       fire_interval() const override { return 0.05f; }   // the fur on its own clock
+    float opacity(float, float) const override { return lurk.opacity(); }
+    float armor()               const override { return up() ? 1.0f : 0.0f; }          // only hurt while seen
+    float contact_damage()      const override { return lurk.hidden() ? 0.0f : 5.0f; }  // unseen, there is nothing to touch
+    int   telegraphs(TeleLine out[], int max) const override { return lurk.telegraphs(x, y, out, max); }   // the rustling fur; its shadow swelling
+    void update(float dt, float px, float py) override {
+        t += dt;
+        if (up()) fur_t += dt;
+        float gx, gy;
+        behind(px, py, &gx, &gy);
+        if (lurk.update(dt, t, &x, &y, gx, gy)) { fur_t = 0.0f; return; }   // risen behind them
+        if (ENRAGED && up() && lurk.state_t >= UP_T) {           // gone again: off round behind the player
+            float dx = px - x, dy = py - y, d = fmaxf(hypotf(dx, dy), 1.0f);
+            ux = dx / d; uy = dy / d;
+            lurk.dive();
+        }
+    }
+    int fire(float px, float py, BulletSpawn out[], int max) override {
+        if (!up() || fur_t < fur_every()) return 0;
         fur_t = 0.0f;
-        // Loose fur off its coat (art x 26-50, y 10-58), drifting every way.
-        int m = 6;
-        for (int i = 0; i < m; i++) {
+        // Loose fur off its coat (art x 8-42, y 15-44: inside it on every frame), drifting every way.
+        int n = 0;
+        for (int i = 0; i < 6 && n < max; i++) {
             float ox, oy;
-            at(26.0f + ernd() * 24.0f, 10.0f + ernd() * 48.0f, &ox, &oy);
+            at(8.0f + ernd() * 34.0f, 15.0f + ernd() * 29.0f, &ox, &oy);
+            if (hypotf(px - ox, py - oy) < CLEAR) continue;        // never point-blank
             BulletSpawn b = mk(ernd() * TAU, 55.0f + ernd() * 25.0f, 3.0f, 5.0f);
             b.from = true; b.ox = ox; b.oy = oy;
-            out[i] = b;
+            out[n++] = b;
         }
-        return m;
+        return n;
     }
     int breathe(float px, float py, BulletSpawn out[], int) override {
-        reveal = REVEAL_T;                                       // seen, for a moment
+        if (!up() || (ENRAGED && lurk.state_t < SWIPE_WAIT)) return 0;   // unseen, or only just risen: no swipe
         float ox, oy;
         claws(px, py, &ox, &oy);
         // A player in a corner: aimed 80 px out of it, toward the middle --
@@ -10022,12 +10090,12 @@ public:
         float a = aim_at(ox, oy, tx, ty);
         // Past the player, stopping BEHIND them, then back at them from
         // behind (the tester: stopping 250 px out never reached them).
-        float reach = hypotf(tx - ox, ty - oy) + 70.0f;
+        float dist = hypotf(tx - ox, ty - oy);
         int n = 0;
         // Fanned 0.55 rad apart -- ~40 px gaps between bars at the player:
         // three, five in phase 2 (the user: phase 1 was far too easy).
         int side = ENRAGED ? 2 : 1;
-        for (int k = -side; k <= side; k++) n += bar(ox, oy, a + k * 0.55f, reach, out + n);
+        for (int k = -side; k <= side; k++) n += bar(ox, oy, a + k * 0.55f, dist, px, py, out + n);
         return n;
     }
 };
