@@ -10138,7 +10138,7 @@ class Dungavenhooter : public Enemy {
     // side) is a slam with no rings: never point-blank.
     static constexpr float WALK_V = 80.0f, HOLD_R = 140.0f, CLEAR = 150.0f;
     static constexpr float X0 = 90.0f, X1 = ARENA_W - 90.0f, Y0 = ARENA_TOP + 50.0f, Y1 = ARENA_H - 75.0f;
-    static constexpr int   RINGS1 = 5, PER1 = 24, RINGS2 = 5, PER2 = 20;   // phase 2: as phase 1 a slam (following close, more left the census bot ~0 px passes)
+    static constexpr int   RINGS1 = 5, PER1 = 24, RINGS2 = 3, PER2 = 16;   // phase 2 (the user: "too unfair... less bullets so the player can move around through the swarm")
     // Phase 2's rings ease to MIN2 px/s faster: it slams from a new spot
     // each stride, and slow rings from several spots layered over a cornered
     // player left ~0 px gaps (the census bot).
