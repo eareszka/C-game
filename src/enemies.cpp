@@ -10103,14 +10103,21 @@ public:
 // The dungavenhooter (Fearsome Creatures, Maine): a squat crocodilian with
 // NO MOUTH that lies in wait beside a trail, pounds whoever passes into
 // vapour with the club on its tail, and inhales the vapour through its
-// nostrils. UPPER tier, 680 HP, club-grey bullets. BIG sheet. It lies in
-// wait -- it never moves.
-// ONE pattern (the user): it slaps its tail down, and the slap comes faster
-// and faster as its HP drains -- the run up to it cut shorter (see
+// nostrils. UPPER tier, 680 HP, club-grey bullets. BIG sheet, 98x65, 8
+// views (UL L DL mirrored in the sheet).
+// Phase 1 -- it lies in wait, never moving, and slaps its tail down, the
+// slap coming faster as its HP drains -- the run up to it cut shorter (see
 // slap_frames), its frames still a beat each.
-//   Slap -- as the club hits the ground (idle frame 4): five shockwave rings
-//           of 24 at once from where it lands, fast to slower, each easing
-//           off as it nears the player, each turned a quarter step on.
+//   Slap -- as the club hits the ground (IMPACT, f6): five shockwave rings
+//           of 24 at once from the dust splash, fast to slower, each easing
+//           off as it nears the player, each turned a half step on.
+// Phase 2 (half HP; the user, 2026-11-23: "it walks around still slamming
+//   its tail but also champing its mouth and walks towards player") -- the
+//   walk sheet (alt, 4 x 260 ms): it walks at the player, jaws champing (a
+//   look only, no shots), and slams MID-STRIDE on walk f3 every 1.04 s:
+//   RINGS2 rings of PER2 from f3's splash, same speeds, half steps. It holds
+//   HOLD_R from the player and keeps inside the arena; no slam lands within
+//   CLEAR of the player.
 // Made harder after the user's F4 run of 2026-10-31 (never hit, feel 2): rings
 // of 24, and the slap comes every 1.1 s at full HP.
 // Again on 2026-11-01 (still never hit, rated 1, the player on the floor): the
@@ -10122,31 +10129,72 @@ class Dungavenhooter : public Enemy {
     // ms, the user 2026-11-18): the frames up to IMPACT, fewer as its HP
     // drains -- 4 (a slap every 1.04 s), 3 (0.78), 2 (0.52), as the 1.9x to
     // 3.4x loop gave.
+    static constexpr float BEAT = 0.26f;
+    // Phase 2's walk: it FOLLOWS the player (the user, play-testing: 40 px/s
+    // held 320 off "isnt working as intended") -- brisk, straight at them,
+    // turning as they move, re-closing to HOLD_R whenever they step away; its
+    // middle kept in the box so the ball never leaves the screen. Close up,
+    // a splash within CLEAR of the player (facing D, the tail lands on their
+    // side) is a slam with no rings: never point-blank.
+    static constexpr float WALK_V = 80.0f, HOLD_R = 140.0f, CLEAR = 150.0f;
+    static constexpr float X0 = 90.0f, X1 = ARENA_W - 90.0f, Y0 = ARENA_TOP + 50.0f, Y1 = ARENA_H - 75.0f;
+    static constexpr int   RINGS1 = 5, PER1 = 24, RINGS2 = 5, PER2 = 20;   // phase 2: as phase 1 a slam (following close, more left the census bot ~0 px passes)
+    // Phase 2's rings ease to MIN2 px/s faster: it slams from a new spot
+    // each stride, and slow rings from several spots layered over a cornered
+    // player left ~0 px gaps (the census bot).
+    static constexpr float MIN2 = 25.0f;
     float step_t = 0.0f;
     int   step = 0;
     bool  slap_due = false;
+    float walk_t = 0.0f;                         // phase 2: through the 4-frame walk, the slam on f3
     int   slap_frames() const { return hp > max_hp * (2.0f / 3.0f) ? 4 : hp > max_hp / 3.0f ? 3 : 2; }
+    int   walk_frame() const { return (int)(walk_t / BEAT) % 4; }
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (98x65, drawn 2x about its middle) -> screen
         *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
     }
-    // The tail's splash: the middle of the dust burst on IMPACT (f6), as
-    // measured on the NES sheet, by facing D DR R UR U UL L DL -- picked as
-    // the draw picks it, so it flips with the mirror.
+    // The tail's splash: the middle of the dust burst on IMPACT (f6), or on
+    // the walk's f3 in phase 2, as measured on the NES sheets, by facing D
+    // DR R UR U UL L DL -- picked as the draw picks it, so it flips with the
+    // mirror.
     void club(float px, float py, float* ox, float* oy) const {
         static const float S[8][2] = { {28.4f,56.8f}, {26.1f,57.9f}, {21.1f,57.6f}, {29.8f,57.2f},
                                        {35.4f,56.7f}, {67.2f,57.2f}, {75.9f,57.6f}, {70.9f,57.9f} };
+        static const float W[8][2] = { {29.3f,57.4f}, {27.6f,57.9f}, {23.7f,57.7f}, {32.1f,57.9f},   // the walk's f3
+                                       {35.1f,57.8f}, {64.9f,57.9f}, {73.3f,57.7f}, {69.4f,57.9f} };
         int f = facing_toward(px - x, py - y);
         int d = f == FACE_DOWN ? 0 : f == FACE_DOWN_RIGHT ? 1 : f == FACE_RIGHT ? 2 : f == FACE_UP_RIGHT ? 3
               : f == FACE_UP ? 4 : f == FACE_UP_LEFT ? 5 : f == FACE_LEFT ? 6 : 7;
-        at(S[d][0], S[d][1], ox, oy);
+        const float* p = ENRAGED ? W[d] : S[d];
+        at(p[0], p[1], ox, oy);
     }
 public:
     Dungavenhooter() : Enemy(320, 130, 680, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "DUNGAVENHOOTER"; }
     int         breath_frame()  const override { return -1; }      // none: all on the slap frame
     float       fire_interval() const override { return 0.0f; }    // every tick: 0.02 skipped some, the rings a tick after f6
-    int         anim_frame()    const override { int n = slap_frames(); return IMPACT - n + 1 + (step < n ? step : n - 1); }
-    void update(float dt, float, float) override {
+    bool        free_movement() const override { return ENRAGED; }   // phase 2's walk: never paused (it slams mid-stride)
+    bool        alt_pose()      const override { return ENRAGED; }   // phase 2: the walk sheet
+    int         anim_frame()    const override {
+        if (ENRAGED) return walk_frame();
+        int n = slap_frames(); return IMPACT - n + 1 + (step < n ? step : n - 1);
+    }
+    void update(float dt, float px, float py) override {
+        if (ENRAGED) {
+            int f0 = walk_frame();
+            walk_t = fmodf(walk_t + dt, 4.0f * BEAT);
+            if (walk_frame() != f0 && walk_frame() == 3) slap_due = true;   // mid-stride, the club comes down
+            float dx = px - x, dy = py - y, d = hypotf(dx, dy), sx, sy;
+            club(px, py, &sx, &sy);                              // facing D the tail lands toward them: it needs room
+            float sd = hypotf(px - sx, py - sy);
+            if (d > 1.0f && sd < CLEAR + 10.0f) {                // crowded: backs off (else hugging it silences every slam)
+                x -= dx / d * WALK_V * dt; y -= dy / d * WALK_V * dt;
+            } else if (d > HOLD_R && sd > CLEAR + 30.0f) {      // re-closing, stopping while the splash still clears them
+                float s = fminf(WALK_V * dt, d - HOLD_R);
+                x += dx / d * s; y += dy / d * s;
+            }
+            x = fminf(fmaxf(x, X0), X1); y = fminf(fmaxf(y, Y0), Y1);
+            return;
+        }
         if ((step_t += dt) < 0.26f) return;
         step_t -= 0.26f;
         if (++step >= slap_frames()) step = 0;
@@ -10157,15 +10205,16 @@ public:
         slap_due = false;
         float cx, cy;
         club(px, py, &cx, &cy);
-        int n = 0;
+        if (hypotf(px - cx, py - cy) < CLEAR) return 0;          // never point-blank
+        int n = 0, rings = ENRAGED ? RINGS2 : RINGS1, per = ENRAGED ? PER2 : PER1;
         float turn = aim_at(cx, cy, px, py);                     // the first, fastest ring has a shot on the player
-        for (int r = 0; r < 5; r++)
-            for (int i = 0; i < 24; i++) {
+        for (int r = 0; r < rings; r++)
+            for (int i = 0; i < per; i++) {
                 // Each ring a HALF step on (was a quarter): the ball lands
                 // nearer a cornered player now, and where rings of two slaps
                 // overlap, quarter steps left ~11 px gaps; halves leave ~29.
-                BulletSpawn b = mk(turn + (i + r * 0.5f) * (TAU / 24), 230.0f - r * 28.0f, 3.0f, 5.0f);
-                b.accel = -140.0f; b.min_speed = 90.0f - r * 4.0f;
+                BulletSpawn b = mk(turn + (i + r * 0.5f) * (TAU / per), 230.0f - r * 28.0f, 3.0f, 5.0f);
+                b.accel = -140.0f; b.min_speed = 90.0f - r * 4.0f + (ENRAGED ? MIN2 : 0.0f);
                 b.from = true; b.ox = cx; b.oy = cy;
                 out[n++] = b;
             }

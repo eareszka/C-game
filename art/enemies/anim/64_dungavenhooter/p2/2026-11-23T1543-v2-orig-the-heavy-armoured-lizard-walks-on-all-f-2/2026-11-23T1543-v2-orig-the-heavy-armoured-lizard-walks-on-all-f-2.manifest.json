@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1543-v2-orig-the-heavy-armoured-lizard-walks-on-all-f-2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1308 characters>",
+      "format": "png"
+    },
+    "action": "the heavy armoured lizard walks on all four short legs, staying low and horizontal, legs stepping one after another; it never stands up, the body keeps its shape, the spiked ball tail stays on the ground; no effects",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "d022756e-a4da-49e4-b600-40d454aee314",
+    "generation_id": "f67ef1de-9cca-47c4-88ea-b4f514993c0f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "q2a-00.png",
+    "q2a-01.png",
+    "q2a-02.png",
+    "q2a-03.png",
+    "q2a-04.png",
+    "q2a-05.png",
+    "q2a-06.png",
+    "q2a-07.png",
+    "q2a-08.png"
+  ]
+}

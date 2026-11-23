@@ -136,8 +136,8 @@
   "64": {
     "battle": "new",
     "overworld": "pending",
-    "reviewed": "2026-11-19",
-    "gens": 17,
-    "notes": "2026-11-19: the user picked the OLD-PATH model (assets/enemies/64_dungavenhooter.png, 98x65, 8 views x 8 frames) over the 80x60 PixelLab slam (backed up art/_backup/64_slam80x60_*), recoloured to the NES style by art/enemies/anim/64_dungavenhooter/oldpath/restyle.py (recolour only, silhouette identical): the old 51x41 still's colours, flat base/shadow by shape, side-view plate seams + belly line, doubled lines thinned, a shaded spiked steel ball, brighter eyes. Checker clean on all 64 cells. IMPACT f6 (dust burst). Installed as assets/enemies/redraws/64_dungavenhooter.png. The 80x60 slam notes: see git history."
+    "reviewed": "2026-11-23",
+    "gens": 36,
+    "notes": "2026-11-19: the user picked the OLD-PATH model (assets/enemies/64_dungavenhooter.png, 98x65, 8 views x 8 frames) over the 80x60 PixelLab slam (backed up art/_backup/64_slam80x60_*), recoloured to the NES style by art/enemies/anim/64_dungavenhooter/oldpath/restyle.py (recolour only, silhouette identical): the old 51x41 still's colours, flat base/shadow by shape, side-view plate seams + belly line, doubled lines thinned, a shaded spiked steel ball, brighter eyes. Checker clean on all 64 cells. IMPACT f6 (dust burst). Installed as assets/enemies/redraws/64_dungavenhooter.png. The 80x60 slam notes: see git history. | 2026-11-23 phase 2 walk-slam-champ INSTALLED as the alt sheet redraws/64_dungavenhooter_walk.png (4 frames x 8 views, p2/build.py: PixelLab walk + jaw frames, the old-path slam tail, restyle.py), user OK on D incl. the bob"
   }
 }

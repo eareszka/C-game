@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1531-d0-orig-walk-cycle-in-place-the-heavy-lizard-wal",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1252 characters>",
+      "format": "png"
+    },
+    "action": "<elided 274 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "f03c5aca-0f32-4fe8-8c1e-afaf91c6aaad",
+    "generation_id": "da78e36c-77a6-4d75-8d4c-8d5a4bfaaff8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walkc-00.png",
+    "walkc-01.png",
+    "walkc-02.png",
+    "walkc-03.png",
+    "walkc-04.png",
+    "walkc-05.png",
+    "walkc-06.png",
+    "walkc-07.png",
+    "walkc-08.png"
+  ]
+}

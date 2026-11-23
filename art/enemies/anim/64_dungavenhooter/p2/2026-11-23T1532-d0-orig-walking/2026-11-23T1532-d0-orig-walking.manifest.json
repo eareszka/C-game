@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1532-d0-orig-walking",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1252 characters>",
+      "format": "png"
+    },
+    "action": "walking",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "fb823662-022e-4954-adb2-432be208f899",
+    "generation_id": "f94f810b-b89b-40f3-9c63-ae0829f0d177"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "wk-00.png",
+    "wk-01.png",
+    "wk-02.png",
+    "wk-03.png",
+    "wk-04.png",
+    "wk-05.png",
+    "wk-06.png",
+    "wk-07.png",
+    "wk-08.png"
+  ]
+}

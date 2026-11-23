@@ -161,7 +161,7 @@ def battle_sheets():
         path = lambda s: s.strip('"') if s.startswith('"') else None
         out.append((path(f[0]), frames, rows))
         if path(get(4, '')): out.append((path(f[4]), FLAP_FRAMES, False))
-        if path(get(5, '')): out.append((path(f[5]), frames, rows))
+        if path(get(5, '')): out.append((path(f[5]), int(get(13, '0')) or frames, rows))   # alt_frames: a walk has its own count
     return out
 
 def pack_all():

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1533-k02-the-lizard-opens-its-jaws-wide-showing-a-red",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1648 characters>",
+      "format": "png"
+    },
+    "action": "the lizard opens its jaws wide, showing a red mouth and white teeth, then bites them shut; only the jaw moves, the body, legs and tail stay exactly still",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c3f5a8fb-751f-44ba-af3f-b65e203c1a79",
+    "generation_id": "233dc712-7ce6-49bb-bdb8-5e8d5ce91b11"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "jaw-00.png",
+    "jaw-01.png",
+    "jaw-02.png",
+    "jaw-03.png",
+    "jaw-04.png"
+  ]
+}

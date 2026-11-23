@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1532-d0-orig-a-four-frame-walk-cycle-in-place-left-le",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1252 characters>",
+      "format": "png"
+    },
+    "action": "a four-frame walk cycle in place: left legs step forward, legs pass, right legs step forward, legs pass; the jaws open wide on each step and shut on each pass; the tail ball stays on the ground",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "45b2319c-d996-49a8-8f11-a2ed947f3f1e",
+    "generation_id": "510f3bf6-c85f-4ee0-aa0c-468fbfaebdb4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "w4-00.png",
+    "w4-01.png",
+    "w4-02.png",
+    "w4-03.png",
+    "w4-04.png"
+  ]
+}

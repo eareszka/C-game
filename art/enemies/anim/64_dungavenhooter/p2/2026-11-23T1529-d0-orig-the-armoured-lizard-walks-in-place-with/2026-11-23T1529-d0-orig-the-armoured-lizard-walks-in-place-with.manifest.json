@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1529-d0-orig-the-armoured-lizard-walks-in-place-with",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1252 characters>",
+      "format": "png"
+    },
+    "action": "the armoured lizard walks in place with heavy stomping steps, legs lifting one after the other, while its jaws snap open wide and shut again; the spiked ball tail stays still on the ground; no dust, no effects",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "18ccd2c9-8d44-4596-9e05-fe86d9ad3357",
+    "generation_id": "1c2d9fc2-f833-46a8-afc3-bdc2566f1133"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "step-00.png",
+    "step-01.png",
+    "step-02.png",
+    "step-03.png",
+    "step-04.png",
+    "step-05.png",
+    "step-06.png",
+    "step-07.png",
+    "step-08.png"
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1546-r06-the-lizard-opens-its-long-jaws-wide-at-the-r-2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1608 characters>",
+      "format": "png"
+    },
+    "action": "the lizard opens its long jaws wide at the right end of its head, showing a red mouth and white teeth; the body, legs and tail do not move at all",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c0e4b4e2-db40-44a1-ad1c-fd5d74a15dcb",
+    "generation_id": "5ec7778f-bde7-4f05-a7ce-ed22198cc1d9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "jawr2-00.png",
+    "jawr2-01.png",
+    "jawr2-02.png",
+    "jawr2-03.png",
+    "jawr2-04.png"
+  ]
+}

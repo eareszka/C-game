@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1528-d0-orig-the-armoured-lizard-walks-forward-toward",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1252 characters>",
+      "format": "png"
+    },
+    "action": "<elided 266 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "7b06056f-51ea-4982-b06f-df91bac2c6b4",
+    "generation_id": "efb8ab96-44d7-4751-bbbd-3317d72ac0fc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "walk-00.png",
+    "walk-01.png",
+    "walk-02.png",
+    "walk-03.png",
+    "walk-04.png",
+    "walk-05.png",
+    "walk-06.png",
+    "walk-07.png",
+    "walk-08.png"
+  ]
+}

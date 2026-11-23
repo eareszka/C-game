@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1544-dr02-only-its-jaws-open-wide-showing-a-red-mouth",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1736 characters>",
+      "format": "png"
+    },
+    "action": "only its jaws open wide showing a red mouth and white teeth; the body, legs and tail do not move at all",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "3cfeee6d-2225-4046-a693-8a3dd4c9fc2f",
+    "generation_id": "0d124a1e-c5d6-4187-950d-4385bdcd7ab0"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "jaw-00.png",
+    "jaw-01.png",
+    "jaw-02.png",
+    "jaw-03.png",
+    "jaw-04.png"
+  ]
+}
