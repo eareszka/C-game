@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0023-rough-96-keep-this-exact-image-and-pose-do-not-m",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1372 characters>",
+      "format": "png"
+    },
+    "description": "<elided 287 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c41abe42-db4d-40e3-87ad-f24f2b99bf72",
+    "generation_id": "e20ccd05-0416-4f62-bfc7-871cb4e1ae6e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-slam-user2.png"
+  ]
+}

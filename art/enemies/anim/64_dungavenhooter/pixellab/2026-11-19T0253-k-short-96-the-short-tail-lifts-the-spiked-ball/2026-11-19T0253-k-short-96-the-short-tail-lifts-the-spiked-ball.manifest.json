@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0253-k-short-96-the-short-tail-lifts-the-spiked-ball",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1380 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1592 characters>",
+      "format": "png"
+    },
+    "action": "the short tail lifts the spiked ball off the floor in a low arc close behind its back and curls it back up over its back; the tail keeps the same short length, the ball always at its tip; the body does not move",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "da1fd4de-1f77-4d8a-9b99-295c294ff368",
+    "generation_id": "9ab4cd15-7d8a-421c-8006-32c928d2f76f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "back-00.png",
+    "back-01.png",
+    "back-02.png",
+    "back-03.png",
+    "back-04.png",
+    "back-05.png",
+    "back-06.png",
+    "back-07.png",
+    "back-08.png"
+  ]
+}

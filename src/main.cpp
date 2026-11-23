@@ -181,6 +181,24 @@ static float chase_speed(int enemy_id, float t) {
         default: return 1.0f;                                     // straight at the player
     }
 }
+// How long it can chase before it must stop and rest, sweating, as an animal
+// does after a run, and how long it rests: seconds, by how it chases (chase_speed).
+static void chase_stamina(int enemy_id, float* run, float* rest) {
+    switch (enemy_id) {
+        case 13: case 19: case 20: case 38: case 41: case 43: case 70: case 71: case 79: case 80: case 90:
+            *run = 7.0f; *rest = 1.5f; return;                    // plodders: slow, and slow to tire
+        case 11: case 24: case 37: case 58: case 74: case 88: case 92:
+            *run = 3.0f; *rest = 2.5f; return;                    // pouncers: all in on a few lunges
+        case 2: case 14: case 40: case 47: case 65:
+            *run = 3.0f; *rest = 2.0f; return;                    // scurriers and floppers
+        case 7: case 10: case 26: case 45: case 57: case 67: case 68: case 69: case 83:
+            *run = 5.0f; *rest = 1.5f; return;                    // swoopers ride the air
+        case 25: case 33: case 82: case 95:
+            *run = 8.0f; *rest = 1.0f; return;                    // the ones that never stop, nearly
+        default:
+            *run = 4.0f; *rest = 2.0f; return;
+    }
+}
 // Which of its mini's two frames its chase shows, or -1 to step between them
 // every 150 ms (tools/minis.py chase_frame()).
 static int chase_frame(int enemy_id, float t) {
@@ -418,6 +436,13 @@ int main(int argc, char *argv[])
     int          battle_queue_chaser_idx[3] = { -1, -1, -1 };
     int          battle_queue_count = 0;
     int          battle_queue_idx   = 0;
+    // Whether a fight with enemy_id is queued already: one more of a kind that
+    // caught you with it steps back instead of the same fight again (the user).
+    auto battle_queued = [&](int enemy_id) {
+        for (int q = 0; q < battle_queue_count; q++)
+            if (battle_queue[q] == enemy_id) return true;
+        return false;
+    };
     struct FlashEntry { float x, y; int id = -1, face = 0; };   // id, face: the chaser's mini, -1 for none
     FlashEntry   flash_entries[3]   = {};
     int          flash_count        = 0;
@@ -444,7 +469,7 @@ int main(int argc, char *argv[])
     // whose walkable floor starts at row 7), across the room from where the
     // player wakes, so they can be walked into but are not touched at once.
     TestEnemy    test_enemies[]     = {
-        { 63, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 63 Hidebehind
+        { 64, 10.0f * IMAP_TILE, 8.5f * IMAP_TILE },  // 64 Dungavenhooter
     };
     const int    TEST_N             = 0;   // taken out of the room (user, 2026-11-06); the table kept for when one is wanted again
     // Beside the plant, against the back wall: where the dog's bowl stands on the
@@ -828,6 +853,14 @@ int main(int argc, char *argv[])
     // with second frames steps between them as it moves, the rest hop.
     SDL_Texture* minis_tex = NULL, *minis_white = NULL;   // white: its hit flash (load_with_white)
     bool mini_done[100] = {}, mini_two[100] = {};
+    // mini_top: art px from the top of its cell down to its head, facing down (where its sweat shows)
+    int mini_top[100] = {};
+    auto top_row = [](SDL_Surface* m, int x0, int y0, int w, int h) {   // RGBA32
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (((Uint8*)m->pixels)[(y0 + y) * m->pitch + (x0 + x) * 4 + 3]) return y;
+        return 0;
+    };
     if (SDL_Surface* ms = IMG_Load("assets/enemies/minis.png")) {
         if (SDL_Surface* m = SDL_ConvertSurfaceFormat(ms, SDL_PIXELFORMAT_RGBA32, 0)) {
             auto drawn = [m](int id, int cell) {
@@ -838,6 +871,7 @@ int main(int argc, char *argv[])
             for (int id = 0; id < 100 && (id / 5 + 1) * 28 <= m->h; id++) {
                 mini_done[id] = drawn(id, 0);
                 mini_two[id]  = drawn(id, 1);
+                mini_top[id]  = top_row(m, (id % 5) * 8 * 40, (id / 5) * 28, 40, 28);
             }
             SDL_FreeSurface(m);
         }
@@ -855,6 +889,13 @@ int main(int argc, char *argv[])
             SDL_QueryTexture(mini_big[id], NULL, NULL, &mini_big_w[id], &mini_big_h[id]);
             mini_big_w[id] /= 4 * mini_frames(id);
             mini_done[id] = mini_two[id] = true;
+            if (SDL_Surface* bs = IMG_Load(path)) {
+                if (SDL_Surface* m = SDL_ConvertSurfaceFormat(bs, SDL_PIXELFORMAT_RGBA32, 0)) {
+                    mini_top[id] = top_row(m, 0, 0, mini_big_w[id], mini_big_h[id]);
+                    SDL_FreeSurface(m);
+                }
+                SDL_FreeSurface(bs);
+            }
         }
     }
     // The chase test room's list: the done minis, easiest first; every enemy
@@ -880,7 +921,7 @@ int main(int argc, char *argv[])
     // chaser's own frame, next the one it heads for, via whether it follows
     // them (else it goes straight at the player); reach, whether there is a
     // way at all; look, seconds to its next look for one.
-    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; int spawner; float sx = 0, sy = 0, flash = 0; int side = 2;   // side: the last way it faced of L R (2 3), for mini_sideways()
+    struct DungeonChaser { float x, y; int enemy_id; bool active; bool chasing; float aggro_timer; int face; float t; float ax, ay, pause; float hx, hy, poll; int spawner; float sx = 0, sy = 0, flash = 0; int side = 2; float tired = 0;   // side: the last way it faced of L R (2 3), for mini_sideways(); tired: seconds of rest left (chase_stamina)
                            std::vector<ResidentPoint> route; size_t next = 0; bool via = false, reach = false; float look = 0; };
     static const int MAX_CHASERS = DMAP_MAX_SPAWNERS;   // one a spawner, the catacombs' 64 too
     DungeonChaser chasers[MAX_CHASERS] = {};
@@ -1100,14 +1141,28 @@ int main(int argc, char *argv[])
         }
         return fb.tex && fb.w > 0 && fb.h > 0 ? &fb : nullptr;
     };
+    // A resting chaser's sweat (chase_stamina): two drops off its head, one a
+    // side, taking turns every 200 ms and running a pixel down. cx: its middle,
+    // head: the screen row of the top of its head, s: screen px an art px.
+    auto draw_sweat = [&](int cx, int head, float s) {
+        int ph = (int)(world_ms() / 200 % 4);
+        int side = ph % 2 ? 1 : -1, run = ph / 2;
+        int x = cx + (int)(side * 7 * s), y = head + (int)((1 + run) * s);
+        SDL_Rect hi = { x, y, (int)s, (int)s }, lo = { x, y + (int)s, (int)s, (int)s };
+        fc_draw_color(plat.renderer, 132, 167, 233, 255);   // #84a7e9
+        SDL_RenderFillRect(plat.renderer, &hi);
+        fc_draw_color(plat.renderer, 92, 148, 252, 255);    // #5c94fc
+        SDL_RenderFillRect(plat.renderer, &lo);
+    };
     auto draw_chaser = [&](const Camera* c, const DungeonChaser& ch, bool white = false) {
         int id = ch.enemy_id, face = ch.face;
+        bool sweats = ch.chasing && ch.tired > 0.0f;
         static const int SPIN[4] = { 0, 3, 1, 2 };                  // D R U L
         if (id == 16) face = SPIN[world_ms() / 120 % 4];        // the Kamaitachi spins, whichever way it goes
         if (mini_sideways(id) && face < 2) face = ch.side;          // going up or down, still side on
         if (mini_backwards(id)) face ^= 1;                          // D U, L R: the other way, tail first
         float wx = art_snap(ch.x), wy = art_snap(ch.y);   // on the tiles' art grid
-        bool running = ch.chasing && ch.aggro_timer <= 0.0f;
+        bool running = ch.chasing && ch.aggro_timer <= 0.0f && !sweats;
         bool moving = ch.chasing ? running && chase_speed(id, ch.t) != 0.0f : ch.pause <= 0.0f;
         int frame = running ? chase_frame(id, ch.t) : -1;
         if (id < 0 || id >= 100 || !mini_done[id] || (!minis_tex && !mini_big[id])) {
@@ -1123,6 +1178,7 @@ int main(int argc, char *argv[])
                 SDL_Rect dst = { cam_px(c, wx) - (int)(fb->w * k / 2), cam_py(c, wy + 7.0f) - (int)(fb->h * k) - hop,
                                  (int)(fb->w * k), (int)(fb->h * k) };
                 SDL_RenderCopy(plat.renderer, white && fb->white ? fb->white : fb->tex, &src, &dst);
+                if (sweats) draw_sweat(cam_px(c, wx), dst.y, 2.0f * c->zoom);
                 return;
             }
             SDL_Rect cr = chaser_rect(c, wx, wy);
@@ -1158,6 +1214,7 @@ int main(int argc, char *argv[])
         }
         SDL_Texture* tex = mini_big[id] ? (white ? mini_big_white[id] : mini_big[id]) : (white ? minis_white : minis_tex);
         SDL_RenderCopy(plat.renderer, tex, &src, &dst);
+        if (sweats) draw_sweat(cam_px(c, wx), dst.y + (int)(mini_top[id] * s), s);
     };
     // One chaser's turn, in a dungeon or the test house. Unseen, it ambles: one
     // way at random up to PATROL_R from the middle of its beat (ax, ay), a stop,
@@ -1167,10 +1224,11 @@ int main(int argc, char *argv[])
     // snap and 8-frame re-aim are gone on purpose (the user, 2026-10-28: too
     // easy to sidestep). Returns its speed along (hx, hy); fits(ch, wx, wy)
     // says where it may stand.
-    const float CHASER_SPEED = PLAYER_RUN_SPEED;   // a sprint only holds a steady one off
+    const float CHASER_SPEED = 1.1f * PLAYER_RUN_SPEED;   // a little past your run: it tires (chase_stamina), you don't
     const float ALERT_R = 6.0f * TILE_SIZE;        // one running this near alerts the rest
     auto chase_tick = [&](DungeonChaser& ch, bool seen, bool alerted, float cdx, float cdy, float dt, auto fits) -> float {
         const float NOTICE_T = 12.0f / 60.0f, POLL_T = 4.0f / 60.0f;
+        if (ch.tired > 0.0f) ch.tired -= dt;   // rests ambling too
         if (!ch.chasing) {
             if (!seen) {
                 const float PATROL_SPEED = 0.3f * PLAYER_RUN_SPEED, PATROL_R = 2.0f * DMAP_TILE;
@@ -1194,6 +1252,10 @@ int main(int argc, char *argv[])
             if (cdx != 0.0f) ch.side = cdx < 0 ? 2 : 3;
         }
         if (ch.aggro_timer > 0.0f) { ch.aggro_timer -= dt; return 0.0f; }
+        if (ch.tired > 0.0f) return 0.0f;   // stopped, sweating (draw_chaser)
+        float run, rest;
+        chase_stamina(ch.enemy_id, &run, &rest);
+        if (ch.t >= run) { ch.tired = rest; ch.t = 0.0f; return 0.0f; }   // its rhythm starts over after
         ch.t += dt;
         ch.poll -= dt;
         if (ch.poll <= 0.0f) {
@@ -1283,7 +1345,7 @@ int main(int argc, char *argv[])
     auto chase_alerted = [&](const DungeonChaser& ch, const DungeonChaser* chs, int n, auto delta) {
         for (int i = 0; i < n; i++) {
             const DungeonChaser& o = chs[i];
-            if (&o == &ch || !o.active || !o.chasing || o.aggro_timer > 0.0f) continue;
+            if (&o == &ch || !o.active || !o.chasing || o.aggro_timer > 0.0f || o.tired > 0.0f) continue;
             float dx, dy;
             delta(o.x - ch.x, o.y - ch.y, dx, dy);
             if (dx * dx + dy * dy <= ALERT_R * ALERT_R) return true;
@@ -1406,7 +1468,7 @@ int main(int argc, char *argv[])
                     int best = -1; float bd2 = 0.0f;
                     for (int cj = 0; cj < num_wild; cj++) {
                         const DungeonChaser& o = wild[cj];
-                        if (!o.active || !o.chasing || !sees(o)) continue;
+                        if (!o.active || !o.chasing || !sees(o) || battle_queued(o.enemy_id)) continue;
                         float odx = wrap_dpx(pcx - o.x), ody = wrap_dpy(pcy - o.y), d2 = odx * odx + ody * ody;
                         if (best < 0 || d2 < bd2) { best = cj; bd2 = d2; }
                     }
@@ -2820,6 +2882,7 @@ int main(int argc, char *argv[])
                                 if (cidx >= 0 && cidx < num_wild) persist_wild_beaten((uint32_t)wild[cidx].spawner);
                             }
                             float last_x = battle_scene->player_x(), last_y = battle_scene->player_y();
+                            BattleSpoils spoils = battle_scene->spoils();   // the pack's so far, for the last fight's rewards
                             delete battle_scene;
                             battle_scene = nullptr;
                             if (victory && battle_queue_idx + 1 < battle_queue_count) {
@@ -2827,6 +2890,7 @@ int main(int argc, char *argv[])
                                 battle_scene = new BattleScene(&player, battle_queue[battle_queue_idx],
                                                                true, last_x, last_y);
                                 battle_scene->set_more_after(battle_queue_idx + 1 < battle_queue_count);
+                                battle_scene->carry_spoils(spoils);
                             } else {
                                 post_battle_t = 1.0f;
                                 // Re-activate any queued enemies that were never fought.
@@ -2991,6 +3055,7 @@ int main(int argc, char *argv[])
                                 cands[b+1] = tmp;
                             }
                             for (int k = 0; k < nc && battle_queue_count < 3; k++) {
+                                if (battle_queued(cands[k].enemy_id)) continue;   // the same fight twice: it steps back
                                 const DungeonChaser& o = chasers[cands[k].idx];
                                 flash_entries[battle_queue_count] = { o.x, o.y, o.enemy_id, o.face };
                                 battle_queue_chaser_idx[battle_queue_count] = cands[k].idx;

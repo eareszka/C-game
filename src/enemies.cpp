@@ -10129,20 +10129,22 @@ class Dungavenhooter : public Enemy {
     void at(float fx, float fy, float* ox, float* oy) const {   // art px (98x65, drawn 2x about its middle) -> screen
         *ox = x + (fx - 49.0f) * 2.0f; *oy = y + (fy - 32.5f) * 2.0f;
     }
-    // The splash where its club lands (the impact frame's dust crown, its
-    // middle), by facing D DR R UR U UL L DL.
+    // The tail's splash: the middle of the dust burst on IMPACT (f6), as
+    // measured on the NES sheet, by facing D DR R UR U UL L DL -- picked as
+    // the draw picks it, so it flips with the mirror.
     void club(float px, float py, float* ox, float* oy) const {
-        static const float FX[8] = { 35, 30, 21, 30, 35, 67, 76, 67 };
+        static const float S[8][2] = { {28.4f,56.8f}, {26.1f,57.9f}, {21.1f,57.6f}, {29.8f,57.2f},
+                                       {35.4f,56.7f}, {67.2f,57.2f}, {75.9f,57.6f}, {70.9f,57.9f} };
         int f = facing_toward(px - x, py - y);
         int d = f == FACE_DOWN ? 0 : f == FACE_DOWN_RIGHT ? 1 : f == FACE_RIGHT ? 2 : f == FACE_UP_RIGHT ? 3
               : f == FACE_UP ? 4 : f == FACE_UP_LEFT ? 5 : f == FACE_LEFT ? 6 : 7;
-        at(FX[d], 58.0f, ox, oy);
+        at(S[d][0], S[d][1], ox, oy);
     }
 public:
     Dungavenhooter() : Enemy(320, 130, 680, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "DUNGAVENHOOTER"; }
     int         breath_frame()  const override { return -1; }      // none: all on the slap frame
-    float       fire_interval() const override { return 0.02f; }
+    float       fire_interval() const override { return 0.0f; }    // every tick: 0.02 skipped some, the rings a tick after f6
     int         anim_frame()    const override { int n = slap_frames(); return IMPACT - n + 1 + (step < n ? step : n - 1); }
     void update(float dt, float, float) override {
         if ((step_t += dt) < 0.26f) return;
@@ -10159,7 +10161,10 @@ public:
         float turn = aim_at(cx, cy, px, py);                     // the first, fastest ring has a shot on the player
         for (int r = 0; r < 5; r++)
             for (int i = 0; i < 24; i++) {
-                BulletSpawn b = mk(turn + (i + r * 0.25f) * (TAU / 24), 230.0f - r * 28.0f, 3.0f, 5.0f);
+                // Each ring a HALF step on (was a quarter): the ball lands
+                // nearer a cornered player now, and where rings of two slaps
+                // overlap, quarter steps left ~11 px gaps; halves leave ~29.
+                BulletSpawn b = mk(turn + (i + r * 0.5f) * (TAU / 24), 230.0f - r * 28.0f, 3.0f, 5.0f);
                 b.accel = -140.0f; b.min_speed = 90.0f - r * 4.0f;
                 b.from = true; b.ox = cx; b.oy = cy;
                 out[n++] = b;

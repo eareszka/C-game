@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0237-base-96-the-curled-tail-slowly-uncurls-and-exten",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1592 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "the curled tail slowly uncurls and extends straight out behind the creature, the spiked ball swinging out and down until it hits the floor behind it; the tail never lifts overhead; the body stays still, one tail, one ball",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "146ace9e-7fc1-49fc-87ba-c62dee7e6a8e",
+    "generation_id": "80be4732-d63b-4fd9-8eaa-b66858edc1ee"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "uncurl-00.png",
+    "uncurl-01.png",
+    "uncurl-02.png",
+    "uncurl-03.png",
+    "uncurl-04.png",
+    "uncurl-05.png",
+    "uncurl-06.png",
+    "uncurl-07.png",
+    "uncurl-08.png"
+  ]
+}

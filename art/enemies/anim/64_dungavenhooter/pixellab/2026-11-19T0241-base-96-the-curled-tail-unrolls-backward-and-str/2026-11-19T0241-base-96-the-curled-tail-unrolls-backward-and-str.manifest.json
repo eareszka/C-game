@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0241-base-96-the-curled-tail-unrolls-backward-and-str",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1592 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "<elided 290 characters>",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "78df0544-722e-496c-a367-b24198c4763b",
+    "generation_id": "2cee810c-6ce2-4ca9-99ee-e9a5f1d2c940"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "low-00.png",
+    "low-01.png",
+    "low-02.png",
+    "low-03.png",
+    "low-04.png",
+    "low-05.png",
+    "low-06.png",
+    "low-07.png",
+    "low-08.png"
+  ]
+}

@@ -4667,11 +4667,6 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // narrowing that ran along every road.
                         std::vector<float> dxs = fxs, dys = fys;
                         float drift = 0.0f, dvel = 0.0f;
-                        // A trail's meander: two swings of their own length
-                        // and phase over the wander below, a long one and a
-                        // ripple, so it bends this way and that in S-curves
-                        // rather than only leaning (TRAIL_SWING, TRAIL_EASE).
-                        float mper[2] = { 0, 0 }, mph[2] = { 0, 0 };
                         // The offset a trail last took: it may change by no
                         // more than TRAIL_SLOPE a point, and come back to the
                         // line by its ends at that rate. A swing put on faster
@@ -4680,14 +4675,6 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                         // off a gate or a road.
                         float last_off = 0.0f;
                         const float TRAIL_SLOPE = 0.7f;
-                        if (reach) {
-                            for (int m = 0; m < 2; m++) {
-                                ts = ts * 1664525u + 1013904223u;
-                                mper[m] = m ? 8.0f + (float)((ts >> 16) % 5u) : 16.0f + (float)((ts >> 16) % 11u);
-                                ts = ts * 1664525u + 1013904223u;
-                                mph[m] = (float)((ts >> 16) % 6283u) / 1000.0f;
-                            }
-                        }
                         for (size_t i = 1; i + 1 < path.size(); i++) {
                             // A pinned point takes no drift, and the wander is
                             // wound back to nothing so it leaves the far end of
@@ -4714,31 +4701,22 @@ static void route_network(Tilemap* map, unsigned int route_seed,
                             // inside the clamp, and stretches a full swing out
                             // over some seventy tiles.
                             //
-                            // A trail (reach) winds more than a road (the
-                            // user, 2026-11-09: "make trails more windier...
-                            // they shouldnt be as straight as roads"): a
-                            // looser spring and a quicker answer to each kick,
-                            // so it swings further -- up to TRAIL_SWING tiles --
-                            // and back again in some thirty tiles, not seventy.
-                            // Eased in over its first and last TRAIL_EASE
-                            // points, so it still meets the road and the door
-                            // square on. Roads are as they were.
-                            const float TRAIL_SWING = 5.5f, TRAIL_EASE = 4.0f;
-                            if (reach) dvel = dvel * 0.90f + kick * 0.10f - drift * 0.012f;
-                            else       dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
+                            // A trail (reach) winds as much as a road (the
+                            // user, 2026-11-17: "the roads and trails should
+                            // be the same amount"; its looser spring and
+                            // S-curve swings are gone). It is eased in over
+                            // its first and last TRAIL_EASE points, so it
+                            // still meets the road and the door square on.
+                            const float TRAIL_EASE = 4.0f;
+                            dvel = dvel * 0.94f + kick * 0.06f - drift * 0.008f;
                             drift += dvel;
-                            const float clamp = reach ? TRAIL_SWING : 2.0f;
+                            const float clamp = 2.0f;
                             if (drift >  clamp) drift =  clamp;
                             if (drift < -clamp) drift = -clamp;
                             float ease = 1.0f, bend = drift;
                             if (reach) {
                                 float e = fminf((float)i, (float)(path.size() - 1 - i)) / TRAIL_EASE;
                                 ease = e >= 1.0f ? 1.0f : e * e * (3.0f - 2.0f * e);
-                                // (wound a little more, 2026-11-17: the user, "wind a bit more")
-                                bend += 4.2f * sinf(6.2831853f * (float)i / mper[0] + mph[0])
-                                      + 1.4f * sinf(6.2831853f * (float)i / mper[1] + mph[1]);
-                                if (bend >  6.5f) bend =  6.5f;
-                                if (bend < -6.5f) bend = -6.5f;
                                 float want = bend * ease;
                                 float to_end = TRAIL_SLOPE * (float)(path.size() - 1 - i);
                                 // and none at all over the points at its join, then

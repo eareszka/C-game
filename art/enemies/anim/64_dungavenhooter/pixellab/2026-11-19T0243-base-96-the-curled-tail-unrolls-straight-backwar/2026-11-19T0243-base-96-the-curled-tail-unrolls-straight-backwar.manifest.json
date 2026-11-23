@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0243-base-96-the-curled-tail-unrolls-straight-backwar",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1592 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1964 characters>",
+      "format": "png"
+    },
+    "action": "the curled tail unrolls straight backward, staying low near the height of its back, the spiked ball moving out behind it; the body does not move",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "2b452dfa-046f-46b0-aac5-e358696155d3",
+    "generation_id": "660a6e28-03a7-43c1-a583-7f081f48ff72"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flat-00.png",
+    "flat-01.png",
+    "flat-02.png",
+    "flat-03.png",
+    "flat-04.png"
+  ]
+}

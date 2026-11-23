@@ -167,11 +167,9 @@ should be seemless"); a branch's loose end is carried on to the track it joins. 
 run-up to a bridge (a trail tile beside a run-up or a deck) is drawn at the
 road's width, as the deck is. Earlier tries, rejected: the road's tiles
 shrunk 5 px (it swelled where the tile stroke lay three thick), and a disc
-round the line (even, but not a road's look). It winds more than a road (the
-user, 2026-11-09: "make trails more windier... they shouldnt be as straight
-as roads"; 2026-11-17: "wind a bit more"): over the route's own wander it
-swings in S-curves, a long swing of 16-26 tiles and a ripple of 8-12, up to
-six and a half tiles off its line, and comes
+round the line (even, but not a road's look). It winds as much as a road
+does, no more (the user, 2026-11-17: "the trails are too snakey compared to
+the roads. the roads and trails should be the same ammount"), and comes
 back onto the line by its ends so it meets the road and the door square on. Trails reach about two thirds of
 their dungeons (the user, 2026-11-09: "should be more expansive, so far they
 seem to only connect to the dungeons closest to the roads"; then "have them

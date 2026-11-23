@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0012-k-impact2-keep-the-creature-exactly-the-same-the",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3240 characters>",
+      "format": "png"
+    },
+    "description": "<elided 375 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "10178f8e-4d0a-4474-af5f-3c4d8bcb6770",
+    "generation_id": "ca17dfdd-c5ea-428f-848d-f41eab510c97"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-impact3.png"
+  ]
+}

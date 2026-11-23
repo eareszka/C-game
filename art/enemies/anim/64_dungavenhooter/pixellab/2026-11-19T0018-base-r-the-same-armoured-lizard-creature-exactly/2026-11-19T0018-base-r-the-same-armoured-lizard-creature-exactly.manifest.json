@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0018-base-r-the-same-armoured-lizard-creature-exactly",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1484 characters>",
+      "format": "png"
+    },
+    "description": "<elided 287 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "e87b9fa0-91bc-48a5-aeb2-69a93d15b719",
+    "generation_id": "dbefa32d-2334-49c3-806a-c6a4e19144a9"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-slam-r.png"
+  ]
+}

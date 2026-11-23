@@ -276,7 +276,7 @@ static const EnemySheet ENEMY_SHEETS[] = {
     { "assets/enemies/redraws/61_roperite.png",       {}, 9, false, "assets/enemies/redraws/61_roperite_dash.png", nullptr, nullptr, 1, 1, nullptr, 0, nullptr, "assets/enemies/61_roperite_ghosts.png" },  // big (frame 60x62), the user's approved 39x52 front still, one view in every direction (art/enemies/anim/61_roperite/build.py), always walking or dashing (the user): idle 9 x 260 ms -- the walk bound/contact/bound cycles under everything; 0-2 walking, 3-5 the rope GROWING, 6 THE LASSO fully out, 7-8 the rope drawn back; flap = the DASH, 4 x 260 ms (crouch-stride, air, crouch-stride, air); spawner = the ghost herd: 13 square 62x62 cells, 0-8 the idle, 9-12 the dash
     { "assets/enemies/62_hugag.png",                  {}, 5, false, "assets/enemies/62_hugag_stomp.png", "assets/enemies/62_hugag_walk.png", nullptr, 1, 1, nullptr, 0, nullptr, nullptr, 4 },  // big, one view (from the side, after the user's reference): a bush of a body on stilt legs, a bare neck and lumpy head; frame 2 bellow (mouth open); flap = stomping in place, frames 1 and 3 the slams (phase 2); alt = the walk, 4 frames (phase 1, f0 contact)
     { "assets/enemies/redraws/63_hidebehind.png",             {}, 4 },  // big (frame 52x48), front only: faceless shaggy fur cone, a fan of hooked claws raised at each side (the user's 49x46 still); idle (art/enemies/anim/63_hidebehind/build.py, PixelLab) 4 x 260 ms in order: rest, breathing in (risen, claws curling), fists + eyes shut, breathing out; UL L DL mirrored
-    { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // reviewed first pose with visible ball tail; breathing fallback
+    { "assets/enemies/redraws/64_dungavenhooter.png", {}, 8 },         // big (frame 98x65), 8 views (UL L DL the mirrors of UR R DR): the old-path model the user picked (assets/enemies/64_dungavenhooter.png), recoloured to the NES style (art/enemies/anim/64_dungavenhooter/oldpath/restyle.py: flat base/shadow, plate seams, shaded spiked steel ball; same pixels, same silhouette); the slap 8 x 260 ms, the club down on f6 (IMPACT)
     { "assets/enemies/redraws/65_mice_that_eat_iron.png",     {}, 4, false, nullptr, "assets/enemies/redraws/65_mice_that_eat_iron_walk.png" },   // 28x23, front only: three mice sharing an iron beam (the user), gnawing it out of step -- rest, then each dips in turn, 260 ms (art/enemies/anim/65_mice_that_eat_iron/build.py); alt = the same gnaw with their feet stepping, while it drifts (MiceThatEatIron::alt_pose)
     { "assets/enemies/redraws/66_ayotochtli.png",     {}, 5, false, "assets/enemies/redraws/66_ayotochtli_roll.png" },  // 48x35, four views (art/enemies/anim/66_ayotochtli/build.py): rest, HUNCH (frame 1, the ring), rest, low, rest at 260 ms (1.3 s, the old loop); roll sheet: 0 hunch, 1 ball (guard in/out), 2-5 the roll, a plain spinning ball (the user) -- 65 ms a pose fast, 130 slow (the user asked for it faster, twice)
     { "assets/enemies/redraws/67_lagopus.png",                {0, 1, 0, 2}, 3, false, nullptr },  // 6 dirs; idle: wings spread, rippling; flap = flying, all 8 dirs
@@ -612,6 +612,9 @@ void BattleScene::update(const Input* in, float dt) {
             return;
         case BATTLE_PHASE_VICTORY:
             _update_pickups(dt);
+            // More of the pack after this one: a beat for its drops to come
+            // in, then straight on (the last fight shows the rewards).
+            if (_more_after) { if (_t > VICTORY_T) _done = true; return; }
             // VICTORY, then the rewards in the speech box: Z shows a part
             // whole, goes on at a stop, and at the end closes it.
             if (_t > VICTORY_T && !_confirmed) {
@@ -787,7 +790,7 @@ void BattleScene::_win() {
     _phase = BATTLE_PHASE_VICTORY;
     _t = 0.0f;
     for (int& n : _won) n = 0;
-    audio_play(SFX_VICTORY);
+    if (!_more_after) audio_play(SFX_VICTORY);   // the pack's last: its fanfare
 
     // Cancellation is visual. A separate ledger limits actual materials.
     unsigned rng = SDL_GetTicks() * 2654435761u + (unsigned)_enemy_id;
@@ -832,25 +835,30 @@ void BattleScene::_win() {
     _exp_gain = _hits + _grazes + enemy_defeat_exp(_enemy_id);
     _levels   = player_gain_exp(_player_ref, _exp_gain);
     if (_levels > 0) {
-        audio_play_after(SFX_LEVEL_UP, VICTORY_T + 0.2f);   // once VICTORY has rung
         _bp.max_hp = (float)_player_ref->stats.max_hp;
         _bp.hp     = (float)_player_ref->stats.hp;
     }
+    // Onto the pack's spoils; the last fight of the queue shows them all.
+    _spoils.exp    += _exp_gain;
+    _spoils.levels += _levels;
+    for (int it = 0; it < ITEM_COUNT; it++) _spoils.won[it] += _won[it];
+    if (_more_after) return;
+    if (_spoils.levels > 0) audio_play_after(SFX_LEVEL_UP, VICTORY_T + 0.2f);   // once VICTORY has rung
 
     // What the speech box will say: the EXP, then everything it paid -- the
     // rare things first, then the common stuff -- each its own line with its
     // icon, then a level-up.
-    SDL_snprintf(_reward_text, sizeof(_reward_text), "Got %d exp.", _exp_gain);
+    SDL_snprintf(_reward_text, sizeof(_reward_text), "Got %d exp.", _spoils.exp);
     _reward_n = 0;
     for (int pass = 0; pass < 2; pass++)
         for (int it = 0; it < ITEM_COUNT; it++) {
-            if (!_won[it] || is_common_drop(it) != (pass == 1)) continue;
+            if (!_spoils.won[it] || is_common_drop(it) != (pass == 1)) continue;
             char ln[48];
-            SDL_snprintf(ln, sizeof(ln), "\n%s x%d", item_name((Item)it), _won[it]);
+            SDL_snprintf(ln, sizeof(ln), "\n%s x%d", item_name((Item)it), _spoils.won[it]);
             SDL_strlcat(_reward_text, ln, sizeof(_reward_text));
             _reward_icons[_reward_n++] = it;
         }
-    if (_levels > 0) {
+    if (_spoils.levels > 0) {
         char ln[32];
         SDL_snprintf(ln, sizeof(ln), "\nLevel up! LV %d", _player_ref->level);
         SDL_strlcat(_reward_text, ln, sizeof(_reward_text));
@@ -2279,7 +2287,9 @@ void BattleScene::draw(SDL_Renderer* ren, SDL_Texture* player_sprite) const {
     // A win: VICTORY, each letter stepping through bright colours in a
     // rolling wave; then what it paid, typed in the speech box with each
     // item's icon, like a chest. Both go as the fade out starts.
-    if (_phase == BATTLE_PHASE_VICTORY && !_confirmed && _t < VICTORY_T) {
+    if (_phase == BATTLE_PHASE_VICTORY && _more_after) {
+        // more of the pack to come: no VICTORY yet
+    } else if (_phase == BATTLE_PHASE_VICTORY && !_confirmed && _t < VICTORY_T) {
         static const SDL_Color RAINBOW[7] = {
             { 248,  56,   0 }, { 252, 160,  68 }, { 248, 184,   0 }, {  88, 216,  84 },
             {  60, 188, 252 }, { 104, 136, 252 }, { 248, 120, 248 },

@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0227-k-slam-96-the-creature-lifts-its-spiked-ball-tai",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "the creature lifts its spiked ball tail up out of the dust in one smooth arc, high overhead, then swings it down and slams the ball on the ground to the right again; the body stays still, one tail, one ball",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "b673b7b0-653e-4fcd-98b2-001007e2eb59",
+    "generation_id": "53353232-c4cf-471a-84c0-a342bf5abbf3"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "loop-00.png",
+    "loop-01.png",
+    "loop-02.png",
+    "loop-03.png",
+    "loop-04.png",
+    "loop-05.png",
+    "loop-06.png",
+    "loop-07.png",
+    "loop-08.png"
+  ]
+}

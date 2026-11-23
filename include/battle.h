@@ -253,6 +253,13 @@ void draw_actor_appearance(SDL_Renderer* ren, SDL_Texture* texture,
 // the map fade by the same clock (main.cpp).
 static const float BATTLE_FADE_T = 0.4f;
 
+// What a pack's wins have paid so far: handed from one fight of the queue to
+// the next, so the last one shows them all in one speech box.
+struct BattleSpoils {
+    int exp = 0, levels = 0;
+    int won[INVENTORY_ITEM_CAPACITY] = {};
+};
+
 class BattleScene {
 public:
     // chained: the next fight of a pack. No fade in -- the player glides from
@@ -267,8 +274,12 @@ public:
     bool  is_trial() const { return _trial; }
     const TrialStats& trial() const { return _ts; }
 
-    // More of the pack waits after this fight: a win ends without fading out.
+    // More of the pack waits after this fight: a win ends without fading out,
+    // VICTORY or the rewards -- those wait for the last fight.
     void  set_more_after(bool more) { _more_after = more; }
+    // The pack's spoils before this fight (carry_spoils), and with its win (spoils).
+    void  carry_spoils(const BattleSpoils& s) { _spoils = s; }
+    const BattleSpoils& spoils() const { return _spoils; }
     float player_x() const { return _bp.x; }
 
     // What the top HUD shows during a fight. hud_enemy is null once it's beaten.
@@ -360,12 +371,13 @@ private:
     int          _grazes     = 0;   // enemy shots that passed close without hitting
     int          _exp_gain   = 0;   // what the win paid
     int          _levels     = 0;   // levels that gained
+    BattleSpoils _spoils;           // the pack's so far, this win's added on it
     bool         _enraged_seen = false;   // the enemy's phase line crossed: SFX_ENRAGE, once
     int          _picked       = 0;       // pickups collected this win: each rings a step higher
     bool         _won_new[INVENTORY_ITEM_CAPACITY] = {};   // which of them the player had never held before
     // The win in the speech box, the chest's way: the EXP, a line per item
     // (its icon in _reward_icons, by line), a level-up. Typed out after VICTORY.
-    char         _reward_text[256] = "";
+    char         _reward_text[512] = "";   // a whole pack's spoils
     int          _reward_icons[INVENTORY_ITEM_CAPACITY] = {};
     int          _reward_n  = 0;
     int          _dlg_part  = 0;

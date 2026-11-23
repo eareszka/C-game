@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0248-base-96-the-curled-tail-unrolls-backward-staying",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1592 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1380 characters>",
+      "format": "png"
+    },
+    "action": "the curled tail unrolls backward, staying low near the height of its back, and the spiked ball drops onto the floor just behind it; the body does not move",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "52424446-664c-4533-ab73-e783782efeec",
+    "generation_id": "de2adb15-0995-4a61-8d54-a9cf35331f5e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "short-00.png",
+    "short-01.png",
+    "short-02.png",
+    "short-03.png",
+    "short-04.png"
+  ]
+}

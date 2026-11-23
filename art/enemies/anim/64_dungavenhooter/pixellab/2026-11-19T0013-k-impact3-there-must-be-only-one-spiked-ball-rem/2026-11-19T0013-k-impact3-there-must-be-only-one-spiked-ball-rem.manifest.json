@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0013-k-impact3-there-must-be-only-one-spiked-ball-rem",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 3440 characters>",
+      "format": "png"
+    },
+    "description": "<elided 332 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "df67292e-1e61-498b-8ec1-c39e9f06aa02",
+    "generation_id": "ce876106-5d82-42de-91e6-cde69e115d36"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-impact4.png"
+  ]
+}

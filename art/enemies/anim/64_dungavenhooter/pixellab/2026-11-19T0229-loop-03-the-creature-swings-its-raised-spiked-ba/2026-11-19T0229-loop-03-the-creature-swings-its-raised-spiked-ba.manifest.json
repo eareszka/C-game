@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0229-loop-03-the-creature-swings-its-raised-spiked-ba",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2360 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1388 characters>",
+      "format": "png"
+    },
+    "action": "the creature swings its raised spiked ball tail forward and down in one smooth arc and slams the ball on the ground to the right; the body stays still, one tail, one ball",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "326219b7-6045-4ddd-a83f-fc7e514de387",
+    "generation_id": "26f6378a-9940-4cd4-bb8c-08b3d7c87ca4"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "down-00.png",
+    "down-01.png",
+    "down-02.png",
+    "down-03.png",
+    "down-04.png"
+  ]
+}

@@ -132,5 +132,12 @@
     "reviewed": "2026-11-18",
     "gens": 1,
     "notes": "The user picked the NEW 49x46 still (the stills commit's drawing) over the a87c503d 76x61 idle. The hand-made claw-curl / arm-lift / 1 px eye versions (build_hand.py) read as 'not animating' to the user; they asked for PixelLab. Installed: one PixelLab animate of the still (8 frames), cut to 4 x 260 ms in order (build.py): f0 the still, f1 breathing in (PL 03: risen 2-3 px, coat wider, claws curling), f2 fists + eyes shut (PL 05), f3 breathing out (PL 07). Frame 52x48 (the still at +1,+2). D DR R UR U the drawing, UL L DL the mirror. Claws-only sheet backed up in art/_backup/63_claws_only_*. From the centre x2: claw fan centres L f0 (-38,-28) f1 (-39,-29) f2 (-40,-28) f3 (-39,-29), R f0 (+36,-28) f1 (+37,-29) f2 (+38,-28) f3 (+37,-29); coat box on every frame art x 8-42, y 15-44 = (-35,-17)..(+33,+41)."
+  },
+  "64": {
+    "battle": "new",
+    "overworld": "pending",
+    "reviewed": "2026-11-19",
+    "gens": 17,
+    "notes": "2026-11-19: the user picked the OLD-PATH model (assets/enemies/64_dungavenhooter.png, 98x65, 8 views x 8 frames) over the 80x60 PixelLab slam (backed up art/_backup/64_slam80x60_*), recoloured to the NES style by art/enemies/anim/64_dungavenhooter/oldpath/restyle.py (recolour only, silhouette identical): the old 51x41 still's colours, flat base/shadow by shape, side-view plate seams + belly line, doubled lines thinned, a shaded spiked steel ball, brighter eyes. Checker clean on all 64 cells. IMPACT f6 (dust burst). Installed as assets/enemies/redraws/64_dungavenhooter.png. The 80x60 slam notes: see git history."
   }
 }

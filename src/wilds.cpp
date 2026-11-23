@@ -102,7 +102,16 @@ void wild_pack(const Tilemap* map, unsigned seed, int cx, int cy, WildPack* out)
         in_world(&mx, &my);
         out->x[i] = (mx + 0.5f) * TILE_SIZE + (float)roll(9) - 4.0f;
         out->y[i] = (my + 0.5f) * TILE_SIZE + (float)roll(9) - 4.0f;
-        out->enemy[i] = pick_enemy_in_region(region, false, difficulty, &rng);
+        // A pack of different kinds, so its fights are not the same one twice
+        // (the user); a region of one kind keeps the repeat.
+        int e = pick_enemy_in_region(region, false, difficulty, &rng);
+        for (int tries = 0; tries < 4; tries++) {
+            bool dup = false;
+            for (int j = 0; j < i; j++) dup |= out->enemy[j] == e;
+            if (!dup) break;
+            e = pick_enemy_in_region(region, false, difficulty, &rng);
+        }
+        out->enemy[i] = e;
     }
     out->n = n;
 }

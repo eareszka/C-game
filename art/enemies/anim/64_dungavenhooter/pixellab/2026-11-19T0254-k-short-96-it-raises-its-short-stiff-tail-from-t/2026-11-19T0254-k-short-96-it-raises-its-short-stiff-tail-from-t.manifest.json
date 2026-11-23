@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0254-k-short-96-it-raises-its-short-stiff-tail-from-t",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1380 characters>",
+      "format": "png"
+    },
+    "action": "it raises its short stiff tail from the floor straight up behind its back, the spiked ball at the tip, then slams it back down; the tail keeps the same short length, it does not stretch; no dust trail; the body does not move",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a38eebc2-e685-444d-8bcc-c5d4adbd2797",
+    "generation_id": "c8b8ec34-5b0b-459d-b3a2-a23af70d76dc"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "raise-00.png",
+    "raise-01.png",
+    "raise-02.png",
+    "raise-03.png",
+    "raise-04.png",
+    "raise-05.png",
+    "raise-06.png",
+    "raise-07.png",
+    "raise-08.png"
+  ]
+}

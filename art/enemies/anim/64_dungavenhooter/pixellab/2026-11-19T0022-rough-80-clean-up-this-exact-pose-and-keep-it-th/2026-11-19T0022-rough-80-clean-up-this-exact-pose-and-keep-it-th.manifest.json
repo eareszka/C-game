@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-19T0022-rough-80-clean-up-this-exact-pose-and-keep-it-th",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1340 characters>",
+      "format": "png"
+    },
+    "description": "<elided 341 characters>",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "580e2f1b-6fbe-4ba9-aaf3-4da7f5116cdf",
+    "generation_id": "ca390286-7df8-428f-be1c-fdae83bfa733"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "k-slam-user.png"
+  ]
+}
