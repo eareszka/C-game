@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1717-mid-hang-the-bird-is-flying-its-short-furry-feet",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1416 characters>",
+      "format": "png"
+    },
+    "description": "the bird is flying: its short furry feet are folded back and tucked just behind and below its belly, still visible underneath the body, angled backward, not hanging straight down and not on the chest; everything else stays exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6e133ec4-9e72-424a-a3bd-2ef284de9e53",
+    "generation_id": "a1d4f3a0-9803-4b49-b296-ccf0c6802242"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "fb-mid-hang-b.png"
+  ]
+}

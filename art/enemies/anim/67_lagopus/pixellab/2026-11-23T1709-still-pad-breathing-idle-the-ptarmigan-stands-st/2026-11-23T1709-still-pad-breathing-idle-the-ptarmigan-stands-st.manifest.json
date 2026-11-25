@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1709-still-pad-breathing-idle-the-ptarmigan-stands-st",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1108 characters>",
+      "format": "png"
+    },
+    "action": "breathing idle: the ptarmigan stands still, its chest swells as it breathes in and sinks as it breathes out, the spread wings lift slightly and lower with each breath; it stays in place, no walking",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "6ef63950-ba46-4971-b196-45e08f4d5800",
+    "generation_id": "61862ceb-cf66-40cd-9dee-1fb4970ad08e"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "br-00.png",
+    "br-01.png",
+    "br-02.png",
+    "br-03.png",
+    "br-04.png",
+    "br-05.png",
+    "br-06.png",
+    "br-07.png",
+    "br-08.png"
+  ]
+}

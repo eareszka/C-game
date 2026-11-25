@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1712-still-fly-the-ptarmigan-hovers-in-place-flapping",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1168 characters>",
+      "format": "png"
+    },
+    "action": "the ptarmigan hovers in place flapping its wings: the wings sweep up high above its head, then beat down low below its body, then up again; the body and head stay still; no feathers or effects",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "ba0741c0-4587-451e-a3a5-6af3bf33e167",
+    "generation_id": "50cc70e8-2164-43d6-92a1-4c98355196d8"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "flb-00.png",
+    "flb-01.png",
+    "flb-02.png",
+    "flb-03.png",
+    "flb-04.png",
+    "flb-05.png",
+    "flb-06.png",
+    "flb-07.png",
+    "flb-08.png"
+  ]
+}

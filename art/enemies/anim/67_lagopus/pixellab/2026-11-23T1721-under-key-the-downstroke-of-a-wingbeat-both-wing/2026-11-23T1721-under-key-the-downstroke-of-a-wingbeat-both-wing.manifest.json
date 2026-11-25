@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1721-under-key-the-downstroke-of-a-wingbeat-both-wing",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1920 characters>",
+      "format": "png"
+    },
+    "description": "the downstroke of a wingbeat: both wings swept down low beside and below the body, wingtips pointing down and out, the grey wing undersides showing; the head, body, short tucked feet and tail stay exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "a616b1d3-5c70-49c0-a00d-0b58308edada",
+    "generation_id": "20afe1eb-6a5d-47c2-9664-ed7676420626"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "dn-a.png"
+  ]
+}

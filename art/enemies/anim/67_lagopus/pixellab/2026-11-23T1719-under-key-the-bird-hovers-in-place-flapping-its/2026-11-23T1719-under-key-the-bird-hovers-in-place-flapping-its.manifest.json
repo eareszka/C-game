@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1719-under-key-the-bird-hovers-in-place-flapping-its",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1920 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 1920 characters>",
+      "format": "png"
+    },
+    "action": "the bird hovers in place flapping its wings: the wings sweep up high above its head, then beat down low beside its body, then back; its short feet stay tucked just under and behind its belly the whole time; the body and head stay still; no effects",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "5deedc07-7207-4047-9ad9-9fc31ed567bf",
+    "generation_id": "e41e79db-6678-4b90-a408-38fbd4832f6f"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "ufa-00.png",
+    "ufa-01.png",
+    "ufa-02.png",
+    "ufa-03.png",
+    "ufa-04.png",
+    "ufa-05.png",
+    "ufa-06.png",
+    "ufa-07.png",
+    "ufa-08.png"
+  ]
+}

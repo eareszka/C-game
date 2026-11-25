@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1717-still-fly-the-bird-is-flying-its-short-furry-fee",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1168 characters>",
+      "format": "png"
+    },
+    "description": "the bird is flying: its short furry feet are folded back and tucked just behind and below its belly, still visible underneath the body, angled backward, not hanging straight down and not on the chest; everything else stays exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c4f4b44f-1624-40de-adc2-d8f6a5ff8ba4",
+    "generation_id": "51a3d4fb-ff2c-4973-bed4-66fd99d9a872"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "fb-still-fly-b.png"
+  ]
+}

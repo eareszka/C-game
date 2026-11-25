@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1710-still-pad-the-ptarmigan-breathes-out-its-chest-s",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 1108 characters>",
+      "format": "png"
+    },
+    "action": "the ptarmigan breathes out: its chest sinks and flattens, its head and shoulders drop a little, the spread wings sag lower; it stays in place",
+    "frame_count": 4,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "29072d12-61aa-4964-85d7-2134e9919eb3",
+    "generation_id": "af109ba5-b3be-4ef0-b01c-315899797220"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "out-00.png",
+    "out-01.png",
+    "out-02.png",
+    "out-03.png",
+    "out-04.png"
+  ]
+}

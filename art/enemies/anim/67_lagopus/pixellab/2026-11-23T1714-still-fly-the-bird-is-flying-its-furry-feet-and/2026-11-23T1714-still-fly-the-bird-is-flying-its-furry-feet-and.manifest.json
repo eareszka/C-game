@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1714-still-fly-the-bird-is-flying-its-furry-feet-and",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1168 characters>",
+      "format": "png"
+    },
+    "description": "the bird is flying: its furry feet and legs are tucked up tight under its belly, drawn up into the fur, not hanging down; everything else stays exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "c9cf90f1-8b9c-4ed4-b6f9-a1bf5b7aca55",
+    "generation_id": "27370c77-d6cf-4ab3-a155-35d1d651b9be"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tuckb.png"
+  ]
+}

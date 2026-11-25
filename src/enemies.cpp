@@ -7812,144 +7812,146 @@ public:
     }
 };
 
-// Pliny's lagopus, the "hare-foot" -- the ptarmigan (A Book of Creatures):
-// "the size of a pigeon and white all over", its "feet are covered with hair
-// like those of a hare's foot", and by Albertus Magnus' reckoning "the
-// lagopus cannot fly well". LOW tier, 340 HP, snow-white-blue bullets.
-// Flight: every few seconds it takes off for a new perch (67_lagopus_fly,
-//   true 8 directions) -- clumsily, the book says it can't fly well: the
-//   flight wobbles from side to side. Landing it scatters a ring of snow.
-// Phase 1 (the user's design): perched, it quickly builds a RING of snow
-//   around itself -- flake after flake sweeping round the first row, then
-//   the next out, row upon row, each flashing as it appears, until half a
-//   second before take-off (~11 rows) -- and every row it finishes sends a
-//   separate ring of 12 flying out; the moment it takes off, the
-//   whole ring is let fly at the player, flake after flake, as it flies away.
-// Phase 2 (half HP) -- a blizzard, topping phase 1 (the user's call): it
-//   still builds the ring every perch, faster (3 flakes a frame), and each
-//   finished row's ring is 14 and turns the OTHER way from the last, so the
-//   lanes cross into a lattice; at take-off the ring bursts at the player
-//   loosely (each flake a little off-line). On top of that its wings, always
-//   spread and rippling (the user's idle), throw on each ripple -- tips up
-//   (idle frame 1): feathers off both wingtips, out to the sides and down;
-//   tips down (idle frame 2): a puff of snow at the player. It flies more
-//   often, the wobble grows, and every wingbeat in the air beats a gust of 5
-//   feathers at the player.
-// Eased after the user's F4 run of 2026-10-31 (rated 4 in UPPER, both hits
-// in phase 2): phase 2 perches 2 s, not 1.6, its rows' rings 14, not 16.
+// Pliny's lagopus, the "hare-foot" -- the ptarmigan (A Book of Creatures,
+// 2020): "the size of a pigeon", "white all over", its feet "covered with
+// hair like a hare's foot"; Albertus Magnus reckons it "cannot fly well";
+// Thomas de Cantimpre has it carry its food into a cave to eat it; and it
+// "cannot be tamed or kept outside of its native land". LOW tier, 340 HP,
+// snow-white-blue bullets. 42x32 drawn 2x. Every shot leaves the part that
+// makes it (PARTS: beak, wingtips, hare feet -- art px, front view; swap in
+// sprites' per-view offsets when the new idle lands) and eases out of it.
+// Phase 1 -- HARE HOPS: it can't fly well, so it bounds over the snow like a
+//   hare, a hop every HOP_T s to a new spot near the top (never within
+//   KEEP_R of the player).
+//   Kick    -- every landing its hare feet kick up snow: a fan of KICK at the
+//              player from its feet.
+//   Flutter -- every landing (it flapped a whole wingbeat -- the flap sheet,
+//              flap_phase -- and only hopped): feathers shaken off both
+//              wingtips, a half ring out of each.
+// Phase 2 (half HP) -- HOME: it can't be kept from its native ground, so it
+//   hops back to the cave mouth at the top (HOME) and stays, foraging and
+//   carrying its food in, on its idle ({0,1,0,2} x 260 ms, 1.04 s):
+//   Forage -- idle f1 (the breath, beak up): a ring of SEEDS pecked out of
+//             its beak flies out, stops, and is carried BACK the way it came
+//             and swallowed (boomerangs); every other one goes further, each
+//             ring turned half a step from the last, so the lanes in and out
+//             cross.
+//   Thump  -- idle f2: a hare's warning thump, a fan of THUMP from its feet
+//             at the player.
 class Lagopus : public Enemy {
-    static constexpr float BEAT_T = 0.44f;   // a wingbeat: the fly sheet's 4 frames at 110 ms
-    bool  flying = false;
-    float t = 0.0f;
-    float x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-    int   beats = 0;                          // wingbeats done this flight
-    bool  landed = false, gust = false;
-    int   flakes = 0;                         // ... flakes in it so far this perch
-    float build = 0.0f;                       // ... flakes owed: built by time, not by frame
-    static constexpr int   RING_N      = 24;  // flakes to a circle
-    static constexpr float ROW_GAP     = 12.0f;   // px between circles
-    static constexpr float STOP_BUILD  = 0.5f;    // s before take-off it stops adding
+    // A hop: 0.52 s crouched, then HOP_AIR in the air -- one whole wingbeat
+    // of the flap sheet (4 x 260 ms), flapping hard and still only bounding.
+    static constexpr float HOP_T = 1.56f, HOP_AIR = 1.04f, HOP_D = 85.0f, LIFT = 18.0f;
+    static constexpr float KEEP_R = 170.0f, CLEAR = 60.0f;
+    static constexpr float BOX_X0 = 90.0f, BOX_X1 = ARENA_W - 90.0f, BOX_Y0 = ARENA_TOP + 60.0f, BOX_Y1 = 220.0f;
+    static constexpr float HOME_X = ARENA_W * 0.5f, HOME_Y = ARENA_TOP + 90.0f;
+    static constexpr int   KICK = 9, FLUTTER = 9, SEEDS = 20, THUMP = 7;
+    // Its parts, art px on the 42x32 front frame: the beak, the wingtips, the
+    // hare feet (the middle of the pair).
+    static constexpr float BEAK[2] = { 21.0f, 7.0f }, WING_L[2] = { 2.0f, 11.0f }, WING_R[2] = { 39.0f, 11.0f },
+                           FEET[2] = { 20.0f, 28.5f };
+    float hop_t = 0.0f, x0 = 0.0f, y0 = 0.0f, x1 = 0.0f, y1 = 0.0f;
+    bool  airborne = false, landed = false, home = false;
+    int   hops = 0, rings = 0;
 
-    float fly_t()   const { return ENRAGED ? 0.9f : 1.1f; }
-    float perch_t() const { return ENRAGED ? 2.0f : 2.8f; }
+    void at(const float p[2], float* ox, float* oy) const {     // art px (42x32, drawn 2x about its middle) -> screen
+        *ox = x + (p[0] - 21.0f) * 2.0f; *oy = y + (p[1] - 16.0f) * 2.0f;
+    }
+    // A shot out of (ox, oy) along a, easing up from slow to `top` -- no pop-in.
+    static BulletSpawn out_of(float ox, float oy, float a, float top, float r) {
+        BulletSpawn b = mk(a, 50.0f, r, 5.0f);
+        b.accel = 320.0f; b.max_speed = top;
+        b.from = true; b.ox = ox; b.oy = oy;
+        return b;
+    }
+    // A fan of m from part p at the player, `spread` rad between shots.
+    int fan(const float p[2], int m, float spread, float top, float px, float py, BulletSpawn out[]) const {
+        float ox, oy;
+        at(p, &ox, &oy);
+        if (hypotf(px - ox, py - oy) < CLEAR) return 0;          // never point-blank
+        float a = aim_at(ox, oy, px, py);
+        int n = 0;
+        for (int i = 0; i < m; i++) out[n++] = out_of(ox, oy, a + (i - (m - 1) * 0.5f) * spread, top, 3.0f);
+        return n;
+    }
+    // Where to hop: HOP_D on to a spot in the box, clear of the player; or
+    // (phase 2) straight on toward home.
+    void pick_hop(float px, float py) {
+        x0 = x; y0 = y;
+        if (ENRAGED) {
+            float dx = HOME_X - x, dy = HOME_Y - y, d = hypotf(dx, dy);
+            float s = fminf(d, HOP_D);
+            x1 = x + (d > 0.0f ? dx / d * s : 0.0f); y1 = y + (d > 0.0f ? dy / d * s : 0.0f);
+            return;
+        }
+        for (int k = 0; k < 16; k++) {
+            float a = ernd() * TAU, qx = x + cosf(a) * HOP_D, qy = y + sinf(a) * HOP_D * 0.6f;
+            if (qx >= BOX_X0 && qx <= BOX_X1 && qy >= BOX_Y0 && qy <= BOX_Y1 && hypotf(px - qx, py - qy) >= KEEP_R) {
+                x1 = qx; y1 = qy; return;
+            }
+        }
+        x1 = x; y1 = y;                                          // nowhere good: a hop on the spot
+    }
 public:
     Lagopus() : Enemy(320, 150, 340, {1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f}) {}
     const char* name()          const override { return "LAGOPUS"; }
-    float       fire_interval() const override { return 0.016f; }  // every frame: the ring builds fast
-    float       flap_phase()    const override { return flying ? fmodf(t / BEAT_T, 1.0f) : -1.0f; }
-    int         move_facing()   const override { return flying ? facing_toward(x1 - x0, y1 - y0) : -1; }
-    void update(float dt, float, float) override {
-        t += dt;
-        if (!flying) build += dt * (ENRAGED ? 180.0f : 120.0f);   // flakes a second (3 / 2 a frame at 60 fps)
-        if (!flying) {
-            if (t >= perch_t()) {
-                x0 = x; y0 = y;
-                do { x1 = 100.0f + ernd() * (ARENA_W - 200.0f); } while (fabsf(x1 - x) < 120.0f);
-                y1 = 100.0f + ernd() * 100.0f;
-                flying = true; t = 0.0f; beats = 0; flakes = 0; build = 0.0f;
-            }
+    float       fire_interval() const override { return 0.0f; }   // every tick: shots on the landing / beat
+    bool        free_movement() const override { return true; }   // its hops are the motion
+    float       flap_phase()    const override { return airborne ? fminf(hop_t / HOP_AIR, 0.999f) : -1.0f; }   // the wingbeat, once a hop
+    void update(float dt, float px, float py) override {
+        if (home) return;                                        // phase 2 at the cave mouth: its idle does the rest
+        hop_t += dt;
+        if (!airborne) {
+            if (hop_t >= HOP_T - HOP_AIR) { hop_t = 0.0f; airborne = true; pick_hop(px, py); }
             return;
         }
-        float k = fminf(t / fly_t(), 1.0f), e = k * k * (3.0f - 2.0f * k);
-        // Clumsy: it wobbles side to side across its line, and lifts in an arc.
-        float dx = x1 - x0, dy = y1 - y0, len = sqrtf(dx * dx + dy * dy) + 0.001f;
-        float wob = (ENRAGED ? 22.0f : 14.0f) * sinf(k * PI * 4.0f) * sinf(k * PI);
-        x = x0 + dx * e - dy / len * wob;
-        y = y0 + dy * e + dx / len * wob - 30.0f * sinf(PI * k);
-        if ((int)(t / BEAT_T) > beats) { beats++; if (ENRAGED) gust = true; }
-        if (k >= 1.0f) { flying = false; t = 0.0f; landed = true; }
+        float k = fminf(hop_t / HOP_AIR, 1.0f), e = k * k * (3.0f - 2.0f * k);
+        x = x0 + (x1 - x0) * e;
+        y = y0 + (y1 - y0) * e - LIFT * sinf(PI * k);          // a bound: up and down
+        if (k >= 1.0f) {
+            airborne = false; hop_t = 0.0f; landed = true; hops++;
+            if (ENRAGED && hypotf(HOME_X - x, HOME_Y - y) < 1.0f) home = true;
+        }
     }
     int fire(float px, float py, BulletSpawn out[], int) override {
-        if (!flying && t < perch_t() - STOP_BUILD) {
-            // The next flakes round the ring, one row after another, two a
-            // frame (a row in ~0.2 s), row upon row outward until half a
-            // second before take-off -- ~11 rows on a full perch. Each
-            // flashes in, hangs there until the take-off -- its delay runs out
-            // exactly then, one after another, so the ring leaves as a stream
-            // -- then flies at wherever the player is.
-            int n = 0;
-            for (; build >= 1.0f && n < 100; build -= 1.0f, flakes++) {   // room left in the 128 volley for a row ring
-                int row = flakes / RING_N, k = flakes % RING_N;
-                if (k == 0 && row > 0) {
-                    // A row just finished: a separate ring flies out from it
-                    // (the user's design) -- 12 round, each turned a little on
-                    // from the last, so the lanes between them curve slowly.
-                    // Phase 2: 14, alternating which way they turn -- crossing lanes.
-                    int   rn   = ENRAGED ? 14 : 12;
-                    float turn = ENRAGED ? (row % 2 ? 1.0f : -1.0f) * row * 0.06f : row * 0.06f;
-                    for (int i = 0; i < rn; i++)
-                        out[n++] = mk(turn + i * (TAU / rn), 120.0f, 3.0f, 5.0f);
+        int n = 0;
+        if (landed) {                                            // a landing: hare feet kick up snow
+            landed = false;
+            n += fan(FEET, KICK, 0.15f, 170.0f, px, py, out + n);
+            if (!ENRAGED) {                                      // flapped hard, and only bounded: feathers shaken loose
+                const float* tips[2] = { WING_L, WING_R };
+                for (int s = 0; s < 2; s++) {
+                    float ox, oy;
+                    at(tips[s], &ox, &oy);
+                    if (hypotf(px - ox, py - oy) < CLEAR) continue;
+                    float a0 = s == 0 ? PI * 0.5f : -PI * 0.5f;  // the outer half: left wing left, right wing right
+                    for (int i = 0; i < FLUTTER; i++)
+                        out[n++] = out_of(ox, oy, a0 + (i + 0.5f) * (PI / FLUTTER), 125.0f, 2.5f);
                 }
-                float a = (k + row * 0.33f) * (TAU / RING_N), r = 40.0f + row * ROW_GAP;
-                BulletSpawn b = mk(0.0f, 0.0f, 3.0f, 5.0f);
-                b.from = true; b.ox = x + cosf(a) * r; b.oy = y + sinf(a) * r;
-                // Never on the player: a flake whose spot is within 40 px of
-                // them is left out (the tester caught unwarned hits from
-                // mines made on top of the player).
-                float ddx = b.ox - px, ddy = b.oy - py;
-                if (ddx * ddx + ddy * ddy < 40.0f * 40.0f) continue;
-                b.delay        = (perch_t() - t) + flakes * 0.005f;   // the stream: ~1.4 s for a full ring
-                b.launch_speed = 190.0f;
-                b.launch_off   = ENRAGED ? (ernd() * 2.0f - 1.0f) * 0.12f : 0.0f;   // phase 2: a looser burst
-                b.flash_in     = true;
-                out[n++] = b;
             }
             return n;
-        }
-        if (landed) {                                         // landing: snow thrown up all round
-            landed = false;
-            float turn = ernd() * TAU;
-            for (int i = 0; i < 12; i++) out[i] = mk(turn + i * (TAU / 12), 105.0f, 3.0f, 5.0f);
-            return 12;
-        }
-        if (gust) {                                           // a downbeat in the air: 3 feathers at the player
-            gust = false;
-            float a = aim_at(x,y,px,py);
-            for (int i = 0; i < 5; i++) out[i] = mk(a + (i - 2) * 0.22f, 190.0f, 2.5f, 5.0f);
-            return 5;
         }
         return 0;
     }
     int on_idle_frame(int frame, float px, float py, BulletSpawn out[], int) override {
-        if (flying || !ENRAGED) return 0;                     // the ripples throw in phase 2
+        if (!home) return 0;
         int n = 0;
-        if (frame == 1) {                                     // tips up: feathers off both wingtips
-            for (int side = -1; side <= 1; side += 2)
-                for (int i = 0; i < 3; i++) {
-                    float a = PI / 2 - side * (1.15f - i * 0.22f);   // out to the side, angled down
-                    out[n++] = mk(a, 175.0f, 2.5f, 5.0f);
-                }
-            return n;
-        }
-        if (frame == 2) {                                     // tips down: a puff of snow at the player
-            float a = aim_at(x,y,px,py);
-            for (int i = 0; i < 6; i++) {
-                BulletSpawn b = mk(a + (ernd() * 2.0f - 1.0f) * 0.35f, 150.0f + ernd() * 50.0f, 3.0f, 5.0f);
-                b.accel = -90.0f; b.min_speed = 70.0f;
+        if (frame == 1) {                                        // the breath, beak up: forage -- seeds out, carried back in
+            float ox, oy;
+            at(BEAK, &ox, &oy);
+            if (hypotf(px - ox, py - oy) < CLEAR) return 0;
+            int   ring = rings++;
+            float v = ring & 1 ? 250.0f : 200.0f;                // every other goes further (v^2 / 220: ~180, ~285 px)
+            float a0 = (ring & 1) * 0.5f * (TAU / SEEDS);
+            for (int i = 0; i < SEEDS; i++) {
+                BulletSpawn b = mk(a0 + i * (TAU / SEEDS), v, 3.0f, 5.0f);
+                b.accel = -110.0f; b.max_speed = v;               // stops, and comes back no faster than it went
+                b.from = true; b.ox = ox; b.oy = oy;
                 out[n++] = b;
             }
             return n;
         }
+        if (frame == 2) return fan(FEET, THUMP, 0.16f, 180.0f, px, py, out);   // wings down: the thump
         return 0;
     }
 };

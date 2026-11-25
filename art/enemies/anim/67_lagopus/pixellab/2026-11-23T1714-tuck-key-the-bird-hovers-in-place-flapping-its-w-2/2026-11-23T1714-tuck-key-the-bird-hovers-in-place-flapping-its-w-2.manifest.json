@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1714-tuck-key-the-bird-hovers-in-place-flapping-its-w-2",
+  "provider": "pixellab",
+  "route": "animate-with-text-v3",
+  "arguments": {
+    "first_frame": {
+      "type": "base64",
+      "base64": "<elided 2224 characters>",
+      "format": "png"
+    },
+    "last_frame": {
+      "type": "base64",
+      "base64": "<elided 2224 characters>",
+      "format": "png"
+    },
+    "action": "the bird hovers in place flapping its wings: the wings sweep up high above its head, then beat down low beside its body, then back; its feet stay tucked up under its belly the whole time; the body and head stay still; no effects",
+    "frame_count": 8,
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "4279b29c-5871-4614-b5bf-ba18a0c4aed7",
+    "generation_id": "fb8e17ce-304c-4d0d-8416-0d619d309c73"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tfa-00.png",
+    "tfa-01.png",
+    "tfa-02.png",
+    "tfa-03.png",
+    "tfa-04.png",
+    "tfa-05.png",
+    "tfa-06.png",
+    "tfa-07.png",
+    "tfa-08.png"
+  ]
+}

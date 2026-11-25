@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1718-mid-hang-both-furry-grey-feet-stay-underneath-th-2",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1416 characters>",
+      "format": "png"
+    },
+    "description": "both furry grey feet stay underneath the body, side by side as now, but pulled up shorter and folded back behind the belly so only the toes peek out just below the belly's bottom edge; the wings, head, body and tail stay exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "de29351c-66df-4407-a6d3-269dfd91b6d5",
+    "generation_id": "63c2bca8-9159-4a2d-9d30-b206df497a1a"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tk-e.png"
+  ]
+}

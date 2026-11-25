@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "run": "2026-11-23T1718-still-fly-both-furry-grey-feet-stay-underneath-t-3",
+  "provider": "pixellab",
+  "route": "edit-image-pixen",
+  "arguments": {
+    "image": {
+      "type": "base64",
+      "base64": "<elided 1168 characters>",
+      "format": "png"
+    },
+    "description": "both furry grey feet stay underneath the body, side by side as now, but pulled up shorter and folded back behind the belly so only the toes peek out just below the belly's bottom edge; the wings, head, body and tail stay exactly the same",
+    "no_background": true
+  },
+  "links": {},
+  "seed": null,
+  "ids": {
+    "background_job_id": "03426adb-f409-4685-a8e1-e492d04db095",
+    "generation_id": "4e3f21f6-abfa-4e4d-9636-052e4ee048b6"
+  },
+  "cost": {
+    "generations": 1.0,
+    "usd": 0.0,
+    "source": "reported",
+    "seconds": null
+  },
+  "files": [
+    "tk-b.png"
+  ]
+}
